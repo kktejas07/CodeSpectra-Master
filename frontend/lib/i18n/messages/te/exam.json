@@ -883,5 +883,6 @@
   "dimensionLabel:communication": "కమ్యూనికేషన్",
   "dimensionLabel:correctness": "సరైనదనం",
   "dimensionLabel:depth": "లోతు",
-  "dimensionLabel:structure": "నిర్మాణం"
+  "dimensionLabel:structure": "నిర్మాణం",
+  "loadingCadEditor": "CAD ఎడిటర్ లోడ్ అవుతోంది…"
 }

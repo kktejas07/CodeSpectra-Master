@@ -14,6 +14,7 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'gamification',
   'kyc',
   'redis',
+  'storage',
   'whatsapp',
   'analytics',
   'seo',

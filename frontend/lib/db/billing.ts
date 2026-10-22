@@ -28,7 +28,7 @@ export interface BillingOrderDoc {
   coupon_id?: string
   /** Plan snapshot taken at checkout (lib/billing-plans.ts) so activation uses exactly what was paid for. */
   plan_name?: string
-  plan_kind?: 'one_time' | 'subscription'
+  plan_kind?: 'one_time' | 'subscription' | 'licence'
   duration_days?: number
   interval?: 'month' | 'year'
   /** Window this order funded on the subscription (set on activation). */
@@ -44,6 +44,23 @@ export interface BillingOrderDoc {
   stripe_invoice_id?: string
   stripe_subscription_id?: string
   stripe_customer_id?: string
+  /** Razorpay recurring billing: the subscription, and the payment id of the charge this order records (unique). */
+  razorpay_subscription_id?: string
+  razorpay_charge_id?: string
+  /** Licence orders: the organisation (tenant) and the licence they fund. */
+  org_id?: string
+  licence_id?: string
+  licence_seats?: number
+  /** Plan change: credit for the unused period applied, and the change kind (lib/billing/proration.ts). */
+  proration_credit?: number
+  proration_kind?: 'upgrade_same_cycle' | 'new_period_with_credit'
+  /** Keep this end date (same-cycle upgrade). */
+  keep_period_end?: string
+  /** Referral / account credit applied to this order (minor units). */
+  credit_applied?: number
+  /** Sequential GST invoice number + tax snapshot (lib/billing/tax-invoice.ts). */
+  invoice_number?: string
+  invoice_tax?: Record<string, unknown>
   created_at: string
   updated_at: string
 }
@@ -76,7 +93,9 @@ export interface BillingSubscriptionDoc {
   cancel_at_period_end?: boolean
   cancelled_at?: string
   /** 'stripe_subscription' = Stripe renews it automatically; otherwise a prepaid period. */
-  billing_mode?: 'prepaid' | 'stripe_subscription'
+  billing_mode?: 'prepaid' | 'stripe_subscription' | 'razorpay_subscription'
+  /** Razorpay subscription id (billing_mode razorpay_subscription). */
+  razorpay_subscription_id?: string
   stripe_customer_id?: string
   stripe_subscription_id?: string
   /** A renewal payment failed: access continues until grace_ends_at (= ends_at), then lapses. */
@@ -131,6 +150,11 @@ export interface BillingCouponDoc {
   marketplace_funding?: 'platform_items_only' | 'platform_funded'
   /** Seller coupon: created by this marketplace seller, only for their items, seller-funded. */
   seller_id?: string | null
+  /** Plan restrictions (lib/billing/coupon-eligibility.ts). */
+  per_user_limit?: number
+  plan_ids?: string[]
+  first_purchase_only?: boolean
+  starts_at?: string | null
   created_at: string
   created_by?: string
   redemptions?: Array<{ user_id: string; user_name?: string; user_email?: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string; status?: 'reserved' | 'redeemed' }>
@@ -197,21 +221,25 @@ async function redeemerInfo(userId: string): Promise<{ user_name?: string; user_
 export async function reserveCouponUse(couponId: string, userId: string, orderId?: string): Promise<boolean> {
   const col = await billingCoupons()
   const reservation = { user_id: userId, status: 'reserved', redeemed_at: nowIso(), ...(orderId ? { order_id: orderId } : {}), ...(await redeemerInfo(userId)) }
+  const own = orderId
+    ? { user_id: userId, status: 'reserved', order_id: orderId }
+    : { user_id: userId, status: 'reserved' }
+  // Reuse the caller's own open reservation first (a retried checkout).
+  const mine = await col.findOne({ id: couponId, active: true, redemptions: { $elemMatch: own } } as any, { projection: { _id: 1 } })
+  if (mine) return true
   const res = await col.updateOne(
     {
       id: couponId,
       active: true,
-      'redemptions.user_id': { $ne: userId },
-      $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }],
+      // Per-person limit (default 1): this user's reservations + redemptions so far.
+      $and: [
+        { $expr: { $lt: [{ $size: { $filter: { input: { $ifNull: ['$redemptions', []] }, cond: { $eq: ['$$this.user_id', userId] } } } }, { $ifNull: ['$per_user_limit', 1] }] } },
+        { $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }] },
+      ],
     } as any,
     { $inc: { current_uses: 1 }, $push: { redemptions: reservation as any } },
   )
-  if (res.modifiedCount > 0) return true
-  const own = orderId
-    ? { user_id: userId, status: 'reserved', order_id: orderId }
-    : { user_id: userId, status: 'reserved' }
-  const doc = await col.findOne({ id: couponId, active: true, redemptions: { $elemMatch: own } } as any, { projection: { _id: 1 } })
-  return !!doc
+  return res.modifiedCount > 0
 }
 
 /** Give back an order-bound reservation (abandoned / failed / replaced checkout). Idempotent. */
@@ -262,8 +290,10 @@ export async function finalizeCouponRedemption(
     const fresh = await col.updateOne(
       {
         id: couponId,
-        'redemptions.user_id': { $ne: userId },
-        $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }],
+        $and: [
+          { $expr: { $lt: [{ $size: { $filter: { input: { $ifNull: ['$redemptions', []] }, cond: { $eq: ['$$this.user_id', userId] } } } }, { $ifNull: ['$per_user_limit', 1] }] } },
+          { $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }] },
+        ],
       } as any,
       { $inc: { current_uses: 1 }, $push: { redemptions: { user_id: userId, status: 'redeemed', order_id: orderId, plan_id: planId ?? null, redeemed_at: nowIso(), ...(await redeemerInfo(userId)) } as any } },
     )
@@ -281,11 +311,20 @@ export async function finalizeCouponRedemption(
   return true
 }
 
-/** True once the user has a completed redemption (an open reservation doesn't count). */
-export async function hasUserUsedCoupon(couponId: string, userId: string): Promise<boolean> {
+/** Completed redemptions of this coupon by the user (open reservations don't count). */
+export async function userCouponRedemptions(couponId: string, userId: string): Promise<number> {
   const col = await billingCoupons()
   const doc = await col.findOne({ id: couponId }, { projection: { redemptions: 1 } })
-  return !!(doc?.redemptions?.some((r) => r.user_id === userId && r.status !== 'reserved'))
+  return (doc?.redemptions || []).filter((r) => r.user_id === userId && r.status !== 'reserved').length
+}
+
+/** True once the user has used up their per-person allowance (default 1) of the coupon. */
+export async function hasUserUsedCoupon(couponId: string, userId: string): Promise<boolean> {
+  const col = await billingCoupons()
+  const doc = await col.findOne({ id: couponId }, { projection: { redemptions: 1, per_user_limit: 1 } })
+  const used = (doc?.redemptions || []).filter((r) => r.user_id === userId && r.status !== 'reserved').length
+  const limit = Number.isInteger(doc?.per_user_limit) && (doc!.per_user_limit as number) >= 1 ? (doc!.per_user_limit as number) : 1
+  return used >= limit
 }
 
 /** Catalog of buyable plans. Amounts in paise. */

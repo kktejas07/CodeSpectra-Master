@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     const { startSession, toView } = await import('@/lib/interview-sim/engine')
-    const r = await startSession({ id: g.user.id }, parsed.data)
+    const r = await startSession({ id: g.user.id, role: g.user.role }, parsed.data)
     if (!r.ok) return failRes(r)
     return NextResponse.json({ session: await toView(r.session) }, { status: 201 })
   } catch (e) {

@@ -883,5 +883,6 @@
   "dimensionLabel:communication": "संवाद",
   "dimensionLabel:correctness": "सही होना",
   "dimensionLabel:depth": "गहराई",
-  "dimensionLabel:structure": "ढाँचा"
+  "dimensionLabel:structure": "ढाँचा",
+  "loadingCadEditor": "CAD एडिटर लोड हो रहा है…"
 }

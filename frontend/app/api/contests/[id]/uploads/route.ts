@@ -58,7 +58,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const r = await startDirectUpload({
         feature: 'contest', tenantId: null, ownerId: user.id, scope, name, size: input.size, contentType, maxBytes, allowedTypes: [contentType],
       })
-      if (!r.ok) return NextResponse.json({ error: r.error, ...('inline' in r ? { inline: true } : {}) }, { status: r.status })
+      if (!r.ok) return NextResponse.json({ error: r.error, ...('inline' in r ? { inline: true } : {}), ...('code' in r && r.code ? { code: r.code } : {}) }, { status: r.status })
       return NextResponse.json(r, { status: 201 })
     }
 
@@ -67,7 +67,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       sniff: (head, doc) => checkFileHead(slot, doc.name, head, doc.size, maxBytes) === null,
       sniffError: `${slot.label}: the file content does not match its type.`,
     })
-    if (!done.ok) return NextResponse.json({ error: done.error }, { status: done.status })
+    if (!done.ok) return NextResponse.json({ error: done.error, ...(done.code ? { code: done.code } : {}) }, { status: done.status })
     return NextResponse.json({ upload_id: done.upload.id, ready: true })
   })
 }

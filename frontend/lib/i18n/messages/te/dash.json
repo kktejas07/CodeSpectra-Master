@@ -587,5 +587,6 @@
   "hackathonActivitiesOnDay_one": "{count} హ్యాకథాన్ యాక్టివిటీ",
   "hackathonActivitiesOnDay_other": "{count} హ్యాకథాన్ యాక్టివిటీలు",
   "sortedAscendingSuffix": ", ఆరోహణ క్రమంలో",
-  "sortedDescendingSuffix": ", అవరోహణ క్రమంలో"
+  "sortedDescendingSuffix": ", అవరోహణ క్రమంలో",
+  "uploadStorage": "అప్‌లోడ్ స్టోరేజ్"
 }

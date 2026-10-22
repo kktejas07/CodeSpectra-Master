@@ -122,6 +122,9 @@ async function coachNote(userId: string, week: PlanWeek, areas: WeakArea[], last
   try {
     const s = await getStudySettings()
     if (!aiAllowed(s, s.usage, now).ok) return fallback
+    // AI notes are a plan feature (lib/billing/entitlement-features.ts); free plans get the template.
+    const { hasEntitlement } = await import('@/lib/entitlements')
+    if (!(await hasEntitlement({ id: userId, role: 'user' }, 'study_plan_ai_notes')).allowed) return fallback
     const [{ backendComplete }, { withUsageMeter }, { estimateAiCost }, { scanUntrusted, neutraliseUntrusted }] = await Promise.all([
       import('@/lib/ai/backend'), import('@/lib/ai/usage-meter'), import('@/lib/db/analytics'), import('@/lib/ai/untrusted-input'),
     ])

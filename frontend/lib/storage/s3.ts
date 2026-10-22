@@ -91,6 +91,21 @@ export async function s3Get(cfg: ObjectStorageConfig, key: string): Promise<Buff
   }
 }
 
+/** The object as a web stream (large-file virus scans; never buffered whole). Null when missing. */
+export async function s3GetStream(cfg: ObjectStorageConfig, key: string): Promise<ReadableStream<Uint8Array> | null> {
+  try {
+    const r = await client(cfg).send(new GetObjectCommand({ Bucket: cfg.bucket, Key: key }))
+    const b = r.Body as { transformToWebStream?: () => ReadableStream<Uint8Array> } | Uint8Array | undefined
+    if (!b) return null
+    if (b instanceof Uint8Array) return new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new Uint8Array(b)); c.close() } })
+    if (typeof b.transformToWebStream === 'function') return b.transformToWebStream()
+    throw new Error('Unexpected S3 body')
+  } catch (e) {
+    if (isMissing(e)) return null
+    throw e
+  }
+}
+
 /** The first `n` bytes (for magic-byte checks without downloading a 500 MB video). */
 export async function s3GetHead(cfg: ObjectStorageConfig, key: string, n: number): Promise<Buffer | null> {
   try {
@@ -160,4 +175,28 @@ export async function s3PresignGet(cfg: ObjectStorageConfig, p: { key: string; f
     ResponseCacheControl: 'private, no-store',
   })
   return getSignedUrl(client(cfg), cmd, { expiresIn: Math.max(1, Math.min(GET_URL_TTL_SEC, p.expiresIn ?? GET_URL_TTL_SEC)) })
+}
+
+/**
+ * Connection test for the admin page: write a tiny encrypted object, read its
+ * metadata back, delete it. Proves credentials, bucket, write + delete rights
+ * and that the configured encryption is applied. Never throws.
+ */
+export async function s3Probe(cfg: ObjectStorageConfig, key: string): Promise<{ ok: true; latency_ms: number; encrypted: boolean } | { ok: false; step: 'write' | 'read' | 'delete'; error: string }> {
+  const t0 = Date.now()
+  let step: 'write' | 'read' | 'delete' = 'write'
+  try {
+    await s3Put(cfg, key, Buffer.from('codespectra storage probe'), 'text/plain')
+    step = 'read'
+    const head = await s3Head(cfg, key)
+    if (!head) throw Object.assign(new Error('Object missing after write'), { name: 'NotFound' })
+    step = 'delete'
+    await s3Delete(cfg, key)
+    return { ok: true, latency_ms: Date.now() - t0, encrypted: cfg.sse === 'none' ? !!head.sse : head.sse !== '' }
+  } catch (e) {
+    const x = e as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number } }
+    // Error name / code / HTTP status only — never the message (it can echo the request).
+    const code = x?.Code || x?.name || 'Error'
+    return { ok: false, step, error: `${code}${x?.$metadata?.httpStatusCode ? ` (HTTP ${x.$metadata.httpStatusCode})` : ''}`.slice(0, 120) }
+  }
 }

@@ -587,5 +587,6 @@
   "hackathonActivitiesOnDay_one": "{count} हैकाथॉन एक्टिविटी",
   "hackathonActivitiesOnDay_other": "{count} हैकाथॉन एक्टिविटी",
   "sortedAscendingSuffix": ", बढ़ते क्रम में",
-  "sortedDescendingSuffix": ", घटते क्रम में"
+  "sortedDescendingSuffix": ", घटते क्रम में",
+  "uploadStorage": "अपलोड स्टोरेज"
 }

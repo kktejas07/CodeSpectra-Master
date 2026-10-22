@@ -127,6 +127,24 @@ export async function runPlatformCron(now: Date = new Date()): Promise<PlatformC
     }
   }
 
+  // ── proctored certifications: finalise graded attempts, settle missed payments, expiry reminders (every 5 min) ──
+  if (minute.getUTCMinutes() % 5 === 0) {
+    const { intervalWindow } = await import('./automation/job-lease')
+    await run('pro-cert-sweep', intervalWindow(minute, 5), async () => {
+      const { runProCertSweep } = await import('./pro-certs/service')
+      await runProCertSweep(now)
+    }, { leaseMs: 5 * 60_000 })
+  }
+
+  // ── weekly hiring analytics digest (Mondays from 03:30 UTC = 09:00 IST; week window claimed in the DB) ──
+  if (minute.getUTCDay() === 1 && (minute.getUTCHours() > 3 || (minute.getUTCHours() === 3 && minute.getUTCMinutes() >= 30)) && minute.getUTCMinutes() % 15 === 0) {
+    const { intervalWindow } = await import('./automation/job-lease')
+    await run('hiring-analytics-digest', intervalWindow(minute, 10080), async () => {
+      const { sendHiringDigests } = await import('./ats/hiring-insights-server')
+      await sendHiringDigests(now)
+    }, { maxAttempts: 3, retryAfterMs: 30 * 60_000, leaseMs: 30 * 60_000 })
+  }
+
   // ── HTTP cron routes on their schedules ──────────────────────────────────
   if (process.env.PLATFORM_CRON_IN_PROCESS !== '0') {
     const due = SCHEDULED_ROUTES.filter((r) => isDue(r.cron, minute))

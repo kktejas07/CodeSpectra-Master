@@ -90,6 +90,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/billing',
   '/dashboard/admin/marketplace',
   '/dashboard/admin/mentors',
+  '/dashboard/admin/pro-certs',
   '/dashboard/admin/study-plans',
   '/dashboard/admin/leagues',
   '/dashboard/admin/help',
@@ -230,6 +231,8 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/assessments/ai-fluency',
   '/dashboard/assessments/ai-fluency/setup',
   '/dashboard/certifications',
+  '/dashboard/certifications/proctored',
+  '/dashboard/certifications/proctored/[slug]',
   '/dashboard/passport',
 
   // Hiring pipeline (ATS). Open to any signed-in role here because interviewers
@@ -397,6 +400,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/leagues': 'Leagues',
   '/dashboard/achievements': 'Achievements',
   '/dashboard/certifications': 'Certifications',
+  '/dashboard/certifications/proctored': 'Proctored certifications',
+  '/dashboard/certifications/proctored/[slug]': 'Certification',
   '/dashboard/passport': 'Skill passport',
   '/dashboard/pricing': 'Pricing',
   '/dashboard/challenges': 'Challenges',
@@ -423,6 +428,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/seller/apply': 'Sell on CodeSpectra',
   '/dashboard/admin/marketplace': 'Marketplace',
   '/dashboard/admin/mentors': 'Mentors',
+  '/dashboard/admin/pro-certs': 'Certifications (proctored)',
   '/dashboard/admin/study-plans': 'Study plans',
   '/dashboard/study-plan': 'Study plan',
   '/dashboard/study-plan/practice/[id]': 'Practice set',

@@ -9,14 +9,17 @@ import { PRIVATE_PAGE_METADATA } from '@/lib/seo/metadata'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { resolveClientIp } from '@/lib/client-ip'
+import { isProCredentialId } from '@/lib/pro-certs/pure'
+import { ProCredentialVerify } from '@/components/pro-certs/credential-verify'
+import { getRequestLocale } from '@/lib/i18n/server'
 
 // Never cached: authenticity is checked live (signature + current nonce).
 export const dynamic = 'force-dynamic'
 
 // Shared on LinkedIn (its preview bot obeys robots), so: noindex + no-referrer, not robots-disallowed.
 export const metadata: Metadata = {
-  title: { absolute: 'Verify a skill passport | CodeSpectra' },
-  description: 'Check that a CodeSpectra skill passport credential is authentic and current.',
+  title: { absolute: 'Verify a credential | CodeSpectra' },
+  description: 'Check that a CodeSpectra skill passport or certification credential is authentic and current.',
   ...PRIVATE_PAGE_METADATA,
 }
 
@@ -50,6 +53,17 @@ export default async function VerifyPassportPage({ params }: Props) {
   const rl = await rateLimitRedis(`passport-verify:${ip}`, 60, 60_000)
   if (!rl.ok) {
     return <Shell icon={<ShieldQuestion />} title="Too many checks">Wait a minute and open this link again.</Shell>
+  }
+  // Proctored certification credentials (CSC-…, lib/pro-certs) are verified from their own record.
+  if (isProCredentialId(id)) {
+    const locale = await getRequestLocale().catch(() => 'en' as const)
+    try {
+      const { verifyProCredential } = await import('@/lib/pro-certs/service')
+      return <ProCredentialVerify c={await verifyProCredential(id)} locale={locale} />
+    } catch (e) {
+      console.error('[pro-certs] verify failed:', (e as Error)?.message)
+      return <Shell icon={<ShieldQuestion />} title="We couldn’t check this right now">Please try again in a few minutes.</Shell>
+    }
   }
   let r: VerifyResult
   try {

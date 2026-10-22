@@ -136,7 +136,7 @@ export async function loadEvidence(userId: string, site = ''): Promise<Evidence[
     ).sort({ createdAt: -1 }).limit(PER_SOURCE_LIMIT).toArray(),
     db.collection('certification_attempts').find(
       { user_id: userId, passed: true, revoked_at: null } as never,
-      { projection: { _id: 0, id: 1, certification_id: 1, issue_key: 1, passed: 1, revoked_at: 1, submitted_at: 1, started_at: 1, cert_snapshot: 1, verify_token: 1, score: 1, score_label: 1, rank: 1, certificate_kind: 1, exam_submission_id: 1 } },
+      { projection: { _id: 0, id: 1, certification_id: 1, issue_key: 1, passed: 1, revoked_at: 1, submitted_at: 1, started_at: 1, cert_snapshot: 1, verify_token: 1, score: 1, score_label: 1, rank: 1, certificate_kind: 1, exam_submission_id: 1, expires_at: 1, superseded_by: 1, proctored: 1, trust_score: 1, credential_id: 1 } },
     ).sort({ submitted_at: -1 }).limit(PER_SOURCE_LIMIT).toArray(),
     db.collection('hackathon_teams').find(
       { 'members.user_id': userId, final_rank: { $type: 'number' } },

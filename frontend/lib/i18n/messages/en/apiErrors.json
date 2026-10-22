@@ -328,5 +328,10 @@
   "campus_csv_required": "Paste or upload a CSV file",
   "campus_test_unavailable": "That company test is not available",
   "campus_join_first": "The student has to join first (send them the invite)",
-  "campus_no_account": "No account uses that email yet — ask them to sign up first"
+  "campus_no_account": "No account uses that email yet — ask them to sign up first",
+  "upload_scanning": "Checking the file for viruses. This can take a few minutes for large files.",
+  "upload_infected": "The security scanner rejected this file.",
+  "upload_too_large_to_scan": "This file is too large for the virus scanner. Upload a smaller file.",
+  "upload_scan_offline": "The security scanner is offline right now. Try again in a few minutes.",
+  "storage_not_configured": "Set a valid bucket name (and an http(s) endpoint, if any) first."
 }

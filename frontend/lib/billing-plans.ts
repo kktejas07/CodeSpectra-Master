@@ -39,6 +39,7 @@ import {
   type PlanInterval,
 } from '@/lib/billing-plan-mode'
 import { graceExpired, trialDaysForCoupon } from '@/lib/billing-lifecycle'
+import { DEFAULT_PRO_PRICES, isBillingCurrency, priceFor, type PlanPrices } from '@/lib/billing/plan-prices'
 
 export interface ResolvedPlan {
   /** Canonical id stored on the order and the subscription. */
@@ -47,7 +48,7 @@ export interface ResolvedPlan {
   /** Minor units (paise / cents) of `currency`. 0 unless mode === 'checkout'. */
   amount_paise: number
   currency: string
-  kind: 'one_time' | 'subscription'
+  kind: 'one_time' | 'subscription' | 'licence'
   duration_days?: number
   interval?: PlanInterval
   perks: string[]
@@ -76,6 +77,8 @@ function toMinor(major: number): number {
 export async function resolveBillingPlan(
   rawPlanId: unknown,
   interval: PlanInterval = 'month',
+  /** INR / USD: use the plan's per-currency price (`prices_minor`) when it has one. */
+  currency?: string | null,
 ): Promise<ResolvedPlan | null> {
   if (!isValidPlanId(rawPlanId)) return null
   const planId = rawPlanId
@@ -138,6 +141,10 @@ export async function resolveBillingPlan(
     }
     if (mode !== 'checkout') return base
 
+    // Per-currency admin prices (lib/billing/plan-prices.ts) win when the buyer's currency has one.
+    const perCurrency = isBillingCurrency(currency) ? priceFor(dbPlan.prices_minor as PlanPrices | undefined, currency, interval) : null
+    if (perCurrency) return { ...base, amount_paise: perCurrency, currency: currency! }
+
     // Same arithmetic the pricing pages display (lib/pricing-catalog-server.ts).
     const monthly = parsePlanPrice(dbPlan.price) ?? 0
     let amount = 0
@@ -155,6 +162,10 @@ export async function resolveBillingPlan(
   const def = CATALOG_DEFAULTS.find((p) => p.id === planId)
   if (def) {
     const mode = planCheckoutMode({ id: def.id, price: def.monthlyUsd, yearlyPrice: def.yearlyUsd })
+    const builtIn = def.id === 'pro' && isBillingCurrency(currency) ? priceFor(DEFAULT_PRO_PRICES, currency, interval) : null
+    if (builtIn && mode === 'checkout') {
+      return { id: def.id, name: def.name, amount_paise: builtIn, currency: currency!, kind: 'subscription', duration_days: durationFor(interval), interval, perks: def.features, mode, source: 'catalog' }
+    }
     const major = interval === 'year' ? def.yearlyUsd : def.monthlyUsd
     return {
       id: def.id,
@@ -245,6 +256,13 @@ export function ensureBillingIndexes(): Promise<void> {
           { stripe_invoice_id: 1 },
           { unique: true, name: 'billing_orders_stripe_invoice_id_unique', partialFilterExpression: { stripe_invoice_id: { $gt: '' } } },
         )
+        // Same for each Razorpay subscription charge (payment id).
+        await (await billingOrders()).createIndex(
+          { razorpay_charge_id: 1 },
+          { unique: true, name: 'billing_orders_razorpay_charge_id_unique', partialFilterExpression: { razorpay_charge_id: { $gt: '' } } },
+        )
+        await (await billingOrders()).createIndex({ razorpay_subscription_id: 1 }, { name: 'billing_orders_razorpay_subscription_id', sparse: true })
+        await (await billingSubscriptions()).createIndex({ razorpay_subscription_id: 1 }, { name: 'billing_subscriptions_razorpay_subscription_id', sparse: true })
       } catch (e) {
         // Existing duplicate rows block a unique index; the atomic order claim
         // still prevents double activation. Log so ops can clean up.
@@ -276,7 +294,21 @@ export interface StripePeriod {
  * order to `paid` (only one caller per order gets here). Uses the plan
  * snapshot stored on the order; falls back to the resolver for legacy orders.
  */
-export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: string, stripe?: StripePeriod): Promise<ActivationResult> {
+/** Razorpay recurring billing: period from the Razorpay subscription (lib/billing/razorpay-subscriptions.ts). */
+export interface RazorpayPeriod {
+  periodStart: string
+  periodEnd: string
+  subscriptionId: string
+}
+
+export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: string, stripe?: StripePeriod, razorpay?: RazorpayPeriod): Promise<ActivationResult> {
+  // Licence orders fund an organisation's seats, not the buyer's own plan.
+  if (order.plan_kind === 'licence') {
+    const { activateLicenceOrder } = await import('@/lib/billing/licences')
+    await activateLicenceOrder(order)
+    await afterPaid(order)
+    return { subscription: null }
+  }
   let kind = order.plan_kind
   let durationDays = order.duration_days
   if (!kind) {
@@ -292,7 +324,8 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
   const trialDays = trialDaysForCoupon(coupon)
   if (kind === 'subscription' && trialDays) durationDays = trialDays
 
-  if (kind === 'subscription' && (stripe || (durationDays && durationDays > 0))) {
+  const gw = stripe ?? razorpay
+  if (kind === 'subscription' && (gw || (durationDays && durationDays > 0))) {
     const subs = await billingSubscriptions()
     const existing = await subs.findOne(
       { user_id: order.user_id, status: { $in: ['active', 'expired', 'cancelled', 'past_due'] } },
@@ -303,14 +336,25 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
     // starts the new plan now.
     const extendsCurrent =
       !!existing && existing.status === 'active' && existing.plan_id === order.plan_id && new Date(existing.ends_at) > now
-    // Stripe renewals use Stripe's own period (no stacking: Stripe already bills back-to-back).
-    const start = stripe ? new Date(stripe.periodStart) : extendsCurrent ? new Date(existing!.ends_at) : now
-    const endsAt = stripe ? stripe.periodEnd : new Date(start.getTime() + (durationDays ?? 0) * DAY_MS).toISOString()
+    // Gateway renewals use the gateway's own period (no stacking: it already bills back-to-back).
+    // A same-cycle upgrade (lib/billing/proration.ts) keeps the period end it was priced for.
+    const keepEnd = !gw && order.keep_period_end && Date.parse(order.keep_period_end) > now.getTime() ? order.keep_period_end : null
+    const start = gw ? new Date(gw.periodStart) : keepEnd ? now : extendsCurrent ? new Date(existing!.ends_at) : now
+    const endsAt = gw ? gw.periodEnd : keepEnd ?? new Date(start.getTime() + (durationDays ?? 0) * DAY_MS).toISOString()
     const ts = nowIso()
-    const keepStart = stripe ? !!existing && existing.stripe_subscription_id === stripe.subscriptionId : extendsCurrent
+    const keepStart = stripe
+      ? !!existing && existing.stripe_subscription_id === stripe.subscriptionId
+      : razorpay
+        ? !!existing && existing.razorpay_subscription_id === razorpay.subscriptionId
+        : extendsCurrent
     const modeFields = stripe
       ? { billing_mode: 'stripe_subscription' as const, stripe_customer_id: stripe.customerId, stripe_subscription_id: stripe.subscriptionId }
-      : { billing_mode: 'prepaid' as const }
+      : razorpay
+        ? { billing_mode: 'razorpay_subscription' as const, razorpay_subscription_id: razorpay.subscriptionId }
+        : existing?.billing_mode === 'razorpay_subscription' && keepEnd && existing.razorpay_subscription_id
+          // Prorated upgrade of a Razorpay subscription: it keeps renewing (at the new plan's price, see change-plan).
+          ? { billing_mode: 'razorpay_subscription' as const, razorpay_subscription_id: existing.razorpay_subscription_id }
+          : { billing_mode: 'prepaid' as const }
 
     // Paid orders clear any trial marker so the trial-expiry job can never end
     // a paid period; any order also undoes a pending "cancel at period end".
@@ -341,6 +385,7 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
             grace_ends_at: '',
             ended_reason: '',
             ...(stripe ? {} : { stripe_subscription_id: '' }),
+            ...(modeFields.billing_mode === 'razorpay_subscription' ? {} : { razorpay_subscription_id: '' }),
           },
         } as never,
       )
@@ -369,6 +414,14 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
       const { cancelStripeSubscriptionNow } = await import('@/lib/stripe-subscriptions')
       await cancelStripeSubscriptionNow(oldStripeSub).catch((e) =>
         console.error('[billing-plans] could not cancel replaced Stripe subscription', oldStripeSub, e),
+      )
+    }
+    // Same for a Razorpay subscription replaced by another plan / gateway.
+    const oldRzpSub = existing?.status === 'active' && existing.billing_mode === 'razorpay_subscription' ? existing.razorpay_subscription_id : undefined
+    if (oldRzpSub && oldRzpSub !== ('razorpay_subscription_id' in modeFields ? modeFields.razorpay_subscription_id : undefined)) {
+      const { cancelRazorpaySubscription } = await import('@/lib/billing/razorpay-subscriptions')
+      await cancelRazorpaySubscription(oldRzpSub, false).catch((e) =>
+        console.error('[billing-plans] could not cancel replaced Razorpay subscription', oldRzpSub, (e as Error)?.message),
       )
     }
 
@@ -400,8 +453,26 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
       console.error('[billing-plans] coupon redemption record failed:', e),
     )
   }
+  await afterPaid(order)
 
   return { subscription }
+}
+
+/** Effects every paid order gets once: tax invoice number, account credit used, referral reward queued. */
+async function afterPaid(order: BillingOrderDoc): Promise<void> {
+  await import('@/lib/billing/tax-invoice')
+    .then(({ assignInvoice }) => assignInvoice(order))
+    .catch((e) => console.error('[billing-plans] invoice numbering failed', order.id, (e as Error)?.message))
+  if (order.credit_applied && order.credit_applied > 0) {
+    await import('@/lib/billing/credits')
+      .then(({ debitCreditForOrder }) => debitCreditForOrder(order))
+      .catch((e) => console.error('[billing-plans] credit debit failed', order.id, (e as Error)?.message))
+  }
+  if (order.amount_paise > 0 && order.plan_kind !== 'licence') {
+    await import('@/lib/billing/referrals')
+      .then(({ queueReferralReward }) => queueReferralReward(order))
+      .catch((e) => console.error('[billing-plans] referral queue failed', order.id, (e as Error)?.message))
+  }
 }
 
 export type RefundOutcome =
@@ -506,6 +577,8 @@ export async function cancelAtPeriodEnd(userId: string): Promise<{ ends_at: stri
 export async function resumeSubscription(userId: string): Promise<boolean> {
   const current = await liveSub(userId)
   if (!current || current.cancel_at_period_end !== true) return false
+  // A Razorpay subscription already cancelled at the gateway (close to renewal) can't be revived.
+  if ((current as { razorpay_cancelled_at?: string }).razorpay_cancelled_at) return false
   if (current.billing_mode === 'stripe_subscription' && current.stripe_subscription_id) {
     const { setStripeCancelAtPeriodEnd } = await import('@/lib/stripe-subscriptions')
     await setStripeCancelAtPeriodEnd(current.stripe_subscription_id, false)
@@ -543,6 +616,12 @@ export async function endLapsedGracePeriods(now: Date = new Date()): Promise<num
       const { cancelStripeSubscriptionNow } = await import('@/lib/stripe-subscriptions')
       await cancelStripeSubscriptionNow(sub.stripe_subscription_id).catch((e) =>
         console.error('[billing-plans] could not cancel lapsed Stripe subscription', sub.stripe_subscription_id, e),
+      )
+    }
+    if (sub.razorpay_subscription_id) {
+      const { cancelRazorpaySubscription } = await import('@/lib/billing/razorpay-subscriptions')
+      await cancelRazorpaySubscription(sub.razorpay_subscription_id, false).catch((e) =>
+        console.error('[billing-plans] could not cancel lapsed Razorpay subscription', sub.razorpay_subscription_id, (e as Error)?.message),
       )
     }
   }

@@ -8,7 +8,7 @@ import { cancelAtPeriodEnd, orderPlanSnapshot, resolveBillingPlan } from '@/lib/
 import { getStripeClient, getStripeSecretKey, stripeAutoRenewEnabled } from '@/lib/stripe-client'
 import { ensureStripePrice, findStripeCustomerId } from '@/lib/stripe-subscriptions'
 import type { PaymentGatewayAdapter, CheckoutResult, SubscriptionResult, PaymentMethod } from './payment-service'
-import type { CheckoutPlan } from './payment-service'
+import type { CheckoutPlan, OrderExtras } from './payment-service'
 
 export { getStripeSecretKey }
 const getClient = getStripeClient
@@ -29,12 +29,13 @@ export class StripeAdapter implements PaymentGatewayAdapter {
    *  - Packs (one_time) and STRIPE_AUTO_RENEW=false: one-off payment mode,
    *    activated on checkout.session.completed.
    */
-  async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string): Promise<CheckoutResult> {
+  async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string, extras?: OrderExtras): Promise<CheckoutResult> {
     const stripe = await getClient()
     const currency = (plan.currency || 'usd').toLowerCase()
-    const recurring = plan.kind === 'subscription' && !!plan.interval && stripeAutoRenewEnabled()
+    // Prorated plan changes / credit-paid orders are one-off payments (the period is set on the order).
+    const recurring = plan.kind === 'subscription' && !!plan.interval && stripeAutoRenewEnabled() && !extras?.oneOff
     // Full (pre-coupon) price for the recurring Price, from the server catalog only.
-    const listPlan = recurring ? await resolveBillingPlan(plan.id, plan.interval) : null
+    const listPlan = recurring ? await resolveBillingPlan(plan.id, plan.interval, plan.currency) : null
     if (recurring && (!listPlan || listPlan.mode !== 'checkout' || listPlan.amount_paise < plan.amount_paise)) {
       throw new Error('Plan price changed. Please try again.')
     }
@@ -50,6 +51,7 @@ export class StripeAdapter implements PaymentGatewayAdapter {
       ...orderPlanSnapshot(plan),
       receipt: `${userId}_${planId}_${Date.now()}`,
       coupon_id: couponId,
+      ...(extras?.fields ?? {}),
       status: 'created',
       notes: { provider: 'stripe', ...(recurring ? { stripe_mode: 'subscription' } : {}) },
       created_at: nowIso(),

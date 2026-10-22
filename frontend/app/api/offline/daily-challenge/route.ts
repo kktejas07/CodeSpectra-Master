@@ -24,6 +24,10 @@ export async function GET(req: Request) {
   const limited = await limitRequest(req, 'offline-daily', gate.user.id, 20, 60 * 60_000)
   if (limited) return limited
   try {
+    // Offline packs are a plan feature (lib/billing/entitlement-features.ts).
+    const { hasEntitlement, entitlementError } = await import('@/lib/entitlements')
+    const ent = await hasEntitlement(gate.user, 'offline_packs')
+    if (!ent.allowed) return NextResponse.json(entitlementError('offline_packs', ent.planKey), { status: 402, headers: NO_STORE })
     const col = await problems()
     const list = await col
       .find({ is_published: true, hackathon_id: null, visibility: { $ne: 'hackathon_only' } }, { projection: { id: 1 } })

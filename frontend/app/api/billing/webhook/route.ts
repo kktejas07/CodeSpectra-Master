@@ -24,6 +24,8 @@ export const runtime = 'nodejs'
  *   - payment.captured       → mark order paid + insert payment + (re)issue subscription
  *   - payment.failed         → mark order failed + insert failed payment
  *   - refund.created/processed → full refund: markOrderRefunded (order, invoice, plan)
+ *   - subscription.charged / pending / halted / cancelled / completed / activated
+ *       → recurring INR plans (lib/billing/razorpay-subscriptions.ts)
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const signature = req.headers.get('x-razorpay-signature') || ''
@@ -149,9 +151,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         }
       }
     }
-    // subscription.* events are ignored: plans are prepaid one-off orders, and
-    // Razorpay plan ids are not our plan ids (the old handler cancelled every
-    // subscription on a plan).
+    else if (event.startsWith('subscription.')) {
+      // Recurring INR plans (lib/billing/razorpay-subscriptions.ts): matched by OUR
+      // subscription row / order notes, never by Razorpay plan id. Idempotent.
+      const { syncRazorpaySubscriptionEvent } = await import('@/lib/billing/razorpay-subscriptions')
+      await syncRazorpaySubscriptionEvent(event, entities)
+    }
   } catch (e) {
     console.error('[billing/webhook] error:', e)
     return NextResponse.json({ error: 'processing_failed' }, { status: 500 })

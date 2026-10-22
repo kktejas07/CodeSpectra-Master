@@ -13,7 +13,7 @@ async function postJson(url: string, body: Json): Promise<{ status: number; data
   return { status: res.status, data: (await res.json().catch(() => ({}))) as Json }
 }
 
-export async function directUpload<T = Json>(p: { url: string; file: Blob; start: Json; finish: (uploadId: string) => Json }): Promise<{ inline: true } | { inline: false; data: T }> {
+export async function directUpload<T = Json>(p: { url: string; file: Blob; start: Json; finish: (uploadId: string) => Json; onScanning?: () => void }): Promise<{ inline: true } | { inline: false; data: T }> {
   const started = await postJson(p.url, { action: 'start', ...p.start, size: p.file.size })
   if (started.status === 409 && started.data.inline) return { inline: true }
   if (started.status >= 400) throw new Error(String(started.data.error || 'Upload failed. Try again.'))
@@ -26,16 +26,28 @@ export async function directUpload<T = Json>(p: { url: string; file: Blob; start
   const put = await fetch(target, { method: 'PUT', body: p.file, headers, credentials: 'omit', mode: 'cors' }).catch(() => null)
   if (!put || !put.ok) throw new Error('The upload did not reach storage. Check your connection and try again.')
 
-  // The scanner can take a moment on large files; retry while it says to.
-  for (let i = 0; i < 4; i++) {
+  // Retry a few times while the object settles or the scanner is busy. Large
+  // files are virus-scanned in the background: while the server answers
+  // `upload_scanning` keep polling (every 3 s, up to SCAN_POLL_MAX_MS).
+  let retries = 0
+  const scanUntil = Date.now() + SCAN_POLL_MAX_MS
+  for (;;) {
     const done = await postJson(p.url, { action: 'finish', ...p.finish(uploadId), upload_id: uploadId })
     if (done.status < 400) return { inline: false, data: done.data as T }
+    if (done.status === 409 && done.data.code === 'upload_scanning') {
+      p.onScanning?.()
+      if (Date.now() > scanUntil) throw new Error(String(done.data.error || 'Upload failed. Try again.'))
+      await new Promise((r) => setTimeout(r, 3000))
+      continue
+    }
     if (done.status !== 409 && done.status !== 503) throw new Error(String(done.data.error || 'Upload failed. Try again.'))
-    if (i === 3) throw new Error(String(done.data.error || 'Upload failed. Try again.'))
-    await new Promise((r) => setTimeout(r, 1500 * (i + 1)))
+    if (++retries >= 4) throw new Error(String(done.data.error || 'Upload failed. Try again.'))
+    await new Promise((r) => setTimeout(r, 1500 * retries))
   }
-  throw new Error('Upload failed. Try again.')
 }
+
+/** How long the browser waits for a background virus scan (2 GB at clamd speed is a few minutes). */
+const SCAN_POLL_MAX_MS = 25 * 60_000
 
 let statusCache: Promise<{ direct: boolean; video_max_mb: number; file_max_mb: number }> | null = null
 

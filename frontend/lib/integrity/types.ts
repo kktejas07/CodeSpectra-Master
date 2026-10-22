@@ -9,9 +9,10 @@
  */
 import { z } from 'zod'
 
-export const TARGET_KINDS = ['exam', 'contest'] as const
+/** 'drive' = a live proctored hiring drive (lib/live-drives). */
+export const TARGET_KINDS = ['exam', 'contest', 'drive'] as const
 export type TargetKind = (typeof TARGET_KINDS)[number]
-export const isTargetKind = (v: unknown): v is TargetKind => v === 'exam' || v === 'contest'
+export const isTargetKind = (v: unknown): v is TargetKind => v === 'exam' || v === 'contest' || v === 'drive'
 
 /** What an author can switch on. Each maps to one or more client event types. */
 export const SIGNALS = [

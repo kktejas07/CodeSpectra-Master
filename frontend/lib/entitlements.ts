@@ -12,6 +12,7 @@ import { users, tenants, type BetterAuthUserDoc } from '@/lib/db/admin'
 import { getPlanForRole } from '@/lib/plans'
 import type { PlanDefinition } from '@/lib/plans-client'
 import type { APIUser } from '@/lib/route-auth'
+import { decideEntitlement, type EntitlementDecision, type LearnerFeature } from '@/lib/billing/entitlement-features'
 import {
   featureEnabled,
   highestPlanKey,
@@ -54,10 +55,35 @@ async function planDefinition(key: string): Promise<PlanDefinition> {
 export async function getUserEntitlements(userId: string): Promise<Entitlements> {
   const [sub, userDoc] = await Promise.all([
     liveSubscription(userId),
-    users().then((c) => c.findOne(userIdFilter(userId), { projection: { plan: 1 } })),
+    users().then((c) => c.findOne(userIdFilter(userId), { projection: { plan: 1, email: 1 } })),
   ])
-  const { key, source } = pickEffectivePlanKey({ subscription: sub, userPlan: userDoc?.plan })
+  // College / company licence seat (assigned by email, or claimed by an auto-assign domain).
+  const licence = await import('@/lib/billing/licences')
+    .then(({ licenceSeatFor }) => licenceSeatFor(userId, (userDoc as { email?: string } | null)?.email))
+    .catch((e) => {
+      console.error('[entitlements] licence lookup failed:', (e as Error)?.message)
+      return null
+    })
+  const { key, source } = pickEffectivePlanKey({ subscription: sub, userPlan: userDoc?.plan, licencePlan: licence?.plan_key ?? null })
   return { planKey: key, source, plan: await planDefinition(key), subscription: sub }
+}
+
+/**
+ * THE learner entitlement check (lib/billing/entitlement-features.ts): every
+ * gated feature calls this on the server with the signed-in user. Superadmins
+ * are never gated. Count features return their limit (Infinity = unlimited).
+ */
+export async function hasEntitlement(
+  user: Pick<APIUser, 'id' | 'role'>,
+  feature: LearnerFeature,
+): Promise<EntitlementDecision & { source: EntitlementSource }> {
+  const ent = await getUserEntitlements(user.id)
+  return { ...decideEntitlement(ent.plan, feature, { superadmin: user.role === 'superadmin' }), source: ent.source }
+}
+
+/** 402 body for a feature the plan doesn't include (API errors carry `code` + `params`). */
+export function entitlementError(feature: LearnerFeature, planKey: string) {
+  return { error: 'Your plan does not include this feature. Upgrade to use it.', code: 'plan_feature' as const, params: { feature }, feature, plan: planKey, upgrade_url: '/pricing' }
 }
 
 /**

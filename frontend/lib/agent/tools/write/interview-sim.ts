@@ -68,7 +68,10 @@ export const startMockInterviewTool = writeTool<StartMockInterviewArgs>({
   async propose(a, ctx) {
     const { getSimSettings, monthSpend, sessionsStartedToday } = await import('@/lib/interview-sim/store')
     const { canStartSession } = await import('@/lib/interview-sim/scoring')
-    const [settings, today, spend, company] = await Promise.all([getSimSettings(), sessionsStartedToday(ctx.caller.userId), monthSpend(), resolveCompany(a.company)])
+    const { planSessionsPerDay } = await import('@/lib/interview-sim/engine')
+    const [rawSettings, today, spend, company, perDay] = await Promise.all([getSimSettings(), sessionsStartedToday(ctx.caller.userId), monthSpend(), resolveCompany(a.company), planSessionsPerDay({ id: ctx.caller.userId })])
+    // Same per-plan limit the engine enforces (hasEntitlement).
+    const settings = { ...rawSettings, daily_sessions_per_user: Math.min(rawSettings.daily_sessions_per_user, perDay) }
     const cap = canStartSession(settings, today, spend.cost_usd)
     if (!cap.ok) throw new ToolInputError(cap.reason)
     return {

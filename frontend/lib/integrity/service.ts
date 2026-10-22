@@ -21,7 +21,7 @@ import { logger } from '@/lib/logger'
 import { ok, fail, type ServiceResult } from '@/lib/services/result'
 import {
   applySettingsPatch, candidateConfig, enabledSignals, isTargetKind, needsCamera, resolveSettings,
-  REVIEW_STATUSES, SNAPSHOT_REASONS, EVENT_TYPES,
+  REVIEW_STATUSES, SNAPSHOT_REASONS, EVENT_TYPES, TARGET_KINDS,
   type CandidateIntegrityConfig, type IntegritySettings, type ReviewStatus, type SignalId, type TargetKind,
 } from './types'
 import { cleanEventBatch } from './events'
@@ -57,6 +57,10 @@ const ID_RE = /^[A-Za-z0-9_-]{1,128}$/
 
 export async function loadTarget(kind: TargetKind, id: string): Promise<Target | null> {
   if (!isTargetKind(kind) || typeof id !== 'string' || !ID_RE.test(id)) return null
+  if (kind === 'drive') {
+    const { liveDriveTarget } = await import('@/lib/live-drives/service')
+    return liveDriveTarget(id)
+  }
   if (kind === 'exam') {
     const db = await getMongoDb()
     const exam = (await db.collection('exams').findOne({ id }, { projection: { _id: 0 } })) as Doc | null
@@ -128,10 +132,20 @@ interface CandidateAttempt {
 
 /** The caller's running attempt, or why there is none. */
 async function runningAttempt(user: Who, t: Target, now = Date.now()): Promise<ServiceResult<CandidateAttempt>> {
+  if (t.kind === 'drive') {
+    const { liveDriveAttemptWindow } = await import('@/lib/live-drives/service')
+    const w = await liveDriveAttemptWindow(t.id, user.id, now)
+    if (!w.ok) return fail(409, w.error)
+    return ok({ key: attemptKey('drive', t.id, user.id, 1), attemptNo: 1, window: w.window })
+  }
   if (t.kind === 'exam') {
     if (!t.doc.published) return fail(404, 'Test not found')
     const db = await getMongoDb()
-    const draft = await getExamDraft(db, t.id, user.id)
+    const raw = await getExamDraft(db, t.id, user.id)
+    // CAD tasks start through /cad-submission/start (cad_started_at / cad_started_attempt), not ./start.
+    const draft = raw && Number(raw.cad_started_attempt) > (Number(raw.attempt_no) || 0) && typeof raw.cad_started_at === 'string'
+      ? { ...raw, attempt_no: Number(raw.cad_started_attempt), attempt_started_at: raw.cad_started_at }
+      : raw
     const attemptNo = Number(draft?.attempt_no) || 0
     if (!draft || !attemptNo) return fail(409, 'Start the test first.')
     const state = attemptTimeState(t.doc, draft, attemptNo, now)
@@ -171,7 +185,7 @@ export async function candidateIntegrity(user: Who, kind: string, id: string): P
 }
 
 const BatchBody = z.object({
-  target_kind: z.enum(['exam', 'contest']),
+  target_kind: z.enum(TARGET_KINDS),
   target_id: z.string().regex(ID_RE),
   events: z.array(z.unknown()).max(200),
 })
@@ -233,11 +247,16 @@ export async function ingestEvents(user: Who, raw: unknown, ip: string): Promise
   const inc: Record<string, number> = {}
   for (const d of docs) inc[`counts.${d.type}`] = (inc[`counts.${d.type}`] ?? 0) + 1
   await attempts.updateOne({ id: key }, { ...(Object.keys(inc).length ? { $inc: inc } : {}), $set: { ...(h ? { last_ip_hash: h } : {}) } })
+  if (t.kind === 'drive') {
+    // Live drive control room: count incidents on the candidate row (grid status + flags stream).
+    const incidents = docs.filter((d) => EVENT_TYPES[d.type as keyof typeof EVENT_TYPES] && d.type !== 'typing_summary').length
+    if (incidents) void import('@/lib/live-drives/service').then((m) => m.countIntegrityIncidents(t.id, user.id, incidents)).catch(() => {})
+  }
   return ok({ accepted: docs.length, dropped: dropped + (events.length - kept.length), need_consent: !consented })
 }
 
 const SnapshotBody = z.object({
-  target_kind: z.enum(['exam', 'contest']),
+  target_kind: z.enum(TARGET_KINDS),
   target_id: z.string().regex(ID_RE),
   reason: z.string().max(32),
   at: z.number().finite().optional(),

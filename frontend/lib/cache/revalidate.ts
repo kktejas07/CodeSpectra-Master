@@ -8,15 +8,11 @@
  * time-based `revalidate` refreshes the page instead. Never throws — a failed
  * cache purge must not fail a publish.
  *
- * Multi-instance: production runs ONE Next.js instance today, so the data
- * cache (.next/cache/fetch-cache) and the purge are consistent. With several
- * replicas each keeps its own cache: a purge only reaches the instance that
- * handled the publish and the others catch up on their TTL (5–15 min). To share
- * it, point `cacheHandler` in next.config.mjs at a Redis-backed handler
- * (node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/
- * incrementalCacheHandlerPath.md: get / set / revalidateTag) reusing the
- * self-hosted Redis that lib/upstash-rate-limit.ts already talks to (ioredis,
- * REDIS_URL / Settings → Redis), with cacheMaxMemorySize: 0. Not implemented.
+ * Multi-instance: set CACHE_REDIS_URL (or REDIS_URL / UPSTASH_REDIS_REST_URL +
+ * token) and next.config.mjs switches `cacheHandler` to
+ * lib/cache/redis-cache-handler.mjs — entries and the tag manifest live in
+ * Redis, so a purge on one replica reaches all of them. Without it each
+ * instance keeps its own cache and the others catch up on their TTL (5–15 min).
  */
 
 /** Cache tags for unstable_cache'd public data. */

@@ -587,5 +587,6 @@
   "hackathonActivitiesOnDay_one": "{count} hackathon activity",
   "hackathonActivitiesOnDay_other": "{count} hackathon activities",
   "sortedAscendingSuffix": ", sorted ascending",
-  "sortedDescendingSuffix": ", sorted descending"
+  "sortedDescendingSuffix": ", sorted descending",
+  "uploadStorage": "Upload storage"
 }
