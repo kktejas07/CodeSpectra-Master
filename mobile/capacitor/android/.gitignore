@@ -99,3 +99,13 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# CodeSpectra: generated per-flavour assets (scripts/flavor-configs.mjs)
+app/src/dev/assets
+app/src/staging/assets
+# Secrets are injected by CI / your shell, never committed
+google-services.json
+app/google-services.json
+*.jks
+*.keystore
+keystore.properties

@@ -211,6 +211,24 @@ export function IntegrityMonitor({ kind, targetId, config, active }: Props) {
       })()
     }
 
+    // Android app (lib/native-bridge): a test with full screen on also gets
+    // native lockdown — screen pinning, no screenshots / recording / overlays,
+    // back disabled — until the attempt ends. No-op in a browser.
+    const lockdown = on('fullscreen')
+      ? import('@/lib/native-bridge').then(({ startNativeLockdown, mapLockdownEvent, isDuplicateOfWebHidden }) =>
+          startNativeLockdown({
+            sessionKind: kind === 'contest' ? 'problem' : 'exam',
+            sessionId: targetId,
+            onEvent: (e) => {
+              const m = mapLockdownEvent(e)
+              if (!m || stopped || isDuplicateOfWebHidden(e)) return
+              const signal: SignalId = m.type === 'multi_monitor' ? 'multi_monitor' : m.type === 'fullscreen_exit' ? 'fullscreen' : 'tab_focus'
+              if (on(signal)) push(m.type, m.data, null, { throttle: m.type !== 'tab_hidden' })
+            },
+          })).catch(() => null)
+      : null
+    cleanups.push(() => { void lockdown?.then((h) => h?.stop()) })
+
     const timer = setInterval(() => flush(), FLUSH_MS)
     const onHide = () => { if (document.visibilityState === 'hidden') flush(true) }
     listen(document, 'visibilitychange', onHide)

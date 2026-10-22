@@ -283,6 +283,9 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/checkout',
   '/dashboard/settings',
   '/dashboard/settings/ai',
+  '/dashboard/settings/accessibility',
+  '/dashboard/settings/whatsapp-practice',
+  '/dashboard/settings/guardians',
 
   // Referrals
   '/dashboard/referrals',
@@ -437,6 +440,9 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/profile': 'Profile',
   '/dashboard/settings': 'Settings',
   '/dashboard/settings/ai': 'AI Settings',
+  '/dashboard/settings/accessibility': 'Accessibility',
+  '/dashboard/settings/whatsapp-practice': 'WhatsApp practice',
+  '/dashboard/settings/guardians': 'Parent reports',
   '/dashboard/billing': 'Billing',
   '/dashboard/orders': 'My orders',
   '/dashboard/orders/[id]': 'Order',

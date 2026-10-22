@@ -403,9 +403,14 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     // Study plans (lib/study-plan/service.ts): build next week for plans whose week ended (per-plan lock)
     // and send each learner's reminder at their local hour (claimed per local day). Once per UTC hour.
     await job('study-plans', `${iso.slice(0, 13)}sp`, async () => (await import('./study-plan/service')).runStudyPlanTick(now), { leaseMs: 15 * 60_000 })
+    // WhatsApp practice (lib/wa-practice/service.ts): daily question / weekly mock at each learner's
+    // local hour (claimed per learner + local day). Guardian weekly reports (lib/guardian/service.ts):
+    // claimed per link + ISO week. Once per UTC hour each.
+    await job('wa-practice', `${iso.slice(0, 13)}wp`, async () => (await import('./wa-practice/service')).runPracticeTick(now), { leaseMs: 15 * 60_000 })
+    await job('guardian-reports', `${iso.slice(0, 13)}gr`, async () => (await import('./guardian/service')).runGuardianReports(now), { leaseMs: 20 * 60_000 })
   }
   if (opts.heavyInBackground) {
-    report.background = ['learn', 'events-feed', 'news-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans']
+    report.background = ['learn', 'events-feed', 'news-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports']
     void heavy().catch((e) => console.error('[scheduler] content lane error:', e))
   } else {
     await heavy()

@@ -4,6 +4,8 @@ import { Providers } from '@/components/providers'
 import { LoadingWrapper } from '@/components/loading-wrapper'
 import { AnalyticsMount } from '@/components/analytics/analytics-mount'
 import { PwaMount } from '@/components/pwa/pwa-mount'
+import { AccessibilityMount } from '@/components/a11y/accessibility-mount'
+import { NativeAppMount } from '@/components/native/native-app-mount'
 import { iosStartupImages, PWA_COLORS } from '@/lib/pwa/config'
 import './globals.css'
 import 'goey-toast/styles.css'
@@ -141,6 +143,8 @@ export default async function RootLayout({
           <LoadingWrapper>{children}</LoadingWrapper>
           <AnalyticsMount />
           <PwaMount />
+          <AccessibilityMount />
+          <NativeAppMount />
         </Providers>
       </body>
     </html>

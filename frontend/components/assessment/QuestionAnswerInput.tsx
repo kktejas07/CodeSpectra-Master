@@ -113,11 +113,14 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         <div className="relative inline-block max-w-full rounded-lg border overflow-hidden bg-muted/30">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={question.image_url || ''} alt={t('exam.hotspot')} className="block max-w-full select-none" draggable={false} />
+          {/* Pointer targets; keyboard and screen-reader users answer with the list below (same value). */}
           {(question.regions || []).map((r) => (
             <button
               key={r.id}
               type="button"
               disabled={readOnly}
+              tabIndex={-1}
+              aria-hidden
               onClick={() => !readOnly && onChange(r.id)}
               title={r.label || r.id}
               style={{ left: `${r.x}%`, top: `${r.y}%`, width: `${r.w}%`, height: `${r.h}%` }}
@@ -126,6 +129,17 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
           ))}
         </div>
         {selected && <p className="text-xs text-muted-foreground">{t('exam.selected')}{' '}{(question.regions || []).find((r) => r.id === selected)?.label || selected}</p>}
+        <fieldset className="space-y-1.5">
+          <legend className="text-xs font-medium text-muted-foreground">{t('exam.chooseRegionFromList')}</legend>
+          <div className="flex flex-wrap gap-2">
+            {(question.regions || []).map((r, i) => (
+              <label key={r.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${selected === r.id ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}>
+                <input type="radio" name={`hotspot-${question.id}`} value={r.id} checked={selected === r.id} disabled={readOnly} onChange={() => !readOnly && onChange(r.id)} className="h-4 w-4 accent-primary" />
+                <span>{r.label || t('exam.regionN', { n: i + 1 })}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
     )
   }
@@ -137,7 +151,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     const opts = shuffledOptions?.length ? shuffledOptions : (question.options?.length ? question.options : fallback)
     const selectedArr = Array.isArray(value) ? value : []
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" role={isMulti ? 'group' : 'radiogroup'} aria-label={isMulti ? t('exam.selectAllThatApply') : t('exam.chooseOneAnswer')}>
         {opts.map((opt, i) => {
           const checked = isMulti ? selectedArr.includes(opt) : value === opt
           return (
@@ -257,20 +271,20 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
           <label className="text-sm font-medium text-muted-foreground">{type === 'ranking' ? t('exam.rankTheseTopHighest') : t('exam.putTheseInTheCorrectOrder')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
-        <div className="space-y-2">
+        <ol className="space-y-2" aria-label={type === 'ranking' ? t('exam.rankTheseTopHighest') : t('exam.putTheseInTheCorrectOrder')}>
           {order.map((item, i) => (
-            <div key={`${item}-${i}`} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
-              <span className="text-xs font-medium tabular-nums text-muted-foreground w-6">{i + 1}.</span>
+            <li key={`${item}-${i}`} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
+              <span className="text-xs font-medium tabular-nums text-muted-foreground w-6" aria-hidden>{i + 1}.</span>
               <span className="flex-1 text-sm font-medium">{item}</span>
-              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveUp')}>
+              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveItemUp', { item, position: i + 1 })}>
                 <ChevronUp className="h-4 w-4" />
               </button>
-              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveDown')}>
+              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveItemDown', { item, position: i + 1 })}>
                 <ChevronDown className="h-4 w-4" />
               </button>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     )
   }

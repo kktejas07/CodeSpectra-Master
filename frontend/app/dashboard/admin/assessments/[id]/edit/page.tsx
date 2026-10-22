@@ -22,6 +22,7 @@ import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 import { SectionsEditor } from '@/components/assessment/SectionsEditor'
 import { AdaptiveSettingsCard } from '@/components/assessment/AdaptiveSettingsCard'
+import { AccommodationsCard } from '@/components/assessment/AccommodationsCard'
 import { ExtendedQuestionEditor } from '@/components/assessment/ExtendedQuestionEditor'
 import { EXTENDED_FIELD_RESET, extendedDefaultsForType, extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
 import type { ExamSection } from '@/lib/exam-sections'
@@ -1006,6 +1007,9 @@ export default function ExamReviewPage() {
       </div>
 
       {exam.kind !== 'cad' && <AdaptiveSettingsCard examId={exam.id} />}
+
+      {/* Extended-time accommodations per candidate (applied server-side to every timer). */}
+      <AccommodationsCard examId={exam.id} />
 
       {exam.kind !== 'cad' && exam.questionList.length > 0 && (
         <SectionsEditor

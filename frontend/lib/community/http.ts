@@ -76,3 +76,8 @@ export function tenantOf(user: Pick<APIUser, 'role' | 'tenantId'>): string | nul
 export function isStaffRole(user: Pick<APIUser, 'role'>): boolean {
   return user.role === 'superadmin' || user.role === 'tenant_admin'
 }
+
+/** Error body with a feature code (localized client side from the `community` catalog's err_<code>). */
+export function errJson(status: number, message: string, code: string, params?: Record<string, string | number>) {
+  return json(apiErrorBody(message, code, params), status)
+}

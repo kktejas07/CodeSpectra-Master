@@ -49,6 +49,8 @@ export const CSRF_EXEMPT: readonly string[] = [
   // signed one-click unsubscribe links in automated emails (HMAC token in the URL).
   '/api/workflows/hooks',
   '/api/automation/unsubscribe',
+  // Guardian report one-click unsubscribe (HMAC token per link in the URL; mail clients POST without cookies).
+  '/api/guardian/unsubscribe',
 ]
 
 export function isCsrfExempt(pathname: string, exempt: readonly string[] = CSRF_EXEMPT): boolean {

@@ -518,15 +518,47 @@ function msOf(v: unknown): number {
   return new Date(String(v)).getTime()
 }
 
-/** Deadline (epoch ms) for an attempt started at `startedAt`, or null when the exam is untimed and has no end date. */
-export function attemptDeadlineMs(exam: Doc, startedAt: string | number): number | null {
+/**
+ * Extended-time accommodation for one candidate (lib/exam-accommodations.ts), snapshotted on
+ * the attempt's draft as `time_accommodation`: +percent of the test time or +minutes.
+ */
+export interface TimeAccommodation { percent?: number | null; extra_minutes?: number | null }
+
+/** Extra time (ms) an accommodation adds to a time limit of `minutes`. Pure; invalid → 0. */
+export function accommodationExtraMs(minutes: number, acc: TimeAccommodation | null | undefined): number {
+  if (!acc || !Number.isFinite(minutes) || minutes <= 0) return 0
+  const pct = Number(acc.percent)
+  if (Number.isFinite(pct) && pct > 0) return Math.round(minutes * 60_000 * Math.min(pct, 300) / 100)
+  const extra = Number(acc.extra_minutes)
+  return Number.isFinite(extra) && extra > 0 ? Math.min(extra, 600) * 60_000 : 0
+}
+
+/** Section time limits stretched by the same accommodation (sections without a limit stay shared). */
+export function accommodatedSections<T extends { time_limit_minutes: number | null }>(sections: T[], acc: TimeAccommodation | null | undefined): T[] {
+  if (!acc) return sections
+  return sections.map((s) => (s.time_limit_minutes ? { ...s, time_limit_minutes: s.time_limit_minutes + accommodationExtraMs(s.time_limit_minutes, acc) / 60_000 } : s))
+}
+
+/**
+ * Deadline (epoch ms) for an attempt started at `startedAt`, or null when the exam is untimed
+ * and has no end date. An accommodation extends the duration and, by the same amount, the
+ * window end (a candidate with extra time is not cut off by the shared close time).
+ */
+export function attemptDeadlineMs(exam: Doc, startedAt: string | number, acc?: TimeAccommodation | null): number | null {
   const start = typeof startedAt === 'number' ? startedAt : msOf(startedAt)
   if (Number.isNaN(start)) return null
   const minutes = Number(exam.duration)
-  const byDuration = Number.isFinite(minutes) && minutes > 0 ? start + minutes * 60_000 : NaN
-  const endsAt = msOf(exam.ends_at)
+  const extra = accommodationExtraMs(minutes, acc)
+  const byDuration = Number.isFinite(minutes) && minutes > 0 ? start + minutes * 60_000 + extra : NaN
+  const endsAt = msOf(exam.ends_at) + extra
   const candidates = [byDuration, endsAt].filter((n) => !Number.isNaN(n))
   return candidates.length ? Math.min(...candidates) : null
+}
+
+/** The accommodation stored on an attempt draft (or null). */
+export function draftAccommodation(draft: Doc | null | undefined): TimeAccommodation | null {
+  const a = draft?.time_accommodation
+  return a && typeof a === 'object' ? (a as TimeAccommodation) : null
 }
 
 export type AttemptTimeState =
@@ -549,7 +581,7 @@ export function attemptTimeState(
   const startedAt = draft && Number(draft.attempt_no) === attemptNo && typeof draft.attempt_started_at === 'string'
     ? draft.attempt_started_at : null
   if (!startedAt || Number.isNaN(msOf(startedAt))) return { status: 'not_started' }
-  const deadline = attemptDeadlineMs(exam, startedAt)
+  const deadline = attemptDeadlineMs(exam, startedAt, draftAccommodation(draft))
   if (deadline === null) return { status: 'running', startedAt, deadline: null, remainingMs: null }
   if (now > deadline + graceMs) return { status: 'expired', startedAt, deadline }
   return { status: 'running', startedAt, deadline, remainingMs: Math.max(0, deadline - now) }
@@ -563,6 +595,9 @@ export function attemptTimeState(
 export async function startExamAttempt(db: Db, examId: string, userId: string, attemptNo: number): Promise<Doc> {
   const now = new Date().toISOString()
   const same = { $eq: ['$attempt_no', attemptNo] }
+  // Extended time granted to this candidate (applied server-side through the draft).
+  const { activeAccommodation } = await import('@/lib/exam-accommodations')
+  const acc = await activeAccommodation(db, examId, userId).catch(() => null)
   const doc = await db.collection('exam_drafts').findOneAndUpdate(
     { exam_id: examId, user_id: userId },
     [{
@@ -573,6 +608,7 @@ export async function startExamAttempt(db: Db, examId: string, userId: string, a
         // Section clocks belong to one attempt (a retake starts them afresh).
         sections_state: { $cond: [same, '$sections_state', '$$REMOVE'] },
         attempt_no: attemptNo,
+        time_accommodation: acc ? { $literal: acc } : null,
         updated_at: now,
         created_at: { $ifNull: ['$created_at', now] },
       },
@@ -613,11 +649,12 @@ export async function applySectionUpdate(
   incoming: Record<string, unknown> | null = null,
   now: number = Date.now(),
 ): Promise<SectionUpdateResult> {
-  const sections = resolveSections(exam)
-  if (sections.length === 0) return { ok: false, error: 'This test has no sections.', status: 400 }
+  const baseSections = resolveSections(exam)
+  if (baseSections.length === 0) return { ok: false, error: 'This test has no sections.', status: 400 }
   const examId = String(exam.id)
   for (let attempt = 0; attempt < 2; attempt++) {
     const draft = await getExamDraft(db, examId, userId)
+    const sections = accommodatedSections(baseSections, draftAccommodation(draft))
     const time = attemptTimeState(exam, draft, attemptNo, now)
     if (time.status !== 'running' || draft?.submitted_at) {
       return { ok: false, error: time.status === 'expired' ? 'Time is up for this attempt.' : 'No attempt in progress.', status: 409 }
@@ -664,7 +701,7 @@ export function sectionsAtSubmit(
   deadline: number | null,
   now: number = Date.now(),
 ): { sections: ExamSection[]; state: SectionsState; answers: Record<string, unknown> } | null {
-  const sections = resolveSections(exam)
+  const sections = accommodatedSections(resolveSections(exam), draftAccommodation(draft))
   if (sections.length === 0) return null
   const parsed = parseSectionsState(draft?.sections_state, sections)
   const stored = draft?.answers && typeof draft.answers === 'object' ? (draft.answers as Record<string, unknown>) : {}

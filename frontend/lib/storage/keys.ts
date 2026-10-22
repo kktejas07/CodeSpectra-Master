@@ -5,7 +5,7 @@
  */
 import { createHash, randomBytes } from 'crypto'
 
-export const STORAGE_FEATURES = ['exam-answer', 'exam-cad', 'contest', 'ats-bgv', 'integrity', 'interview-sim'] as const
+export const STORAGE_FEATURES = ['exam-answer', 'exam-cad', 'contest', 'ats-bgv', 'integrity', 'interview-sim', 'cohort'] as const
 export type StorageFeature = (typeof STORAGE_FEATURES)[number]
 
 export function tenantSegment(tenantId: string | null | undefined): string {

@@ -213,3 +213,22 @@ export function interviewEvidence(s: Doc): Evidence | null {
     publicLink: null,
   }
 }
+
+/** Completed cohort course (certificate in `cohort_certificates`, lib/cohorts). */
+export function cohortEvidence(c: Doc): Evidence | null {
+  const at = iso(c.issued_at)
+  const score = num(c.score)
+  if (!at || score === null) return null
+  const title = str(c.title) || 'Cohort course'
+  const skills = Array.isArray(c.skills) ? (c.skills as unknown[]).map((s) => str(s, 60).toLowerCase()).filter(Boolean) : []
+  return {
+    id: `cohort:${str(c.id, 80)}`,
+    kind: 'course',
+    title,
+    skills: skills.length ? skills.slice(0, 10) : skillsFromText(title, 'software development'),
+    score: clamp(score, 0, 100),
+    at,
+    link: c.cohort_id ? `/dashboard/cohorts/${encodeURIComponent(str(c.cohort_id, 80))}` : null,
+    publicLink: null,
+  }
+}

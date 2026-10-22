@@ -64,6 +64,12 @@ export async function POST(req: NextRequest) {
       // STOP / START for every WhatsApp message we send (preferences, candidates, sellers, the
       // phone-level opt-out list — AUTO-061). Its own claimed event, so a failed write is redelivered.
       await run(`wa:optout:${m.id}`, () => applyWhatsAppKeyword({ from: m.from, text: m.text || m.replyTitle || null, at: m.at }))
+      // WhatsApp practice (lib/wa-practice): opt-in replies, answers, commands. Runs after the
+      // opt-out handler (STOP is already recorded) and never for a reply the screening bot took.
+      await run(`wa:practice:${m.id}`, async () => {
+        const { handlePracticeInbound } = await import('@/lib/wa-practice/service')
+        await handlePracticeInbound({ id: m.id, from: m.from, text: m.text ?? null, replyId: m.replyId ?? null, at: m.at }, { skip: screening === 'handled' })
+      })
     }
     for (const c of calls) await run(`wa:${c.eventId}`, () => handleCallStatus(c))
   } catch (e) {

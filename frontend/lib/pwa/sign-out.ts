@@ -7,11 +7,13 @@
  */
 export async function pwaSignOutCleanup(): Promise<void> {
   const work = (async () => {
-    const [{ unsubscribeThisDevice }, { clearOfflineData }] = await Promise.all([
+    const [{ unsubscribeThisDevice }, { clearOfflineData }, { nativeSignOutCleanup }] = await Promise.all([
       import('./push-client'),
       import('./offline-store'),
+      import('@/lib/native-bridge'),
     ])
-    await Promise.allSettled([unsubscribeThisDevice(), clearOfflineData()])
+    // Android app: drop its FCM token and the biometric unlock token too.
+    await Promise.allSettled([unsubscribeThisDevice(), clearOfflineData(), nativeSignOutCleanup()])
   })().catch(() => undefined)
   await Promise.race([work, new Promise((r) => setTimeout(r, 1500))])
 }

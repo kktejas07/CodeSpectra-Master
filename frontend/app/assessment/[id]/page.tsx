@@ -430,6 +430,28 @@ export default function CandidateAssessmentPage() {
     }
   }, [timeLeft, hasStarted, exam, isSubmitted, isSubmitting, params.id, addToast])
 
+  // Screen readers: announce time milestones politely (the visible timer itself is not a live region).
+  const [timerAnnouncement, setTimerAnnouncement] = useState('')
+  const announcedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!hasStarted || isSubmitted) return
+    if (timeLeft !== null) {
+      for (const m of [15, 10, 5, 1]) {
+        const key = `t${m}`
+        // Only when the countdown crosses the mark (not when the test starts already below it).
+        if (timeLeft <= m * 60 && timeLeft > m * 60 - 30 && !announcedRef.current.has(key)) {
+          announcedRef.current.add(key)
+          setTimerAnnouncement(t('assessment.minutesLeftAnnounce', { count: m }))
+          return
+        }
+      }
+    }
+    if (sectionTimeLeft !== null && sectionTimeLeft <= 60 && sectionTimeLeft > 30 && !announcedRef.current.has(`s${currentSectionId}`)) {
+      announcedRef.current.add(`s${currentSectionId}`)
+      setTimerAnnouncement(t('assessment.sectionMinuteLeftAnnounce'))
+    }
+  }, [timeLeft, sectionTimeLeft, currentSectionId, hasStarted, isSubmitted, t])
+
   const localDraftKey = exam ? `codespectra_exam_draft_${exam.id}_${attemptNo}` : null
   useEffect(() => {
     if (localDraftKey && hasStarted && Object.keys(answers).length > 0) {
@@ -1018,6 +1040,8 @@ export default function CandidateAssessmentPage() {
         <IntegrityMonitor kind="exam" targetId={String(params.id)} config={integrity.config} active={hasStarted && !isSubmitted} />
       )}
       <div className="h-screen bg-background flex flex-col overflow-hidden">
+        <a href="#question-panel" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">{t('assessment.skipToQuestion')}</a>
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{timerAnnouncement}</div>
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shadow-xs">
         <div className="min-w-0">
@@ -1065,14 +1089,14 @@ export default function CandidateAssessmentPage() {
       {/* Main Content Workspace */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Side: Question List Sidebar */}
-        <aside className={`w-64 border-r border-border bg-muted/20 p-4 overflow-y-auto ${adaptiveView ? 'hidden' : 'hidden md:block'}`}>
+        <aside aria-label={t('assessment.questionNavigation')} className={`w-64 border-r border-border bg-muted/20 p-4 overflow-y-auto ${adaptiveView ? 'hidden' : 'hidden md:block'}`}>
           <div className="mb-4 flex items-baseline justify-between">
             <h3 className="text-sm font-semibold text-foreground">{currentSection ? currentSection.title : t('assessment.questions')}</h3>
             <span className="text-xs text-muted-foreground tabular-nums">
               {t('assessment.answeredOf', { n: navIdx.filter((i) => isAnsweredId(exam.questionList[i].id)).length, m: navIdx.length })}
             </span>
           </div>
-          <div className="space-y-2">
+          <nav aria-label={t('assessment.questionNavigation')} className="space-y-2">
             {navIdx.map((idx, n) => {
               const q = exam.questionList[idx]
               const isAnswered = isAnsweredId(q.id)
@@ -1088,11 +1112,12 @@ export default function CandidateAssessmentPage() {
                   }`}
                 >
                   <span className="truncate pr-2" title={q.title}><span className="tabular-nums">{n + 1}.</span> {q.title}</span>
-                  {isAnswered && !isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                  {isAnswered && !isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden />}
+                  <span className="sr-only">{isAnswered ? t('assessment.answeredStatus') : t('assessment.notAnsweredStatus')}</span>
                 </button>
               )
             })}
-          </div>
+          </nav>
           {sections && (
             <div className="mt-6 border-t border-border pt-4">
               <h3 className="mb-2 text-sm font-semibold text-foreground">{t('assessment.sections')}</h3>
@@ -1130,7 +1155,7 @@ export default function CandidateAssessmentPage() {
         </aside>
 
         {/* Right Side: Question Active Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 bg-background">
+        <div id="question-panel" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 bg-background focus:outline-none">
           <div className="max-w-4xl mx-auto space-y-8">
             {sections && (
               <div className="md:hidden">
@@ -1181,7 +1206,7 @@ export default function CandidateAssessmentPage() {
                 <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{typeLabel(currentQ.type, td)}</Badge>
                 <span className="text-xs text-muted-foreground tabular-nums">{t('assessment.questionNofM', { n: posInNav + 1, m: navIdx.length })}</span>
               </div>
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">{currentQ.title}</h2>
+              <h2 id="current-question-title" className="text-2xl font-bold tracking-tight text-foreground">{currentQ.title}</h2>
               <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg p-5 sm:p-6 rounded-2xl bg-card border border-border/70 text-foreground">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -1200,7 +1225,7 @@ export default function CandidateAssessmentPage() {
               </div>
             </div>
 
-            <div className="pt-4" data-integrity-q={isCodingType(currentQ.type) ? currentQ.id : undefined}>
+            <div className="pt-4" role="group" aria-labelledby="current-question-title" data-integrity-q={isCodingType(currentQ.type) ? currentQ.id : undefined}>
               <QuestionAnswerInput
                 question={currentQ}
                 value={answers[currentQ.id]}

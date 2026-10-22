@@ -1,5 +1,8 @@
 # CodeSpectra Mobile (Expo)
 
+> The Android app built on the live web app (Capacitor: FCM push, biometric
+> unlock, proctored lockdown, Play Integrity) lives in [`capacitor/`](capacitor/README.md).
+
 Server-driven learner + judge + admin app. The shell renders from
 `GET /api/mobile/bootstrap` — tabs, role gates, theme, and flags are
 server data, never compiled-in policy.

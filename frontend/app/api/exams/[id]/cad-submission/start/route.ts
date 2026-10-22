@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ids'
-import { checkExamEntry, checkIdentityForAttempt, isCadExam } from '@/lib/exam-access'
+import { accommodationExtraMs, checkExamEntry, checkIdentityForAttempt, isCadExam } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
@@ -57,6 +57,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const now = nowIso()
+    // Extended time granted to this candidate (lib/exam-accommodations.ts), applied server-side.
+    const { activeAccommodation } = await import('@/lib/exam-accommodations')
+    const acc = await activeAccommodation(db, examId, userId).catch(() => null)
     // Atomic keep-or-set: the start time only changes when this is a new
     // attempt, so concurrent Start clicks / reloads all see the same value.
     const doc = await db.collection('exam_drafts').findOneAndUpdate(
@@ -65,6 +68,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         $set: {
           cad_started_at: { $cond: [{ $eq: ['$cad_started_attempt', access.attemptNo] }, '$cad_started_at', now] },
           cad_started_attempt: access.attemptNo,
+          time_accommodation: acc ? { $literal: acc } : null,
           updated_at: now,
           created_at: { $ifNull: ['$created_at', now] },
         },
@@ -77,7 +81,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       ok: true,
       started_at: startedAt,
       server_now: new Date().toISOString(),
-      duration_minutes: Math.max(0, Number(exam.duration) || 0),
+      duration_minutes: Math.max(0, Number(exam.duration) || 0) + accommodationExtraMs(Number(exam.duration) || 0, acc) / 60_000,
       attempt_no: access.attemptNo,
     })
   } catch (e) {

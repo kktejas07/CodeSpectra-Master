@@ -57,6 +57,10 @@ export type ServerSecretsRecord = {
   firebase_messaging_sender_id?: string
   firebase_app_id?: string
   firebase_vapid_key?: string
+  // --- Android app (Play Integrity) — lib/mobile/play-integrity.ts ----------
+  play_integrity_service_account_json?: string
+  android_package_names?: string
+  android_cert_sha256?: string
   // --- Web push (VAPID, PWA — docs/pwa.md). Env fallback VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT.
   webpush_vapid_public_key?: string
   webpush_vapid_private_key?: string
