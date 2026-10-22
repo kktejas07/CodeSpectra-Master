@@ -11,3 +11,12 @@ capacitor-cordova-ios-plugins
 # Generated Config files
 App/App/capacitor.config.json
 App/App/config.xml
+
+# Firebase config (CI writes it from IOS_GOOGLE_SERVICE_INFO_PLIST_B64)
+App/App/GoogleService-Info.plist
+# Signing / fastlane output
+*.mobileprovision
+*.p12
+*.ipa
+*.dSYM.zip
+fastlane/report.xml

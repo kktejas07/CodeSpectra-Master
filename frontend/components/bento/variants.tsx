@@ -27,9 +27,12 @@ export function BentoStat({
   loading,
   loadingLabel,
   empty,
+  visual,
   ...base
 }: Base & {
   title: string
+  /** Custom chart at the bottom (e.g. MiniBars) instead of the sparkline. */
+  visual?: React.ReactNode
   value?: React.ReactNode
   unit?: React.ReactNode
   delta?: { text: string; tone?: 'up' | 'down' | 'flat' }
@@ -78,7 +81,8 @@ export function BentoStat({
             {hint && <p className="mt-1.5 text-sm text-muted-foreground group-data-[tone=brand]/bento:text-primary-foreground/80">{hint}</p>}
           </>
         )}
-        {!loading && series && series.length > 1 && <Sparkline data={series} label={seriesLabel} className="mt-auto pt-4 group-data-[tone=brand]/bento:text-primary-foreground" />}
+        {!loading && visual && <div className="mt-auto pt-4">{visual}</div>}
+        {!loading && !visual && series && series.length > 1 && <Sparkline data={series} label={seriesLabel} className="mt-auto pt-4 group-data-[tone=brand]/bento:text-primary-foreground" />}
         {action && <BentoAction>{action}</BentoAction>}
       </BentoBody>
     </BentoCard>

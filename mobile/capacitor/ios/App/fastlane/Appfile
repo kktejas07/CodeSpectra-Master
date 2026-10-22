@@ -1,0 +1,2 @@
+app_identifier(ENV.fetch("IOS_BUNDLE_ID", "ai.codespectra.app"))
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
