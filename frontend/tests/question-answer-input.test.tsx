@@ -33,7 +33,7 @@ describe('QuestionAnswerInput', () => {
   it('ordering reorders with the down button into CSV', () => {
     const onChange = vi.fn()
     render(<QuestionAnswerInput question={{ id: 'q1', type: 'ordering', options: ['X', 'Y', 'Z'] }} value={undefined} onChange={onChange} />)
-    fireEvent.click(screen.getAllByLabelText('Move down')[0])
+    fireEvent.click(screen.getAllByLabelText(/^Move “X” down/)[0])
     expect(onChange).toHaveBeenCalledWith('Y, X, Z')
   })
 

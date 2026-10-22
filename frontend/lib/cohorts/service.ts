@@ -158,6 +158,8 @@ export async function cohortView(user: APIUser, id: string) {
   ])
   const member = !!me
   const now = Date.now()
+  // The cohort's private forum category (members + staff), created on first visit.
+  if (member || staff) void import('@/lib/community/service').then((m) => m.ensureCohortCategory(id, cohort.title)).catch(() => {})
   const out = {
     cohort: publicCohort(cohort),
     course,
@@ -222,7 +224,11 @@ export async function enrol(user: APIUser, id: string) {
   ])
   const d = decideEnrolment(cohort, { entitled: ent, licenceOrgId: lic?.org_id ?? null, paidOrderId: order })
   if (!d.ok) {
-    if (d.reason === 'payment_required') return { enrolled: false, payment_required: true, product_id: d.product_id }
+    if (d.reason === 'payment_required') {
+      const { productsCol } = await import('@/lib/marketplace/db')
+      const p = d.product_id ? await (await productsCol()).findOne({ id: d.product_id }, { projection: { _id: 0, slug: 1 } }) : null
+      return { enrolled: false, payment_required: true, product_slug: (p as { slug?: string } | null)?.slug ?? null }
+    }
     if (d.reason === 'full') throw fail('This cohort is full.', 409, 'cohort_full')
     if (d.reason === 'closed') throw fail('Enrolment for this cohort is closed.', 409, 'cohort_closed')
     throw fail('This cohort is only open to invited learners.', 403, 'cohort_not_allowed')

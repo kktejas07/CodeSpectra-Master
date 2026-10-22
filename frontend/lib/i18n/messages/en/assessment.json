@@ -195,5 +195,12 @@
   "signInToStart": "Sign in to start",
   "registerToStart": "Register to start",
   "opening": "Opening your assessment — please wait…",
-  "inviteFootnote": "This invite link works once. An identity check and proctoring (webcam and screen monitoring) run during the assessment."
+  "inviteFootnote": "This invite link works once. An identity check and proctoring (webcam and screen monitoring) run during the assessment.",
+  "skipToQuestion": "Skip to the question",
+  "questionNavigation": "Questions",
+  "answeredStatus": "answered",
+  "notAnsweredStatus": "not answered",
+  "minutesLeftAnnounce_one": "{count} minute left in the test.",
+  "minutesLeftAnnounce_other": "{count} minutes left in the test.",
+  "sectionMinuteLeftAnnounce": "1 minute left in this section."
 }
