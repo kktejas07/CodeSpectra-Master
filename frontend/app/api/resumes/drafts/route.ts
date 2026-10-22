@@ -1,7 +1,7 @@
 /**
  * /api/resumes/drafts — résumé builder drafts saved to the account.
  *   GET            -> { draft } the latest draft (or `?id=` a specific one), null if none
- *   GET ?list=1    -> { drafts: [{ id, name, template, created_at, updated_at }] } newest first
+ *   GET ?list=1    -> { drafts: [{ id, name, template, target_role, created_at, updated_at }] } newest first
  *   POST           -> { id?, name, template, data } create, or update your own draft by id
  *   DELETE ?id=    -> remove one of your drafts
  * Owner-scoped; body is whitelisted by sanitizeBuilderData.
@@ -31,11 +31,12 @@ export async function GET(request: Request) {
     const sp = new URL(request.url).searchParams
     if (sp.get('list') === '1') {
       const rows = await col
-        .find({ user_id: gate.user.id }, { projection: { _id: 0, id: 1, name: 1, template: 1, created_at: 1, updated_at: 1 } })
+        .find({ user_id: gate.user.id }, { projection: { _id: 0, id: 1, name: 1, template: 1, created_at: 1, updated_at: 1, 'data.targetRole': 1 } })
         .sort({ updated_at: -1 })
         .limit(MAX_DRAFTS)
         .toArray()
-      return NextResponse.json({ drafts: rows })
+      // Versions per target role: the role travels with each draft.
+      return NextResponse.json({ drafts: rows.map(({ data, ...r }) => ({ ...r, target_role: data?.targetRole || '' })) })
     }
     const wanted = sp.get('id')
     const filter = wanted && ID_RE.test(wanted) ? { id: wanted, user_id: gate.user.id } : { user_id: gate.user.id }

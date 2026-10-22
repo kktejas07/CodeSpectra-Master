@@ -197,6 +197,14 @@ export default function DashboardLayout({
   const { t, td } = useT()
   const navText = (label: string) => td(`nav.label:${label}`, label)
 
+  // Tab title in the interface language: the page's nav label (client pages
+  // can't export metadata); the layout's generateMetadata gives the default.
+  useEffect(() => {
+    const base = pathname.split('?')[0]
+    const label = ROUTE_LABELS[base] ?? Object.entries(ROUTE_LABELS).find(([route]) => base.startsWith(`${route}/`))?.[1]
+    if (label) document.title = `${td(`nav.label:${label}`, label)} | CodeSpectra`
+  }, [pathname, td])
+
   useEffect(() => {
     if (!fbUser) { setUserRole(null); return }
     let cancelled = false

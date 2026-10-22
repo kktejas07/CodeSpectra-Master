@@ -416,6 +416,17 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
         console.error('[billing-plans] could not cancel replaced Stripe subscription', oldStripeSub, e),
       )
     }
+    // Prorated same-cycle upgrade of a Razorpay subscription: renew at the new plan's list price.
+    if (!razorpay && keepEnd && modeFields.billing_mode === 'razorpay_subscription' && 'razorpay_subscription_id' in modeFields && modeFields.razorpay_subscription_id) {
+      const rzpSubId = modeFields.razorpay_subscription_id
+      const list = await resolveBillingPlan(order.plan_id, order.interval || 'month', order.currency).catch(() => null)
+      if (list && list.mode === 'checkout') {
+        const { switchRazorpaySubscriptionPlan } = await import('@/lib/billing/razorpay-subscriptions')
+        await switchRazorpaySubscriptionPlan(rzpSubId, list).catch((e) =>
+          console.error('[billing-plans] could not switch Razorpay plan', rzpSubId, (e as Error)?.message),
+        )
+      }
+    }
     // Same for a Razorpay subscription replaced by another plan / gateway.
     const oldRzpSub = existing?.status === 'active' && existing.billing_mode === 'razorpay_subscription' ? existing.razorpay_subscription_id : undefined
     if (oldRzpSub && oldRzpSub !== ('razorpay_subscription_id' in modeFields ? modeFields.razorpay_subscription_id : undefined)) {

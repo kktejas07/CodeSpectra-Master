@@ -65,6 +65,8 @@ export default function CertificationsPage() {
                 <GraduationCap className="h-4 w-4" aria-hidden />{' '}{t('learning.prepTracks')}</a>
               <a href="#free-credentials" className={bannerBtnSecondary}>
                 <Award className="h-4 w-4" aria-hidden />{' '}{t('learning.freeCredentials')}</a>
+              <Link href="/dashboard/certifications/proctored" className={bannerBtnSecondary}>
+                <FileBadge2 className="h-4 w-4" aria-hidden />{' '}{t('learning.proctoredCertifications')}</Link>
             </>
           }
           art={

@@ -99,6 +99,19 @@ export async function priceCart(userId: string, couponCode?: string | null): Pro
       }
     }
   }
+  // No coupon: the buyer's plan member discount (mentor sessions, certifications), platform-funded.
+  if (!split && !couponCode) {
+    const { hasEntitlement } = await import('@/lib/entitlements')
+    const { memberDiscountSplit } = await import('@/lib/billing/member-discount')
+    const who = { id: userId, role: 'user' as const }
+    const [mentor, cert] = await Promise.all([hasEntitlement(who, 'mentor_discount_pct'), hasEntitlement(who, 'cert_discount_pct')]).catch(() => [null, null])
+    if (mentor?.allowed || cert?.allowed) {
+      split = memberDiscountSplit(
+        resolved.map((r, i) => ({ category: r.product.category, tags: (r.product as { tags?: string[] }).tags, gross: inputs[i].unit_price * inputs[i].qty })),
+        { mentor: mentor?.allowed ? mentor.limit : 0, cert: cert?.allowed ? cert.limit : 0 },
+      )
+    }
+  }
   const quote = split ? computeQuote(inputs, { currency: cart.currency, settings, coupon: split }) : base
   return { quote, inputs, resolved, currency: cart.currency, coupon, couponError }
 }

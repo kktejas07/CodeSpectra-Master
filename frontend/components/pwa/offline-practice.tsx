@@ -15,12 +15,29 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import type { QueuedSubmission } from '@/lib/pwa/core'
 import type { OfflinePack } from '@/lib/pwa/offline-payload'
-import { queueStatusLabel } from '@/lib/pwa/offline-queue'
+import { useT, type ClientI18n } from '@/lib/i18n/client'
 import {
   OFFLINE_EVENT, enqueueSubmission, flushOfflineQueue, getDraft, listPacks, listQueue, offlineSupported, removeQueued, saveDraft,
 } from '@/lib/pwa/offline-store'
 
 const FALLBACK_LANGS = ['python', 'javascript', 'java', 'cpp']
+
+/** Queue state in the interface language (lib/pwa/offline-queue queueStatusLabel is the English twin). */
+function statusText(t: ClientI18n['t'], i: Pick<QueuedSubmission, 'state' | 'result' | 'error'>): string {
+  switch (i.state) {
+    case 'queued': return t('public.offlineQueued')
+    case 'sending': return t('public.offlineSending')
+    case 'retry': return t('public.offlineRetry')
+    case 'auth': return t('public.offlineSignIn')
+    case 'rejected': return i.error || t('public.offlineNotAccepted')
+    case 'synced': {
+      const r = i.result
+      if (!r) return t('public.offlineSubmitted')
+      const verdict = r.status === 'accepted' ? t('public.offlineAccepted') : r.status.replace(/_/g, ' ')
+      return typeof r.passed === 'number' && typeof r.total === 'number' ? `${verdict} · ${t('public.offlineTests', { passed: r.passed, total: r.total })}` : verdict
+    }
+  }
+}
 
 function useOnline(): boolean {
   const [online, setOnline] = useState(true)
@@ -36,6 +53,7 @@ function useOnline(): boolean {
 }
 
 export function OfflinePractice() {
+  const { t, fmt } = useT()
   const online = useOnline()
   const [supported, setSupported] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -75,8 +93,8 @@ export function OfflinePractice() {
       <PageHeader
         className="mb-0"
         icon={<CloudOff aria-hidden />}
-        title="Offline practice"
-        description="Questions you saved on this device. Answers are sent and graded when you are back online."
+        title={t('public.offlineTitle')}
+        description={t('public.offlineDescription')}
         actions={
           <span
             role="status"
@@ -86,29 +104,29 @@ export function OfflinePractice() {
             )}
           >
             {online ? <Wifi className="h-3.5 w-3.5" aria-hidden /> : <CloudOff className="h-3.5 w-3.5" aria-hidden />}
-            {online ? 'Online' : 'Offline'}
+            {online ? t('public.offlineOnline') : t('public.offlineOffline')}
           </span>
         }
       />
 
       {!online && (
         <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
-          You are offline. Pages that need your account will open again when the connection is back.
+          {t('public.offlineBanner')}
         </p>
       )}
 
       {!supported ? (
-        <EmptyState compact title="Offline practice is not available in this browser" description="Use a recent version of Chrome, Edge, Safari or Firefox." />
+        <EmptyState compact title={t('public.offlineUnsupported')} description={t('public.offlineUnsupportedBody')} />
       ) : loading ? (
-        <p className="text-sm text-muted-foreground" role="status">Loading saved questions…</p>
+        <p className="text-sm text-muted-foreground" role="status">{t('public.offlineLoading')}</p>
       ) : open ? (
         <PackSolver pack={open} onBack={() => setOpenKey(null)} onQueued={() => void refresh()} />
       ) : packs.length === 0 ? (
         <EmptyState
           compact
-          title="Nothing saved yet"
-          description="On your dashboard, tap Save for offline on the daily challenge. It will be here even without a connection."
-          actionLabel={online ? 'Go to dashboard' : undefined}
+          title={t('public.offlineEmpty')}
+          description={t('public.offlineEmptyBody')}
+          actionLabel={online ? t('public.offlineGoToDashboard') : undefined}
           actionHref={online ? '/dashboard' : undefined}
         />
       ) : (
@@ -121,11 +139,11 @@ export function OfflinePractice() {
                 className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <span className="min-w-0">
-                  <span className="block text-xs font-medium text-primary">Daily challenge · <span className="tabular-nums">{p.day}</span></span>
+                  <span className="block text-xs font-medium text-primary">{t('public.offlineDailyChallenge')} · <span className="tabular-nums">{p.day}</span></span>
                   <span className="block truncate font-semibold text-foreground">{p.problem.title}</span>
                   <span className="block text-xs capitalize text-muted-foreground">{p.problem.difficulty}</span>
                 </span>
-                <span className="shrink-0 text-sm font-medium text-primary">Open</span>
+                <span className="shrink-0 text-sm font-medium text-primary">{t('public.offlineOpen')}</span>
               </button>
             </li>
           ))}
@@ -135,10 +153,10 @@ export function OfflinePractice() {
       {queue.length > 0 && (
         <section aria-labelledby="queue-title" className="rounded-3xl border border-border bg-card p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 id="queue-title" className="font-semibold text-foreground">Your answers</h2>
+            <h2 id="queue-title" className="font-semibold text-foreground">{t('public.offlineYourAnswers')}</h2>
             {waiting > 0 && online && (
               <Button size="sm" variant="outline" className="min-h-10 rounded-lg" disabled={syncing} onClick={syncNow}>
-                {syncing ? 'Sending…' : 'Send now'}
+                {syncing ? t('public.offlineSending') : t('public.offlineSendNow')}
               </Button>
             )}
           </div>
@@ -148,7 +166,7 @@ export function OfflinePractice() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">{q.title}</p>
                   <p className={cn('text-xs', q.state === 'rejected' ? 'text-destructive' : q.state === 'synced' && q.result?.status === 'accepted' ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground')}>
-                    {q.body.language} · <time dateTime={new Date(q.created_at).toISOString()}>{new Date(q.created_at).toLocaleString()}</time> · {queueStatusLabel(q)}
+                    {q.body.language} · <time dateTime={new Date(q.created_at).toISOString()}>{fmt.dateTime(q.created_at)}</time> · {statusText(t, q)}
                   </p>
                 </div>
                 {(q.state === 'synced' || q.state === 'rejected') && (
@@ -156,7 +174,7 @@ export function OfflinePractice() {
                     type="button"
                     onClick={() => void removeQueued(q.id)}
                     className="flex min-h-10 min-w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-                    aria-label={`Remove ${q.title} from this list`}
+                    aria-label={t('public.offlineRemove', { title: q.title })}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -169,7 +187,7 @@ export function OfflinePractice() {
 
       {online && (
         <Link href="/dashboard" className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-primary hover:underline">
-          <ArrowLeft className="h-4 w-4" aria-hidden /> Back to dashboard
+          <ArrowLeft className="h-4 w-4" aria-hidden /> {t('public.offlineBack')}
         </Link>
       )}
     </div>
@@ -177,6 +195,7 @@ export function OfflinePractice() {
 }
 
 function PackSolver({ pack, onBack, onQueued }: { pack: OfflinePack; onBack: () => void; onQueued: () => void }) {
+  const { t } = useT()
   const p = pack.problem
   const langs = useMemo(() => {
     const ks = Object.keys(p.starter_code)
@@ -196,8 +215,8 @@ function PackSolver({ pack, onBack, onQueued }: { pack: OfflinePack; onBack: () 
 
   useEffect(() => {
     if (!loaded.current) return
-    const t = window.setTimeout(() => { void saveDraft(pack.key, language, code) }, 500)
-    return () => window.clearTimeout(t)
+    const timer = window.setTimeout(() => { void saveDraft(pack.key, language, code) }, 500)
+    return () => window.clearTimeout(timer)
   }, [pack.key, language, code])
 
   const changeLanguage = (next: string) => {
@@ -209,30 +228,30 @@ function PackSolver({ pack, onBack, onQueued }: { pack: OfflinePack; onBack: () 
   const submit = async () => {
     const r = await enqueueSubmission(pack, language, code)
     if (!r.ok) { setMessage({ kind: 'error', text: r.error }); return }
-    setMessage({ kind: 'ok', text: navigator.onLine ? 'Sending your answer…' : 'Saved. It will be sent and graded when you are back online.' })
+    setMessage({ kind: 'ok', text: navigator.onLine ? t('public.offlineSendingAnswer') : t('public.offlineSavedForLater') })
     onQueued()
   }
 
   return (
     <article className="space-y-5">
       <button type="button" onClick={onBack} className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-primary hover:underline">
-        <ArrowLeft className="h-4 w-4" aria-hidden /> All saved questions
+        <ArrowLeft className="h-4 w-4" aria-hidden /> {t('public.offlineAllSaved')}
       </button>
       <div className="rounded-3xl border border-border bg-card p-5">
-        <p className="text-xs font-medium text-primary">Daily challenge · <span className="tabular-nums">{pack.day}</span> · <span className="capitalize">{p.difficulty}</span></p>
+        <p className="text-xs font-medium text-primary">{t('public.offlineDailyChallenge')} · <span className="tabular-nums">{pack.day}</span> · <span className="capitalize">{p.difficulty}</span></p>
         <h2 className="mt-1 text-xl font-semibold text-foreground">{p.title}</h2>
         <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">{p.statement_md}</div>
-        {p.input_format && <Section title="Input">{p.input_format}</Section>}
-        {p.output_format && <Section title="Output">{p.output_format}</Section>}
-        {p.constraints && <Section title="Constraints">{p.constraints}</Section>}
+        {p.input_format && <Section title={t('public.offlineInput')}>{p.input_format}</Section>}
+        {p.output_format && <Section title={t('public.offlineOutput')}>{p.output_format}</Section>}
+        {p.constraints && <Section title={t('public.offlineConstraints')}>{p.constraints}</Section>}
         {p.samples.map((s, i) => (
           <div key={i} className="mt-4 grid gap-2 sm:grid-cols-2">
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Sample input {i + 1}</p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">{t('public.offlineSampleInput', { n: i + 1 })}</p>
               <pre className="overflow-x-auto rounded-xl bg-muted p-3 font-mono text-xs text-foreground">{s.stdin}</pre>
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Sample output {i + 1}</p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">{t('public.offlineSampleOutput', { n: i + 1 })}</p>
               <pre className="overflow-x-auto rounded-xl bg-muted p-3 font-mono text-xs text-foreground">{s.expected_stdout}</pre>
             </div>
           </div>
@@ -241,7 +260,7 @@ function PackSolver({ pack, onBack, onQueued }: { pack: OfflinePack; onBack: () 
 
       <div className="space-y-3 rounded-3xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center gap-3">
-          <Label htmlFor="offline-lang">Language</Label>
+          <Label htmlFor="offline-lang">{t('public.offlineLanguage')}</Label>
           <select
             id="offline-lang"
             value={language}
@@ -250,9 +269,9 @@ function PackSolver({ pack, onBack, onQueued }: { pack: OfflinePack; onBack: () 
           >
             {langs.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
-          <span className="text-xs text-muted-foreground">Your draft is saved on this device as you type.</span>
+          <span className="text-xs text-muted-foreground">{t('public.offlineDraftSaved')}</span>
         </div>
-        <Label htmlFor="offline-code" className="sr-only">Your code</Label>
+        <Label htmlFor="offline-code" className="sr-only">{t('public.offlineYourCode')}</Label>
         <textarea
           id="offline-code"
           value={code}
@@ -264,9 +283,9 @@ function PackSolver({ pack, onBack, onQueued }: { pack: OfflinePack; onBack: () 
           className="w-full resize-y rounded-xl border border-border bg-background p-3 font-mono text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring"
         />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">Tests run on our servers, so results appear once your answer is sent.</p>
+          <p className="text-xs text-muted-foreground">{t('public.offlineTestsOnServer')}</p>
           <Button className="min-h-11 gap-1.5 rounded-lg" onClick={submit}>
-            <Send className="h-4 w-4" aria-hidden /> Submit answer
+            <Send className="h-4 w-4" aria-hidden /> {t('public.offlineSubmit')}
           </Button>
         </div>
         {message && (

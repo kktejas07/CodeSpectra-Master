@@ -588,5 +588,7 @@
   "hackathonActivitiesOnDay_other": "{count} hackathon activities",
   "sortedAscendingSuffix": ", sorted ascending",
   "sortedDescendingSuffix": ", sorted descending",
-  "uploadStorage": "Upload storage"
+  "uploadStorage": "Upload storage",
+  "metaTitle": "Dashboard",
+  "metaPageUnavailable": "Page unavailable"
 }

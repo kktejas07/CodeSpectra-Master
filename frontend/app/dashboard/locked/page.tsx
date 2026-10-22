@@ -8,7 +8,10 @@ import { getAreaI18n } from '@/lib/i18n/area-server'
  * request here (the address bar keeps the original URL), with
  * `reason` = locked | forbidden | plan | unavailable and `from` = that URL.
  */
-export const metadata: Metadata = { title: 'Page unavailable' }
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getAreaI18n()
+  return { title: t('dash.metaPageUnavailable') }
+}
 
 type Reason = 'locked' | 'forbidden' | 'plan' | 'unavailable'
 

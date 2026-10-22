@@ -11,7 +11,6 @@ import { DEFAULT_REFERRAL_REWARD, type ReferralRewardSettings } from './referral
 export interface BillingSettings {
   supplier: { legal_name: string; gstin: string; state_code: string; address: string; sac_code: string; lut_reference: string }
   invoice_prefix: string
-  prices_include_gst: boolean
   gst_rate_bps: number
   /** Razorpay subscriptions for INR monthly / yearly plans (autopay). Off = prepaid one-time orders. */
   razorpay_autopay: boolean
@@ -24,7 +23,6 @@ export interface BillingSettings {
 export const DEFAULT_BILLING_SETTINGS: BillingSettings = {
   supplier: { legal_name: 'CodeSpectra', gstin: '', state_code: '36', address: '', sac_code: '999293', lut_reference: '' },
   invoice_prefix: 'CS',
-  prices_include_gst: true,
   gst_rate_bps: 1800,
   razorpay_autopay: true,
   licence_seat_price_minor: { INR: 299900, USD: 4900 },
@@ -43,7 +41,6 @@ export const billingSettingsPatch = z.object({
     lut_reference: z.string().trim().max(60),
   }).partial().optional(),
   invoice_prefix: z.string().trim().regex(/^[A-Za-z0-9-]{1,4}$/, 'Prefix: up to 4 letters or digits').optional(),
-  prices_include_gst: z.boolean().optional(),
   gst_rate_bps: z.coerce.number().int().min(0).max(2800).optional(),
   razorpay_autopay: z.boolean().optional(),
   licence_seat_price_minor: z.object({ INR: minor, USD: minor }).partial().optional(),

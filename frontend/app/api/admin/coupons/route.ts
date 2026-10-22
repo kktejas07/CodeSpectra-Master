@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { billingCoupons, newId, nowIso } from '@/lib/db/billing'
 import { validateCouponInput } from '@/lib/billing-lifecycle'
+import { validateCouponRestrictions } from '@/lib/billing/coupon-eligibility'
 import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
@@ -41,9 +42,12 @@ export async function POST(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
-    const parsed = validateCouponInput(await req.json().catch(() => null), false)
+    const body = ((await req.json().catch(() => null)) || {}) as Record<string, unknown>
+    const parsed = validateCouponInput(body, false)
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
     const v = parsed.value
+    const extra = validateCouponRestrictions(body)
+    if (!extra.ok) return NextResponse.json({ error: extra.error }, { status: 400 })
 
     const couponsCol = await billingCoupons()
     if (await couponsCol.findOne({ code: v.code! })) {
@@ -63,6 +67,10 @@ export async function POST(req: NextRequest) {
       applies_to: v.applies_to ?? 'all',
       marketplace_funding: v.marketplace_funding ?? 'platform_items_only',
       seller_id: null,
+      per_user_limit: extra.value.per_user_limit ?? 1,
+      plan_ids: extra.value.plan_ids ?? [],
+      first_purchase_only: extra.value.first_purchase_only ?? false,
+      starts_at: extra.value.starts_at ?? null,
       created_by: gate.user.id,
       created_at: nowIso(),
     }
@@ -91,7 +99,9 @@ export async function PATCH(req: NextRequest) {
     if (raw.discount_type === undefined && raw.discount_value !== undefined) raw.discount_type = existing.discount_type
     const parsed = validateCouponInput(raw, true)
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
-    const $set = parsed.value as Record<string, unknown>
+    const extra = validateCouponRestrictions(raw)
+    if (!extra.ok) return NextResponse.json({ error: extra.error }, { status: 400 })
+    const $set = { ...parsed.value, ...extra.value } as Record<string, unknown>
     if (Object.keys($set).length === 0) return NextResponse.json({ error: 'nothing to update', code: 'nothing_to_update' }, { status: 400 })
     const effectiveType = ($set.discount_type as string | undefined) ?? existing.discount_type
     if (effectiveType === 'flat' && !$set.currency && !existing.currency) {

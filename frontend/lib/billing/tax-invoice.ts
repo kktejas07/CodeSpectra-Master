@@ -131,7 +131,6 @@ export async function assignInvoice(order: BillingOrderDoc & { org_id?: string |
       buyerState: buyer.state_code,
       buyerCountry: buyer.country || null,
       rateBps: settings.gst_rate_bps,
-      inclusive: settings.prices_include_gst,
     }),
   }
   const r = await orders.updateOne(

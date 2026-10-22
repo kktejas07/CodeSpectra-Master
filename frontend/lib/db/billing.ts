@@ -56,6 +56,8 @@ export interface BillingOrderDoc {
   proration_kind?: 'upgrade_same_cycle' | 'new_period_with_credit'
   /** Keep this end date (same-cycle upgrade). */
   keep_period_end?: string
+  /** Salted hash of the buyer's IP at checkout (referral abuse checks only). */
+  checkout_ip_hash?: string
   /** Referral / account credit applied to this order (minor units). */
   credit_applied?: number
   /** Sequential GST invoice number + tax snapshot (lib/billing/tax-invoice.ts). */

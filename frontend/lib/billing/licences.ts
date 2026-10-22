@@ -129,7 +129,7 @@ export async function activateLicenceOrder(order: BillingOrderDoc): Promise<void
   if (!order.licence_id) return
   const { licences } = await licencesCol()
   const lic = await licences.findOne({ id: order.licence_id })
-  if (!lic || lic.order_ids?.includes(order.id)) return
+  if (!lic || lic.org_id !== order.org_id || lic.order_ids?.includes(order.id)) return
   const { stillLive, end } = renewalEnd(lic.status === 'active' ? lic.ends_at : null)
   const ts = nowIso()
   await licences.updateOne(
