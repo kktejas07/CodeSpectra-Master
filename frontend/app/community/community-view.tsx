@@ -147,7 +147,7 @@ export async function ThreadPage({ id, locale }: { id: string; locale: Locale })
         <nav aria-label={t('breadcrumbs')} className="text-sm text-cs-ink-soft">
           <Link href={localizedPath('/community', locale)} className="hover:text-cs-ink">{t('forumTitle')}</Link> / <Link href={localizedPath(`/community/c/${th.category.slug}`, locale)} className="hover:text-cs-ink">{th.category.name}</Link>
         </nav>
-        <ThreadView id={th.id} initial={th} signInHref={`/login?next=${encodeURIComponent(`/community/t/${th.id}`)}`} />
+        <ThreadView id={th.id} initial={th} signInHref={`/auth/login?redirect=${encodeURIComponent(`/community/t/${th.id}`)}`} />
       </div>
     </PublicPageWrapper>
   )
