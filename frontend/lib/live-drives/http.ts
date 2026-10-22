@@ -36,5 +36,5 @@ export async function handle(name: string, fn: (user: APIUser) => Promise<Respon
 }
 
 export function badId() {
-  return json({ error: 'Drive not found', code: 'ld_not_found' }, 404)
+  return json({ error: 'Live drive not found', code: 'ld_not_found' }, 404)
 }

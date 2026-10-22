@@ -244,7 +244,7 @@ export async function finishDirectUpload(p: {
   const doc = await col.findOne({ id: p.uploadId, owner_id: p.ownerId, scope: p.scope })
   if (!doc) return fail(404, 'Unknown upload.')
   if (doc.status === 'ready') return { ok: true, upload: doc }
-  if (doc.status === 'rejected' && doc.scan_status === 'infected') return fail(400, 'The security scanner rejected this file.', 'upload_infected')
+  if (doc.status === 'rejected' && doc.scan_status === 'infected') return fail(400, 'The security scanner rejected this file.', 'scanner_rejected')
   if (doc.status !== 'pending') return fail(409, 'This upload can no longer be used. Upload the file again.')
   if (!isUploadKey(doc.key)) return fail(400, 'Unknown upload.')
   // A background scan is running: answer without touching the bucket.

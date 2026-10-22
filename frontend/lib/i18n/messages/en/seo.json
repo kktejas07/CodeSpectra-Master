@@ -34,5 +34,7 @@
   "title:/mentors": "Mentors: mock interviews, code reviews and career guidance",
   "description:/mentors": "Book paid 1:1 sessions with verified engineers: mock interviews, code reviews, resume reviews and career guidance.",
   "title:/marketplace": "Marketplace: books, courses and mock interviews",
-  "description:/marketplace": "Buy books, courses, e-books and templates, or book mentoring and mock interviews with CodeSpectra and approved sellers."
+  "description:/marketplace": "Buy books, courses, e-books and templates, or book mentoring and mock interviews with CodeSpectra and approved sellers.",
+  "title:/certifications": "Proctored certifications",
+  "description:/certifications": "Earn a proctored CodeSpectra certification: verifiable online, valid for a fixed period and easy to add to LinkedIn."
 }

@@ -450,6 +450,9 @@ export default function DashboardLayout({
       // Career
       '/dashboard/jobs': Briefcase,
       '/dashboard/campus': GraduationCap,
+      '/dashboard/jobs/for-you': Sparkles,
+      '/dashboard/drives': Radio,
+      '/dashboard/live-drives': Radio,
       '/dashboard/interviews': UserCheck,
       '/dashboard/interviews/ai-mock': Brain,
       '/dashboard/interview-sim': Mic,
@@ -544,6 +547,7 @@ export default function DashboardLayout({
       '/dashboard/admin/sme-review': UserCheck,
       '/dashboard/admin/hiring-manager-report': FileBarChart,
       '/dashboard/admin/billing': Receipt,
+      '/dashboard/admin/licences': KeyRound,
       '/dashboard/admin/help': HelpCircle,
       '/dashboard/admin/sso': KeyRound,
       '/dashboard/admin/kyc': BadgeCheck,

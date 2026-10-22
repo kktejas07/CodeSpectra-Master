@@ -181,5 +181,9 @@
   "phase:live": "Live",
   "phase:ended": "Ended",
   "phase:results": "Results out",
-  "phase:closed": "Closed"
+  "phase:closed": "Closed",
+  "pricingCurrency": "Currency",
+  "pricingInr": "₹ INR",
+  "pricingUsd": "$ USD",
+  "pricingInclGst": "Prices in rupees include 18% GST. Add your GSTIN at checkout for a tax invoice."
 }

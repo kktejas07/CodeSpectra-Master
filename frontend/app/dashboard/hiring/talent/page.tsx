@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDate } from '@/lib/i18n/format'
 import { useCallback, useEffect, useState } from 'react'
 import { useBrowserValue } from '@/hooks/use-browser-value'
 import { Mail, Phone, Search, Send, UserSearch, X } from 'lucide-react'
@@ -17,14 +18,14 @@ import { useToast } from '@/lib/toast-context'
 import { PASSPORT_LEVELS, LEVEL_LABELS, type PassportLevel } from '@/lib/passport/core'
 import { AVAILABILITY, AVAILABILITY_LABELS, INVITE_TARGET_LABELS, type InviteTarget, type TalentResult } from '@/lib/talent/core'
 import { cn } from '@/lib/utils'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 
 interface Quota { used: number; limit: number; month: string }
 interface SearchResponse { total: number; page: number; results: TalentResult[]; quota: Quota }
 interface SentInvite { id: string; handle: string; learner_name: string; target_type: InviteTarget; target_title: string; status: string; created_at: string; contact: { email: string | null; phone: string | null } | null }
 interface Targets { tests: Array<{ id: string; title: string }>; jobs: Array<{ id: string; title: string }> }
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+const day = (iso: string) => formatDate(activeLocale(), iso, { day: 'numeric', month: 'short', year: 'numeric' })
 
 export default function TalentSearchPage() {
   const { t } = useT()

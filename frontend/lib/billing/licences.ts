@@ -58,12 +58,12 @@ export async function licencesCol() {
   const s = db.collection<SeatDoc>('billing_licence_seats')
   if (!ready) {
     ready = Promise.all([
-      l.createIndex({ id: 1 }, { unique: true, name: 'billing_licences_id_unique' }),
-      l.createIndex({ org_id: 1, status: 1 }, { name: 'billing_licences_org' }),
-      l.createIndex({ email_domains: 1, status: 1 }, { name: 'billing_licences_domains' }),
-      s.createIndex({ licence_id: 1, email: 1 }, { unique: true, name: 'billing_licence_seats_assigned_unique', partialFilterExpression: { status: 'assigned' } }),
-      s.createIndex({ user_id: 1, status: 1 }, { name: 'billing_licence_seats_user' }),
-      s.createIndex({ email: 1, status: 1 }, { name: 'billing_licence_seats_email' }),
+      l.createIndex({ id: 1 }, { unique: true }),
+      l.createIndex({ org_id: 1, status: 1 }),
+      l.createIndex({ email_domains: 1, status: 1 }),
+      s.createIndex({ licence_id: 1, email: 1 }, { unique: true, partialFilterExpression: { status: 'assigned' } }),
+      s.createIndex({ user_id: 1, status: 1 }),
+      s.createIndex({ email: 1, status: 1 }),
     ]).then(() => undefined).catch((e) => {
       ready = null
       console.error('[licences] index setup failed:', (e as Error)?.message)

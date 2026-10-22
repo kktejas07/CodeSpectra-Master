@@ -51,10 +51,10 @@ async function canOwn(user: APIUser, owner: LiveDriveDoc['owner']): Promise<bool
 
 export async function loadForStaff(user: APIUser, id: string): Promise<{ drive: LiveDriveDoc; role: DriveRole }> {
   const drive = await (await drivesCol()).findOne({ id }, { projection: { _id: 0 } })
-  if (!drive) throw err('Drive not found', 404, 'ld_not_found')
+  if (!drive) throw err('Live drive not found', 404, 'ld_not_found')
   if (await canOwn(user, drive.owner)) return { drive, role: 'owner' }
   if (drive.invigilators.some((i) => i.user_id === user.id)) return { drive, role: 'invigilator' }
-  throw err('Drive not found', 404, 'ld_not_found')
+  throw err('Live drive not found', 404, 'ld_not_found')
 }
 
 async function loadAsOwner(user: APIUser, id: string): Promise<LiveDriveDoc> {
@@ -392,17 +392,17 @@ export async function candidateDetail(user: APIUser, id: string, cid: string) {
 
 /** Staff read of one snapshot of this candidate (presigned URL or bytes). */
 export async function candidateSnapshot(user: APIUser, id: string, cid: string, snapId: string): Promise<{ url: string } | { bytes: Buffer }> {
-  if (!/^isnap_[0-9a-f]{24}$/.test(snapId)) throw err('Snapshot not found', 404, 'ld_snapshot_missing')
+  if (!/^isnap_[0-9a-f]{24}$/.test(snapId)) throw err('Snapshot not available', 404, 'ld_snapshot_missing')
   const { c } = await loadCandidateForStaff(user, id, cid)
   const db = await getMongoDb()
   const s = await db.collection('integrity_snapshots').findOne({ id: snapId, attempt_id: attemptKey('drive', id, c.user_id, 1) }, { projection: { _id: 0 } })
-  if (!s) throw err('Snapshot not found', 404, 'ld_snapshot_missing')
+  if (!s) throw err('Snapshot not available', 404, 'ld_snapshot_missing')
   const { blobDownloadUrl, readBlob } = await import('@/lib/storage/blobs')
   const ref = s as never
   const url = await blobDownloadUrl(ref, `${snapId}.jpg`, 'image/jpeg')
   if (url) return { url }
   const bytes = await readBlob(ref)
-  if (!bytes) throw err('Snapshot not found', 404, 'ld_snapshot_missing')
+  if (!bytes) throw err('Snapshot not available', 404, 'ld_snapshot_missing')
   return { bytes }
 }
 
@@ -427,7 +427,7 @@ export async function candidateAction(user: APIUser, id: string, cid: string, ra
       res = await col.updateOne({ id: cid }, { $push: inboxPush({ id: newId(), kind: 'warning', text: a.message, at: iso }) as never, $set: { updated_at: iso } })
       break
     case 'add_time':
-      if (c.state !== 'in_progress' && c.state !== 'paused' && c.state !== 'not_started') throw err('This candidate has finished.', 409, 'ld_candidate_finished')
+      if (c.state !== 'in_progress' && c.state !== 'paused' && c.state !== 'not_started') throw err('This candidate has already finished.', 409, 'ld_candidate_finished')
       res = await col.updateOne({ id: cid, state: { $in: ['not_started', 'in_progress', 'paused'] } }, {
         $inc: { extra_ms: a.minutes * 60_000 },
         $push: inboxPush({ id: newId(), kind: 'notice', text: `+${a.minutes} min`, at: iso }) as never,
@@ -607,7 +607,7 @@ export async function resultRows(user: APIUser, id: string) {
 
 async function loadAsCandidate(user: APIUser, id: string) {
   const drive = await (await drivesCol()).findOne({ id }, { projection: { _id: 0 } })
-  if (!drive || drive.status === 'draft') throw err('Drive not found', 404, 'ld_not_found')
+  if (!drive || drive.status === 'draft') throw err('Live drive not found', 404, 'ld_not_found')
   const col = await candidatesCol()
   let c = await col.findOne({ drive_id: id, user_id: user.id }, { projection: { _id: 0 } })
   if (!c) throw err('You are not on this drive’s candidate list.', 404, 'ld_not_on_roster')
@@ -656,7 +656,7 @@ export async function sessionState(user: APIUser, id: string, opts: { since?: nu
 
 export async function candidatePaper(user: APIUser, id: string) {
   const { drive, c } = await loadAsCandidate(user, id)
-  if (c.state !== 'in_progress' && c.state !== 'paused') throw err('Start the test first.', 409, 'ld_start_first')
+  if (c.state !== 'in_progress' && c.state !== 'paused') throw err('Start the drive test first.', 409, 'ld_start_first')
   if (!reconnectAllowed(c, drive.rules, Date.now())) throw err('You were away too long. Ask the invigilator to let you back in.', 409, 'ld_locked_out')
   try {
     return { sections: await publicPaper(drive, user.id) }
@@ -691,7 +691,7 @@ export async function sessionOp(user: APIUser, id: string, raw: unknown) {
     if (w !== 'open') throw err(w === 'lobby' || w === 'too_early' ? 'The test has not started yet.' : 'Entry to this drive has closed.', 409, w === 'lobby' || w === 'too_early' ? 'ld_not_started' : 'ld_entry_closed')
     if (!c.system_check?.passed) throw err('Finish the system check first.', 409, 'ld_check_first')
     const r = await col.updateOne({ id: c.id, state: 'not_started' }, { $set: { state: 'in_progress', started_at: iso, last_seen_at: nowDate, updated_at: iso } })
-    if (!r.modifiedCount && c.state === 'not_started') throw err('Could not start. Try again.', 409, 'ld_start_failed')
+    if (!r.modifiedCount && c.state === 'not_started') throw err('Could not start the test. Try again.', 409, 'ld_start_failed')
     return view(true)
   }
 

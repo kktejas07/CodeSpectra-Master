@@ -13,11 +13,12 @@ export async function GET(req: Request) {
   if (!g.ok) return NextResponse.json({ error: g.error, code: g.code }, { status: g.status })
   if (!g.orgId) return NextResponse.json({ error: 'Choose an organisation.', code: 'licence_org_required' }, { status: 400 })
   try {
-    const [{ listOrgLicences, seatUsage, orgInfo }, { getBillingSettings }] = await Promise.all([import('@/lib/billing/licences'), import('@/lib/billing/settings')])
-    const [list, settings, org] = await Promise.all([listOrgLicences(g.orgId), getBillingSettings(), orgInfo(g.orgId)])
+    const [{ listOrgLicences, seatUsage, orgInfo }, { getBillingSettings }, { getBillingProfile }] = await Promise.all([import('@/lib/billing/licences'), import('@/lib/billing/settings'), import('@/lib/billing/tax-invoice')])
+    const [list, settings, org, profile] = await Promise.all([listOrgLicences(g.orgId), getBillingSettings(), orgInfo(g.orgId), getBillingProfile(`org:${g.orgId}`)])
     const licences = await Promise.all(list.map(async (l) => ({ ...l, usage: await seatUsage(l.id) })))
     return NextResponse.json({
       org,
+      profile,
       licences,
       pricing: { seat_price_minor: settings.licence_seat_price_minor, min_seats: settings.licence_min_seats },
     })
@@ -66,6 +67,25 @@ export async function POST(req: Request) {
     const msg = (e as Error)?.message || ''
     console.error('[licences] POST', msg)
     if (msg.includes('No payment provider configured')) return NextResponse.json({ error: "Payments aren't set up yet.", code: 'payments_not_configured' }, { status: 503 })
+    return NextResponse.json(apiErrorFor('server_error_retry'), { status: 500 })
+  }
+}
+
+/** PUT /api/licences — the organisation's invoice details (name, GSTIN, place of supply) for licence invoices. */
+export async function PUT(req: Request) {
+  const g = await licenceGate(new URL(req.url).searchParams.get('org'))
+  if (!g.ok) return NextResponse.json({ error: g.error, code: g.code }, { status: g.status })
+  if (!g.orgId) return NextResponse.json({ error: 'Choose an organisation.', code: 'licence_org_required' }, { status: 400 })
+  const { billingProfileSchema, saveBillingProfile } = await import('@/lib/billing/tax-invoice')
+  const parsed = billingProfileSchema.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) {
+    const msg = parsed.error.issues[0]?.message
+    return NextResponse.json({ error: 'Check the details and try again.', code: msg === 'gstin_invalid' || msg === 'state_invalid' ? `billing_${msg}` : 'invalid_request' }, { status: 400 })
+  }
+  try {
+    return NextResponse.json({ profile: await saveBillingProfile(`org:${g.orgId}`, parsed.data) })
+  } catch (e) {
+    console.error('[licences] PUT', (e as Error)?.message)
     return NextResponse.json(apiErrorFor('server_error_retry'), { status: 500 })
   }
 }

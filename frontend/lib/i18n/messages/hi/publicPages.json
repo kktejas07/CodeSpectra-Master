@@ -181,5 +181,9 @@
   "phase:live": "लाइव",
   "phase:ended": "समाप्त",
   "phase:results": "रिज़ल्ट आ गए",
-  "phase:closed": "बंद"
+  "phase:closed": "बंद",
+  "pricingCurrency": "मुद्रा",
+  "pricingInr": "₹ रुपये",
+  "pricingUsd": "$ डॉलर",
+  "pricingInclGst": "रुपये में दिखाई गई कीमतों में 18% जीएसटी शामिल है। टैक्स इनवॉइस के लिए चेकआउट पर अपना जीएसटीआईएन जोड़ें।"
 }

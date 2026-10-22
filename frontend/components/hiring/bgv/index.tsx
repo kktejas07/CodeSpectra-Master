@@ -8,6 +8,7 @@
  * "consider" result (US: pre-adverse → wait → final adverse notice).
  * Hiring manager: status summary only. Others get nothing from the API.
  */
+import { formatDate } from '@/lib/i18n/format'
 import { useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Eye, FileText, Loader2, Mail, ShieldCheck, Trash2 } from 'lucide-react'
@@ -22,7 +23,7 @@ import type { BgvFullView, BgvSummaryView, BgvView } from '@/lib/ats/bgv/access'
 import type { BgvCheckStatus } from '@/lib/ats/bgv/types'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
 
 interface Resp {
@@ -55,7 +56,7 @@ const CASE_STATUS = (t: Translator): Record<string, { label: string; variant: Va
 })
 
 const enc = encodeURIComponent
-const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
+const when = (iso: string | null | undefined) => (iso ? formatDate(activeLocale(), iso, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
 
 function show(f: FieldDef, data: Record<string, unknown>): string | null {
   if (f.sensitive) return typeof data[`${f.key}_masked`] === 'string' ? String(data[`${f.key}_masked`]) : null

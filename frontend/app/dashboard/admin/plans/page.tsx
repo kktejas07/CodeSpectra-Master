@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { ProblemPacksPanel } from './problem-packs-panel'
+import { PlanPricesPanel } from './plan-prices-panel'
 
 interface PlanDef {
   _id?: string; plan: string; name: string; description: string
@@ -342,6 +343,8 @@ export default function PlansPage() {
           </Panel>
         </div>
       )}
+
+      <PlanPricesPanel />
 
       <ProblemPacksPanel />
 

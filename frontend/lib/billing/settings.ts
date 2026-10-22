@@ -40,7 +40,7 @@ export const billingSettingsPatch = z.object({
     sac_code: z.string().trim().regex(/^\d{4,8}$/, 'SAC code is 4–8 digits'),
     lut_reference: z.string().trim().max(60),
   }).partial().optional(),
-  invoice_prefix: z.string().trim().regex(/^[A-Za-z0-9-]{1,4}$/, 'Prefix: up to 4 letters or digits').optional(),
+  invoice_prefix: z.string().trim().regex(/^[A-Za-z0-9]{1,4}$/, 'Prefix: up to 4 letters or digits').optional(),
   gst_rate_bps: z.coerce.number().int().min(0).max(2800).optional(),
   razorpay_autopay: z.boolean().optional(),
   licence_seat_price_minor: z.object({ INR: minor, USD: minor }).partial().optional(),

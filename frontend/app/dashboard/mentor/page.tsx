@@ -5,6 +5,7 @@
  * (marketplace service products) and upcoming sessions. Payments, payouts, refunds and
  * marking sessions done live in the seller dashboard (linked).
  */
+import { formatDate } from '@/lib/i18n/format'
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -20,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api, money, toMajor, toMinor } from '@/components/marketplace/seller/shared'
 import { OFFERING_LABELS, OFFERING_TYPES, type MentorProfile, type OfferingType } from '@/lib/mentors/types'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
 
 interface StudioOffering {
@@ -295,7 +296,7 @@ function Sessions() {
         <Panel key={s.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="font-semibold text-foreground">{s.title}</p>
-            <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground"><CalendarClock className="h-4 w-4" aria-hidden /><span className="tabular-nums">{new Date(s.start).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+            <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground"><CalendarClock className="h-4 w-4" aria-hidden /><span className="tabular-nums">{formatDate(activeLocale(), s.start, { dateStyle: 'medium', timeStyle: 'short' })}</span>
               {s.has_attachment && <span>{t('career.codeAttached')}</span>}{s.rescheduled && <span>{t('career.rescheduled')}</span>}{s.dispute_open && <span className="text-amber-700 dark:text-amber-300">{t('career.disputeOpen')}</span>}{s.status === 'completed' && <span>{t('career.done')}</span>}</p>
           </div>
           <Button asChild size="sm" className="min-h-[44px] rounded-full"><Link href={`/dashboard/sessions/${s.id}`}><Video className="mr-1 h-4 w-4" />{t('career.open')}</Link></Button>

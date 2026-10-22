@@ -79,6 +79,13 @@ export async function runDunning(now = new Date(), onlySub?: string): Promise<{ 
         bodyText: `Hi ${user.name || 'there'},\n\nWe couldn’t renew ${plan}. Your access continues until ${fmtDate(graceEnd)} — update your card before then to keep it.${step.final ? '\n\nThis is our last reminder.' : ''}`,
         cta: { label: 'Update payment method', url: '/dashboard/billing' },
         reason: 'You got this email because a payment for your CodeSpectra plan failed.',
+        i18n: {
+          subject: { key: step.final ? 'auto.dunning.subjectFinal' : step.day === 0 ? 'auto.dunning.subjectFirst' : 'auto.dunning.subject' },
+          heading: { key: step.final ? 'auto.dunning.headingFinal' : 'auto.dunning.heading' },
+          body: [user.name ? { key: 'auto.hi', params: { name: user.name } } : { key: 'auto.hiNoName' }, { key: 'auto.dunning.body', params: { plan, date: fmtDate(graceEnd) } }, ...(step.final ? [{ key: 'auto.dunning.last' }] : [])],
+          cta: { key: 'auto.dunning.cta' },
+          reason: { key: 'auto.dunning.reason' },
+        },
       })
     }
     const { notify } = await import('@/lib/notifications')
@@ -163,6 +170,13 @@ export async function runExpiryReminders(now = new Date()): Promise<{ reminded: 
         bodyText: `Your ${String(s.plan_id || 'plan')} ends on ${fmtDate(String(s.ends_at))}. Renew now to keep your tests, events and certificates without a break.`,
         cta: { label: 'Renew plan', url: renewUrl },
         reason: 'You got this email because your CodeSpectra plan is ending.',
+        i18n: {
+          subject: day === 1 ? { key: 'auto.expiry.subjectTomorrow' } : { key: 'auto.expiry.subject', params: { count: day } },
+          heading: { key: 'auto.expiry.heading', params: { count: day } },
+          body: { key: 'auto.expiry.body', params: { plan: String(s.plan_id || 'plan'), date: fmtDate(String(s.ends_at)) } },
+          cta: { key: 'auto.expiry.cta' },
+          reason: { key: 'auto.expiry.reason' },
+        },
       })
     }
     const { notify } = await import('@/lib/notifications')

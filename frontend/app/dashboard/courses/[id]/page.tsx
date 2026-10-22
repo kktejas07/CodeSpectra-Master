@@ -104,7 +104,7 @@ function formatDuration(seconds: number): string {
 
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const apiError = useApiError()
-  const { t: tr } = useT()
+  const { t: tr, fmt } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const pageHref = useHref()
@@ -461,7 +461,7 @@ const handleEnroll = async () => {
                 <div className="flex items-center gap-2 text-white/80 text-sm tabular-nums">
                   <Users className="h-4 w-4" />
                   {course.enrolled > 0
-                    ? tr('learning.nLearnersEnrolled', { n: course.enrolled.toLocaleString() })
+                    ? tr('learning.nLearnersEnrolled', { n: course.enrolled })
                     : tr('learning.beAmongTheFirstToEnroll')}
                 </div>
                 <div className="flex items-center gap-2 text-white/80 text-sm tabular-nums">
@@ -577,7 +577,7 @@ const handleEnroll = async () => {
               { icon: Layers, label: tr('learning.modules'), value: sections.length || 1 },
               { icon: BookOpen, label: tr('learning.lessons'), value: totalLessons || course.sessions || 0 },
               { icon: Clock, label: tr('learning.hours'), value: hoursOfContent },
-              { icon: Users, label: tr('learning.enrolled'), value: course.enrolled > 0 ? (course.enrolled >= 1000 ? `${(course.enrolled / 1000).toFixed(1)}k` : course.enrolled.toLocaleString()) : '0' },
+              { icon: Users, label: tr('learning.enrolled'), value: course.enrolled > 0 ? (course.enrolled >= 1000 ? `${(course.enrolled / 1000).toFixed(1)}k` : fmt.number(course.enrolled)) : '0' },
               { icon: Award, label: tr('learning.certificate'), value: 'Yes' },
             ].map((s, i) => (
               <StatCard key={i} label={s.label} value={s.value} icon={<s.icon />} />

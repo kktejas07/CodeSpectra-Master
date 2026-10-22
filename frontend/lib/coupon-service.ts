@@ -22,6 +22,10 @@ export async function validateCoupon(
     return { valid: false, error: 'Coupon usage limit reached.' }
   }
 
+  if (coupon.starts_at && new Date(coupon.starts_at) > new Date()) {
+    return { valid: false, error: 'This coupon is not active yet.' }
+  }
+
   if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) {
     return { valid: false, error: 'Coupon has expired.' }
   }

@@ -30,12 +30,6 @@
    "question"
   ]
  },
- "app/dashboard/cad/page.tsx": {
-  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
-  "text": [
-   "Loading CAD editor…"
-  ]
- },
  "app/dashboard/certifications/page.tsx": {
   "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
   "text": [
@@ -127,12 +121,6 @@
   "text": [
    "Email",
    "aria-label=\"Email\""
-  ]
- },
- "components/cad/cad-assessment-workspace.tsx": {
-  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
-  "text": [
-   "Loading CAD editor…"
   ]
  },
  "components/codeathons/codeathon-results-card.tsx": {
@@ -270,50 +258,6 @@
    "left"
   ]
  },
- "components/marketplace/cart-lines.tsx": {
-  "why": "public marketplace",
-  "text": [
-   "Discount",
-   "Move to cart",
-   "Remove",
-   "Save for later",
-   "Saved for later",
-   "Shipping",
-   "Subtotal",
-   "Total"
-  ]
- },
- "components/marketplace/checkout-client.tsx": {
-  "why": "public marketplace",
-  "text": [
-   "). Items are held for 30 minutes while you pay.",
-   "Address line 1",
-   "Address line 2 (optional)",
-   "Apply",
-   "Checkout",
-   "City",
-   "Contact",
-   "Country",
-   "Coupon",
-   "Coupon code",
-   "Delivery address",
-   "Full name",
-   "Items",
-   "Order summary",
-   "Phone for delivery (if different)",
-   "Phone number",
-   "Postal code",
-   "Receipts and updates go to",
-   "Review cart",
-   "State",
-   "You will pay securely on our payment partner's page (",
-   "actionLabel=\"Browse the marketplace\"",
-   "aria-label=\"Loading checkout\"",
-   "description=\"Add something from the marketplace first.\"",
-   "placeholder=\"Coupon code\"",
-   "title=\"Your cart is empty\""
-  ]
- },
  "components/marketplace/product-extras.tsx": {
   "why": "public marketplace",
   "text": [
@@ -377,34 +321,6 @@
    "title=\"Constraints\"",
    "title=\"Input format\"",
    "title=\"Output format\""
-  ]
- },
- "components/pwa/offline-practice.tsx": {
-  "why": "public /offline page",
-  "text": [
-   "All saved questions",
-   "Back to dashboard",
-   "Daily challenge ·",
-   "Language",
-   "Loading saved questions…",
-   "Open",
-   "Sample input",
-   "Sample output",
-   "Submit answer",
-   "Tests run on our servers, so results appear once your answer is sent.",
-   "You are offline. Pages that need your account will open again when the connection is back.",
-   "Your answers",
-   "Your code",
-   "Your draft is saved on this device as you type.",
-   "description=\"On your dashboard, tap Save for offline on the daily challenge. It will be here even without a connection.\"",
-   "description=\"Questions you saved on this device. Answers are sent and graded when you are back online.\"",
-   "description=\"Use a recent version of Chrome, Edge, Safari or Firefox.\"",
-   "title=\"Constraints\"",
-   "title=\"Input\"",
-   "title=\"Nothing saved yet\"",
-   "title=\"Offline practice is not available in this browser\"",
-   "title=\"Offline practice\"",
-   "title=\"Output\""
   ]
  },
  "components/pwa/pwa-mount.tsx": {

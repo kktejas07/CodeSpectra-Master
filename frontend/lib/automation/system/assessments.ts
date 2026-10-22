@@ -240,6 +240,12 @@ export async function finalizeAbandonedAttempts(now = new Date(), limit = 100): 
         heading: 'Your answers were submitted for you',
         bodyText: `The time for “${String(exam.title || 'your test')}” ran out before you pressed Submit, so we submitted the ${Object.keys(kept).length} answer(s) that were saved. Nothing else is needed from you — you’ll hear when results are released.`,
         reason: 'You got this email because you started this test on CodeSpectra.',
+        i18n: {
+          subject: { key: 'auto.autoSubmit.subject', params: { title: String(exam.title || '') } },
+          heading: { key: 'auto.autoSubmit.heading' },
+          body: { key: 'auto.autoSubmit.body', params: { title: String(exam.title || ''), count: Object.keys(kept).length } },
+          reason: { key: 'auto.autoSubmit.reason' },
+        },
       })
     }
   }
@@ -347,6 +353,12 @@ async function onSubmitted(ev: { payload: Doc; tenant_id: string | null }): Prom
       heading: 'Submission received',
       bodyText: `Thanks — your answers for “${String(exam.title || 'your test')}” are safely stored. You’ll get an email when results are released.`,
       reason: 'You got this email because you submitted a test on CodeSpectra.',
+      i18n: {
+        subject: { key: 'auto.receipt.subject', params: { title: String(exam.title || '') } },
+        heading: { key: 'auto.receipt.heading' },
+        body: { key: 'auto.receipt.body', params: { title: String(exam.title || '') } },
+        reason: { key: 'auto.receipt.reason' },
+      },
     })
   }
   const owner = typeof exam.created_by === 'string' ? exam.created_by : null

@@ -367,7 +367,7 @@ async function buildExam(a: AttemptDoc, p: ProgramDoc): Promise<void> {
   const questionList: Doc[] = []
   const sections: Doc[] = []
   for (const { s, ids } of sectionIds) {
-    const qs = ids.map((id) => byId.get(id)).filter((b): b is BankQuestionDoc => !!b).map((b) => ({ ...bankToExamQuestion(b), bank_id: b.id }))
+    const qs = ids.map((id) => byId.get(id)).filter((b): b is BankQuestionDoc => !!b).map((b): Doc => ({ ...bankToExamQuestion(b), bank_id: b.id }))
     questionList.push(...qs)
     sections.push({ id: s.id, title: s.name, time_limit_minutes: s.minutes, lock_after_leave: false, question_ids: qs.map((q) => String(q.id)) })
   }

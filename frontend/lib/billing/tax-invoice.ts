@@ -67,7 +67,7 @@ let indexReady: Promise<void> | null = null
 function ensureIndexes(): Promise<void> {
   if (!indexReady) {
     indexReady = (async () => {
-      await (await profilesCol()).createIndex({ owner: 1 }, { unique: true, name: 'billing_profiles_owner_unique' })
+      await (await profilesCol()).createIndex({ owner: 1 }, { unique: true })
       await (await billingOrders()).createIndex(
         { invoice_number: 1 },
         { unique: true, name: 'billing_orders_invoice_number_unique', partialFilterExpression: { invoice_number: { $gt: '' } } },

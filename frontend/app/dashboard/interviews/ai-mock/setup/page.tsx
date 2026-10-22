@@ -90,7 +90,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
 export default function AiMockSetupPage() {
   const apiError = useApiError()
   const { formatDate } = useLocaleDates()
-  const { t } = useT()
+  const { t, fmt } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
 
@@ -627,7 +627,7 @@ export default function AiMockSetupPage() {
             <div className="rounded-xl bg-muted/50 p-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-medium text-muted-foreground">
-                  <ClipboardPaste className="inline h-3 w-3 mr-1" />{t('career.resumeTextLoaded')}<span className="tabular-nums">{resumeText.length.toLocaleString()}</span>{' '}{t('career.characters')}</p>
+                  <ClipboardPaste className="inline h-3 w-3 mr-1" />{t('career.resumeTextLoaded')}<span className="tabular-nums">{fmt.number(resumeText.length)}</span>{' '}{t('career.characters')}</p>
                 <button
                   type="button"
                   onClick={() => { setResumeText(''); setSelectedResumeId(null) }}

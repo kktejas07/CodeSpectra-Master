@@ -87,6 +87,16 @@ export const HOT_INDEXES: Record<string, Spec[]> = {
     { key: { phonepe_transaction_id: 1 }, options: { sparse: true } },
   ],
   cron_runs: [{ key: { id: 1 } }],
+  // Monetisation (lib/billing/*); the modules also create their unique indexes lazily.
+  billing_licences: [{ key: { id: 1 }, options: { unique: true } }, { key: { org_id: 1, status: 1 } }, { key: { email_domains: 1, status: 1 } }],
+  billing_licence_seats: [
+    { key: { licence_id: 1, email: 1 }, options: { unique: true, partialFilterExpression: { status: 'assigned' } } },
+    { key: { user_id: 1, status: 1 } },
+    { key: { email: 1, status: 1 } },
+  ],
+  billing_referral_rewards: [{ key: { referee_id: 1 }, options: { unique: true } }, { key: { status: 1, due_at: 1 } }],
+  billing_credits: [{ key: { kind: 1, ref: 1 }, options: { unique: true } }, { key: { user_id: 1, currency: 1 } }],
+  billing_profiles: [{ key: { owner: 1 }, options: { unique: true } }],
 }
 
 export async function ensureHotIndexes(db: Db, log: (msg: string) => void = () => {}): Promise<{ created: number; skipped: number }> {

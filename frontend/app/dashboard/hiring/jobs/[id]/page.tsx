@@ -107,6 +107,7 @@ function JobBoard({ id }: { id: string }) {
           <>
             <Button variant="outline" className="rounded-full" onClick={() => setTab('intake')}><UserPlus aria-hidden />{' '}{tr('hiring.addCandidates')}</Button>
             <Button variant="outline" asChild className="rounded-full"><Link href={`/dashboard/hiring/jobs/${id}/edit`}><Pencil aria-hidden />{' '}{tr('hiring.editJob')}</Link></Button>
+            <Button variant="outline" asChild className="rounded-full"><Link href={`/dashboard/hiring/jobs/${id}/matches`}><Search aria-hidden />{' '}{tr('hiring.jmBestMatches')}</Link></Button>
           </>
         )
       }

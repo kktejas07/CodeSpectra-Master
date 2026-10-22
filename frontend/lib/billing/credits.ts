@@ -15,8 +15,8 @@ async function col() {
   const c = (await getMongoDb()).collection<CreditRow>('billing_credits')
   if (!ready) {
     ready = Promise.all([
-      c.createIndex({ kind: 1, ref: 1 }, { unique: true, name: 'billing_credits_kind_ref_unique' }),
-      c.createIndex({ user_id: 1, currency: 1 }, { name: 'billing_credits_user_currency' }),
+      c.createIndex({ kind: 1, ref: 1 }, { unique: true }),
+      c.createIndex({ user_id: 1, currency: 1 }),
     ]).then(() => undefined).catch((e) => {
       ready = null
       console.error('[credits] index setup failed:', (e as Error)?.message)

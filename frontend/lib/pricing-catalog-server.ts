@@ -67,6 +67,21 @@ export async function getMergedPlanById(planId: string | BillingPlanId): Promise
 export type ClientPlanRow = ReturnType<typeof mergedPlanToClientJson> & {
   currency: string | null
   checkout_mode: PlanCheckoutMode
+  /** Charged price per currency + cycle, minor units (same resolver as checkout); null = not sold that way. */
+  prices: Record<'INR' | 'USD', { month: number | null; year: number | null }>
+}
+
+async function pricesFor(id: string, mode: PlanCheckoutMode): Promise<ClientPlanRow['prices']> {
+  const out = { INR: { month: null, year: null }, USD: { month: null, year: null } } as ClientPlanRow['prices']
+  if (mode !== 'checkout') return out
+  for (const cur of ['INR', 'USD'] as const) {
+    for (const interval of ['month', 'year'] as const) {
+      const r = await resolveBillingPlan(id, interval, cur).catch(() => null)
+      // Only a price actually in this currency (a plan without one falls back to its own currency).
+      out[cur][interval] = r && r.mode === 'checkout' && r.currency === cur && r.amount_paise > 0 ? r.amount_paise : null
+    }
+  }
+  return out
 }
 
 /**
@@ -91,6 +106,7 @@ export async function getClientPlans(opts: { strict?: boolean } = {}): Promise<C
         yearlyPrice: checkout_mode === 'checkout' && year ? year.amount_paise / 100 : checkout_mode === 'free' ? 0 : base.yearlyPrice,
         currency: month?.currency ?? null,
         checkout_mode,
+        prices: await pricesFor(id, checkout_mode),
       }
     }),
   )

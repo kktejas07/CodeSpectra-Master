@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDate } from '@/lib/i18n/format'
 import { useCallback, useEffect, useState } from 'react'
 import { Truck, CheckCircle2, XCircle, Loader2, PackageOpen, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,7 @@ import { Panel } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/lib/toast-context'
 import { api, Field, fmtDate, fmtDateTime, money, StatusBadge, TableWrap, td, th, withAs } from './shared'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 
 interface Line { id: string; title: string; kind: 'digital' | 'physical' | 'service'; qty: number; line_total: number; seller_earnings: number; fulfilment: { status: string; carrier?: string; tracking_no?: string; tracking_url?: string; booking?: { start: string; end: string; join_url?: string } | null } }
 interface OrderView { id: string; number: string; created_at: string; status: string; currency: string; lines: Line[]; my_total: number; my_earnings: number; buyer_email: string | null; shipping_address: { name: string; line1: string; line2?: string; city: string; state: string; postal_code: string; country: string; phone: string } | null }
@@ -152,7 +153,7 @@ export function SellerBookings({ asPlatform }: { asPlatform: boolean }) {
           <TableWrap>
             <thead><tr><th className={th}>{t('market.when')}</th><th className={th}>{t('market.status')}</th><th className={th}>{t('market.meeting')}</th></tr></thead>
             <tbody>{rows.map((b) => (
-              <tr key={b.id}><td className={`${td} tabular-nums`}>{fmtDateTime(b.start)} – {new Date(b.end).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</td><td className={td}><StatusBadge status={b.status} /></td>
+              <tr key={b.id}><td className={`${td} tabular-nums`}>{fmtDateTime(b.start)} – {formatDate(activeLocale(), b.end, { hour: 'numeric', minute: '2-digit' })}</td><td className={td}><StatusBadge status={b.status} /></td>
                 <td className={td}>{b.join_url ? <a className="text-primary underline-offset-2 hover:underline" href={b.join_url} target="_blank" rel="noreferrer">{t('market.join')}</a> : <span className="text-muted-foreground">—</span>}</td></tr>
             ))}</tbody>
           </TableWrap>

@@ -22,6 +22,14 @@ import {
 
 const FALLBACK_LANGS = ['python', 'javascript', 'java', 'cpp']
 
+/** lib/pwa/offline-queue validation messages (English) → catalog keys. */
+const BUILD_ERRORS: Record<string, Parameters<ClientI18n['t']>[0]> = {
+  'Pick a language': 'public.offlineErrLanguage',
+  'Write some code before submitting': 'public.offlineErrEmpty',
+  'Your code is over 50,000 characters': 'public.offlineErrTooLong',
+  'Too many answers waiting to sync. Go online to send them first.': 'public.offlineErrQueueFull',
+}
+
 /** Queue state in the interface language (lib/pwa/offline-queue queueStatusLabel is the English twin). */
 function statusText(t: ClientI18n['t'], i: Pick<QueuedSubmission, 'state' | 'result' | 'error'>): string {
   switch (i.state) {
@@ -227,7 +235,7 @@ function PackSolver({ pack, onBack, onQueued }: { pack: OfflinePack; onBack: () 
 
   const submit = async () => {
     const r = await enqueueSubmission(pack, language, code)
-    if (!r.ok) { setMessage({ kind: 'error', text: r.error }); return }
+    if (!r.ok) { setMessage({ kind: 'error', text: BUILD_ERRORS[r.error] ? t(BUILD_ERRORS[r.error]) : r.error }); return }
     setMessage({ kind: 'ok', text: navigator.onLine ? t('public.offlineSendingAnswer') : t('public.offlineSavedForLater') })
     onQueued()
   }

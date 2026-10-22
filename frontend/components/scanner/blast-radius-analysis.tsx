@@ -212,7 +212,7 @@ export function BlastRadiusAnalysis({
             <div key={comp.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
               <div>
                 <p className="text-sm font-medium text-foreground">{comp.name}</p>
-                <p className="text-xs text-muted-foreground">{t('tools.filesFilesNLoc2', { files: comp.files, n: comp.linesOfCode.toLocaleString() })}</p>
+                <p className="text-xs text-muted-foreground">{t('tools.filesFilesNLoc2', { files: comp.files, n: comp.linesOfCode })}</p>
               </div>
               <HealthBadge health={comp.health} />
             </div>

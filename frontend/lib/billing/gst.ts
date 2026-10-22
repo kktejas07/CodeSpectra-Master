@@ -2,12 +2,12 @@
  * India GST + invoice numbering rules (pure).
  *
  *  - Invoice numbers run sequentially per Indian financial year (1 Apr – 31 Mar):
- *    `<PREFIX>/<FY>/<seq 6 digits>`, e.g. CS/2026-27/000042 (≤16 chars for GSTR-1).
+ *    `<PREFIX>/<FY>/<seq 6 digits>`, e.g. CS/2627/000042 for FY 2026-27 (≤16 chars for GSTR-1).
  *  - Tax: 18 % on INR invoices. Place of supply = the buyer's state (from their
  *    GSTIN when given, else the state they chose); same state as the supplier →
  *    CGST 9 % + SGST 9 %, otherwise IGST 18 %. USD / overseas buyers: export of
  *    services, zero-rated (no GST charged; LUT reference shown when configured).
- *  - Prices are GST-inclusive by default (what the pricing page shows is what is paid).
+ *  - Prices are GST-inclusive (what the pricing page shows is what is paid).
  */
 
 /** GST state codes (first two digits of a GSTIN). */
@@ -33,9 +33,11 @@ export function financialYear(date: Date | string): string {
   return `${start}-${String((start + 1) % 100).padStart(2, '0')}`
 }
 
+/** GST allows at most 16 characters: `<prefix ≤4>/<YYyy>/<6 digits>`, e.g. CS/2627/000042 for FY 2026-27. */
 export function formatInvoiceNumber(prefix: string, fy: string, seq: number): string {
-  const p = (prefix || 'CS').replace(/[^A-Z0-9-]/gi, '').toUpperCase().slice(0, 4) || 'CS'
-  return `${p}/${fy}/${String(Math.max(1, Math.floor(seq))).padStart(6, '0')}`
+  const p = (prefix || 'CS').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 4) || 'CS'
+  const short = /^\d{4}-\d{2}$/.test(fy) ? `${fy.slice(2, 4)}${fy.slice(5, 7)}` : fy.replace(/\D/g, '').slice(-4)
+  return `${p}/${short}/${String(Math.max(1, Math.floor(seq))).padStart(6, '0')}`
 }
 
 const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/

@@ -108,6 +108,21 @@ export async function runPlatformCron(now: Date = new Date()): Promise<PlatformC
       const ended = await endLapsedGracePeriods()
       if (ended > 0) logger.info(`[billing] Ended ${ended} subscription(s) after the grace period`)
     }, daily)
+    // Monetisation (lib/billing/*): Razorpay cancels near renewal, paid-referral rewards, licence expiry.
+    await run('razorpay-cancel-sweep', day, async () => {
+      const { sweepRazorpayCancellations } = await import('./billing/razorpay-subscriptions')
+      const n = await sweepRazorpayCancellations(now)
+      if (n > 0) logger.info(`[billing] Cancelled ${n} Razorpay subscription(s) at period end`)
+    }, daily)
+    await run('referral-rewards', day, async () => {
+      const { processReferralRewards } = await import('./billing/referrals')
+      const r = await processReferralRewards(now)
+      if (r.granted || r.voided) logger.info(`[billing] Referral rewards: ${r.granted} granted, ${r.voided} void`)
+    }, daily)
+    await run('licence-expiry', day, async () => {
+      const { expireLicences } = await import('./billing/licences')
+      await expireLicences(now)
+    }, daily)
     await run('identity-media-purge', day, async () => {
       const { purgeExpiredIdentityMedia } = await import('./identity-media')
       await purgeExpiredIdentityMedia(now)

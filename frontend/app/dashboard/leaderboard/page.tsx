@@ -39,7 +39,7 @@ const periods = (t: Translator): { id: Period; label: string }[] => ([
 
 export default function LeaderboardPage() {
   const apiError = useApiError()
-  const { t } = useT()
+  const { t, fmt } = useT()
   const gate = usePageGuard('user')
   const { user } = useAuth()
   const { startTour, setTourSeen } = useTour()
@@ -268,7 +268,7 @@ export default function LeaderboardPage() {
                     </div>
 
                     <div className={cn("py-3 text-center font-bold tabular-nums flex items-center justify-center gap-2", bottomBar)}>
-                      <div className="bg-white/25 p-1 rounded-full">{rankIcon}</div>{t('compete.nPoints', { n: (ranker.xp || 0).toLocaleString() })}</div>
+                      <div className="bg-white/25 p-1 rounded-full">{rankIcon}</div>{t('compete.nPoints', { n: ranker.xp || 0 })}</div>
                   </Card>
                 )
               })}
@@ -289,7 +289,7 @@ export default function LeaderboardPage() {
                   {user?.email && <p className="text-sm text-white/75">{user.email}</p>}
                   <div className="flex items-center gap-4 mt-2">
                      <Badge variant="secondary" className="border border-white/30 bg-white/15 text-white font-semibold tabular-nums">
-                        <BarChart3 className="w-3 h-3 mr-1" />{t('compete.nPoints', { n: myPoints.toLocaleString() })}</Badge>
+                        <BarChart3 className="w-3 h-3 mr-1" />{t('compete.nPoints', { n: myPoints })}</Badge>
                   </div>
                 </div>
               </div>
@@ -354,7 +354,7 @@ export default function LeaderboardPage() {
                             </td>
                              <td className="px-6 py-4 text-right">
                                <span className="font-bold text-primary text-lg tabular-nums">
-                                 {(u.xp || 0).toLocaleString()}
+                                 {fmt.number(u.xp || 0)}
                                </span>
                             </td>
                           </tr>

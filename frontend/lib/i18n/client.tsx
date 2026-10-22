@@ -55,6 +55,15 @@ function useI18nValue(): I18nValue {
   return ctx ?? global
 }
 
+/**
+ * The active interface language outside React (module-level formatters for
+ * data fetched on the client). Not for values rendered during SSR / the
+ * first client render — the provider publishes after mount; use useT().fmt there.
+ */
+export function activeLocale(): Locale {
+  return published.locale
+}
+
 export function useLocale(): Locale {
   return useI18nValue().locale
 }

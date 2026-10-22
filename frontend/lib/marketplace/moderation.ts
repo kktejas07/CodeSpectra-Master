@@ -54,8 +54,13 @@ export async function decideProduct(actorId: string, id: string, d: ProductDecis
   const seller = await getSellerById(p.seller_id)
   if (seller) {
     const { notifySeller } = await import('./seller-notify')
-    if (d === 'approve') await notifySeller(seller, 'mkt.product_approved', 'Product approved', `"${p.title.slice(0, 80)}" is now live in the store.`, '/dashboard/seller?tab=products')
-    else await notifySeller(seller, 'mkt.product_rejected', d === 'unpublish' ? 'Product unpublished' : 'Product needs changes', `"${p.title.slice(0, 80)}": ${reason}`, `/dashboard/seller?tab=products&edit=${p.id}`)
+    if (d === 'approve') {
+      await notifySeller(seller, 'mkt.product_approved', 'Product approved', `"${p.title.slice(0, 80)}" is now live in the store.`, '/dashboard/seller?tab=products',
+        { title: { key: 'mkt.seller.productApproved.title' }, message: { key: 'mkt.seller.productApproved.message', params: { title: p.title.slice(0, 80) } } })
+    } else {
+      await notifySeller(seller, 'mkt.product_rejected', d === 'unpublish' ? 'Product unpublished' : 'Product needs changes', `"${p.title.slice(0, 80)}": ${reason}`, `/dashboard/seller?tab=products&edit=${p.id}`,
+        { title: { key: d === 'unpublish' ? 'mkt.seller.productUnpublished.title' : 'mkt.seller.productRejected.title' }, message: { key: 'mkt.seller.productRejected.message', params: { title: p.title.slice(0, 80), reason } } })
+    }
   }
   return { ...p, status: to, review_note: reason }
 }
@@ -135,7 +140,8 @@ export async function decideRefund(actorId: string, id: string, decision: 'appro
   const seller = await getSellerById(r.seller_id)
   if (seller) {
     const { notifySeller } = await import('./seller-notify')
-    await notifySeller(seller, 'mkt.refund_processed', `Refund on order ${order.number}`, 'A refund was approved on your order; your balance has been adjusted.', '/dashboard/seller?tab=returns')
+    await notifySeller(seller, 'mkt.refund_processed', `Refund on order ${order.number}`, 'A refund was approved on your order; your balance has been adjusted.', '/dashboard/seller?tab=returns',
+      { title: { key: 'mkt.seller.refund.title', params: { number: order.number } }, message: { key: 'mkt.seller.refund.message' } })
   }
   return { ...r, status: 'refunded', amount, note, via }
 }

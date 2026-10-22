@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDate } from '@/lib/i18n/format'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
@@ -13,7 +14,7 @@ import { AppBanner, Illustration, bannerBtnPrimary, bannerBtnSecondary } from '@
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 import { Scene } from '@/components/illustrations/scenes'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 
 export default function CertificationsPage() {
   const { t } = useT()
@@ -292,7 +293,7 @@ function MyCertificates() {
                     {c.score_label && <Badge variant="outline">{c.score_label}</Badge>}
                   </div>
                   {c.issued_at && (
-                    <p className="text-xs text-muted-foreground">{t('learning.issued')}{' '}{new Date(c.issued_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    <p className="text-xs text-muted-foreground">{t('learning.issued')}{' '}{formatDate(activeLocale(), c.issued_at, { year: 'numeric', month: 'short', day: 'numeric' })}
                     </p>
                   )}
                   <div className="mt-auto">

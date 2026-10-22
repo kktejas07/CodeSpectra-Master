@@ -26,7 +26,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     const { role } = await loadForStaff(user, id)
     if (role !== 'owner') throw new LiveDriveError('Only the drive organisers can do this.', 403, 'ld_owner_only')
     const t = await loadTarget('drive', id)
-    if (!t) throw new LiveDriveError('Drive not found', 404, 'ld_not_found')
+    if (!t) throw new LiveDriveError('Live drive not found', 404, 'ld_not_found')
     const raw = (await body(req)) as Record<string, unknown> | null
     // Similarity / AI-written reports need an answer export drives don't have: keep them off.
     const r = await saveSettings({ id: user.id, role: user.role, tenantId: user.tenantId ?? null }, t, { ...(raw ?? {}), similarity: { enabled: false }, ai_signals: { enabled: false } })

@@ -22,9 +22,9 @@ async function col() {
   const c = (await getMongoDb()).collection<RewardRow>('billing_referral_rewards')
   if (!ready) {
     ready = Promise.all([
-      c.createIndex({ referee_id: 1 }, { unique: true, name: 'billing_referral_rewards_referee_unique' }),
-      c.createIndex({ status: 1, due_at: 1 }, { name: 'billing_referral_rewards_due' }),
-      c.createIndex({ referrer_id: 1, status: 1 }, { name: 'billing_referral_rewards_referrer' }),
+      c.createIndex({ referee_id: 1 }, { unique: true }),
+      c.createIndex({ status: 1, due_at: 1 }),
+      c.createIndex({ referrer_id: 1, status: 1 }),
     ]).then(() => undefined).catch((e) => {
       ready = null
       console.error('[referrals] index setup failed:', (e as Error)?.message)

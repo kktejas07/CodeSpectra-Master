@@ -22,7 +22,12 @@ export type PublicPlan = {
   popular?: boolean
   currency?: string | null
   checkout_mode?: PlanCheckoutMode
+  /** Charged price per currency + cycle in minor units (null = not sold that way). */
+  prices?: Record<'INR' | 'USD', { month: number | null; year: number | null }>
 }
+
+type Cur = 'INR' | 'USD'
+const hasCur = (p: PublicPlan, c: Cur) => !!(p.prices?.[c]?.month || p.prices?.[c]?.year)
 
 /**
  * Interactive pricing (billing-period toggle, checkout links). The server page
@@ -32,13 +37,17 @@ export type PublicPlan = {
  * Plan names, descriptions and features are admin-entered and stay as written.
  */
 export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan[] | null; faqs: { q: string; a: string }[] }) {
-  const { t, rich } = useT()
+  const { t, rich, locale } = useT()
   const apiError = useApiError()
   const lp = useLocalizedHref()
   const [annual, setAnnual] = useState(false)
   const [plans, setPlans] = useState<PublicPlan[] | null>(initialPlans)
   const [loadError, setLoadError] = useState<string | null>(null)
   const { symbol: platformSymbol } = useCurrency()
+  // INR / USD toggle when paid plans are priced in both (India → INR by default for hi / te).
+  const curOptions = useMemo<Cur[]>(() => (['INR', 'USD'] as Cur[]).filter((c) => plans?.some((p) => hasCur(p, c))), [plans])
+  const [cur, setCur] = useState<Cur | null>(null)
+  const activeCur: Cur | null = cur && curOptions.includes(cur) ? cur : curOptions.includes(locale === 'en' ? 'USD' : 'INR') ? (locale === 'en' ? 'USD' : 'INR') : curOptions[0] ?? null
 
   useEffect(() => {
     if (initialPlans) return
@@ -97,6 +106,22 @@ export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan
       />
       <div className="mx-auto max-w-[1200px] space-y-20 px-4 py-16 sm:px-6 lg:px-8">
 
+        {curOptions.length > 1 ? (
+          <div role="group" aria-label={t('publicPages.pricingCurrency')} className="mx-auto -mb-14 flex w-fit items-center gap-1 rounded-full border border-cs-grid bg-cs-sheet p-1">
+            {curOptions.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCur(c)}
+                aria-pressed={activeCur === c}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cs-accent ${activeCur === c ? 'bg-cs-accent text-cs-accent-ink' : 'text-cs-ink-soft hover:text-cs-ink'}`}
+              >
+                {c === 'INR' ? t('publicPages.pricingInr') : t('publicPages.pricingUsd')}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <div role="group" aria-label={t('publicPages.billingPeriod')} className="mx-auto flex w-fit items-center gap-1 rounded-full border border-cs-grid bg-cs-sheet p-1">
           <button
             type="button"
@@ -128,10 +153,11 @@ export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan
             // Same classification checkout uses: enterprise / custom → contact sales.
             // Server mode (same resolver as checkout) first; local classification as fallback.
             const mode = plan.checkout_mode ?? planCheckoutMode({ id: plan.id, price: plan.price, yearlyPrice: plan.yearlyPrice })
-            const symbol = plan.currency ? getCurrencySymbol(plan.currency) : platformSymbol
+            const inCur = activeCur && mode === 'checkout' && hasCur(plan, activeCur) ? plan.prices![activeCur] : null
+            const symbol = inCur ? getCurrencySymbol(activeCur!) : plan.currency ? getCurrencySymbol(plan.currency) : platformSymbol
             const isCustom = mode === 'contact_sales'
-            const monthlyDisplay = plan.price
-            const yearlyDisplay = plan.yearlyPrice
+            const monthlyDisplay = inCur?.month != null ? inCur.month / 100 : plan.price
+            const yearlyDisplay = inCur?.year != null ? inCur.year / 100 : plan.yearlyPrice
             const perMonthIfAnnual = yearlyDisplay > 0 ? yearlyDisplay / 12 : 0
 
             return (
@@ -204,7 +230,10 @@ export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan
                           : `/auth/signup?${new URLSearchParams({
                               plan: plan.id,
                               ...(annual ? { interval: 'year' } : {}),
-                              redirect: inAppPricingHref(plan.id, annual ? 'year' : 'month'),
+                              // After signup: the checkout page for this plan, cycle and currency.
+                              redirect: inCur
+                                ? `/dashboard/checkout?${new URLSearchParams({ plan: plan.id, interval: annual ? 'year' : 'month', currency: activeCur! }).toString()}`
+                                : inAppPricingHref(plan.id, annual ? 'year' : 'month'),
                             }).toString()}`
                     }
                   >
@@ -216,6 +245,10 @@ export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan
             )
           })}
         </div>
+
+        {activeCur === 'INR' ? (
+          <p className="-mt-12 text-center text-sm text-cs-ink-soft">{t('publicPages.pricingInclGst')}</p>
+        ) : null}
 
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">

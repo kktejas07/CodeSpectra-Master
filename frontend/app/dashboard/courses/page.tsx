@@ -444,7 +444,7 @@ function LearningPageInner() {
                           <Users className="h-3.5 w-3.5" />
                           {course.enrolled != null
                             ? course.enrolled > 0
-                              ? tr('learning.nEnrolled', { n: course.enrolled.toLocaleString() })
+                              ? tr('learning.nEnrolled', { n: course.enrolled })
                               : tr('learning.beTheFirstToEnroll')
                             : '—'}
                         </div>

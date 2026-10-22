@@ -1,5 +1,6 @@
 'use client'
 
+import { formatNumber } from '@/lib/i18n/format'
 import { useEffect, useState } from 'react'
 import { Activity, CheckCircle2, Clock, Sparkles, Target, TrendingUp, Users, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -8,7 +9,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 
 interface SkillData {
   user?: { email?: string; id?: string } | null
@@ -150,7 +151,7 @@ export default function SkillAnalyticsPage() {
     {
       icon: TrendingUp,
       label: t('dash.avgScore'),
-      value: typeof data.totals.avg_score === 'number' ? data.totals.avg_score.toLocaleString() : '—',
+      value: typeof data.totals.avg_score === 'number' ? formatNumber(activeLocale(), data.totals.avg_score) : '—',
       hint: t('dash.acrossSubmissions'),
       testid: 'kpi-avg-score',
     },

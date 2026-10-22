@@ -44,7 +44,7 @@ export function ArchitectureVisualization({
   onEditComponent,
   onDeleteComponent,
 }: ArchitectureVisualizationProps) {
-  const { td, t } = useT()
+  const { td, t, fmt } = useT()
   const [viewMode, setViewMode] = useState<ViewMode>('circular')
   const [zoom, setZoom] = useState(100)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -310,7 +310,7 @@ export function ArchitectureVisualization({
                           <span className="text-2xl">{getComponentIcon(comp.type)}</span>
                           <div className="flex-1">
                             <h3 className="font-semibold text-foreground">{comp.name}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">{t('tools.filesFilesNLoc', { files: comp.files, n: comp.linesOfCode.toLocaleString() })}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('tools.filesFilesNLoc', { files: comp.files, n: comp.linesOfCode })}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -388,7 +388,7 @@ export function ArchitectureVisualization({
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">
-                {components.reduce((sum, c) => sum + c.linesOfCode, 0).toLocaleString()}
+                {fmt.number(components.reduce((sum, c) => sum + c.linesOfCode, 0))}
               </p>
               <p className="text-xs text-muted-foreground">{t('tools.totalLoc')}</p>
             </div>

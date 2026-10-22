@@ -5,6 +5,7 @@
  * link), code-review attachment, reschedule (learner, within the mentor's policy) and dispute.
  * Cancel / refund / review stay on the marketplace order page.
  */
+import { formatDate } from '@/lib/i18n/format'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -20,9 +21,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/components/marketplace/seller/shared'
 import { LiveRoom } from '@/app/interview/_components/live-room'
 import type { SessionView } from '@/lib/mentors/sessions'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 
-const fmt = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })
+const fmt = (iso: string) => formatDate(activeLocale(), iso, { dateStyle: 'full', timeStyle: 'short' })
 
 export default function SessionPage() {
   const { t } = useT()
@@ -97,7 +98,7 @@ function Attachment({ s, onChange }: { s: SessionView; onChange: (v: SessionView
             <Label htmlFor="att-sub">{t('career.oneOfYourSubmissions')}</Label>
             <select id="att-sub" className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" value={pick} onChange={(e) => setPick(e.target.value)}>
               <option value="">{subs === null ? t('common.loading') : subs.length ? t('career.chooseASubmission') : t('career.noSubmissionsYet')}</option>
-              {(subs || []).map((x) => <option key={x.id} value={x.id}>{x.title} · {x.language} · {new Date(x.created_at).toLocaleDateString()}</option>)}
+              {(subs || []).map((x) => <option key={x.id} value={x.id}>{x.title} · {x.language} · {formatDate(activeLocale(), x.created_at)}</option>)}
             </select>
             <Button size="sm" className="rounded-full" disabled={!pick || busy} onClick={() => attach({ submission_id: pick })}>{t('career.attachSubmission')}</Button>
           </div>
@@ -124,7 +125,7 @@ function Reschedule({ s, onChange }: { s: SessionView; onChange: (v: SessionView
   useEffect(() => { if (open) api<{ slots: string[] }>(`/api/mentors/sessions/${s.id}/slots`).then((r) => setSlots(r.slots)).catch(() => setSlots([])) }, [open, s.id])
   const byDay = useMemo(() => {
     const m = new Map<string, string[]>()
-    for (const t of slots || []) { const k = new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }); m.set(k, [...(m.get(k) || []), t]) }
+    for (const t of slots || []) { const k = formatDate(activeLocale(), t, { weekday: 'short', day: 'numeric', month: 'short' }); m.set(k, [...(m.get(k) || []), t]) }
     return [...m.entries()]
   }, [slots])
   if (left <= 0 || Date.now() > cutoff) return <Panel className="p-5 text-sm text-muted-foreground sm:p-6">{tr('career.reschedulingIsClosedForThisSession')}{s.policy.max_reschedules === 0 ? tr('career.thisMentorDoesNotAllowIt') : left <= 0 ? tr('career.alreadyRescheduled') : tr('career.allowedUpToRescheduleHoursHourse6f', { reschedule_hours: s.policy.reschedule_hours })}{tr('career.youCanStillCancelFromYour416')}</Panel>
@@ -136,7 +137,7 @@ function Reschedule({ s, onChange }: { s: SessionView; onChange: (v: SessionView
         <div className="space-y-3">
           {byDay.map(([day, ts]) => (
             <fieldset key={day}><legend className="mb-1 text-sm font-medium text-foreground">{day}</legend>
-              <div className="flex flex-wrap gap-2">{ts.map((t) => <button key={t} type="button" aria-pressed={pick === t} onClick={() => setPick(t)} className={`min-h-[40px] rounded-full border px-3 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pick === t ? 'border-primary bg-primary/10 font-semibold text-primary' : 'border-border text-foreground'}`}>{new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</button>)}</div>
+              <div className="flex flex-wrap gap-2">{ts.map((t) => <button key={t} type="button" aria-pressed={pick === t} onClick={() => setPick(t)} className={`min-h-[40px] rounded-full border px-3 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${pick === t ? 'border-primary bg-primary/10 font-semibold text-primary' : 'border-border text-foreground'}`}>{formatDate(activeLocale(), t, { hour: '2-digit', minute: '2-digit' })}</button>)}</div>
             </fieldset>
           ))}
           <Button className="min-h-[44px] rounded-full" disabled={!pick || busy} onClick={async () => {

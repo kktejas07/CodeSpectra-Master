@@ -43,6 +43,9 @@ interface Coupon {
   applies_to?: 'all' | 'plans' | 'marketplace'
   marketplace_funding?: 'platform_items_only' | 'platform_funded'
   seller_id?: string | null
+  per_user_limit?: number
+  plan_ids?: string[]
+  first_purchase_only?: boolean
 }
 
 export default function CouponsAdminPage() {
@@ -63,6 +66,9 @@ export default function CouponsAdminPage() {
   const [value, setValue] = useState('')
   const [trialDays, setTrialDays] = useState('')
   const [maxUses, setMaxUses] = useState('')
+  const [perUser, setPerUser] = useState('1')
+  const [planIds, setPlanIds] = useState('')
+  const [firstOnly, setFirstOnly] = useState(false)
   const [validUntil, setValidUntil] = useState('')
   const [currency, setCurrency] = useState('USD')
   const CURRENCY_MAP: Record<string, string> = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
@@ -75,6 +81,7 @@ export default function CouponsAdminPage() {
   const openCreate = () => {
     setEditCoupon(null)
     setCode(''); setType('percentage'); setValue(''); setTrialDays(''); setMaxUses(''); setValidUntil('')
+    setPerUser('1'); setPlanIds(''); setFirstOnly(false)
     setCouponCurrency(currency === 'USD' ? 'USD' : 'INR'); setAppliesTo('all'); setFunding('platform_items_only')
     setCreateOpen(true)
   }
@@ -85,6 +92,7 @@ export default function CouponsAdminPage() {
     setValue(c.discount_value ? String(c.discount_value) : '')
     setTrialDays(c.trial_duration_days ? String(c.trial_duration_days) : '')
     setMaxUses(c.max_uses ? String(c.max_uses) : '')
+    setPerUser(String(c.per_user_limit || 1)); setPlanIds((c.plan_ids || []).join(', ')); setFirstOnly(c.first_purchase_only === true)
     setValidUntil(c.valid_until ? c.valid_until.slice(0, 16) : '')
     setCouponCurrency(c.currency === 'USD' ? 'USD' : 'INR')
     setAppliesTo(c.applies_to ?? 'all')
@@ -153,6 +161,9 @@ export default function CouponsAdminPage() {
           code: code.trim().toUpperCase(), discount_type: type,
           discount_value: type === 'trial' ? 100 : Number(value),
           max_uses: maxUses ? Number(maxUses) : 0,
+          per_user_limit: Number(perUser) || 1,
+          plan_ids: planIds.split(/[\s,]+/).map((x) => x.trim().toLowerCase()).filter(Boolean),
+          first_purchase_only: firstOnly,
           valid_until: validUntil || undefined,
           trial_duration_days: type === 'trial' ? Number(trialDays) : undefined,
           currency: type === 'flat' ? couponCurrency : undefined,
@@ -318,6 +329,21 @@ export default function CouponsAdminPage() {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="uses" className="text-right">Max uses</Label>
               <Input id="uses" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="col-span-3" placeholder="Unlimited" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="per-user" className="text-right">Uses per person</Label>
+              <Input id="per-user" type="number" min={1} max={1000} value={perUser} onChange={e => setPerUser(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="plan-ids" className="text-right">Only for plans</Label>
+              <Input id="plan-ids" value={planIds} onChange={e => setPlanIds(e.target.value)} className="col-span-3" placeholder="Any plan (or e.g. pro)" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="first-only" className="text-right">First purchase only</Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <input id="first-only" type="checkbox" checked={firstOnly} onChange={e => setFirstOnly(e.target.checked)} className="h-4 w-4 accent-primary" />
+                <span className="text-sm text-muted-foreground">Only buyers who have never paid before</span>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="expiry" className="text-right">Expiry</Label>

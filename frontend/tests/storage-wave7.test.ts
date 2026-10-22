@@ -329,7 +329,7 @@ describe('direct uploads', () => {
       const id = await startBig()
       await finish(id)
       await vi.waitFor(async () => expect((await h.db.collection('storage_uploads').findOne({ id }))!.status).toBe('rejected'))
-      expect(await finish(id)).toMatchObject({ ok: false, status: 400, code: 'upload_infected' })
+      expect(await finish(id)).toMatchObject({ ok: false, status: 400, code: 'scanner_rejected' })
     })
 
     it('scanner offline: stays pending even in soft mode, unless the admin allowed unscanned files for the feature', async () => {

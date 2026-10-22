@@ -36,7 +36,10 @@ const MAX_LOCAL_ENTRIES = 500
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-/** Pure: Redis settings from env, or null when the shared cache is off. */
+/**
+ * Pure: Redis settings from env, or null when the shared cache is off.
+ * @param {Record<string, string | undefined>} [env]
+ */
 export function redisCacheConfig(env = process.env) {
   const direct = String(env.CACHE_REDIS_URL || env.REDIS_URL || '').trim()
   const upstash = String(env.UPSTASH_REDIS_REST_URL || '').trim()

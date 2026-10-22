@@ -87,16 +87,19 @@ export async function LeaguesView({ searchParams, locale }: { searchParams: Leag
             </div>
             <div className="cs-stagger grid gap-5 lg:grid-cols-3">
               <LeagueBoard
+                locale={locale}
                 title={t('hubs.leaguesColleges')} caption={t('hubs.leaguesCollegesCaption')}
                 rows={b.colleges.slice(0, 25).map((c) => ({ rank: c.rank, name: c.name, points: c.points, href: c.slug ? `/leagues/colleges/${encodeURIComponent(c.slug)}` : null, sub: t('hubs.leaguesScoringStudents', { count: c.scoring_students }) }))}
                 empty={t('hubs.leaguesCollegesEmpty')}
               />
               <LeagueBoard
+                locale={locale}
                 title={t('hubs.leaguesTeams')} caption={t('hubs.leaguesTeamsCaption')}
                 rows={b.teams.slice(0, 25).map((x) => ({ rank: x.rank, name: x.name, points: x.points, sub: [x.college, t('hubs.leaguesMembers', { count: x.members })].filter(Boolean).join(' · ') }))}
                 empty={t('hubs.leaguesTeamsEmpty')}
               />
               <LeagueBoard
+                locale={locale}
                 title={t('hubs.leaguesIndividuals')}
                 rows={b.individuals.slice(0, 25).map((r) => ({ rank: r.rank, name: r.name, points: r.points, sub: r.college }))}
                 empty={t('hubs.leaguesIndividualsEmpty')}
