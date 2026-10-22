@@ -9,6 +9,10 @@
  *   - waits for the end of the user's quiet hours unless urgent,
  *   - can be made idempotent with `onceKey` (automation_sends ledger).
  * Delivery itself goes through sendEmail (suppression list + retry outbox).
+ * Language: the recipient's saved interface language (lib/i18n/recipient).
+ * The footer is always localized; the content is when the sender passes
+ * catalog keys in `i18n` (email namespace, `auto.*`) — English keeps the
+ * sender's own text.
  */
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { Db } from 'mongodb'
@@ -17,6 +21,8 @@ import { getAppOrigin } from '@/lib/app-origin'
 import { escapeHtmlText } from './interpolate'
 import { claimOnce, col, nowIso, releaseClaim } from './store'
 import { normalizeEmail } from './outbox'
+import { outboundT, renderOutbound, type OutboundText } from '@/lib/i18n/outbound'
+import type { Locale } from '@/lib/i18n/config'
 
 export type MailCategory = 'transactional' | 'engagement' | 'billing' | 'security' | 'hiring' | 'assessment' | 'events'
 
@@ -135,14 +141,15 @@ export interface MailContent {
   preheader?: string
 }
 
-export function renderAutomationEmail(content: MailContent, footer: { unsubscribeUrl: string | null; manageUrl: string; category: MailCategory }): string {
+export function renderAutomationEmail(content: MailContent, footer: { unsubscribeUrl: string | null; manageUrl: string; category: MailCategory }, locale: Locale = 'en'): string {
+  const t = outboundT('email', locale)
   const body = content.bodyHtml ?? textToParagraphs(content.bodyText || '')
   const href = content.cta ? safeHref(content.cta.url) : null
   const button = href && content.cta
-    ? `<p style="margin:8px 0 4px"><a href="${escapeHtmlText(href)}" style="display:inline-block;background:#2F5BE7;color:#ffffff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:600">${escapeHtmlText(content.cta.label || 'Open')}</a></p>`
+    ? `<p style="margin:8px 0 4px"><a href="${escapeHtmlText(href)}" style="display:inline-block;background:#2F5BE7;color:#ffffff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:600">${escapeHtmlText(content.cta.label || t('auto.open'))}</a></p>`
     : ''
   const pre = content.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtmlText(content.preheader)}</div>` : ''
-  const reason = content.reason || `You got this email because of your CodeSpectra account.`
+  const reason = content.reason || t('auto.reasonDefault')
   return `<!doctype html><html><body style="margin:0;background:#f3f5fb">${pre}
 <div style="padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f1729">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e3e7f1;border-radius:16px;overflow:hidden">
@@ -154,8 +161,8 @@ export function renderAutomationEmail(content: MailContent, footer: { unsubscrib
     </td></tr>
     <tr><td style="padding:18px 28px;border-top:1px solid #e3e7f1;font-size:12px;line-height:1.6;color:#4b5563">
       ${escapeHtmlText(reason)}<br/>
-      <a href="${escapeHtmlText(footer.manageUrl)}" style="color:#2F5BE7">Manage email preferences</a>${footer.unsubscribeUrl ? ` ·
-      <a href="${escapeHtmlText(footer.unsubscribeUrl)}" style="color:#2F5BE7">${CRITICAL.has(footer.category) ? 'Unsubscribe from other automated email' : `Unsubscribe from ${escapeHtmlText(CATEGORY_LABEL[footer.category])}`}</a>` : ''}
+      <a href="${escapeHtmlText(footer.manageUrl)}" style="color:#2F5BE7">${escapeHtmlText(t('auto.manage'))}</a>${footer.unsubscribeUrl ? ` ·
+      <a href="${escapeHtmlText(footer.unsubscribeUrl)}" style="color:#2F5BE7">${escapeHtmlText(CRITICAL.has(footer.category) ? t('auto.unsubscribeOther') : t('auto.unsubscribeFrom', { category: locale === 'en' ? CATEGORY_LABEL[footer.category] : t(`auto.category.${footer.category}`) }))}</a>` : ''}
     </td></tr>
   </table>
 </div></body></html>`
@@ -183,6 +190,33 @@ export interface AutomationMail extends MailContent {
   dedupe?: { kind: DedupeKind; ref: string } | null
   /** From display name, e.g. "Acme via CodeSpectra" (organisation workflows). */
   fromName?: string
+  /** Catalog keys (email namespace) for non-English recipients; English uses the text above. */
+  i18n?: MailI18n
+}
+
+export interface MailI18n {
+  subject: OutboundText
+  heading: OutboundText
+  body?: OutboundText | OutboundText[]
+  cta?: OutboundText
+  reason?: OutboundText
+  preheader?: OutboundText
+}
+
+/** Pure: the mail's text in `locale` (keys when given and not English, else the sender's text). Body parts join with a blank line. */
+export function localizeMail<T extends Pick<AutomationMail, 'subject' | 'heading' | 'bodyText' | 'cta' | 'reason' | 'preheader' | 'i18n'>>(mail: T, locale: Locale): T {
+  const k = mail.i18n
+  if (!k || locale === 'en') return mail
+  const r = (x: OutboundText) => renderOutbound('email', locale, x)
+  return {
+    ...mail,
+    subject: r(k.subject),
+    heading: r(k.heading),
+    ...(k.body ? { bodyText: (Array.isArray(k.body) ? k.body : [k.body]).map(r).join('\n\n'), bodyHtml: undefined } : {}),
+    ...(k.cta && mail.cta ? { cta: { ...mail.cta, label: r(k.cta) } } : {}),
+    ...(k.reason ? { reason: r(k.reason) } : {}),
+    ...(k.preheader ? { preheader: r(k.preheader) } : {}),
+  }
 }
 
 /** Messages that both a built-in automation and a template can send. */
@@ -229,12 +263,15 @@ export async function sendAutomationEmail(mail: AutomationMail): Promise<MailOut
   }
 
   const unsubScope = CRITICAL.has(mail.category) ? 'engagement' : mail.category
-  const html = renderAutomationEmail(mail, {
+  const { localeForRecipient } = await import('@/lib/i18n/recipient')
+  const locale = await localeForRecipient({ userId, email: to }).catch(() => 'en' as Locale)
+  const text = localizeMail(mail, locale)
+  const html = renderAutomationEmail(text, {
     unsubscribeUrl: unsubscribeUrl(to, unsubScope),
     manageUrl: `${getAppOrigin()}/dashboard/notifications/preferences`,
     category: mail.category,
-  })
-  const subject = mail.subject.replace(/[\r\n]+/g, ' ').slice(0, 200)
+  }, locale)
+  const subject = text.subject.replace(/[\r\n]+/g, ' ').slice(0, 200)
   const headers = listUnsubscribeHeaders(to, mail.category)
   const fromName = mail.fromName
 

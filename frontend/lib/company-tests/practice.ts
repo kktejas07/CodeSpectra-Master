@@ -87,7 +87,7 @@ export class PracticeError extends Error {
 const MAX_CASES = 5
 const MAX_ANSWER = 20_000
 
-function snapshot(b: BankQuestionDoc): SnapshotQuestion {
+export function snapshot(b: BankQuestionDoc): SnapshotQuestion {
   const cases = sanitizeTestCases(b.test_cases).slice(0, MAX_CASES).map((c) => ({ input: c.input, output: c.output }))
   return {
     id: b.id, type: b.type, title: b.title, prompt: b.question, difficulty: b.difficulty, marks: practiceMarks(b.type),
@@ -108,7 +108,7 @@ function snapshot(b: BankQuestionDoc): SnapshotQuestion {
 }
 
 /** What the learner may see of a question while the attempt runs. */
-function publicQuestion(q: SnapshotQuestion): Omit<SnapshotQuestion, 'answer' | 'explanation' | 'tolerance' | 'test_cases'> {
+export function publicQuestion(q: SnapshotQuestion): Omit<SnapshotQuestion, 'answer' | 'explanation' | 'tolerance' | 'test_cases'> {
   const { answer: _a, explanation: _e, tolerance: _t, test_cases: _c, ...rest } = q
   // `pairs` IS the answer key: keep lefts in order, hand out the rights sorted
   // (same rule as lib/exam-access.ts candidateQuestion).
@@ -156,7 +156,7 @@ export async function startAttempt(userId: string, patternId: string, level: Pra
   return doc
 }
 
-async function codeRatios(section: AttemptSection): Promise<Record<string, number>> {
+export async function codeRatios(section: Pick<AttemptSection, 'late' | 'questions' | 'answers'>): Promise<Record<string, number>> {
   const out: Record<string, number> = {}
   if (section.late) return out
   for (const q of section.questions) {

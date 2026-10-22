@@ -334,7 +334,7 @@ export async function clusterCode(t: Target, questionId: string, submissionIds: 
 // ─── Scheduler sweep ─────────────────────────────────────────────────────────
 
 /** Has the test / contest ended (+10 min for late submits)? */
-export function targetEnded(kind: 'exam' | 'contest', doc: Doc, now: number): boolean {
+export function targetEnded(kind: 'exam' | 'contest' | 'drive', doc: Doc, now: number): boolean {
   const end = kind === 'exam' ? Date.parse(String(doc.ends_at || '')) : Date.parse(String(doc.schedule?.ends_at || ''))
   return Number.isFinite(end) && end + 10 * 60_000 < now
 }
@@ -346,7 +346,8 @@ export function targetEnded(kind: 'exam' | 'contest', doc: Doc, now: number): bo
 export async function runIntegritySweep(now: Date = new Date()): Promise<{ purged: number; reports: number }> {
   const purged = await purgeExpiredSnapshots(now).catch((e) => { logger.error('[integrity] purge failed', (e as Error).message); return 0 })
   const pending = await (await settingsCol()).find(
-    { auto_report_done: { $ne: true }, $or: [{ 'similarity.enabled': true }, { 'ai_signals.enabled': true }] } as Record<string, unknown>,
+    // Live drives (kind 'drive') have no answer export for similarity reports.
+    { auto_report_done: { $ne: true }, target_kind: { $in: ['exam', 'contest'] }, $or: [{ 'similarity.enabled': true }, { 'ai_signals.enabled': true }] } as Record<string, unknown>,
     { projection: { _id: 0, target_kind: 1, target_id: 1 } },
   ).sort({ updated_at: 1 }).limit(100).toArray()
   let reports = 0

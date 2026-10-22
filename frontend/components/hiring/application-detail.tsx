@@ -5,6 +5,7 @@
  * panels (assessment, bot screen calls, interviews), timeline and actions.
  * Used by the board drawer and /dashboard/hiring/candidates/[id].
  */
+import { formatNumber } from '@/lib/i18n/format'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
@@ -28,7 +29,7 @@ import { MatchScore, Segmented } from './ui'
 import { CompensationCard, HrRoundPanel } from './hr-round'
 import { BgvPanel } from '@/components/hiring/bgv'
 import { canSeeCompensation } from '@/lib/ats/compensation'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 
 type Tab = 'overview' | 'stages' | 'timeline' | 'resume'
 
@@ -307,8 +308,8 @@ function ResumePanel({ detail }: { detail: ApplicationDetail }) {
           {p.summary && <div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">{t('hiring.summary')}</dt><dd className="text-foreground">{p.summary}</dd></div>}
           <div><dt className="text-xs text-muted-foreground">{t('hiring.experience')}</dt><dd className="tabular-nums text-foreground">{p.total_years != null ? t('hiring.totalYearsYears', { total_years: p.total_years }) : '—'}</dd></div>
           <div><dt className="text-xs text-muted-foreground">{t('hiring.noticePeriod')}</dt><dd className="tabular-nums text-foreground">{p.notice_days != null ? t('hiring.noticeDaysDays', { notice_days: p.notice_days }) : '—'}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">{t('hiring.currentSalary')}</dt><dd className="tabular-nums text-foreground">{p.current_salary?.toLocaleString() ?? '—'}</dd></div>
-          <div><dt className="text-xs text-muted-foreground">{t('hiring.expectedSalary')}</dt><dd className="tabular-nums text-foreground">{p.expected_salary?.toLocaleString() ?? '—'}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{t('hiring.currentSalary')}</dt><dd className="tabular-nums text-foreground">{p.current_salary != null ? formatNumber(activeLocale(), p.current_salary) : '—'}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">{t('hiring.expectedSalary')}</dt><dd className="tabular-nums text-foreground">{p.expected_salary != null ? formatNumber(activeLocale(), p.expected_salary) : '—'}</dd></div>
           <div className="sm:col-span-2">
             <dt className="text-xs text-muted-foreground">{t('hiring.skills')}</dt>
             <dd className="mt-1 flex flex-wrap gap-1.5">{p.skills.length ? p.skills.map((s) => <Badge key={s} variant="outline">{s}</Badge>) : '—'}</dd>

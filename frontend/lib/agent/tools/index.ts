@@ -33,6 +33,7 @@ import {
   listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
 } from './read/ats'
 import { searchTalentTool } from './read/talent'
+import { getHiringAnalyticsTool } from './read/hiring-analytics'
 import {
   createJobTool, updateJobTool, setJobStatusTool, moveApplicationStageTool, rejectApplicationTool, shortlistApplicantsTool,
   scheduleInterviewTool, startBotScreeningTool, recordHrDecisionTool,
@@ -60,7 +61,7 @@ export const ALL_TOOLS: AnyTool[] = [
   listPlacementDrivesTool, getBatchReadinessTool,
   // hiring pipeline (ATS)
   listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
-  searchTalentTool,
+  searchTalentTool, getHiringAnalyticsTool,
   // marketplace, Learn, events feed, automations, usage
   listMarketplaceProductsTool, listMarketplaceOrdersTool, listMarketplaceSellersTool, listMarketplacePayoutsTool, getMarketplaceSalesTool,
   listLearnTopicsTool, listLearnPostsTool, searchFeedEventsTool, getFeedStatsTool,

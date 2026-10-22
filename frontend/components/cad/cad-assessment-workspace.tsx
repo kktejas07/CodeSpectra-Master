@@ -32,6 +32,8 @@ import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
+import { IntegrityMonitor } from '@/components/integrity/IntegrityMonitor'
+import { IntegrityConsent, useIntegrityConfig } from '@/components/integrity/IntegrityConsent'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   AlertDialog,
@@ -60,12 +62,17 @@ import { useApiError } from '@/lib/i18n/use-api-error'
 
 const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) => m.CADEditor), {
   ssr: false,
-  loading: () => (
-    <div className="flex h-96 items-center justify-center rounded-lg border border-border bg-card">
-      <div className="text-sm text-muted-foreground">Loading CAD editor…</div>
-    </div>
-  ),
+  loading: () => <CadEditorLoading />,
 })
+
+function CadEditorLoading() {
+  const { t } = useT()
+  return (
+    <div role="status" className="flex h-96 items-center justify-center rounded-lg border border-border bg-card">
+      <div className="text-sm text-muted-foreground">{t('exam.loadingCadEditor')}</div>
+    </div>
+  )
+}
 
 interface ExamInfo {
   id: string
@@ -155,6 +162,13 @@ export function CadAssessmentWorkspace({
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [facePhoto, setFacePhoto] = useState<string | null>(null)
   const [identityStatus, setIdentityStatus] = useState<'verified' | 'needs_review' | null>(null)
+  // Integrity checks (lib/integrity): opt-in per test by the author; consent before start — same as /assessment/[id].
+  const integrity = useIntegrityConfig('exam', isDemo ? null : examId, !isDemo)
+  const [integrityConsent, setIntegrityConsent] = useState(false)
+  const integrityOn = !isDemo && !!integrity.config?.enabled
+  const integrityBlocksStart = integrityOn && !integrityConsent && !integrity.config?.consented
+  /** With integrity checks on, continuous video runs only when the author enabled it. */
+  const recordVideo = recordingConsent && (!integrityOn || !!integrity.config?.continuous_video)
   /** A submit the server refused for a missing identity check; retried once the check is stored. */
   const retrySubmitRef = useRef<boolean | null>(null)
 
@@ -516,7 +530,10 @@ export function CadAssessmentWorkspace({
                       : tr('exam.noCameraOnThisDeviceYouc90')}
                   </p>
                 )}
-                <Button onClick={() => { retrySubmitRef.current = null; setShowVerification(true) }} className="h-12 w-full rounded-xl text-base font-semibold">{tr('exam.continueToIdentityCheck')}</Button>
+                {integrity.config && integrityOn && (
+                  <IntegrityConsent config={integrity.config} checked={integrityConsent || integrity.config.consented} onChange={setIntegrityConsent} />
+                )}
+                <Button onClick={() => { retrySubmitRef.current = null; setShowVerification(true) }} disabled={integrityBlocksStart || (!integrity.loaded && !isDemo)} className="h-12 w-full rounded-xl text-base font-semibold">{tr('exam.continueToIdentityCheck')}</Button>
               </>
             ) : (
               <>
@@ -524,7 +541,10 @@ export function CadAssessmentWorkspace({
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
                   <p>{tr('exam.checksCompleteTheTestOpensIn990')}</p>
                 </div>
-                <Button onClick={() => void handleStart()} disabled={starting} className="h-12 w-full gap-2 rounded-xl text-base font-semibold">
+                {integrity.config && integrityOn && !integrity.config.consented && (
+                  <IntegrityConsent id="integrity-consent-start" config={integrity.config} checked={integrityConsent} onChange={setIntegrityConsent} />
+                )}
+                <Button onClick={() => void handleStart()} disabled={starting || integrityBlocksStart} className="h-12 w-full gap-2 rounded-xl text-base font-semibold">
                   {starting && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}{tr('exam.start')}</Button>
               </>
             )}
@@ -789,7 +809,10 @@ export function CadAssessmentWorkspace({
     <ExtensionGate bypass={exam?.proctoring_mode !== 'strict'}>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={examId} idPhoto={idPhoto || undefined} identityStatus={identityStatus} examTitle={exam?.title}>
         <RealTimeProctor sessionKind="exam" sessionId={examId} enabled enforceFullscreen>
-          <SessionRecorder sessionKind="exam" sessionId={examId} enabled={recordingConsent} />
+          <SessionRecorder sessionKind="exam" sessionId={examId} enabled={recordVideo} />
+          {integrity.config && integrityOn && (
+            <IntegrityMonitor kind="exam" targetId={examId} config={integrity.config} active={phase.kind === 'ready'} />
+          )}
           {workspace}
           {identityDialog}
         </RealTimeProctor>

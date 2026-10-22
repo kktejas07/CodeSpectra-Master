@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Loader2, DollarSign, Users, TrendingUp, Activity, RefreshCw, Undo2 } from 'lucide-react'
+import { Loader2, DollarSign, Users, Activity, RefreshCw, Undo2 } from 'lucide-react'
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { getCurrencySymbol } from '@/lib/currency'
@@ -24,6 +24,7 @@ import { useToast } from '@/lib/toast-context'
 import { formatDate, formatDateTime } from '@/lib/format-datetime'
 import { cn } from '@/lib/utils'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { BillingOps } from './billing-ops'
 
 interface PaymentRow {
   id: string
@@ -175,10 +176,12 @@ export default function AdminBillingPage() {
         icon={<DollarSign />}
       />
 
+      {/* MRR / ARR / churn per currency, subscriptions by state, licences, billing settings */}
+      <BillingOps />
+
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Active subscriptions" value={stats?.active_subscriptions || 0} icon={<Users />} />
-        <StatCard label="Monthly recurring revenue" value={fmt(stats?.mrr_paise || 0)} icon={<TrendingUp />} />
         <Panel className="flex items-center gap-4 p-5">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
             <DollarSign className="h-5 w-5" aria-hidden />

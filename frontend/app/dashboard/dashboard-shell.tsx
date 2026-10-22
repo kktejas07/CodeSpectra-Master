@@ -197,6 +197,14 @@ export default function DashboardLayout({
   const { t, td } = useT()
   const navText = (label: string) => td(`nav.label:${label}`, label)
 
+  // Tab title in the interface language: the page's nav label (client pages
+  // can't export metadata); the layout's generateMetadata gives the default.
+  useEffect(() => {
+    const base = pathname.split('?')[0]
+    const label = ROUTE_LABELS[base] ?? Object.entries(ROUTE_LABELS).find(([route]) => base.startsWith(`${route}/`))?.[1]
+    if (label) document.title = `${td(`nav.label:${label}`, label)} | CodeSpectra`
+  }, [pathname, td])
+
   useEffect(() => {
     if (!fbUser) { setUserRole(null); return }
     let cancelled = false
@@ -442,6 +450,9 @@ export default function DashboardLayout({
       // Career
       '/dashboard/jobs': Briefcase,
       '/dashboard/campus': GraduationCap,
+      '/dashboard/jobs/for-you': Sparkles,
+      '/dashboard/drives': Radio,
+      '/dashboard/live-drives': Radio,
       '/dashboard/interviews': UserCheck,
       '/dashboard/interviews/ai-mock': Brain,
       '/dashboard/interview-sim': Mic,
@@ -536,6 +547,7 @@ export default function DashboardLayout({
       '/dashboard/admin/sme-review': UserCheck,
       '/dashboard/admin/hiring-manager-report': FileBarChart,
       '/dashboard/admin/billing': Receipt,
+      '/dashboard/admin/licences': KeyRound,
       '/dashboard/admin/help': HelpCircle,
       '/dashboard/admin/sso': KeyRound,
       '/dashboard/admin/kyc': BadgeCheck,

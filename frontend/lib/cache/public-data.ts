@@ -89,7 +89,7 @@ export const landingPostsCached = unstable_cache(async () => {
 export const publicContestsCached = unstable_cache(async () => listPublicContests({ includeEnded: true }), ['public-contests-v1'], { revalidate: LIST_TTL, tags: [CACHE_TAGS.contests] })
 
 /** /pricing plans; DB errors throw (no cached catalogue fallback). */
-export const pricingPlansCached = unstable_cache(async () => JSON.parse(JSON.stringify(await getClientPlans({ strict: true }))) as Awaited<ReturnType<typeof getClientPlans>>, ['public-pricing-plans-v1'], { revalidate: DETAIL_TTL, tags: [CACHE_TAGS.pricing] })
+export const pricingPlansCached = unstable_cache(async () => JSON.parse(JSON.stringify(await getClientPlans({ strict: true }))) as Awaited<ReturnType<typeof getClientPlans>>, ['public-pricing-plans-v2'], { revalidate: DETAIL_TTL, tags: [CACHE_TAGS.pricing] })
 
 // ─── Detail pages (hits only) ────────────────────────────────────────────────
 

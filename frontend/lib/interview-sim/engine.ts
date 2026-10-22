@@ -37,7 +37,7 @@ import {
 type Fail = { ok: false; status: number; error: string }
 const fail = (status: number, error: string): Fail => ({ ok: false, status, error })
 
-export interface SimUser { id: string }
+export interface SimUser { id: string; role?: string }
 
 // ─── AI ─────────────────────────────────────────────────────────────────────
 
@@ -175,10 +175,18 @@ function promptFor(q: PlannedQuestion, lead = ''): string {
   return lead ? `${lead} ${body}` : body
 }
 
+/** Sessions per day the user's plan allows (Infinity = no plan limit). */
+export async function planSessionsPerDay(user: SimUser & { role?: string }): Promise<number> {
+  const { hasEntitlement } = await import('@/lib/entitlements')
+  const d = await hasEntitlement({ id: user.id, role: (user.role ?? 'user') as never }, 'interview_sim_sessions_per_day')
+  return d.limit
+}
+
 export async function startSession(user: SimUser, input: StartInput, now = new Date()): Promise<{ ok: true; session: SimSessionDoc } | Fail> {
   const settings = await getSimSettings()
-  const [today, spend] = await Promise.all([sessionsStartedToday(user.id, now), monthSpend(now)])
-  const cap = canStartSession(settings, today, spend.cost_usd)
+  const [today, spend, perDay] = await Promise.all([sessionsStartedToday(user.id, now), monthSpend(now), planSessionsPerDay(user)])
+  // Plan limit (lib/billing/entitlement-features) under the admin's platform-wide daily cap.
+  const cap = canStartSession({ ...settings, daily_sessions_per_user: Math.min(settings.daily_sessions_per_user, perDay) }, today, spend.cost_usd)
   if (!cap.ok) return fail(429, cap.reason)
   if (input.mode === 'voice' && !settings.allow_voice) return fail(400, 'Voice interviews are switched off. Choose text mode.')
   if (input.record && !settings.allow_recordings) return fail(400, 'Recordings are switched off.')

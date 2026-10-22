@@ -11,7 +11,7 @@
  */
 import { getDefaultPlans, type PlanDefinition, type PlanFeature } from '@/lib/plans-client'
 
-export type EntitlementSource = 'subscription' | 'override' | 'default'
+export type EntitlementSource = 'subscription' | 'licence' | 'override' | 'default'
 
 export interface SubscriptionLike {
   plan_id?: string | null
@@ -80,16 +80,23 @@ export function isSubscriptionLive(sub: SubscriptionLike | null | undefined, now
 export function pickEffectivePlanKey(input: {
   subscription?: SubscriptionLike | null
   userPlan?: unknown
+  /** Plan granted by a live college / company licence seat (lib/billing/licences.ts). */
+  licencePlan?: string | null
   now?: Date
 }): { key: string; source: EntitlementSource } {
   const now = input.now ?? new Date()
-  const subKey = isSubscriptionLive(input.subscription, now) ? normalizePlanKey(input.subscription!.plan_id) : null
+  const ownKey = isSubscriptionLive(input.subscription, now) ? normalizePlanKey(input.subscription!.plan_id) : null
+  const seatKey = normalizePlanKey(input.licencePlan)
+  // A paid subscription and a licence seat: the higher tier wins (the subscription on a tie).
+  const useSeat = !!seatKey && seatKey !== 'free' && (!ownKey || ownKey === 'free' || rank(seatKey) > rank(ownKey))
+  const subKey = useSeat ? seatKey : ownKey
+  const subSource: EntitlementSource = useSeat ? 'licence' : 'subscription'
   const overrideKey = normalizePlanKey(input.userPlan)
   const usableOverride = overrideKey && overrideKey !== 'free' ? overrideKey : null
 
   if (subKey && subKey !== 'free') {
     if (usableOverride && rank(usableOverride) > rank(subKey)) return { key: usableOverride, source: 'override' }
-    return { key: subKey, source: 'subscription' }
+    return { key: subKey, source: subSource }
   }
   if (usableOverride) return { key: usableOverride, source: 'override' }
   return { key: 'free', source: 'default' }

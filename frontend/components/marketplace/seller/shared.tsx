@@ -5,6 +5,8 @@
  * admin console: API calls (csrfFetch), money formatting / parsing (minor
  * units on the wire), status badges, labelled fields and a native select.
  */
+import { formatDate } from '@/lib/i18n/format'
+import { activeLocale } from '@/lib/i18n/client'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { formatCurrencyAmount } from '@/lib/currency'
 import { Badge } from '@/components/ui/badge'
@@ -71,8 +73,8 @@ export function NativeSelect({ className, ...props }: React.SelectHTMLAttributes
   )
 }
 
-export const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
-export const fmtDateTime = (iso?: string | null) => (iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—')
+export const fmtDate = (iso?: string | null) => (iso ? formatDate(activeLocale(), iso, { day: 'numeric', month: 'short', year: 'numeric' }) : '—')
+export const fmtDateTime = (iso?: string | null) => (iso ? formatDate(activeLocale(), iso, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—')
 
 /** Responsive table wrapper (horizontal scroll on phones). */
 export function TableWrap({ children }: { children: React.ReactNode }) {

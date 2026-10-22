@@ -386,7 +386,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[1].name} name={leaderboard[1].name} className="h-10 w-10 bg-muted" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1">{leaderboard[1].name}</div>
-                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[1].xp || 0).toLocaleString() })}</div>
+                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[1].xp || 0) })}</div>
                    </div>
                    <div className="w-full h-16 bg-primary/10 rounded-t-lg flex items-center justify-center border-t-4 border-primary/40">
                       <span className="text-2xl font-black text-primary/70">2</span>
@@ -401,7 +401,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[0].name} name={leaderboard[0].name} className="h-12 w-12 bg-amber-100 dark:bg-amber-900/40 ring-2 ring-amber-400" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1 text-amber-700 dark:text-amber-400">{leaderboard[0].name}</div>
-                     <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[0].xp || 0).toLocaleString() })}</div>
+                     <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[0].xp || 0) })}</div>
                    </div>
                    <div className="w-full h-20 bg-amber-100 dark:bg-amber-900/40 rounded-t-lg flex items-start pt-2 justify-center border-t-4 border-amber-400 shadow-inner">
                       <span className="text-3xl font-black text-amber-600 dark:text-amber-400">1</span>
@@ -415,7 +415,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[2].name} name={leaderboard[2].name} className="h-10 w-10 bg-muted" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1">{leaderboard[2].name}</div>
-                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[2].xp || 0).toLocaleString() })}</div>
+                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[2].xp || 0) })}</div>
                    </div>
                    <div className="w-full h-12 bg-orange-100 dark:bg-orange-900/40 rounded-t-lg flex items-center justify-center border-t-4 border-orange-300">
                       <span className="text-2xl font-black text-orange-500 dark:text-orange-300">3</span>
@@ -429,7 +429,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed="You" name="You" className="h-8 w-8 bg-muted" />
                    <div>
                      <div className="font-bold text-sm">{tr('practice.you')}</div>
-                     <div className="text-[10px] text-muted-foreground">{tr('practice.nPts', { n: userRank.points.toLocaleString() })}</div>
+                     <div className="text-[10px] text-muted-foreground">{tr('practice.nPts', { n: userRank.points })}</div>
                    </div>
                 </div>
                 <div className="text-right">

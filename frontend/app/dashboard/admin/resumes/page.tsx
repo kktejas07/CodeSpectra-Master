@@ -12,6 +12,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
 import { CheckCircle2, Clock } from 'lucide-react'
+import { CareerAiCaps } from './career-ai-caps'
 
 interface Resume {
   id: string
@@ -90,6 +91,8 @@ export default function AdminResumesPage() {
         <StatCard label="Processed" value={resumes.filter((r) => r.status === 'processed').length} icon={<CheckCircle2 />} />
         <StatCard label="Waiting" value={resumes.filter((r) => r.status !== 'processed').length} icon={<Clock />} />
       </div>
+
+      <CareerAiCaps />
 
       {loading ? (
         <SkeletonTable />

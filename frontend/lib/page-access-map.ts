@@ -62,6 +62,7 @@ export const NEVER_LOCKABLE: ReadonlySet<string> = new Set([
   '/dashboard/locked',
   '/dashboard/billing',
   '/dashboard/pricing',
+  '/dashboard/checkout',
   '/dashboard/support',
 ])
 

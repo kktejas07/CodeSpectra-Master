@@ -3,7 +3,7 @@
  * driver against a mocked S3 client, direct-upload start/finish/claim, the
  * Mongo → S3 migration, and the contest / answer-file size rules.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, PutObjectTaggingCommand, S3Client,
 } from '@aws-sdk/client-s3'
@@ -13,6 +13,7 @@ const h = vi.hoisted(() => ({
   db: null as unknown as InstanceType<typeof import('@/lib/rag/eval/memory-mongo').MemoryDb>,
   secrets: {} as Record<string, string>,
   scan: 'clean' as 'clean' | 'infected' | 'offline',
+  streamed: [] as number[],
 }))
 
 vi.mock('@/lib/mongodb', () => ({ getMongoDb: async () => h.db }))
@@ -22,6 +23,15 @@ vi.mock('@/lib/ai/backend', () => ({
     if (h.scan === 'infected') throw new Error('Backend returned 422: infected')
     if (h.scan === 'offline') throw new Error('fetch failed')
     return { ok: true }
+  }),
+  backendPostStream: vi.fn(async (_path: string, body: ReadableStream<Uint8Array>) => {
+    const reader = body.getReader()
+    let n = 0
+    for (;;) { const r = await reader.read(); if (r.done) break; n += r.value.length }
+    h.streamed.push(n)
+    if (h.scan === 'infected') throw new Error('backend /internal/security/scan-stream returned 400: infected')
+    if (h.scan === 'offline') throw new Error('fetch failed')
+    return { clean: true, scanned_bytes: n }
   }),
 }))
 vi.mock('@aws-sdk/s3-request-presigner', async (orig) => {
@@ -37,7 +47,8 @@ import { parseStorageConfig, type ObjectStorageConfig } from '@/lib/storage/conf
 import { isUploadKey, migrationObjectKey, newObjectKey, tenantSegment } from '@/lib/storage/keys'
 import { __setS3ClientForTests, presignedPutHeaders, s3PresignGet, s3PresignPut, sseParams } from '@/lib/storage/s3'
 import { blobDownloadUrl, deleteBlobs, putBlob, readBlob } from '@/lib/storage/blobs'
-import { checkDeclaredUpload, claimUpload, finishDirectUpload, startDirectUpload, sweepUploads } from '@/lib/storage/uploads'
+import { checkDeclaredUpload, claimUpload, finishDirectUpload, planScan, runBackgroundScan, startDirectUpload, sweepUploads } from '@/lib/storage/uploads'
+import { scanResultFromError, streamScanTimeoutMs } from '@/lib/storage/scan'
 import { migrateInlineFiles } from '@/lib/storage/migrate'
 import { checkFileHead, checkFileMeta, slotMaxBytes } from '@/lib/contests/participation'
 
@@ -68,7 +79,7 @@ const fakeS3 = {
       const m = /^bytes=(\d+)-(\d+)$/.exec(String(input.Range || ''))
       const body = m ? o.body.subarray(Number(m[1]), Number(m[2]) + 1) : o.body
       calls.push(m ? `range ${key}` : `get ${key}`)
-      return { Body: { transformToByteArray: async () => new Uint8Array(body) } }
+      return { Body: { transformToByteArray: async () => new Uint8Array(body), transformToWebStream: () => new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new Uint8Array(body)); c.close() } }) } }
     }
     if (cmd instanceof DeleteObjectCommand) { calls.push(`delete ${key}`); bucket.delete(key); return {} }
     if (cmd instanceof PutObjectTaggingCommand) {
@@ -92,6 +103,7 @@ beforeEach(() => {
   h.db = new MemoryDb()
   h.secrets = {}
   h.scan = 'clean'
+  h.streamed = []
   bucket.clear()
   calls.length = 0
   __setS3ClientForTests(fakeS3)
@@ -268,6 +280,106 @@ describe('direct uploads', () => {
     expect(soft.ok && soft.upload.scan_status).toBe('unscanned')
   })
 
+  it('streams the object to the scanner (no whole-file buffer)', async () => {
+    h.secrets = AWS
+    const s = await startDirectUpload({ ...base, size: MP4.length })
+    if (!s.ok) throw new Error(s.error)
+    browserPut((await h.db.collection('storage_uploads').findOne({ id: s.upload_id }))!.key, MP4, 'video/mp4')
+    const done = await finishDirectUpload({ uploadId: s.upload_id, ownerId: 'u1', scope: base.scope, sniff: sniffMp4, scanMode: 'strict' })
+    expect(done.ok).toBe(true)
+    expect(h.streamed).toEqual([MP4.length])
+  })
+
+  describe('large files (above the inline scan size)', () => {
+    const BIG = Buffer.concat([MP4, Buffer.alloc(1_200_000, 3)])
+    const env = { ...process.env }
+    beforeEach(() => { process.env.UPLOADS_SCAN_INLINE_MB = '1' })
+    afterEach(() => { process.env = { ...env } })
+
+    async function startBig() {
+      const s = await startDirectUpload({ ...base, size: BIG.length })
+      if (!s.ok) throw new Error(s.error)
+      browserPut((await h.db.collection('storage_uploads').findOne({ id: s.upload_id }))!.key, BIG, 'video/mp4')
+      return s.upload_id
+    }
+    const finish = (id: string, scanMode: 'soft' | 'strict' = 'soft') => finishDirectUpload({ uploadId: id, ownerId: 'u1', scope: base.scope, sniff: sniffMp4, scanMode })
+
+    it('scans in the background; unusable (409 upload_scanning) until clean, then ready', async () => {
+      h.secrets = AWS
+      const id = await startBig()
+      // Hold the scan so the "still scanning" state is observable.
+      let release!: () => void
+      const gate = new Promise<void>((r) => { release = r })
+      const backend = await import('@/lib/ai/backend')
+      const orig = vi.mocked(backend.backendPostStream).getMockImplementation()!
+      vi.mocked(backend.backendPostStream).mockImplementationOnce(async (...a) => { await gate; return orig(...a) })
+      expect(await finish(id)).toMatchObject({ ok: false, status: 409, code: 'upload_scanning' })
+      expect(await finish(id)).toMatchObject({ ok: false, status: 409, code: 'upload_scanning' })
+      expect(await findReady(id)).toBeNull()
+      release()
+      await vi.waitFor(async () => expect((await h.db.collection('storage_uploads').findOne({ id }))!.status).toBe('ready'))
+      const done = await finish(id)
+      expect(done.ok && done.upload.scan_status).toBe('clean')
+      expect(h.streamed).toEqual([BIG.length])
+    })
+
+    it('infected in the background: deleted, finish reports the rejection', async () => {
+      h.secrets = AWS
+      h.scan = 'infected'
+      const id = await startBig()
+      await finish(id)
+      await vi.waitFor(async () => expect((await h.db.collection('storage_uploads').findOne({ id }))!.status).toBe('rejected'))
+      expect(await finish(id)).toMatchObject({ ok: false, status: 400, code: 'scanner_rejected' })
+    })
+
+    it('scanner offline: stays pending even in soft mode, unless the admin allowed unscanned files for the feature', async () => {
+      h.secrets = AWS
+      h.scan = 'offline'
+      const id = await startBig()
+      await finish(id)
+      await vi.waitFor(async () => expect((await h.db.collection('storage_uploads').findOne({ id }))!.scan_reason).toBe('offline'))
+      expect(await finish(id, 'soft')).toMatchObject({ ok: false, status: 503, code: 'upload_scan_offline' })
+      expect((await h.db.collection('storage_uploads').findOne({ id }))!.status).toBe('pending')
+      h.secrets = { ...AWS, uploads_allow_unscanned: 'exam-answer' }
+      const done = await finish(id)
+      expect(done.ok && done.upload.scan_status).toBe('unscanned')
+    })
+
+    it('above the scan limit: refused at start unless allowed', async () => {
+      h.secrets = AWS
+      process.env.UPLOADS_SCAN_MAX_MB = '1'
+      expect(await startDirectUpload({ ...base, size: BIG.length })).toMatchObject({ ok: false, status: 413, code: 'upload_too_large_to_scan' })
+      h.secrets = { ...AWS, uploads_allow_unscanned: 'exam-answer,contest' }
+      expect((await startDirectUpload({ ...base, size: BIG.length })).ok).toBe(true)
+    })
+
+    async function findReady(id: string) {
+      return h.db.collection('storage_uploads').findOne({ id, status: 'ready' })
+    }
+  })
+
+  it('planScan / scan helpers (pure)', () => {
+    const limits = { scanBytes: 2000, scanInlineBytes: 100 }
+    const now = 1_000_000
+    expect(planScan({ size: 50, limits, allowUnscanned: false, now })).toBe('inline')
+    expect(planScan({ size: 500, limits, allowUnscanned: false, now })).toBe('background')
+    expect(planScan({ size: 500, limits, allowUnscanned: false, leaseUntil: new Date(now + 1), now })).toBe('wait')
+    expect(planScan({ size: 500, limits, allowUnscanned: false, leaseUntil: new Date(now - 1), now })).toBe('background')
+    expect(planScan({ size: 500, limits, allowUnscanned: false, reason: 'offline', failedAt: new Date(now - 1000), now })).toBe('offline')
+    expect(planScan({ size: 500, limits, allowUnscanned: false, reason: 'offline', failedAt: new Date(now - 120_000), now })).toBe('background')
+    expect(planScan({ size: 500, limits, allowUnscanned: true, reason: 'offline', failedAt: new Date(now), now })).toBe('ready_unscanned')
+    expect(planScan({ size: 5000, limits, allowUnscanned: false, now })).toBe('reject_too_large')
+    expect(planScan({ size: 5000, limits, allowUnscanned: true, now })).toBe('ready_unscanned')
+    expect(planScan({ size: 500, limits, allowUnscanned: false, reason: 'too_large', now })).toBe('reject_too_large')
+    expect(scanResultFromError('backend x returned 400: FOUND')).toEqual({ status: 'infected' })
+    expect(scanResultFromError('backend x returned 413: big')).toEqual({ status: 'unscanned', reason: 'too_large' })
+    expect(scanResultFromError('fetch failed')).toEqual({ status: 'unscanned', reason: 'offline' })
+    expect(streamScanTimeoutMs(0)).toBe(60_000)
+    expect(streamScanTimeoutMs(2048 * 1048576)).toBe(60_000 + 512_000)
+    expect(streamScanTimeoutMs(1e13)).toBe(20 * 60_000)
+    expect(typeof runBackgroundScan).toBe('function')
+  })
+
   it('rejects an unencrypted object when SSE is required, and waits for a missing one', async () => {
     h.secrets = AWS
     const s = await startDirectUpload({ ...base, size: MP4.length })
@@ -366,7 +478,7 @@ describe('contest file rules', () => {
 // ─── Answer-file rules ───────────────────────────────────────────────────────
 
 describe('answerUploadRule', () => {
-  const limits = { videoBytes: 500 * 1048576, fileBytes: 100 * 1048576, scanBytes: 64 * 1048576 }
+  const limits = { videoBytes: 500 * 1048576, fileBytes: 100 * 1048576, scanBytes: 2048 * 1048576, scanInlineBytes: 64 * 1048576 }
   it('videos get the large cap only with object storage; files keep the author cap', async () => {
     const { answerUploadRule } = await import('@/lib/storage/exam-answer-files')
     const video = { id: 'q1', type: 'video_response' }

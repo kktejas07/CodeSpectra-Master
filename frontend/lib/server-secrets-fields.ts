@@ -126,6 +126,7 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'uploads_s3_kms_key_id',
   'uploads_s3_sse',
   'uploads_s3_pending_tag',
+  'uploads_allow_unscanned',
   'firebase_api_key',
   'firebase_auth_domain',
   'firebase_project_id',

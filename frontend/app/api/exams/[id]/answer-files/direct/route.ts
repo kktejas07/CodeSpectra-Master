@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         feature: 'exam-answer', tenantId: (g.exam.tenant_id as string) ?? null, ownerId: user.id, scope,
         name, size: input.size, contentType, maxBytes: rule.maxBytes, allowedTypes: [contentType], meta: { kind: rule.kind, video: rule.video },
       })
-      if (!r.ok) return NextResponse.json({ error: r.error, ...('inline' in r ? { inline: true } : {}) }, { status: r.status })
+      if (!r.ok) return NextResponse.json({ error: r.error, ...('inline' in r ? { inline: true } : {}), ...('code' in r && r.code ? { code: r.code } : {}) }, { status: r.status })
       return NextResponse.json(r, { status: 201 })
     }
 
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       uploadId: input.upload_id, ownerId: user.id, scope, scanMode: 'soft',
       sniff: (head, doc) => sniffAnswerFile(head, String(doc.meta?.kind || '') as AnswerFileKind),
     })
-    if (!done.ok) return NextResponse.json({ error: done.error }, { status: done.status })
+    if (!done.ok) return NextResponse.json({ error: done.error, ...(done.code ? { code: done.code } : {}) }, { status: done.status })
     const up = await claimUpload({ uploadId: input.upload_id, ownerId: user.id, scope })
     if (!up) return NextResponse.json({ error: 'This upload was already used. Upload the file again.', code: 'exam_upload_reused' }, { status: 409 })
     const kind = String(up.meta?.kind || '') as AnswerFileKind

@@ -87,9 +87,31 @@ export function largeUploadLimits() {
   return {
     videoBytes: envMb('UPLOADS_VIDEO_MAX_MB', 500, 5000) * MB,
     fileBytes: envMb('UPLOADS_FILE_MAX_MB', 100, 2000) * MB,
-    /** Files above this are stored but not sent to the scanner (it takes the whole file in one request). */
-    scanBytes: envMb('UPLOADS_SCAN_MAX_MB', 64, 1024) * MB,
+    /**
+     * Largest file the virus scanner takes (streamed to clamd; clamd's
+     * StreamMaxLength must be at least this). Bigger files can't be scanned and
+     * are refused unless the feature allows unscanned large files.
+     */
+    scanBytes: envMb('UPLOADS_SCAN_MAX_MB', 2048, 5000) * MB,
+    /** Up to this size the scan runs inside the finish request; above it, in the background (client polls). */
+    scanInlineBytes: envMb('UPLOADS_SCAN_INLINE_MB', 64, 1024) * MB,
   }
+}
+
+/**
+ * Admin override (Settings → Storage, server secret `uploads_allow_unscanned`
+ * or env UPLOADS_ALLOW_UNSCANNED): comma-separated storage features whose
+ * large files may become usable WITHOUT a clean scan (scanner offline or file
+ * above the scan limit). Default: none — files stay unusable until scanned.
+ */
+export function parseAllowUnscanned(secrets: Source, env: Source): Set<string> {
+  const raw = String(secrets.uploads_allow_unscanned ?? '').trim() || String(env.UPLOADS_ALLOW_UNSCANNED ?? '').trim()
+  return new Set(raw.split(',').map((x) => x.trim()).filter((x) => /^[a-z-]{2,20}$/.test(x)))
+}
+
+export async function allowUnscannedFeatures(): Promise<Set<string>> {
+  const secrets = (await readServerSecrets().catch(() => ({}))) as Source
+  return parseAllowUnscanned(secrets, process.env as Source)
 }
 
 /** Presigned URL lifetimes. GET is capped at 5 minutes. */

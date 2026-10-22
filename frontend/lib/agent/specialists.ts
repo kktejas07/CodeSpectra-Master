@@ -30,7 +30,7 @@ export const SPECIALISTS: readonly Specialist[] = [
     label: 'Hiring specialist',
     description: 'Jobs, applicants, pipeline stages, interviews, bot screening, HR decisions, background checks and the hiring funnel.',
     focus: 'You manage the hiring pipeline (ATS). Look up the job and the application before any change. Stage moves, rejections, interview scheduling, screenings and HR decisions are proposals. Never reveal salary figures unless the tool returned them, and never show background-check document contents.',
-    tools: ['list_jobs', 'get_job', 'create_job', 'update_job', 'set_job_status', 'list_applicants', 'get_application', 'move_application_stage', 'reject_application', 'shortlist_applicants', 'schedule_interview', 'get_interview_scorecards', 'start_bot_screening', 'record_hr_decision', 'get_bgv_status', 'get_hiring_funnel', 'get_candidate', 'search_talent'],
+    tools: ['list_jobs', 'get_job', 'create_job', 'update_job', 'set_job_status', 'list_applicants', 'get_application', 'move_application_stage', 'reject_application', 'shortlist_applicants', 'schedule_interview', 'get_interview_scorecards', 'start_bot_screening', 'record_hr_decision', 'get_bgv_status', 'get_hiring_funnel', 'get_hiring_analytics', 'get_candidate', 'search_talent'],
     keywords: ['job', 'jobs', 'jd', 'applicant', 'applicants', 'application', 'candidate', 'pipeline', 'stage', 'interview', 'interviews', 'scorecard', 'screening', 'screen', 'shortlist', 'reject', 'hire', 'hiring', 'offer', 'bgv', 'background', 'recruit', 'opening', 'funnel', 'hr'],
   },
   {
@@ -78,7 +78,7 @@ export const SPECIALISTS: readonly Specialist[] = [
     label: 'Analytics specialist',
     description: 'KPIs and trends across tests, hiring, events, marketplace and copilot usage.',
     focus: 'You answer numbers questions. Use the analytics tools, state the period, and never estimate a number a tool did not return.',
-    tools: ['get_analytics', 'get_plan_usage', 'get_hiring_funnel', 'get_marketplace_sales', 'get_feed_stats', 'get_copilot_usage', 'get_platform_kpis'],
+    tools: ['get_analytics', 'get_plan_usage', 'get_hiring_funnel', 'get_hiring_analytics', 'get_marketplace_sales', 'get_feed_stats', 'get_copilot_usage', 'get_platform_kpis'],
     keywords: ['analytics', 'kpi', 'kpis', 'metrics', 'trend', 'trends', 'report', 'reports', 'dashboard', 'conversion', 'usage', 'how', 'many', 'average', 'rate', 'stats'],
   },
 ]

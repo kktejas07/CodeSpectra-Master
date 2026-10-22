@@ -66,7 +66,7 @@ function daysInMonth(d: Date) {
 export default function CalendarPage() {
   const apiError = useApiError()
   const { formatDateTime } = useLocaleDates()
-  const { t } = useT()
+  const { t, fmt } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()))
@@ -189,7 +189,7 @@ export default function CalendarPage() {
 
   if (!gate.ready) return null
 
-  const monthLabel = cursor.toLocaleString(undefined, { month: 'long', year: 'numeric' })
+  const monthLabel = fmt.date(cursor, { month: 'long', year: 'numeric' })
 
   return (
     <div className="space-y-6">

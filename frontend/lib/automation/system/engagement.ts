@@ -22,6 +22,8 @@ async function loadUser(userId: string): Promise<Doc | null> {
   return (await db.collection('user').findOne({ $or: [{ id: userId }, { _id: userId as never }] }, { projection: { id: 1, _id: 1, email: 1, name: 1, fullName: 1, emailVerified: 1, isActive: 1, deleted_at: 1 } })) as Doc | null
 }
 const nameOf = (u: Doc) => String(u.fullName || u.name || 'there').split(' ')[0]
+/** Greeting line for localized mails (no English "there" when the name is unknown). */
+const hiPart = (u: Doc) => (u.fullName || u.name ? { key: 'auto.hi', params: { name: nameOf(u) } } : { key: 'auto.hiNoName' })
 
 // ─── AU-10 onboarding ───────────────────────────────────────────────────────
 
@@ -36,6 +38,7 @@ async function onboardingVerify(p: Doc): Promise<unknown> {
     bodyText: `Hi ${nameOf(u)},\n\nYou’re nearly set up. Sign in and press “Resend verification” on your dashboard to get a fresh link — it unlocks tests, events and certificates.`,
     cta: { label: 'Sign in', url: '/login' },
     reason: 'You got this email because you created a CodeSpectra account.',
+    i18n: { subject: { key: 'auto.verify.subject' }, heading: { key: 'auto.verify.heading' }, body: [hiPart(u), { key: 'auto.verify.body' }], cta: { key: 'auto.signIn' }, reason: { key: 'auto.verify.reason' } },
   })
 }
 
@@ -56,6 +59,7 @@ async function onboardingTips(p: Doc): Promise<unknown> {
     bodyText: '1. Solve today’s practice problem — ten minutes is enough to start a streak.\n2. Take a short mock test to see where you stand.\n3. Browse upcoming hackathons and register with friends.',
     cta: { label: 'Solve your first problem', url: '/dashboard/arena' },
     reason: 'You got this email because you recently created a CodeSpectra account.',
+    i18n: { subject: { key: 'auto.tips.subject' }, heading: { key: 'auto.tips.heading', params: { name: nameOf(u) } }, body: { key: 'auto.tips.body' }, cta: { key: 'auto.tips.cta' }, reason: { key: 'auto.tips.reason' } },
   })
 }
 
@@ -99,6 +103,7 @@ async function abandonedCheckout(p: Doc): Promise<unknown> {
     bodyText: 'You started a checkout on the CodeSpectra marketplace but didn’t finish. Items aren’t held for long — pick up where you left off while they’re still available.',
     cta: { label: 'Back to checkout', url },
     reason: 'You got this email because you started a checkout on CodeSpectra.',
+    i18n: { subject: { key: 'auto.cart.subject' }, heading: { key: 'auto.cart.subject' }, body: { key: 'auto.cart.body' }, cta: { key: 'auto.cart.cta' }, reason: { key: 'auto.cart.reason' } },
   })
 }
 
@@ -146,6 +151,9 @@ export async function runReengagement(now = new Date()): Promise<{ emailed: numb
         : 'A ten-minute problem is the easiest way to keep your skills sharp. Today’s challenge is ready.',
       cta: { label: 'Solve today’s challenge', url: '/dashboard/arena' },
       reason: 'You got this email because you have a CodeSpectra account and haven’t signed in for a while.',
+      i18n: days >= 30
+        ? { subject: { key: 'auto.back.subjectLong' }, heading: { key: 'auto.back.headingLong', params: { name: nameOf(u) } }, body: { key: 'auto.back.bodyLong' }, cta: { key: 'auto.back.cta' }, reason: { key: 'auto.back.reason' } }
+        : { subject: { key: 'auto.back.subject' }, heading: { key: 'auto.back.heading', params: { name: nameOf(u) } }, body: { key: 'auto.back.body' }, cta: { key: 'auto.back.cta' }, reason: { key: 'auto.back.reason' } },
     })
     if (out === 'sent' || out === 'deferred' || out === 'queued') emailed++
   }
@@ -199,6 +207,7 @@ async function certificateFollowUp(p: Doc): Promise<unknown> {
     bodyText: `Congratulations again, ${nameOf(u)}! Recruiters can check your “${title}” certificate in one click. Add it to your LinkedIn profile — the details are filled in for you.`,
     cta: { label: 'Add to LinkedIn', url: linkedin },
     reason: 'You got this email because you earned a certificate on CodeSpectra.',
+    i18n: { subject: { key: 'auto.cert.subject', params: { title } }, heading: { key: 'auto.cert.heading' }, body: { key: 'auto.cert.body', params: { name: nameOf(u), title } }, cta: { key: 'auto.cert.cta' }, reason: { key: 'auto.cert.reason' } },
   })
 }
 

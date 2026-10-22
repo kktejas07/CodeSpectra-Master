@@ -162,7 +162,8 @@ export async function decidePayout(actorId: string, id: string, action: Exclude<
     await closeWithReversal(p, 'failed', actorId, String(opts.reason || '').slice(0, 500) || 'Marked failed')
     await audit(actorId, 'payout.failed', p.id, opts.reason, 'payout')
     const { notifySeller } = await import('./seller-notify')
-    await notifySeller(seller, 'mkt.payout_failed', 'Payout failed', 'Your payout could not be completed and the amount is back in your balance. Check your payout details.', '/dashboard/seller?tab=payouts')
+    await notifySeller(seller, 'mkt.payout_failed', 'Payout failed', 'Your payout could not be completed and the amount is back in your balance. Check your payout details.', '/dashboard/seller?tab=payouts',
+      { title: { key: 'mkt.seller.payoutFailed.title' }, message: { key: 'mkt.seller.payoutFailed.message' } })
     return { ...p, status: 'failed' }
   }
 
@@ -189,7 +190,8 @@ async function afterPaid(actorId: string, p: PayoutDoc, seller: SellerDoc, ref: 
   const { audit } = await import('./sellers')
   await audit(actorId, 'payout.paid', p.id, ref, 'payout')
   const { notifySeller } = await import('./seller-notify')
-  await notifySeller(seller, 'mkt.payout_paid', 'Payout sent', `Your ${p.currency} payout has been sent (reference ${ref}).`, '/dashboard/seller?tab=payouts')
+  await notifySeller(seller, 'mkt.payout_paid', 'Payout sent', `Your ${p.currency} payout has been sent (reference ${ref}).`, '/dashboard/seller?tab=payouts',
+    { title: { key: 'mkt.seller.payoutPaid.title' }, message: { key: 'mkt.seller.payoutPaid.message', params: { currency: p.currency, ref } } })
   const { nowIso } = await import('./db')
   return { ...p, status: 'paid', ref, paid_at: nowIso(), open: undefined }
 }

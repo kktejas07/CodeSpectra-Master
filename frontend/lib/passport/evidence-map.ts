@@ -134,6 +134,26 @@ export function certificateEvidence(c: Doc, site = ''): Evidence | null {
       publicLink,
     }
   }
+  if (certId.startsWith('pcert:')) {
+    // Proctored CodeSpectra certification (lib/pro-certs): proctored + trust-scored; an expired or renewed one no longer counts.
+    const exp = iso(c.expires_at)
+    if (exp && Date.parse(exp) <= Date.now()) return null
+    if (c.superseded_by) return null
+    const named = Array.isArray(snap.skills) ? (snap.skills as unknown[]).map((x) => str(x, 40)).filter(Boolean) : []
+    const s = num(c.score)
+    return {
+      id: `cert:${str(c.id, 80)}`,
+      kind: 'certificate',
+      title,
+      skills: skillsFromText(`${title} ${named.join(' ')}`),
+      score: s !== null ? clamp(s, 0, 100) : 75,
+      at,
+      proctored: c.proctored === true,
+      trust: num(c.trust_score),
+      link: '/dashboard/certifications/proctored',
+      publicLink: str(c.credential_id, 40) ? `${site}/verify/${str(c.credential_id, 40)}` : publicLink,
+    }
+  }
   const isCourse = issueKey.startsWith('course:')
   const s = num(c.score)
   return {

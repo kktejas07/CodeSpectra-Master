@@ -90,6 +90,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/billing',
   '/dashboard/admin/marketplace',
   '/dashboard/admin/mentors',
+  '/dashboard/admin/pro-certs',
   '/dashboard/admin/study-plans',
   '/dashboard/admin/leagues',
   '/dashboard/admin/help',
@@ -160,6 +161,8 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/knowledge',
   // Workflow builder: /api/workflows scopes tenant admins to their organisation's workflows.
   '/dashboard/admin/workflows',
+  // College / company licences: /api/licences* scopes tenant admins to their own organisation.
+  '/dashboard/admin/licences',
 ]
 
 /**
@@ -212,6 +215,13 @@ export const ALL_USER_ROUTES: string[] = [
   
   // Career & Hiring
   '/dashboard/jobs',
+  '/dashboard/jobs/for-you',
+  // Live hiring drives: candidates (/drives) and organisers / invigilators (/live-drives);
+  // /api/live-drives* checks roster, organiser (campus / ATS role) or invigilator server-side.
+  '/dashboard/drives',
+  '/dashboard/drives/[id]',
+  '/dashboard/live-drives',
+  '/dashboard/live-drives/[id]',
   // Campus placement: /api/campus* checks college membership / placement-team role server-side.
   '/dashboard/campus',
   '/dashboard/placement',
@@ -230,6 +240,8 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/assessments/ai-fluency',
   '/dashboard/assessments/ai-fluency/setup',
   '/dashboard/certifications',
+  '/dashboard/certifications/proctored',
+  '/dashboard/certifications/proctored/[slug]',
   '/dashboard/passport',
 
   // Hiring pipeline (ATS). Open to any signed-in role here because interviewers
@@ -238,6 +250,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/hiring',
   '/dashboard/hiring/jobs',
   '/dashboard/hiring/jobs/[id]',
+  '/dashboard/hiring/jobs/[id]/matches',
   '/dashboard/hiring/candidates',
   '/dashboard/hiring/candidates/[id]',
   '/dashboard/hiring/approvals',
@@ -267,6 +280,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/calendar',
   '/dashboard/billing',
   '/dashboard/pricing',
+  '/dashboard/checkout',
   '/dashboard/settings',
   '/dashboard/settings/ai',
 
@@ -394,11 +408,18 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/campus': 'Campus',
   '/dashboard/placement': 'Placement console',
   '/dashboard/placement/drives/[id]': 'Placement drive',
+  '/dashboard/drives': 'Hiring drives',
+  '/dashboard/drives/[id]': 'Hiring drive',
+  '/dashboard/live-drives': 'Live drives',
+  '/dashboard/live-drives/[id]': 'Live drive control room',
   '/dashboard/admin/leagues': 'Leagues',
   '/dashboard/achievements': 'Achievements',
   '/dashboard/certifications': 'Certifications',
+  '/dashboard/certifications/proctored': 'Proctored certifications',
+  '/dashboard/certifications/proctored/[slug]': 'Certification',
   '/dashboard/passport': 'Skill passport',
   '/dashboard/pricing': 'Pricing',
+  '/dashboard/checkout': 'Checkout',
   '/dashboard/challenges': 'Challenges',
   '/dashboard/interviews': 'Interviews',
   '/dashboard/interviews/ai-mock': 'AI Mock Interview',
@@ -423,6 +444,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/seller/apply': 'Sell on CodeSpectra',
   '/dashboard/admin/marketplace': 'Marketplace',
   '/dashboard/admin/mentors': 'Mentors',
+  '/dashboard/admin/pro-certs': 'Certifications (proctored)',
   '/dashboard/admin/study-plans': 'Study plans',
   '/dashboard/study-plan': 'Study plan',
   '/dashboard/study-plan/practice/[id]': 'Practice set',
@@ -437,6 +459,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/events': 'Events',
   '/dashboard/jobs': 'Jobs',
+  '/dashboard/jobs/for-you': 'Jobs for you',
   '/dashboard/assessments': 'Assessments',
   '/dashboard/assessments/ai-fluency': 'AI Fluency',
   '/dashboard/assessments/ai-fluency/setup': 'AI Fluency Setup',
@@ -445,6 +468,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/judge': 'Judge Dashboard',
   '/dashboard/cad': 'CAD Editor',
   '/dashboard/admin/billing': 'Billing admin',
+  '/dashboard/admin/licences': 'Licences',
   '/dashboard/admin/help': 'Help center',
   '/dashboard/admin/sso': 'SSO config',
   '/dashboard/admin/question-bank': 'Question bank',
@@ -456,6 +480,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/hiring': 'Hiring',
   '/dashboard/hiring/jobs': 'Hiring jobs',
   '/dashboard/hiring/jobs/[id]': 'Job pipeline',
+  '/dashboard/hiring/jobs/[id]/matches': 'Best matches',
   '/dashboard/hiring/candidates': 'Candidates',
   '/dashboard/hiring/candidates/[id]': 'Candidate',
   '/dashboard/hiring/approvals': 'Approvals',

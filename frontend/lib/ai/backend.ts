@@ -290,6 +290,32 @@ export async function backendGet<T = unknown>(
   return (await res.json()) as T
 }
 
+/**
+ * POST a raw byte stream (application/octet-stream) to an internal backend
+ * route, e.g. the streaming virus scan. Only the internal secret is sent (no
+ * provider keys). Throws `backend <path> returned <status>: …` like backendPost.
+ */
+export async function backendPostStream<T = unknown>(
+  path: string,
+  body: ReadableStream<Uint8Array>,
+  opts: { size?: number; signal?: AbortSignal } = {},
+): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/octet-stream' }
+  const internalSecret = await getInternalSecret()
+  if (internalSecret) headers['x-internal-secret'] = internalSecret
+  if (opts.size !== undefined) headers['Content-Length'] = String(opts.size)
+  const res = await fetch(`${backendBase()}${path}`, {
+    method: 'POST',
+    headers,
+    body,
+    signal: opts.signal,
+    // Node fetch needs half-duplex for a streamed request body.
+    duplex: 'half',
+  } as RequestInit & { duplex: 'half' })
+  if (!res.ok) throw new Error(`backend ${path} returned ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  return (await res.json()) as T
+}
+
 export async function backendPost<T = unknown>(
   path: string,
   body: unknown,

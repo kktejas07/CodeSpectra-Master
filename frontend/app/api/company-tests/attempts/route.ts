@@ -39,6 +39,12 @@ export async function POST(req: NextRequest) {
   const parsed = startSchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Pick a test and a level', code: 'ct_pick_test_level' }, { status: 400 })
   try {
+    // Tough level is a plan feature (lib/billing/entitlement-features.ts), checked on the server.
+    if (parsed.data.level === 'tough') {
+      const { hasEntitlement, entitlementError } = await import('@/lib/entitlements')
+      const ent = await hasEntitlement(gate.user, 'company_tests_tough')
+      if (!ent.allowed) return NextResponse.json(entitlementError('company_tests_tough', ent.planKey), { status: 402 })
+    }
     const a = await startAttempt(gate.user.id, parsed.data.patternId, parsed.data.level)
     return NextResponse.json({ attempt: attemptView(a) }, { status: 201 })
   } catch (e) {

@@ -8,6 +8,8 @@ import { mergePlanDefinition } from '@/lib/entitlements-core'
 import { billingSubscriptions } from '@/lib/db/billing'
 import { auditAdmin } from '@/lib/admin-audit'
 import { revalidateContent } from '@/lib/cache/revalidate'
+import { parsePlanPrices } from '@/lib/billing/plan-prices'
+import { learnerFeatureRows } from '@/lib/billing/entitlement-features'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +40,12 @@ function parsePlan(body: Record<string, unknown>): { ok: true; doc: Record<strin
   if (body.currency !== undefined && body.currency !== null && body.currency !== '') {
     if (typeof body.currency !== 'string' || !/^[A-Z]{3}$/.test(body.currency)) return { ok: false, error: 'Currency must be a 3-letter code like INR or USD' }
     doc.currency = body.currency
+  }
+  // INR / USD prices in minor units (lib/billing/plan-prices.ts).
+  if (body.prices_minor !== undefined && body.prices_minor !== null) {
+    const p = parsePlanPrices(body.prices_minor)
+    if (!p.ok) return { ok: false, error: p.error }
+    doc.prices_minor = p.prices
   }
   if (body.features !== undefined) {
     if (!Array.isArray(body.features) || body.features.length > 50) return { ok: false, error: 'Features must be a list (max 50)' }
@@ -85,7 +93,13 @@ export async function GET() {
       plans = await col.find({}, { projection: { _id: 0 } }).toArray()
     }
 
-    return NextResponse.json({ plans: plans.map((p) => mergePlanDefinition(String(p.plan), p as never)) })
+    // Learner entitlements (lib/billing/entitlement-features.ts) show in the editor with their built-in defaults.
+    const withLearner = (key: string, def: ReturnType<typeof mergePlanDefinition>) => {
+      const tier = key === 'pro' || key === 'enterprise' ? key : 'free'
+      const have = new Set(def.features.map((f) => f.key))
+      return { ...def, features: [...def.features, ...learnerFeatureRows(tier).filter((f) => !have.has(f.key))] }
+    }
+    return NextResponse.json({ plans: plans.map((p) => withLearner(String(p.plan), mergePlanDefinition(String(p.plan), p as never))) })
   } catch (e: unknown) {
     console.error('[CodeSpectra] admin/plans:', e)
     return NextResponse.json({ error: 'Something went wrong with plans. Try again.' }, { status: 500 })

@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDate } from '@/lib/i18n/format'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { BadgeCheck, Copy, Download, Eye, EyeOff, Loader2, RefreshCw, ShieldCheck, UserSearch } from 'lucide-react'
@@ -19,7 +20,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { EVIDENCE_KIND_LABELS, type EvidenceKind, type PassportSummary, type PassportVisibility, type PublicSkill } from '@/lib/passport/core'
 import { AVAILABILITY, AVAILABILITY_LABELS, INVITE_TARGET_LABELS, type ConsentCopy, type InviteTarget } from '@/lib/talent/core'
 import { cn } from '@/lib/utils'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 
 interface EvidenceRow { id: string; kind: EvidenceKind; title: string; score: number; at: string; skills: string[]; proctored: boolean; trust: number | null; link: string | null; private_by_default: boolean }
 interface InviteRow { id: string; tenant_id: string; tenant_name: string; recruiter_name: string; target_type: InviteTarget; target_title: string; message: string | null; status: string; created_at: string; expires_at: string; fulfilment?: { ok: boolean; error?: string | null } | null }
@@ -38,10 +39,10 @@ async function readError(res: Response, fallback: string): Promise<string> {
   try { const j = await res.json(); return String(j.error || fallback) } catch { return fallback }
 }
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+const day = (iso: string) => formatDate(activeLocale(), iso, { day: 'numeric', month: 'short', year: 'numeric' })
 
 export default function PassportPage() {
-  const { t } = useT()
+  const { t, locale } = useT()
   const gate = usePageGuard('/dashboard/passport')
   const addToast = useToast()
   const confirm = useConfirm()
@@ -132,7 +133,7 @@ export default function PassportPage() {
 
           <Section title={t('account.verifiedSkills')} description={t('account.proctoredResultsCountMostOlderResults3ab')}>
             {data.summary.skills.length ? (
-              <SkillList skills={data.summary.skills.map((s) => ({ ...s, evidence: s.evidence.map((e) => ({ kind: e.kind, title: e.title, score: e.score, at: e.at, proctored: e.proctored, link: e.link })) }))} />
+              <SkillList locale={locale} skills={data.summary.skills.map((s) => ({ ...s, evidence: s.evidence.map((e) => ({ kind: e.kind, title: e.title, score: e.score, at: e.at, proctored: e.proctored, link: e.link })) }))} />
             ) : (
               <EmptyState
                 illustration="certificate"

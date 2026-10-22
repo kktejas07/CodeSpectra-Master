@@ -21,9 +21,22 @@ function imageRemotePatterns() {
   return [...new Set([...fixed, ...extra])].map((hostname) => ({ protocol: 'https', hostname, pathname: '/**' }))
 }
 
+/**
+ * Shared cache across instances (lib/cache/redis-cache-handler.mjs): only when
+ * a Redis URL is in the environment (CACHE_REDIS_URL / REDIS_URL /
+ * UPSTASH_REDIS_REST_URL+TOKEN). Otherwise Next's built-in per-instance cache.
+ */
+function sharedCacheConfig() {
+  const url = (process.env.CACHE_REDIS_URL || process.env.REDIS_URL || '').trim()
+  const rest = (process.env.UPSTASH_REDIS_REST_URL || '').trim() && (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim()
+  if (process.env.CACHE_HANDLER_DISABLED === '1' || !(url || rest)) return {}
+  return { cacheHandler: path.join(projectRoot, 'lib/cache/redis-cache-handler.mjs'), cacheMaxMemorySize: 0 }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: projectRoot,
+  ...sharedCacheConfig(),
   async headers() {
     return [
       {

@@ -19,6 +19,10 @@ export const CSRF_EXEMPT: readonly string[] = [
   '/api/billing/phonepe-callback',
   // Marketplace payment callbacks (PhonePe X-VERIFY checksum / Stripe signature; browser return re-checks status).
   '/api/marketplace/webhooks',
+  // Certification attempt payment callbacks (same checks as the marketplace; settled from gateway status only).
+  '/api/pro-certs/webhooks',
+  // One-click unsubscribe from the weekly hiring digest (HMAC token per recipient; mail clients POST without cookies).
+  '/api/ats/analytics/digest/unsubscribe',
   // Cron endpoints authenticate with CRON_SECRET (server-to-server), not
   // browser cookies — CSRF tokens are meaningless here, and requiring them
   // breaks the admin "run now" self-fetch and external cron callers.

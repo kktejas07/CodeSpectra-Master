@@ -1,6 +1,8 @@
 'use client'
 
 /** Small shared bits for the campus pages (theme tokens only). */
+import { formatDate } from '@/lib/i18n/format'
+import { activeLocale } from '@/lib/i18n/client'
 import { cn } from '@/lib/utils'
 import { formatMinor } from '@/lib/campus/types'
 
@@ -58,13 +60,13 @@ export function ctcRange(min: number | null, max: number | null, currency: strin
 export function fmtDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+  return Number.isFinite(d.getTime()) ? formatDate(activeLocale(), d, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
 }
 
 export function fmtDateTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
-  return Number.isFinite(d.getTime()) ? d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—'
+  return Number.isFinite(d.getTime()) ? formatDate(activeLocale(), d, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '—'
 }
 
 /** Read a JSON error from a failed response. */

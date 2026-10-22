@@ -108,6 +108,21 @@ export async function runPlatformCron(now: Date = new Date()): Promise<PlatformC
       const ended = await endLapsedGracePeriods()
       if (ended > 0) logger.info(`[billing] Ended ${ended} subscription(s) after the grace period`)
     }, daily)
+    // Monetisation (lib/billing/*): Razorpay cancels near renewal, paid-referral rewards, licence expiry.
+    await run('razorpay-cancel-sweep', day, async () => {
+      const { sweepRazorpayCancellations } = await import('./billing/razorpay-subscriptions')
+      const n = await sweepRazorpayCancellations(now)
+      if (n > 0) logger.info(`[billing] Cancelled ${n} Razorpay subscription(s) at period end`)
+    }, daily)
+    await run('referral-rewards', day, async () => {
+      const { processReferralRewards } = await import('./billing/referrals')
+      const r = await processReferralRewards(now)
+      if (r.granted || r.voided) logger.info(`[billing] Referral rewards: ${r.granted} granted, ${r.voided} void`)
+    }, daily)
+    await run('licence-expiry', day, async () => {
+      const { expireLicences } = await import('./billing/licences')
+      await expireLicences(now)
+    }, daily)
     await run('identity-media-purge', day, async () => {
       const { purgeExpiredIdentityMedia } = await import('./identity-media')
       await purgeExpiredIdentityMedia(now)
@@ -125,6 +140,24 @@ export async function runPlatformCron(now: Date = new Date()): Promise<PlatformC
         await runCompanyTestsRefresh(now)
       }, { maxAttempts: 3, retryAfterMs: 60 * 60_000, leaseMs: 60 * 60_000 })
     }
+  }
+
+  // ── proctored certifications: finalise graded attempts, settle missed payments, expiry reminders (every 5 min) ──
+  if (minute.getUTCMinutes() % 5 === 0) {
+    const { intervalWindow } = await import('./automation/job-lease')
+    await run('pro-cert-sweep', intervalWindow(minute, 5), async () => {
+      const { runProCertSweep } = await import('./pro-certs/service')
+      await runProCertSweep(now)
+    }, { leaseMs: 5 * 60_000 })
+  }
+
+  // ── weekly hiring analytics digest (Mondays from 03:30 UTC = 09:00 IST; week window claimed in the DB) ──
+  if (minute.getUTCDay() === 1 && (minute.getUTCHours() > 3 || (minute.getUTCHours() === 3 && minute.getUTCMinutes() >= 30)) && minute.getUTCMinutes() % 15 === 0) {
+    const { intervalWindow } = await import('./automation/job-lease')
+    await run('hiring-analytics-digest', intervalWindow(minute, 10080), async () => {
+      const { sendHiringDigests } = await import('./ats/hiring-insights-server')
+      await sendHiringDigests(now)
+    }, { maxAttempts: 3, retryAfterMs: 30 * 60_000, leaseMs: 30 * 60_000 })
   }
 
   // ── HTTP cron routes on their schedules ──────────────────────────────────

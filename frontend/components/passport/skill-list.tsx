@@ -2,6 +2,8 @@
  * Read-only list of verified skills with their evidence (server-safe: used by
  * /p/[handle], /verify/[credentialId] and the dashboard preview).
  */
+import { formatDate } from '@/lib/i18n/format'
+import type { Locale } from '@/lib/i18n/config'
 import { BadgeCheck, ShieldCheck } from 'lucide-react'
 import { EVIDENCE_KIND_LABELS, LEVEL_LABELS, PASSPORT_LEVELS, type PublicSkill } from '@/lib/passport/core'
 import { cn } from '@/lib/utils'
@@ -33,12 +35,12 @@ function LevelMeter({ level }: { level: PublicSkill['level'] }) {
   )
 }
 
-const fmt = (iso: string) => {
+const fmt = (iso: string, locale: Locale) => {
   const d = new Date(iso)
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''
+  return Number.isFinite(d.getTime()) ? formatDate(locale, d, { month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''
 }
 
-export function SkillList({ skills, showEvidence = true }: { skills: PublicSkill[]; showEvidence?: boolean }) {
+export function SkillList({ skills, showEvidence = true, locale = 'en' }: { skills: PublicSkill[]; showEvidence?: boolean; locale?: Locale }) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {skills.map((s) => (
@@ -67,7 +69,7 @@ export function SkillList({ skills, showEvidence = true }: { skills: PublicSkill
                       <span className="font-medium text-foreground">{e.title}</span>
                     )}
                     <span className="block text-xs text-muted-foreground">
-                      {EVIDENCE_KIND_LABELS[e.kind]} · <span className="tabular-nums">{e.score}</span> · {fmt(e.at)}
+                      {EVIDENCE_KIND_LABELS[e.kind]} · <span className="tabular-nums">{e.score}</span> · {fmt(e.at, locale)}
                     </span>
                   </span>
                 </li>

@@ -14,7 +14,7 @@ import { useT } from '@/lib/i18n/client'
 
 
 export default function OrdersPage() {
-  const { t } = useT()
+  const { t, fmt } = useT()
   const gate = usePageGuard('user')
   const [orders, setOrders] = useState<BuyerOrderSummary[] | null>(null)
   const [more, setMore] = useState(false)
@@ -59,7 +59,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-foreground">{o.first_title}{o.items > 1 ? t('market.valueMore', { value: o.items - 1 }) : ''}</p>
-                  <p className="text-sm text-muted-foreground"><span className="font-mono">{o.number}</span> · {new Date(o.created_at).toLocaleDateString()}</p>
+                  <p className="text-sm text-muted-foreground"><span className="font-mono">{o.number}</span> · {fmt.date(o.created_at)}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className="font-semibold tabular-nums text-foreground">{formatMinor(o.grand_total, o.currency)}</span>

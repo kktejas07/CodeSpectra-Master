@@ -96,7 +96,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
         feature: 'interview-sim', tenantId: null, ownerId: g.user.id, scope, name: `recording.${kindOf(parsed.data.mime)}`, size: parsed.data.size,
         contentType: parsed.data.mime, maxBytes: largeUploadLimits().videoBytes, allowedTypes: MIMES, meta: { mime: parsed.data.mime },
       })
-      if (!r.ok) return NextResponse.json({ error: r.error, ...('inline' in r ? { inline: true } : {}) }, { status: r.status })
+      if (!r.ok) return NextResponse.json({ error: r.error, ...('inline' in r ? { inline: true } : {}), ...('code' in r && r.code ? { code: r.code } : {}) }, { status: r.status })
       return NextResponse.json(r, { status: 201 })
     }
     const done = await finishDirectUpload({
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       sniff: (head, doc) => sniffAnswerFile(head, kindOf(String(doc.meta?.mime || doc.content_type))),
       sniffError: 'That file is not a WebM or MP4 recording.',
     })
-    if (!done.ok) return NextResponse.json({ error: done.error }, { status: done.status })
+    if (!done.ok) return NextResponse.json({ error: done.error, ...(done.code ? { code: done.code } : {}) }, { status: done.status })
     const up = await claimUpload({ uploadId: parsed.data.upload_id, ownerId: g.user.id, scope })
     if (!up) return NextResponse.json({ error: 'This upload was already used.' }, { status: 409 })
     const recording = await saveRecording({

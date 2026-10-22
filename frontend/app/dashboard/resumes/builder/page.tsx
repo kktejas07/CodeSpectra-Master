@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDate } from '@/lib/i18n/format'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -10,32 +11,15 @@ import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ArrowLeft, Save, Download, FileText, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon, Sparkles, Loader2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { useT } from '@/lib/i18n/client'
+import { useT, activeLocale } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { BUILDER_TEMPLATES, EMPTY_RESUME, type BuilderTemplate, type ResumeBuilderData } from '@/lib/resume/builder'
+import { downloadAtsPdf } from '@/lib/resume/pdf'
+import { AtsTemplate, ExtraSections, ExtrasPreview } from './extra-sections'
 
-// Basic Resume Data Structure
-interface ResumeData {
-  personal: {
-    fullName: string
-    email: string
-    phone: string
-    location: string
-    linkedin: string
-    portfolio: string
-  }
-  summary: string
-  experience: { id: string; company: string; role: string; dates: string; description: string }[]
-  education: { id: string; institution: string; degree: string; dates: string }[]
-  skills: string
-}
-
-const emptyData: ResumeData = {
-  personal: { fullName: '', email: '', phone: '', location: '', linkedin: '', portfolio: '' },
-  summary: '',
-  experience: [],
-  education: [],
-  skills: ''
-}
+// Résumé data: lib/resume/builder (shared with the API, PDF export and tests).
+type ResumeData = ResumeBuilderData
+const emptyData: ResumeData = EMPTY_RESUME
 
 // Drafts are saved to the account (/api/resumes/drafts). This browser copy is
 // only an offline fallback, used when the account copy can't be reached or is older.
@@ -56,7 +40,7 @@ function writeLocalDraft(d: LocalDraft) {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)) } catch { /* storage blocked */ }
 }
 
-type TemplateKey = 'modern' | 'minimal' | 'elegant' | 'professional' | 'creative'
+type TemplateKey = BuilderTemplate
 
 /** Print just the resume sheet: copy it plus the page's styles into a hidden iframe. */
 function printElement(el: HTMLElement, title: string) {
@@ -83,7 +67,7 @@ function printElement(el: HTMLElement, title: string) {
 
 export default function ResumeBuilderPage() {
   const apiError = useApiError()
-  const { t: tr } = useT()
+  const { t: tr, td } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -93,16 +77,17 @@ export default function ResumeBuilderPage() {
   const addToast = useToast()
 
   const [data, setData] = useState<ResumeData>(emptyData)
-  const [template, setTemplate] = useState<TemplateKey>('modern')
+  const [template, setTemplate] = useState<TemplateKey>('ats')
   const [resumeName, setResumeName] = useState('Untitled resume')
   const sheetRef = useRef<HTMLDivElement>(null)
   const [draftId, setDraftId] = useState<string | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [aiBusy, setAiBusy] = useState<string | null>(null)
+  const [prefilling, setPrefilling] = useState(false)
 
   const applyDraft = (d: LocalDraft) => {
-    if (d.data) setData({ ...emptyData, ...d.data, personal: { ...emptyData.personal, ...d.data.personal } })
+    if (d.data) setData({ ...emptyData, ...d.data, personal: { ...emptyData.personal, ...d.data.personal }, projects: d.data.projects ?? [], certificates: d.data.certificates ?? [], achievements: d.data.achievements ?? [], targetRole: d.data.targetRole ?? '' })
     if (d.name) setResumeName(d.name)
     if (d.template) setTemplate(d.template)
   }
@@ -172,13 +157,13 @@ export default function ResumeBuilderPage() {
     }
   }
 
-  const askAi = async (target: 'summary' | 'bullets', experienceId?: string) => {
-    setAiBusy(target === 'summary' ? 'summary' : experienceId || 'bullets')
+  const askAi = async (target: 'summary' | 'bullets', experienceId?: string, projectId?: string) => {
+    setAiBusy(target === 'summary' ? 'summary' : projectId || experienceId || 'bullets')
     try {
       const res = await csrfFetch('/api/resumes/ai-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target, experienceId, data }),
+        body: JSON.stringify({ target, experienceId, projectId, data }),
       })
       const j = await res.json().catch(() => null)
       if (!res.ok) {
@@ -187,6 +172,9 @@ export default function ResumeBuilderPage() {
       }
       if (target === 'summary' && typeof j?.summary === 'string') {
         setData(prev => ({ ...prev, summary: j.summary }))
+      } else if (target === 'bullets' && Array.isArray(j?.bullets) && projectId) {
+        const text = (j.bullets as string[]).map(b => `• ${b}`).join('\n')
+        setData(prev => ({ ...prev, projects: prev.projects.map(p => p.id === projectId ? { ...p, description: text } : p) }))
       } else if (target === 'bullets' && Array.isArray(j?.bullets) && experienceId) {
         const text = (j.bullets as string[]).map(b => `• ${b}`).join('\n')
         setData(prev => ({
@@ -210,6 +198,13 @@ export default function ResumeBuilderPage() {
   }
 
   const downloadPdf = () => {
+    if (template === 'ats') {
+      void downloadAtsPdf(data, resumeName || 'Resume', {
+        summary: tr('career.professionalSummary'), experience: tr('career.experience'), projects: tr('career.rbProjects'), education: tr('career.education'),
+        skills: tr('career.skills'), certificates: tr('career.rbCertificates'), achievements: tr('career.rbAchievements'),
+      }).catch(() => addToast({ type: 'error', title: tr('career.rbPdfFailed') }))
+      return
+    }
     if (!sheetRef.current || !printElement(sheetRef.current, resumeName || 'Resume')) {
       window.print()
       return
@@ -217,35 +212,27 @@ export default function ResumeBuilderPage() {
     addToast({ type: 'info', title: tr('career.chooseSaveAsPdfInThe809') })
   }
 
-  useEffect(() => {
-    if (source === 'profile') {
-      try {
-        const saved = localStorage.getItem('codeSpectra_extendedProfile')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          setData({
-            personal: { 
-              fullName: parsed.name || '',
-              email: parsed.email || '',
-              phone: parsed.phone || '', 
-              location: parsed.location || '', 
-              linkedin: parsed.links?.linkedin || '', 
-              portfolio: parsed.links?.portfolio || '' 
-            },
-            summary: parsed.about || '',
-            experience: parsed.experience || [],
-            education: parsed.education || [],
-            skills: parsed.skills || ''
-          })
-          addToast({ type: 'success', title: tr('career.dataFetchedFromProfile') })
-          return
-        }
-      } catch (e) {
-        console.error('Error parsing profile data', e)
-      }
-      addToast({ type: 'info', title: tr('career.noSavedProfileFound'), message: tr('career.fillInYourDetailsBelowOr0bd') })
+  // ?source=profile: build from your profile + verified skill passport (server, /api/resumes/from-profile).
+  const fillFromPassport = async () => {
+    setPrefilling(true)
+    try {
+      const r = await fetch('/api/resumes/from-profile', { credentials: 'include', cache: 'no-store' })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || !j?.data) throw new Error(apiError(j, tr('career.rbPrefillFailed')))
+      applyDraft({ data: j.data as ResumeData })
+      if (j.data.targetRole) setResumeName(`${j.data.targetRole}`.slice(0, 120))
+      addToast({ type: 'success', title: tr('career.dataFetchedFromProfile'), message: tr('career.rbPrefillDone', { count: Number(j.verified_skills) || 0 }) })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : tr('career.rbPrefillFailed'), message: tr('career.fillInYourDetailsBelowOr0bd') })
+    } finally {
+      setPrefilling(false)
     }
-  }, [source, addToast])
+  }
+
+  useEffect(() => {
+    if (source === 'profile') void fillFromPassport()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source])
 
   const updatePersonal = (field: keyof ResumeData['personal'], value: string) => {
     setData(prev => ({ ...prev, personal: { ...prev.personal, [field]: value } }))
@@ -316,9 +303,13 @@ export default function ResumeBuilderPage() {
         </div>
         <div className="flex items-center gap-3">
           {lastSavedAt && (
-            <span className="hidden lg:inline text-xs text-muted-foreground tabular-nums">{tr('common.saved')}{' '}{new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <span className="hidden lg:inline text-xs text-muted-foreground tabular-nums">{tr('common.saved')}{' '}{formatDate(activeLocale(), lastSavedAt, { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
+          <Button variant="outline" size="sm" onClick={() => void fillFromPassport()} disabled={prefilling} title={tr('career.rbFillFromPassportHint')}>
+            {prefilling ? <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" aria-hidden /> : <Sparkles className="w-4 h-4 mr-2" aria-hidden />}
+            {tr('career.rbFillFromPassport')}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => void saveDraft()} disabled={savingDraft}>
             {savingDraft ? <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" aria-hidden /> : <Save className="w-4 h-4 mr-2" aria-hidden />}
             {savingDraft ? tr('common.saving') : tr('career.saveDraft')}
@@ -334,6 +325,13 @@ export default function ResumeBuilderPage() {
         <div className="w-full md:w-[45%] lg:w-[40%] h-1/2 md:h-full overflow-y-auto border-b md:border-b-0 md:border-r border-border bg-card p-4 sm:p-6 custom-scrollbar">
           <div className="space-y-8 pb-20">
             
+            {/* Target role: one saved version per role you apply for */}
+            <section className="space-y-2">
+              <Label htmlFor="rb-target-role">{tr('career.rbTargetRole')}</Label>
+              <Input id="rb-target-role" value={data.targetRole} maxLength={120} onChange={e => setData(prev => ({ ...prev, targetRole: e.target.value }))} placeholder={tr('career.rbTargetRolePlaceholder')} />
+              <p className="text-xs text-muted-foreground">{tr('career.rbVersionsHint')}</p>
+            </section>
+
             {/* Personal Details */}
             <section className="space-y-4">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">{tr('career.personalDetails')}</h3>
@@ -447,6 +445,8 @@ export default function ResumeBuilderPage() {
                 rows={3}
               />
             </section>
+
+            <ExtraSections data={data} setData={setData} aiBusy={aiBusy} onAiProject={(pid) => void askAi('bullets', undefined, pid)} />
           </div>
         </div>
 
@@ -455,7 +455,7 @@ export default function ResumeBuilderPage() {
           
           {/* Template Switcher */}
           <div className="bg-card border border-border rounded-full px-2 py-2 flex items-center gap-1 sm:gap-2 mb-6 shadow-sm max-w-full w-max overflow-x-auto">
-            {(['modern', 'minimal', 'elegant', 'professional', 'creative'] as const).map(t => (
+            {BUILDER_TEMPLATES.map(t => (
               <Button
                 key={t}
                 variant={template === t ? 'default' : 'ghost'}
@@ -463,7 +463,7 @@ export default function ResumeBuilderPage() {
                 aria-pressed={template === t}
                 onClick={() => setTemplate(t)}
               >
-                {t}
+                {td(`career.rbTemplate:${t}`, t)}
               </Button>
             ))}
           </div>
@@ -473,6 +473,9 @@ export default function ResumeBuilderPage() {
             {/* The Resume A4 Paper */}
             <div ref={sheetRef} className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
               
+              {/* --- Template: ATS (single column, plain text, real-text PDF) --- */}
+              {template === 'ats' && <AtsTemplate data={data} />}
+
               {/* --- Template: Modern --- */}
               {template === 'modern' && (
                 <div className="flex min-h-282.75">
@@ -816,6 +819,7 @@ export default function ResumeBuilderPage() {
                 </div>
               )}
 
+              {template !== 'ats' && <ExtrasPreview data={data} />}
             </div>
           </div>
         </div>

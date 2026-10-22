@@ -213,5 +213,11 @@
   "label:Wishlist": "विशलिस्ट",
   "label:Preferences": "प्राथमिकताएँ",
   "label:Ai": "AI",
-  "label:Locked": "लॉक्ड"
+  "label:Locked": "लॉक्ड",
+  "label:Hiring drives": "हायरिंग ड्राइव",
+  "label:Hiring drive": "हायरिंग ड्राइव (एक)",
+  "label:Live drives": "लाइव ड्राइव",
+  "label:Live drive control room": "लाइव ड्राइव कंट्रोल रूम",
+  "label:Jobs for you": "आपके लिए नौकरियाँ",
+  "label:Best matches": "सबसे अच्छे मैच"
 }

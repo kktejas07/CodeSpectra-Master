@@ -136,6 +136,7 @@ export type ServerSecretsRecord = {
   uploads_s3_kms_key_id?: string
   uploads_s3_sse?: string                // AES256 | aws:kms | none
   uploads_s3_pending_tag?: string        // 'false' on R2 (no object tagging)
+  uploads_allow_unscanned?: string       // comma-separated storage features (admin override, default none)
   // --- PhonePe -----------------------------------------------------------
   phonepe_merchant_id?: string
   phonepe_salt_key?: string

@@ -6,6 +6,8 @@ import { csrfFetch } from './csrf-fetch'
 export interface CheckoutResponse {
   provider?: string
   gateway_id?: string
+  /** Razorpay subscription checkout (INR autopay): open the modal with this instead of an order. */
+  subscription_id?: string
   key_id?: string
   redirect_url?: string
   amount_paise?: number
@@ -69,14 +71,15 @@ export async function completeCheckout(
   return new Promise<CheckoutOutcome>((resolve, reject) => {
     const rzp = new Razorpay({
       key: data.key_id,
-      amount: data.amount_paise,
-      currency: data.currency || 'INR',
-      order_id: data.gateway_id,
+      ...(data.subscription_id
+        ? { subscription_id: data.subscription_id }
+        : { amount: data.amount_paise, currency: data.currency || 'INR', order_id: data.gateway_id }),
       name: 'CodeSpectra',
       description: opts.description || data.plan?.name || 'CodeSpectra plan',
       prefill: opts.email ? { email: opts.email } : undefined,
       handler: async (response: {
-        razorpay_order_id: string
+        razorpay_order_id?: string
+        razorpay_subscription_id?: string
         razorpay_payment_id: string
         razorpay_signature: string
       }) => {

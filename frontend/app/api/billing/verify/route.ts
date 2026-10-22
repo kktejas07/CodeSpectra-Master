@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { verifyPaymentSignature, getRazorpay } from '@/lib/razorpay-server'
+import { verifyPaymentSignature, verifySubscriptionPaymentSignature, getRazorpay } from '@/lib/razorpay-server'
 import {
   billingOrders,
   billingPayments,
@@ -14,6 +14,8 @@ import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 export const runtime = 'nodejs'
 
 interface VerifyReq {
+  /** Subscription checkout (lib/billing/razorpay-subscriptions.ts) sends this instead of an order id. */
+  razorpay_subscription_id?: string
   razorpay_order_id: string
   razorpay_payment_id: string
   razorpay_signature: string
@@ -42,6 +44,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     body = sanitizeMongoInput(await req.json()) as VerifyReq
   } catch {
     return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
+  }
+  if (typeof body.razorpay_subscription_id === 'string' && body.razorpay_subscription_id) {
+    return verifySubscription(user.id, body)
   }
   if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })
@@ -155,4 +160,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     plan_id: order.plan_id,
     subscription,
   })
+}
+
+/** Razorpay subscription checkout: signature over payment_id|subscription_id, then the same claim-once activation. */
+async function verifySubscription(userId: string, body: VerifyReq): Promise<NextResponse> {
+  const subscriptionId = String(body.razorpay_subscription_id || '')
+  const paymentId = String(body.razorpay_payment_id || '')
+  const signature = String(body.razorpay_signature || '')
+  if (!/^sub_[A-Za-z0-9]{6,40}$/.test(subscriptionId) || !/^pay_[A-Za-z0-9]{6,40}$/.test(paymentId) || !signature) {
+    return NextResponse.json({ error: 'Missing required fields', code: 'missing_fields' }, { status: 400 })
+  }
+  if (!(await verifySubscriptionPaymentSignature({ subscription_id: subscriptionId, payment_id: paymentId, signature }))) {
+    return NextResponse.json({ error: 'signature_mismatch' }, { status: 400 })
+  }
+  try {
+    const { confirmFirstSubscriptionPayment } = await import('@/lib/billing/razorpay-subscriptions')
+    const r = await confirmFirstSubscriptionPayment(userId, subscriptionId, paymentId)
+    if (!r.ok) return NextResponse.json({ error: r.code, code: r.code }, { status: r.code === 'order_not_found' ? 404 : 400 })
+    if (body.plan_id && body.plan_id !== r.order.plan_id) return NextResponse.json({ error: 'plan_mismatch' }, { status: 400 })
+    const active = await (await billingSubscriptions()).findOne({ user_id: userId, status: 'active' }, { sort: { ends_at: -1 } })
+    return NextResponse.json({
+      ok: true,
+      already_processed: !r.activated,
+      order_id: r.order.id,
+      plan_id: r.order.plan_id,
+      subscription: active ? { id: active.id, ends_at: active.ends_at } : null,
+    })
+  } catch (e) {
+    console.error('[billing/verify] subscription confirm failed:', (e as Error)?.message)
+    return NextResponse.json({ error: 'Could not confirm payment with the gateway. Try again shortly.' }, { status: 502 })
+  }
 }

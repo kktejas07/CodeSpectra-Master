@@ -7,12 +7,17 @@ import { useT } from '@/lib/i18n/client'
 
 const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) => m.CADEditor), {
   ssr: false,
-  loading: () => (
-    <div className="flex h-[calc(100vh-4rem)] items-center justify-center rounded-lg border border-border/40 bg-card">
-      <div className="text-sm text-muted-foreground">Loading CAD editor…</div>
-    </div>
-  ),
+  loading: () => <CadEditorLoading />,
 });
+
+function CadEditorLoading() {
+  const { t } = useT()
+  return (
+    <div role="status" className="flex h-[calc(100vh-4rem)] items-center justify-center rounded-lg border border-border/40 bg-card">
+      <div className="text-sm text-muted-foreground">{t('exam.loadingCadEditor')}</div>
+    </div>
+  )
+}
 
 export default function CADPage() {
   const { t } = useT()

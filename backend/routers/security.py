@@ -4,6 +4,11 @@ them before anything is persisted. Mounted at `/internal/security/*`.
 
 The Next.js `/api/upload` route posts the raw file bytes here (base64), and the
 backend blocks the upload with a 400 if ClamAV flags a virus.
+
+`/scan-stream` takes the raw bytes as the request body (application/octet-stream,
+chunked) and relays them to clamd as they arrive — used for large direct
+uploads (lib/storage/scan.ts streams the S3 object here), so any size up to
+SCAN_STREAM_MAX_BYTES is scanned with bounded memory.
 """
 from __future__ import annotations
 
@@ -15,7 +20,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from core.auth import require_auth, require_internal_secret
-from services.security_scanner import scan_file_for_viruses
+from services.security_scanner import scan_file_for_viruses, scan_stream_for_viruses
 
 router = APIRouter(
     prefix="/internal/security",
@@ -56,3 +61,17 @@ async def scan_upload(
     scan_file_for_viruses(file_bytes)
 
     return {"clean": True, "scanned_bytes": len(file_bytes)}
+
+@router.post("/scan-stream", response_model=ScanResp)
+async def scan_upload_stream(
+    request: Request,
+    auth=Depends(require_auth),
+):
+    """Raw-body streaming scan. 400 infected, 413 too large, 502 scanner offline."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit():
+        from services import security_scanner as sc
+        if int(declared) > sc.SCAN_STREAM_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="File is larger than the scanner accepts.")
+    scanned = await scan_stream_for_viruses(request.stream())
+    return {"clean": True, "scanned_bytes": scanned}

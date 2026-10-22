@@ -21,6 +21,7 @@ import {
   Briefcase,
   BarChart3,
   Search,
+  HardDrive,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -52,6 +53,7 @@ const ITEMS = (t: Translator): {
   { id: 'gamification', label: t('dash.gamificationXp'), icon: Trophy },
   { id: 'kyc', label: t('dash.kycProviders'), icon: Shield },
   { id: 'redis', label: t('dash.redisRateLimiting'), icon: Database },
+  { id: 'storage', label: t('dash.uploadStorage'), icon: HardDrive },
   { id: 'whatsapp', label: t('dash.whatsappOpenwa'), icon: MessageCircle },
   { id: 'seo', label: t('dash.seoAiSearch'), icon: Search },
   { id: 'analytics', label: t('dash.analyticsTracking'), icon: BarChart3 },

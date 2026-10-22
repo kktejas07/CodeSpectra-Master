@@ -40,6 +40,7 @@ import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 import { useCurrency } from '@/lib/use-currency'
 import { Illustration } from '@/components/illustrations/spot'
 import { useT } from '@/lib/i18n/client'
+import { BillingExtras } from './billing-extras'
 import { useApiError } from '@/lib/i18n/use-api-error'
 
 type InvoiceRow = {
@@ -50,6 +51,7 @@ type InvoiceRow = {
   status: string
   description: string | null
   downloadUrl: string | null
+  invoiceNumber?: string | null
 }
 
 type Subscription = {
@@ -183,8 +185,9 @@ function BillingContent() {
       // API returns { invoices: InvoiceView[] } (see lib/billing/invoice.ts).
       const d = await invRes.json()
       const list = Array.isArray(d?.invoices) ? d.invoices : []
-      setInvoices(list.map((v: { id: string; createdAt: string; amount: number; currency: string; status: string; description: string | null; downloadUrl: string }) => ({
+      setInvoices(list.map((v: { id: string; createdAt: string; amount: number; currency: string; status: string; description: string | null; downloadUrl: string; invoiceNumber?: string | null }) => ({
         id: v.id,
+        invoiceNumber: v.invoiceNumber ?? null,
         date: formatDate(v.createdAt),
         amount: v.amount,
         currency: v.currency,
@@ -545,7 +548,7 @@ function BillingContent() {
                 ) : (
                   invoices.map((inv) => (
                     <tr key={inv.id} className="border-t border-border hover:bg-muted/30">
-                      <td className="px-4 py-3 font-mono text-xs">{inv.id.slice(0, 8)}…</td>
+                      <td className="px-4 py-3 font-mono text-xs">{inv.invoiceNumber || `${inv.id.slice(0, 8)}…`}</td>
                       <td className="px-4 py-3 tabular-nums">{inv.date}</td>
                       <td className="px-4 py-3 tabular-nums">
                           {getCurrencySymbol(inv.currency || currency)}{inv.amount.toFixed(2)}
@@ -604,6 +607,8 @@ function BillingContent() {
           <p className="mt-4 text-sm text-muted-foreground">{t('account.noCardOnFileYourCard708')}</p>
         )}
       </Card>
+
+      <BillingExtras hasPlan={Boolean(subscription.planId && subscription.planId !== 'free')} onChanged={() => setReloadKey((k) => k + 1)} />
 
       {/* Upgrade */}
       <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>

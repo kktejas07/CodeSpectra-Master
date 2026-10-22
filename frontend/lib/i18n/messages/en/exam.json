@@ -883,5 +883,6 @@
   "dimensionLabel:communication": "Communication",
   "dimensionLabel:correctness": "Correctness",
   "dimensionLabel:depth": "Depth",
-  "dimensionLabel:structure": "Structure"
+  "dimensionLabel:structure": "Structure",
+  "loadingCadEditor": "Loading CAD editor…"
 }
