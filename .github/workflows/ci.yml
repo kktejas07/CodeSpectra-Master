@@ -131,6 +131,8 @@ jobs:
       - run: yarn build
         env:
           SESSION_SECRET: ci-secret
+          # The app outgrew Node's default heap (build aborted with exit 134).
+          NODE_OPTIONS: --max-old-space-size=6144
       # Smoke the built app (A-063): boot `next start` against the throwaway
       # MongoDB and check key pages, auth redirects, cron auth and the
       # Permissions-Policy (mic/camera for self). Fast — no browser download.
@@ -178,6 +180,8 @@ jobs:
       - run: yarn build
         env:
           SESSION_SECRET: ci-secret
+          # The app outgrew Node's default heap (build aborted with exit 134).
+          NODE_OPTIONS: --max-old-space-size=6144
       # Chromium only (+ its OS deps); the version matches @playwright/test in package.json.
       - run: npx playwright install --with-deps chromium
       # A-063 / CORE-032: a small real-browser suite (e2e/ci-smoke.spec.ts) against the built app.
