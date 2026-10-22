@@ -7,7 +7,8 @@
  * day series. Each card loads, fails and empties on its own.
  */
 import { useEffect, useState } from 'react'
-import { Bot, Coins, FileCheck2, ShieldAlert, Users } from 'lucide-react'
+import { Bot, Coins, ShieldAlert, Users } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { BentoEmpty, BentoGrid, BentoStat, MiniBars } from '@/components/bento'
 import { useAdminT } from '@/lib/i18n/admin'
 import type { AdminOverview } from '@/lib/admin/overview'
@@ -30,7 +31,8 @@ function useAdminJson<T>(url: string): Load<T> & { loading: boolean } {
 interface CurrencyMetrics { currency: string; mrr: number; activeSubscriptions: number }
 
 export function AdminOverviewBento({ totalUsers, usersLoaded, proctorHref }: { totalUsers: number; usersLoaded: boolean; proctorHref: string }) {
-  const { t, number } = useAdminT()
+  const { t, fmt } = useAdminT()
+  const number = fmt.number
   const ov = useAdminJson<AdminOverview>('/api/admin/overview')
   const billing = useAdminJson<{ metrics: CurrencyMetrics[] }>('/api/admin/billing/metrics?days=30')
   const loading = t('overview.loading')
@@ -80,7 +82,7 @@ export function AdminOverviewBento({ totalUsers, usersLoaded, proctorHref }: { t
         />
         <BentoStat
           span={2}
-          icon={<FileCheck2 />}
+          icon={<AnimatedIcon name="check-circle" size={18} />}
           title={t('overview.testsToday')}
           loading={ov.loading}
           loadingLabel={loading}

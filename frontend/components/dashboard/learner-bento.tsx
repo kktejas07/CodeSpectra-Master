@@ -7,11 +7,12 @@
  * skeleton, an empty state that says what to do next, and an error line.
  */
 import { useEffect, useState } from 'react'
-import { BadgeCheck, Building2, CalendarCheck, Code, Flame, Mic, Swords, Trophy, Zap } from 'lucide-react'
+import { BadgeCheck, Building2, CalendarCheck, Code, Flame, Mic, Trophy } from 'lucide-react'
 import {
   BentoAction, BentoBody, BentoCard, BentoEmpty, BentoGrid, BentoIcon, BentoList, BentoPill, BentoStat, BentoText, BentoTitle,
   Meter, Sparkline, SkeletonBar, spanClass,
 } from '@/components/bento'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-widget'
 import { useT } from '@/lib/i18n/client'
 import { useLocaleDates } from '@/lib/i18n/use-dates'
@@ -205,7 +206,7 @@ export function LearnerBento({ stats }: { stats: LearnerStats }) {
         <BentoCard href={nextContest ? `/contests/${nextContest.slug}` : undefined} aria-busy={contests.loading || undefined}>
           <BentoBody className="pt-3">
             <div className="flex items-center gap-2.5">
-              <BentoIcon><Swords /></BentoIcon>
+              <BentoIcon><AnimatedIcon name="clock" size={18} /></BentoIcon>
               <BentoTitle className="text-[15px] font-medium text-muted-foreground">{t('dash.bentoNextContest')}</BentoTitle>
             </div>
             {contests.loading ? (
@@ -296,7 +297,7 @@ export function LearnerBento({ stats }: { stats: LearnerStats }) {
           href="/dashboard/problems"
         />
         <BentoStat
-          icon={<Zap />}
+          icon={<AnimatedIcon name="bolt" size={18} />}
           title={t('dash.bentoXp')}
           loading={!stats.loaded && !stats.failed}
           loadingLabel={loading}

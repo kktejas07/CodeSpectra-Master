@@ -17,9 +17,11 @@ describe('native bridge', () => {
     expect(await startNativeLockdown({ sessionKind: 'exam', sessionId: 'e1' })).toBeNull()
   })
 
-  it('detects the Android shell only', () => {
-    ;(window as unknown as { Capacitor: unknown }).Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', nativePromise: async () => ({}) }
+  it('detects the Android and iOS shells only', () => {
+    ;(window as unknown as { Capacitor: unknown }).Capacitor = { isNativePlatform: () => true, getPlatform: () => 'web', nativePromise: async () => ({}) }
     expect(isNativeApp()).toBe(false)
+    ;(window as unknown as { Capacitor: unknown }).Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', nativePromise: async () => ({}) }
+    expect(isNativeApp()).toBe(true)
     ;(window as unknown as { Capacitor: unknown }).Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android', nativePromise: async () => ({}) }
     expect(isNativeApp()).toBe(true)
   })
