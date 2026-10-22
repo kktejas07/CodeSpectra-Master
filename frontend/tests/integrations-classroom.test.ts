@@ -56,7 +56,7 @@ describe('Slack / Teams', () => {
   it('validates Slack and Teams connections', () => {
     expect(validateSlack({ webhook_url: 'https://hooks.slack.com/services/T/B/x' }).ok).toBe(true)
     expect(validateSlack({ webhook_url: 'https://evil.example/hook' }).ok).toBe(false)
-    expect(validateSlack({ mode: 'bot', bot_token: 'xoxb-1234567890-abc', channel: 'C0123456' }).ok).toBe(true)
+    expect(validateSlack({ mode: 'bot', bot_token: 'xoxb-1234567890-abc', channel: 'C0123456' }).ok).toBe(true) // gitleaks:allow (fake test token)
     expect(validateSlack({ mode: 'bot', bot_token: 'xoxp-user', channel: 'C0123456' }).ok).toBe(false)
     expect(validateTeams({ webhook_url: 'https://contoso.webhook.office.com/webhookb2/abc' }).ok).toBe(true)
     expect(validateTeams({ webhook_url: 'https://hooks.slack.com/services/T/B/x' }).ok).toBe(false)
