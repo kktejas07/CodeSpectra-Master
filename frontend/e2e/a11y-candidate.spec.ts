@@ -38,7 +38,7 @@ async function expectNoCritical(page: Page, label: string) {
   const critical = axe.violations.filter((v) => v.impact === 'critical')
   const serious = axe.violations.filter((v) => v.impact === 'serious')
   if (serious.length) console.warn(`[a11y] ${label} serious:`, serious.map((v) => `${v.id} ×${v.nodes.length}`).join(', '))
-  expect(critical.map((v) => `${v.id}: ${v.help} (${v.nodes[0]?.target?.[0] ?? ''})`), label).toEqual([])
+  expect(critical.map((v) => `${v.id}: ${v.help} @ ${page.url()} :: ${(v.nodes[0]?.html ?? '').slice(0, 300)}`), label).toEqual([])
 }
 
 async function tabPass(page: Page, stops = 40) {

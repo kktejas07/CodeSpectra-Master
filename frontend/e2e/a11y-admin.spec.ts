@@ -29,6 +29,7 @@ for (const path of PAGES) {
     const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
     const serious = axe.violations.filter((v) => v.impact === 'serious')
     if (serious.length) console.warn(`[a11y] ${path} serious:`, serious.map((v) => `${v.id} ×${v.nodes.length}`).join(', '))
-    expect(axe.violations.filter((v) => v.impact === 'critical').map((v) => `${v.id}: ${v.help} (${v.nodes[0]?.target?.[0] ?? ''})`)).toEqual([])
+    // Report the offending markup and URL so a CI failure is actionable without a trace.
+    expect(axe.violations.filter((v) => v.impact === 'critical').map((v) => `${v.id}: ${v.help} @ ${page.url()} :: ${(v.nodes[0]?.html ?? '').slice(0, 300)} :: ${v.nodes[0]?.failureSummary?.slice(0, 200) ?? ''}`)).toEqual([])
   })
 }
