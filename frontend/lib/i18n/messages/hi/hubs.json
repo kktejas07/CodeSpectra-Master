@@ -288,7 +288,7 @@
   "dtEvents_one": "{count} इवेंट",
   "dtEvents_other": "{count} इवेंट",
   "dtNoStudentPoints": "इस कॉलेज के किसी छात्र के अभी अंक नहीं हैं।",
-  "dtNoTeamPoints": "किसी पूरे-कॉलेज टीम के अभी अंक नहीं हैं।",
+  "dtNoTeamPoints": "किसी ऑल-कॉलेज टीम के अभी कोई अंक नहीं हैं।",
   "dtCollegeTitle": "यूनिवर्सिटी लीग में {college}",
   "dtCollegeDesc": "CodeSpectra यूनिवर्सिटी लीग में {college} की स्थिति, शीर्ष छात्र और टीमें।",
   "dtCollegeFallbackTitle": "कॉलेज लीग",

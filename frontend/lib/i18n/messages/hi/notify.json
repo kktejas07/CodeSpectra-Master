@@ -352,7 +352,7 @@
   "interview.inviteNotSentFailedWa": "{name} को इंटरव्यू का समय चुनने के लिंक वाला ई-मेल नहीं भेजा जा सका; यह WhatsApp से गया। ज़रूरत हो तो लिंक कॉपी करने के लिए इंटरव्यू खोलें।",
   "time.left.minutes_one": "{count} मिनट",
   "time.left.minutes_other": "{count} मिनट",
-  "time.left.hours_one": "{count} घंटे",
+  "time.left.hours_one": "{count} घंटा",
   "time.left.hours_other": "{count} घंटे",
   "hiring.nudge.title": "{job}: उम्मीदवार इंतज़ार में हैं",
   "hiring.nudge.aJob": "एक जॉब",
