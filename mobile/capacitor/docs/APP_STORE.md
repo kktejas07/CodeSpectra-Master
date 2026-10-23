@@ -10,8 +10,8 @@
       in Firebase → Project settings → Cloud Messaging → Apple app configuration.
 - [ ] Firebase iOS app `ai.codespectra.app` → `GoogleService-Info.plist` →
       secret `IOS_GOOGLE_SERVICE_INFO_PLIST_B64`.
-- [ ] `frontend/public/.well-known/apple-app-site-association`: replace
-      `TEAMID` with the team id, deploy, check
+- [ ] Admin → server secrets `apple_team_id` (or web env `APPLE_TEAM_ID`) set —
+      `/.well-known/apple-app-site-association` is built from it; check
       `curl -sI https://codespectra.ai/.well-known/apple-app-site-association`
       → `200`, `content-type: application/json`, no redirect.
 - [ ] Admin → server secrets: `apple_team_id`, `ios_bundle_ids`

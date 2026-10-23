@@ -468,6 +468,16 @@ export async function cancelInterview(ivId: string, tenantId: string, reason: st
   )
   if (!updated) throw new InterviewError(409, 'The interview changed. Reload and try again.')
   await writePanelCalendar(updated)
+  // AUTO-090: hiring cancellations reach workflows too (and stop runs waiting on this interview).
+  void import('@/lib/automation/interview-events').then(async ({ cancelWaitingInterviewRuns }) => {
+    await cancelWaitingInterviewRuns(updated.id, 'Interview was cancelled')
+    const { emit } = await import('@/lib/automation/events')
+    const { candidate } = await loadContext(updated).catch(() => ({ candidate: null }))
+    await emit('interview.cancelled', {
+      interview_id: updated.id, kind: 'hiring', title: updated.stage_name || 'Interview', candidate_name: updated.candidate_name ?? null, candidate_email: (candidate as { email?: string | null } | null)?.email ?? null,
+      scheduled_at: updated.scheduled_at ?? null, application_id: updated.application_id, job_id: updated.job_id,
+    }, { tenantId, idempotencyKey: `interview.cancelled:${updated.id}` })
+  }).catch((e) => console.error('[automation] emit failed:', e))
   if (wasScheduled && (await claimSend(updated.id, `cancel:${nonce}`))) {
     const { job, candidate } = await loadContext(updated)
     await noticeCandidate(updated, candidate, 'cancelled', null, job ? await companyName(job) : 'our company')

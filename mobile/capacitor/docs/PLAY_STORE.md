@@ -7,7 +7,7 @@ Package `ai.codespectra.app` · target SDK 36 · min SDK 24 · AAB from
 
 - [ ] Play App Signing enrolled; upload key stored outside the repo
 - [ ] `google-services.json` secret set (push works on the internal track)
-- [ ] App signing SHA-256 added to `frontend/public/.well-known/assetlinks.json` and deployed; `pm get-app-links` shows *verified*
+- [ ] App signing SHA-256 set in Admin → server secrets `android_sha256_cert_fingerprints` (or env `ANDROID_SHA256_CERT_FINGERPRINTS`); `pm get-app-links` shows *verified*
 - [ ] Play Integrity API linked to a Cloud project; service-account JSON in Admin → server secrets
 - [ ] Decide the in-app purchase question (see **Billing** below) before production review
 - [ ] Bump `version` in `mobile/capacitor/package.json`

@@ -40,6 +40,8 @@ async function ensureIndexes(db: Db): Promise<void> {
         db.collection('contest_usage').createIndex({ contest_id: 1, user_id: 1 }),
         db.collection('contest_usage').createIndex({ at: 1 }),
         db.collection('contest_results').createIndex({ contest_id: 1 }, { unique: true }),
+        // AGT-030: one run-slot counter per person per contest (prompt-a-thon run cap, claimed atomically).
+        db.collection('contest_run_slots').createIndex({ id: 1 }, { unique: true }),
       ])
     })().catch((e) => {
       indexes = null
@@ -85,6 +87,15 @@ export interface ContestUsageDoc {
   at: string
 }
 export const usageCol = () => col<ContestUsageDoc>('contest_usage')
+/** Prompt-a-thon run counter per person per contest (AGT-030). */
+export interface ContestRunSlotDoc {
+  id: string
+  contest_id: string
+  user_id: string
+  runs: number
+  busy_since: string | null
+}
+export const runSlotsCol = () => col<ContestRunSlotDoc>('contest_run_slots')
 export const settingsCol = () => col<{ id: string; [k: string]: unknown }>('contest_settings')
 
 /** Frozen final board written once at release (first write wins). */

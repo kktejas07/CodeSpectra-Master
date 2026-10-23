@@ -14,6 +14,7 @@ import { generateEbookDraft, topicForDay } from '@/lib/ebooks-generate'
 // topicForDay exported as topicForDay
 import { ensureEbookSeed } from '@/lib/ebooks-seed'
 import { buildEbookCoverPrompt, generateCoverImage } from '@/lib/ai-image'
+import { getEbookSettings } from '@/lib/ebooks-settings'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,11 @@ function authorize(req: NextRequest): boolean {
 async function postImpl(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  }
+
+  // AUTO-086: off by default (Admin → Resources → Daily AI draft) — it spends AI budget every day.
+  if (!(await getEbookSettings()).auto_draft_enabled) {
+    return NextResponse.json({ ok: true, skipped: 'disabled' })
   }
 
   await ensureEbookSeed('system')

@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
+import { escapeHtml } from '@/lib/safe-html'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,10 +56,10 @@ export async function POST(req: NextRequest) {
     { upsert: true },
   )
 
-  await sendEmail(user.email, {
-    subject: 'Confirm your mobile number on CodeSpectra',
-    html: `<p>Save mobile <strong>${countryCode} ${phone}</strong> to your profile.</p><p>Your code is <strong>${code}</strong> (expires in 15 minutes).</p><p>This confirms the change came from you; the number itself is marked verified only once SMS verification is available.</p>`,
-  }, undefined, { category: 'transactional' })
+  // SEO-033: in the account owner's language.
+  const { emailTemplatesFor } = await import('@/lib/email-templates')
+  const { localeForUser } = await import('@/lib/i18n/recipient')
+  await sendEmail(user.email, emailTemplatesFor(await localeForUser(user.id)).notice({ key: 'phoneVerify', params: { phone: escapeHtml(`${countryCode} ${phone}`) }, code }), undefined, { category: 'transactional' })
 
   return NextResponse.json({
     ok: true,

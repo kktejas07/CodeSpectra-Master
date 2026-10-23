@@ -194,6 +194,10 @@ export async function createPlan(user: { id: string; tenantId?: string | null },
     read_slugs: readSlugsOf(before), active_days: before?.active_days ?? [], created_at: before?.created_at ?? ts, updated_at: ts,
   }
   await col.replaceOne({ user_id: user.id }, doc, { upsert: true })
+  // AUTO-088: a (new or rebuilt) study plan; one event per plan regeneration.
+  void import('@/lib/automation/events').then(({ emit }) => emit('study_plan.created', {
+    user_id: user.id, plan_id: doc.id, target_kind: target.kind, target_label: target.label, days: target.days, hours_per_week: target.hours_per_week, rebuilt: !!before,
+  }, { idempotencyKey: `study_plan.created:${doc.id}:${ts}` })).catch((e) => console.error('[automation] emit failed:', e))
   return doc
 }
 

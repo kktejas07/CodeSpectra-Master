@@ -18,6 +18,7 @@
 import 'server-only'
 import { randomBytes } from 'crypto'
 import { logger } from '@/lib/logger'
+import { getMongoDb } from '@/lib/mongodb'
 import { redactString } from '@/lib/log-redact'
 import { outboundT } from '@/lib/i18n/outbound'
 import { toLocale, type Locale } from '@/lib/i18n/config'
@@ -25,7 +26,7 @@ import { getAppOrigin } from '@/lib/app-origin'
 import { phoneKey, isWhatsAppOptedOut } from '@/lib/whatsapp-send'
 import { toE164 } from '@/lib/ats/phone'
 import {
-  canResendOptin, duePrompt, gradeReply, inSession, isoWeekKey, localDayOf, matchDomain, parseCommand, questionFilter,
+  canResendOptin, duePrompt, dueEnrollmentFilter, gradeReply, inSession, isoWeekKey, localDayOf, matchDomain, parseCommand, questionFilter,
   questionOptions, questionsLeftToday, renderQuestion, sendHourAllowed, PRACTICE_LEVELS,
   type PracticeLevel, type PracticeQuestion, type PracticeSettings, type WaPracticeDelivery, type WaPracticeEnrollment,
 } from './logic'
@@ -496,6 +497,10 @@ export async function handlePracticeInbound(m: PracticeInbound, opts: { skip?: b
       const active: WaPracticeEnrollment = { ...cur, status: 'active', confirmed: { at, via: m.replyId ? 'button' : 'text' } }
       await sendButtons(active, `${t('waPractice.confirmed', { hour: String(cur.send_hour).padStart(2, '0') + ':00' })}\n\n${t('waPractice.help')}`, [{ id: 'wp:get', title: t('waPractice.getButton') }])
       logger.info(`[wa-practice] enrollment ${e.id} confirmed`)
+      // AUTO-088: WhatsApp practice turned on (double opt-in done). No phone number in the payload.
+      void import('@/lib/automation/events').then(({ emit }) => emit('wa_practice.enrolled', {
+        user_id: cur.user_id, enrollment_id: cur.id, domain: cur.domain, level: cur.level, send_hour: cur.send_hour, timezone: cur.timezone,
+      }, { idempotencyKey: `wa_practice.enrolled:${cur.id}:${at}` })).catch(() => {})
       return 'handled'
     }
     if (cmd.kind === 'decline') {
@@ -582,18 +587,33 @@ export async function handlePracticeInbound(m: PracticeInbound, opts: { skip?: b
  * At each learner's hour: the daily prompt (or the weekly mock on mock day). Claimed per
  * enrollment + local day (`last_daily_day`), so a retry or a second worker never double-sends.
  */
-export async function runPracticeTick(now = new Date(), opts: { max?: number } = {}): Promise<{ checked: number; sent: number }> {
+export async function runPracticeTick(now = new Date(), opts: { budgetMs?: number } = {}): Promise<{ checked: number; sent: number; deferred?: number }> {
   const s = await getPracticeSettings()
   if (!s.enabled) return { checked: 0, sent: 0 }
   const col = await enrollmentsCol()
-  const rows = (await col.find({ status: 'active', confirmed: { $ne: null } }, { projection: { _id: 0 } }).limit(opts.max ?? 5000).toArray()) as WaPracticeEnrollment[]
+  // AUTO-082: read only rows whose local send hour is now (every timezone in use), streamed with a
+  // time budget — no fixed row cap. Rows left when the budget runs out are logged, never silently dropped.
+  const timezones = (await col.distinct('timezone', { status: 'active', confirmed: { $ne: null } })) as Array<string | null>
+  const cursor = col.find(dueEnrollmentFilter(timezones.length ? timezones : [null], now) as never, { projection: { _id: 0 } }).sort({ id: 1 })
+  const deadline = Date.now() + (opts.budgetMs ?? 12 * 60_000)
   let sent = 0
-  for (const e of rows) {
+  let checked = 0
+  let deferred = 0
+  const users = (await getMongoDb()).collection('user')
+  for await (const doc of cursor) {
+    const e = doc as unknown as WaPracticeEnrollment
+    if (Date.now() > deadline) { deferred++; continue }
+    checked++
     const due = duePrompt(e, now, s)
     if (!due) continue
     const claimed = await col.updateOne({ id: e.id, status: 'active', last_daily_day: { $ne: due.day } }, { $set: { last_daily_day: due.day } })
     if (!claimed.modifiedCount) continue
     try {
+      // AUTO-085: never message a phone whose account is gone (the purge also deletes the row).
+      if (!(await users.countDocuments({ $or: [{ id: e.user_id }, { _id: e.user_id as never }] }, { limit: 1 }))) {
+        await col.updateOne({ id: e.id }, { $set: { status: 'revoked' } as never })
+        continue
+      }
       if (await isWhatsAppOptedOut(e.phone, e.confirmed?.at ?? null)) continue
       if (inSession(e.last_inbound_at, now)) {
         if (due.kind === 'mock') await startMock(e, now, s)
@@ -612,5 +632,6 @@ export async function runPracticeTick(now = new Date(), opts: { max?: number } =
       logger.warn(`[wa-practice] tick failed for enrollment ${e.id}: ${redactString((err as Error).message)}`)
     }
   }
-  return { checked: rows.length, sent }
+  if (deferred) logger.warn(`[wa-practice] time budget reached: ${deferred} due enrolments not sent this hour`)
+  return { checked, sent, ...(deferred ? { deferred } : {}) }
 }

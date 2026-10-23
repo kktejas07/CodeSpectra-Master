@@ -22,6 +22,7 @@ import { completeCheckout } from '@/lib/razorpay-checkout'
 import { useToast } from '@/lib/toast-context'
 import { useAdminT } from '@/lib/i18n/admin'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 
 interface Licence {
   id: string
@@ -210,6 +211,8 @@ export default function LicencesPage() {
         <SkeletonCard />
       ) : (
         <>
+          {/* CORE-038: no licence purchase inside the phone apps (store rules). */}
+          <NativePurchaseGate>
           <Panel className="space-y-4 p-6">
             <h2 className="text-lg font-semibold text-foreground">{t('licences.buyTitle')}</h2>
             <p className="text-sm text-muted-foreground">
@@ -234,6 +237,7 @@ export default function LicencesPage() {
               </Button>
             </div>
           </Panel>
+          </NativePurchaseGate>
 
           {data.licences.length === 0 ? (
             <EmptyState title={t('licences.emptyTitle')} description={t('licences.emptyBody')} />

@@ -49,6 +49,23 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'ebooks-daily', label: 'Daily ebook draft', group: 'Cron routes', everyMinutes: 1440, optional: true },
   { id: 'signals-ingest', label: 'Signals ingest', group: 'Cron routes', everyMinutes: 360, optional: true },
   { id: 'security-scan', label: 'Security scan', group: 'Cron routes', everyMinutes: 10080 },
+  // AUTO-083: jobs added in later waves (all record heartbeats via runLeasedJob / withCronHeartbeat).
+  { id: 'news-digest', label: 'Tech news daily digest', group: 'Content', everyMinutes: 1440, optional: true },
+  { id: 'content-digest', label: 'Daily digest page (events, news, Learn, contests)', group: 'Content', everyMinutes: 1440, optional: true },
+  { id: 'study-plans', label: 'Study plans (weekly build + reminders)', group: 'Content', everyMinutes: 60 },
+  { id: 'wa-practice', label: 'WhatsApp daily practice', group: 'Content', everyMinutes: 60 },
+  { id: 'guardian-reports', label: 'Guardian weekly reports', group: 'Content', everyMinutes: 60 },
+  { id: 'knowledge', label: 'Knowledge index (queue, nightly sweep, vector sync, copilot eval)', group: 'Content', everyMinutes: 1 },
+  { id: 'razorpay-cancel-sweep', label: 'Razorpay cancellations at period end', group: 'Platform', everyMinutes: 1440 },
+  { id: 'referral-rewards', label: 'Referral rewards', group: 'Platform', everyMinutes: 1440 },
+  { id: 'licence-expiry', label: 'Organisation licence expiry', group: 'Platform', everyMinutes: 1440 },
+  { id: 'ai-usage-rollup', label: 'AI spend daily rollup', group: 'Platform', everyMinutes: 1440 },
+  { id: 'pro-cert-sweep', label: 'Proctored certifications (finalise, payments, expiry reminders)', group: 'Platform', everyMinutes: 5 },
+  { id: 'lti-grade-retry', label: 'LMS grade passback retries', group: 'Platform', everyMinutes: 5 },
+  { id: 'company-tests-refresh', label: 'Company test weekly refresh', group: 'Content', everyMinutes: 10080, optional: true },
+  { id: 'hiring-analytics-digest', label: 'Hiring analytics weekly digest', group: 'Hiring', everyMinutes: 10080 },
+  // Only hit by an external scheduler on serverless hosts; the in-process loop covers everything else.
+  { id: 'tick', label: 'External cron tick (/api/cron/tick)', group: 'Cron routes', everyMinutes: 1, optional: true },
 ]
 
 /** Minutes after which a heartbeat counts as stale. */

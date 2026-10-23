@@ -115,7 +115,7 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
       <div className="mt-5 space-y-4">
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Checkbox checked={useEmail} onCheckedChange={(v) => setUseEmail(v === true)} aria-label={t('public.notifyEmailUpdates')} /> {t('publicPages.email')}
+            <Checkbox checked={useEmail} onCheckedChange={(v) => setUseEmail(v === true)} aria-label={t('public.notifyEmailUpdates')} /> {t('public.notifyChannelEmail')}
           </label>
           {useEmail && <Input type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-label={t('public.emailLabel')} />}
         </div>

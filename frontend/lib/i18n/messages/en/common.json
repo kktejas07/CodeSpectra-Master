@@ -32,6 +32,6 @@
   "voiceConsentTitle": "Use your microphone?",
   "voiceConsentBody": "Your browser listens only while the mic button is on (a red dot shows it) and turns your speech into text in {language}. CodeSpectra doesn’t record or store audio; only the text you send is saved, like a typed message. Your browser’s speech service may process the audio.",
   "voiceConsentAccept": "Turn on the mic",
-  "manageOnWeb": "Manage your plan on the web",
-  "manageOnWebBody": "Plans and purchases aren’t available in the app. Your plan and everything you’ve unlocked work here as usual."
+  "manageOnWeb": "Manage purchases on the web",
+  "manageOnWebBody": "Plans, certifications, marketplace items and mentor sessions can’t be bought in the app. Your plan and everything you’ve unlocked work here as usual."
 }

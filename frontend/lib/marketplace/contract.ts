@@ -103,7 +103,7 @@ export interface Order {
   discount_total: number
   grand_total: number
   shipping_address?: { name: string; line1: string; line2?: string; city: string; state: string; postal_code: string; country: string; phone: string } | null
-  payment: { gateway: 'phonepe' | 'stripe'; ref?: string; status: 'pending' | 'succeeded' | 'failed' | 'refunded' | 'partially_refunded'; paid_at?: string }
+  payment: { gateway: 'phonepe' | 'razorpay' | 'stripe'; ref?: string; status: 'pending' | 'succeeded' | 'failed' | 'refunded' | 'partially_refunded'; paid_at?: string }
   status: OrderStatus
   created_at: string
   updated_at: string

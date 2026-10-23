@@ -145,7 +145,8 @@ export interface AttemptDoc {
   updated_at: string
 }
 
-export const ORDER_STATUSES = ['pending', 'paid', 'failed', 'refunded'] as const
+/** cancelled = replaced by a newer checkout before payment (CORE-040); a late payment on it is still settled. */
+export const ORDER_STATUSES = ['pending', 'paid', 'failed', 'refunded', 'cancelled'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 
 export interface CertOrderDoc {
@@ -157,10 +158,17 @@ export interface CertOrderDoc {
   renews_credential_id: string | null
   currency: CertCurrency
   amount: number
-  gateway: 'phonepe' | 'stripe' | 'free'
+  gateway: 'phonepe' | 'razorpay' | 'stripe' | 'free'
   payment: { ref: string | null; intent: string | null; txn: string | null; paid_amount: number | null }
   status: OrderStatus
   attempt_id: string | null
+  /**
+   * CORE-040: paid while another attempt for the program was already open
+   * (double checkout). No attempt is created; the payment is refunded
+   * (`refund.ok`) or left for an admin (`refund.ok === false`).
+   */
+  duplicate?: { attempt_id: string; at: string } | null
+  refund?: { ok: boolean; ref: string | null; at: string; error?: string } | null
   created_at: string
   updated_at: string
   paid_at: string | null

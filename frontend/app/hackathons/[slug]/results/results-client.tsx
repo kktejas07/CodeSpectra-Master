@@ -1,0 +1,779 @@
+'use client'
+import { useHref } from '@/hooks/use-browser-value'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { Card } from '@/components/ui/card'
+import { SoftGlow } from '@/components/visuals'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Loader2,
+  Trophy,
+  ArrowLeft,
+  Users,
+  Medal,
+  Download,
+  Share2,
+  FileText,
+  Award,
+  Sparkles,
+  CheckCircle,
+  Clock,
+  Copy,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
+import { Linkedin, Twitter } from '@/components/ui/brand-icons'
+import { useAuth } from '@/lib/auth-context'
+import QRCode from 'qrcode'
+import { rankByScore } from '@/lib/hackathons/ranking'
+import { Illustration } from '@/components/illustrations/spot'
+
+interface Hackathon {
+  id: string; name: string; slug: string; description?: string
+  num_teams: number; results_released: boolean; released_at?: string
+  ends_at: string
+  display_count?: number; advance_top_n?: number; certificates?: boolean
+  tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string }[]
+}
+
+interface Team {
+  id: string; name: string; slug: string; verify_token?: string
+  total?: number | null; rank?: number | null; tied?: boolean; advancing?: boolean
+  xp: number; level: number; submissions: number
+  members: Array<{ name: string; role: string }>
+  achievements: Array<{ id: string; name: string }>
+  captain?: string
+}
+
+interface Submission {
+  id: string; team_id: string; problem_slug: string
+  score: number | null; max_score: number; status: string
+  feedback?: string; submitted_at: string
+}
+
+function getVerifyToken(verifyToken?: string): string {
+  return verifyToken || ''
+}
+
+async function generateQRDataURL(text: string, size: number = 100): Promise<string> {
+  try {
+    return await QRCode.toDataURL(text, {
+      errorCorrectionLevel: 'M',
+      width: size,
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' },
+    })
+  } catch { return '' }
+}
+
+function CountdownTimer({ targetDate, eventEnded }: { targetDate: string; eventEnded: boolean }) {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+
+  useEffect(() => {
+    const calculate = () => {
+      const now = new Date().getTime()
+      const target = new Date(targetDate).getTime()
+      const diff = target - now
+
+      if (diff > 0) {
+        setTimeLeft({
+          days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((diff % (1000 * 60)) / 1000),
+        })
+      }
+    }
+
+    calculate()
+    const interval = setInterval(calculate, 1000)
+    return () => clearInterval(interval)
+  }, [targetDate])
+
+  if (eventEnded) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Results will be available soon. The event has ended.
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex gap-4 justify-center mt-4">
+      {[
+        { value: timeLeft.days, label: 'Days' },
+        { value: timeLeft.hours, label: 'Hours' },
+        { value: timeLeft.minutes, label: 'Minutes' },
+        { value: timeLeft.seconds, label: 'Seconds' },
+      ].map(({ value, label }) => (
+        <div key={label} className="text-center">
+          <div className="bg-muted/50 rounded-xl px-3 py-2 min-w-[60px]">
+            <p className="text-2xl font-bold tabular-nums">{value}</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{label}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function LockedState({ hackathon }: { hackathon: Hackathon }) {
+  const eventEnded = new Date(hackathon.ends_at).getTime() < Date.now()
+
+  return (
+    <div className="relative isolate flex min-h-screen items-center justify-center bg-background px-4">
+      <SoftGlow />
+      <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70">
+        <Illustration name="locked" className="mx-auto mb-6 w-40" />
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Results aren’t available yet</h1>
+        <p className="text-muted-foreground mb-6">
+          The organizers have not released the results yet.
+        </p>
+
+        <div className="bg-muted/30 rounded-lg p-4 mb-6">
+          <p className="text-sm font-medium mb-2 flex items-center justify-center gap-2">
+            <Clock className="h-4 w-4" />
+            {eventEnded ? 'Event has ended' : 'Event ends in'}
+          </p>
+          <CountdownTimer targetDate={hackathon.ends_at} eventEnded={eventEnded} />
+        </div>
+
+        {/* Release sends an in-app + email notice to every registered team member (release-results route). */}
+        <p className="text-sm text-muted-foreground mb-4">
+          Registered team members get a notification and email when results are released.
+        </p>
+        <Button asChild variant="outline" className="w-full gap-2">
+          <Link href={`/hackathons/${hackathon.slug}`}>
+            <ArrowLeft className="h-4 w-4" /> Back to event
+          </Link>
+        </Button>
+      </Card>
+    </div>
+  )
+}
+
+function TeamCardExpanded({
+  team,
+  submissions,
+  tasks,
+  rank,
+}: {
+  team: Team
+  submissions: Submission[]
+  tasks: Hackathon['tasks']
+  rank: number | null
+}) {
+  const teamSubs = submissions.filter((s) => s.team_id === team.id && s.status === 'released')
+  const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
+  const captain = team.members.find((m) => m.role === 'captain') || team.members[0]
+
+  return (
+    <div className="border-t border-border/40 bg-muted/20">
+      <div className="p-4 pl-12 space-y-3">
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex-1">
+            <p className="text-xs text-muted-foreground">
+              Captain: <span className="font-medium text-foreground">{captain?.name || 'Unknown'}</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Problems solved</p>
+            <div className="flex items-center gap-2">
+              <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: `${(solvedCount / (tasks?.length || 1)) * 100}%` }}
+                />
+              </div>
+              <span className="text-sm font-medium tabular-nums">{solvedCount} / {tasks?.length || 0}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Total submissions</p>
+            <p className="text-sm font-medium tabular-nums">{team.submissions}</p>
+          </div>
+        </div>
+
+        {tasks && tasks.length > 0 && (
+          <div className="border-t border-border/30 pt-3">
+            <p className="text-xs text-muted-foreground mb-2">By problem</p>
+            <div className="grid gap-2">
+              {tasks.map((task) => {
+                const sub = teamSubs.find((s) => s.problem_slug === task.problem_slug)
+                const solved = sub && sub.score !== null && sub.score > 0
+                return (
+                  <div key={task.problem_slug} className="flex items-center justify-between text-sm bg-background/60 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      {solved ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border border-muted-foreground/30" />
+                      )}
+                      <span className="font-medium">{task.problem_title}</span>
+                      <Badge variant="outline" className="text-[10px]">{task.points} pts</Badge>
+                    </div>
+                    <div className="text-right">
+                      {sub ? (
+                        <span className={`tabular-nums ${solved ? 'text-green-700 dark:text-green-400 font-medium' : ''}`}>
+                          {sub.score ?? '-'} / {sub.max_score}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MyTeamResults({
+  myTeam,
+  submissions,
+  tasks,
+  myRank,
+  myRankTied,
+  teams,
+}: {
+  myTeam: Team
+  submissions: Submission[]
+  tasks: Hackathon['tasks']
+  myRank: number
+  myRankTied?: boolean
+  teams: Team[]
+}) {
+  const teamSubs = submissions.filter((s) => s.team_id === myTeam.id && s.status === 'released')
+  const captain = myTeam.members.find((m) => m.role === 'captain') || myTeam.members[0]
+
+  return (
+    <Card className="rounded-3xl p-6 border-primary/30 bg-primary/5">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Medal className={`h-8 w-8 ${myRank === 1 ? 'text-amber-500' : myRank === 2 ? 'text-muted-foreground' : myRank === 3 ? 'text-amber-700 dark:text-amber-600' : 'text-primary'}`} />
+            <div>
+              <h2 className="text-lg font-semibold">{myTeam.name}</h2>
+              <p className="text-sm text-muted-foreground">
+                Captain: {captain?.name || 'Unknown'} · {typeof myTeam.total === 'number' ? `${myTeam.total} points` : 'Not scored'}
+              </p>
+            </div>
+          </div>
+        </div>
+        <Badge variant="default" className="text-lg px-4 py-1 tabular-nums">
+          Rank #{myRank}{myRankTied ? ' (tied)' : ''} of {teams.length}
+        </Badge>
+      </div>
+
+      {tasks && tasks.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">How you did on each problem</h3>
+          {tasks.map((task) => {
+            const sub = teamSubs.find((s) => s.problem_slug === task.problem_slug)
+            const solved = sub && sub.score !== null && sub.score > 0
+
+            const allScoresForTask = submissions
+              .filter((s) => s.problem_slug === task.problem_slug && s.status === 'released' && s.score !== null)
+              .map((s) => s.score!)
+              .sort((a, b) => b - a)
+            const isTopScore = sub && allScoresForTask[0] === sub.score
+            const rankForTask = sub ? allScoresForTask.indexOf(sub.score!) + 1 : null
+
+            return (
+              <div key={task.problem_slug} className={`flex items-center justify-between p-3 rounded-xl ${solved ? 'bg-green-500/10' : 'bg-muted/30'}`}>
+                <div className="flex items-center gap-3">
+                  {solved ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />
+                  )}
+                  <div>
+                    <p className="font-medium">{task.problem_title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {solved ? (
+                        isTopScore ? 'Top score!' : rankForTask ? `Rank #${rankForTask} on this problem` : ''
+                      ) : 'Not solved'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {sub ? (
+                    <p className={`font-bold tabular-nums ${solved ? 'text-green-700 dark:text-green-400' : ''}`}>
+                      {sub.score} / {sub.max_score}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">—</p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+export interface ResultsInitial { hackathon: Hackathon; teams: Team[]; submissions: Submission[]; my_team_id: string | null }
+
+/** SEO-003: `initial` is the signed-out view rendered on the server; signed-in visitors refetch for their own team. */
+export function HackathonResults({ slug, initial }: { slug: string; initial: ResultsInitial | null }) {
+  const pageHref = useHref()
+  const { user: authUser } = useAuth()
+  const hasSession = authUser?.uid
+  const certRef = useRef<HTMLDivElement>(null)
+  const [hackathon, setHackathon] = useState<Hackathon | null>(initial?.hackathon ?? null)
+  const [teams, setTeams] = useState<Team[]>(initial?.teams ?? [])
+  const [submissions, setSubmissions] = useState<Submission[]>(initial?.submissions ?? [])
+  const [loading, setLoading] = useState(!initial)
+  const [error, setError] = useState<string | null>(null)
+  const [myTeam, setMyTeam] = useState<Team | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [certGenerated, setCertGenerated] = useState(false)
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set())
+  const [certificateId, setCertificateId] = useState<string>('')
+
+  // Public endpoint: readable signed-out, but only returns teams/scores once
+  // results are released. The viewer's own team (if any) carries verify_token.
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/hackathons/${encodeURIComponent(slug)}/public-results`, { cache: 'no-store' })
+      if (!res.ok) throw new Error(res.status === 404 ? 'Event not found' : 'Could not load results')
+      const j = await res.json() as {
+        hackathon: Hackathon
+        teams: Team[]
+        submissions: Submission[]
+        my_team_id: string | null
+      }
+      setHackathon(j.hackathon)
+      // Server returns teams already ranked on judged totals.
+      const sorted = [...(j.teams || [])]
+      setTeams(sorted)
+      setMyTeam(j.my_team_id ? sorted.find((t) => t.id === j.my_team_id) || null : null)
+      setSubmissions(j.submissions || [])
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load results') }
+    finally { setLoading(false) }
+  }, [slug, hasSession])
+
+  // The server already rendered the signed-out view; refetch only for a signed-in viewer (own team, certificate).
+  useEffect(() => { if (!initial || hasSession) void load() }, [load, initial, hasSession])
+
+  // Ranks come from the server's judged totals; equal totals share a rank.
+  const teamRanks = rankByScore(teams, (t) => t.id, (t) => (typeof t.total === 'number' ? t.total : null))
+  const myRankInfo = myTeam ? teamRanks.get(myTeam.id) ?? null : null
+  const myRank = myRankInfo?.rank ?? null
+
+  const toggleTeamExpand = (teamId: string) => {
+    setExpandedTeams((prev) => {
+      const next = new Set(prev)
+      if (next.has(teamId)) {
+        next.delete(teamId)
+      } else {
+        next.add(teamId)
+      }
+      return next
+    })
+  }
+
+  const copyResultsLink = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const shareOnTwitter = () => {
+    if (typeof window !== 'undefined' && hackathon) {
+      const text = encodeURIComponent(`Check out the ${hackathon.name} results on CodeSpectra!`)
+      const url = encodeURIComponent(window.location.href)
+      window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'width=600,height=400')
+    }
+  }
+
+  const linkedinShareUrl = myTeam && myRank
+    ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageHref)}&text=${encodeURIComponent(`I ranked #${myRank} in ${hackathon?.name || 'a hackathon'} on CodeSpectra!`)}`
+    : ''
+
+  const downloadCert = async () => {
+    if (!certRef.current || !myTeam || !myRank || !hackathon) return
+    setCertGenerated(true)
+
+    const certId = `${hackathon.slug}-${myTeam.id}-${hackathon.released_at || Date.now()}`
+    setCertificateId(certId)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 800
+    canvas.height = 600
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const token = getVerifyToken(myTeam.verify_token)
+    const qrDataUrl = await generateQRDataURL(`${typeof window !== 'undefined' ? window.location.origin : ''}/hackathons/verify/${token}`, 80)
+
+    const teamSubs = submissions.filter((s) => s.team_id === myTeam.id && s.status === 'released')
+    const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
+    const captain = myTeam.members.find((m) => m.role === 'captain') || myTeam.members[0]
+
+    const grad = ctx.createLinearGradient(0, 0, 800, 600)
+    grad.addColorStop(0, '#2F5BE7')
+    grad.addColorStop(1, '#1E3FB8')
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, 800, 600)
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+    ctx.lineWidth = 4
+    ctx.strokeRect(20, 20, 760, 560)
+
+    ctx.fillStyle = '#ffffff'
+    ctx.font = 'bold 48px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('Certificate of Achievement', 400, 100)
+
+    ctx.beginPath()
+    ctx.moveTo(200, 125)
+    ctx.lineTo(600, 125)
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+
+    ctx.font = '18px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.fillText('This certifies that the team', 400, 175)
+
+    ctx.font = 'bold 36px sans-serif'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(myTeam.name, 400, 220)
+
+    ctx.font = '16px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.fillText(`led by ${captain?.name || 'Unknown'} • Captain`, 400, 255)
+
+    ctx.font = '18px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.fillText(`achieved Rank #${myRank}${myRankInfo?.tied ? ' (tied)' : ''} of ${teams.length} teams in`, 400, 300)
+
+    ctx.font = 'bold 28px sans-serif'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(hackathon.name, 400, 340)
+
+    ctx.font = '16px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.fillText(`${solvedCount} / ${hackathon.tasks?.length || 0} Problems Solved`, 400, 380)
+
+    ctx.font = '14px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.6)'
+    ctx.fillText(`Event: ${hackathon.name}`, 400, 420)
+    if (hackathon.released_at) {
+      ctx.fillText(
+        `Results released: ${formatDate(hackathon.released_at, undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`,
+        400, 445
+      )
+    }
+
+    if (qrDataUrl) {
+      const img = new Image()
+      img.src = qrDataUrl
+      ctx.drawImage(img, 680, 480, 80, 80)
+    }
+
+    ctx.font = '12px monospace'
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'
+    ctx.fillText(`ID: ${certId}`, 40, 560)
+
+    ctx.font = '11px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.fillText('Scan the QR code to verify at /hackathons/verify', 40, 580)
+
+    setTimeout(() => {
+      const link = document.createElement('a')
+      link.download = `certificate-${hackathon.slug}-${myTeam.slug}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    }, 100)
+  }
+
+  const shareResults = () => {
+    if (typeof window !== 'undefined' && linkedinShareUrl) {
+      window.open(linkedinShareUrl, '_blank', 'width=600,height=600')
+    }
+  }
+
+  if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading results…</div>
+
+  if (!hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p></div>
+
+  if (!hackathon.results_released) {
+    return <LockedState hackathon={hackathon} />
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-4">
+          <Link href={`/hackathons/${slug}`} className="text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="inline h-3 w-3 mr-1" /> Back to event
+          </Link>
+          <Badge variant="default" className="gap-1">
+            <CheckCircle className="h-3 w-3" /> Results
+          </Badge>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl space-y-8 px-4 sm:px-6 py-10">
+        <section className="text-center">
+          <Trophy className="h-12 w-12 text-primary mx-auto mb-3" />
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-balance">{hackathon.name}</h1>
+          <p className="text-muted-foreground mt-2">Final results</p>
+          {hackathon.released_at && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Released {formatDateTime(hackathon.released_at)}
+            </p>
+          )}
+        </section>
+
+        {myTeam && myRank && (
+          <MyTeamResults
+            myTeam={myTeam}
+            submissions={submissions}
+            tasks={hackathon.tasks}
+            myRank={myRank}
+            myRankTied={myRankInfo?.tied}
+            teams={teams}
+          />
+        )}
+
+        <div className="text-center">
+          <Button variant="outline" className="gap-1.5 text-sm" asChild>
+            <Link href={`/hackathons/${slug}/report`}>
+              <FileText className="h-4 w-4" /> View detailed report
+            </Link>
+          </Button>
+        </div>
+
+        <Card className="rounded-3xl p-6 border-primary/30 bg-primary/5">
+          <div className="flex flex-wrap justify-center gap-3">
+            {linkedinShareUrl && (
+              <Button onClick={shareResults} variant="default">
+                <Linkedin className="h-4 w-4 mr-1" /> Share on LinkedIn
+              </Button>
+            )}
+            <Button onClick={shareOnTwitter} variant="outline">
+              <Twitter className="h-4 w-4 mr-1" /> Share on X
+            </Button>
+            <Button onClick={copyResultsLink} variant="outline">
+              <Copy className="h-4 w-4 mr-1" /> {copied ? 'Copied!' : 'Copy results link'}
+            </Button>
+            {myTeam && myRank && hackathon.certificates !== false && (
+              <Button onClick={downloadCert} variant="outline">
+                <Download className="h-4 w-4 mr-1" /> Download certificate
+              </Button>
+            )}
+          </div>
+        </Card>
+
+        <div ref={certRef} style={{ display: 'none' }} />
+
+        <section>
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-primary" /> Final leaderboard
+          </h2>
+          <Card className="rounded-3xl overflow-hidden">
+            {teams.map((t, i) => {
+              const teamSubs = submissions.filter((s) => s.team_id === t.id && s.status === 'released')
+              const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
+              const isExpanded = expandedTeams.has(t.id)
+              const r = teamRanks.get(t.id)?.rank ?? null
+              void i
+
+              return (
+                <div key={t.id}>
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
+                    className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors ${myTeam?.id === t.id ? 'bg-primary/5' : ''}`}
+                    onClick={() => toggleTeamExpand(t.id)}
+                  >
+                    <span
+                      className={`w-10 text-2xl font-bold tabular-nums text-center ${r === 1 ? 'text-amber-500' : r === 2 ? 'text-foreground/60' : r === 3 ? 'text-amber-700 dark:text-amber-600' : 'text-muted-foreground'}`}
+                      aria-label={r === null ? 'Not ranked' : `Rank ${r}${teamRanks.get(t.id)?.tied ? ', tied' : ''}`}
+                    >
+                      {r === null ? '–' : r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `#${r}`}
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-medium">{t.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.members.map((m) => m.name).join(', ')} · {t.submissions} submissions
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${(solvedCount / (hackathon.tasks?.length || 1)) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          {solvedCount} / {hackathon.tasks?.length || 0} solved
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg tabular-nums">{typeof t.total === 'number' ? t.total : '–'} <span className="text-xs font-normal text-muted-foreground">points</span></p>
+                      {t.advancing && <p className="text-xs text-primary">Advancing</p>}
+                    </div>
+                    {t.achievements.length > 0 && (
+                      <div className="flex gap-1">
+                        {t.achievements.map((a) => (
+                          <Badge key={a.id} variant="outline" className="text-[10px]">
+                            <Sparkles className="h-3 w-3 mr-1" />{a.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  {isExpanded && (
+                    <TeamCardExpanded
+                      team={t}
+                      submissions={submissions}
+                      tasks={hackathon.tasks}
+                      rank={r}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </Card>
+        </section>
+
+        {submissions.length > 0 && hackathon.tasks && hackathon.tasks.length > 0 && (
+          <section>
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" /> Submissions by problem
+            </h2>
+            <div className="space-y-6">
+              {hackathon.tasks.map((task) => {
+                const taskSubs = submissions.filter(
+                  (s) => s.problem_slug === task.problem_slug && s.status === 'released'
+                ).sort((a, b) => {
+                  if (a.score === null && b.score === null) return 0
+                  if (a.score === null) return 1
+                  if (b.score === null) return -1
+                  return b.score - a.score
+                })
+
+                const medals = ['🥇', '🥈', '🥉']
+                // Ties on score share a rank; ungraded submissions get none.
+                const subRanks = rankByScore(taskSubs, (s) => s.id, (s) => s.score)
+
+                return (
+                  <Card key={task.problem_slug} className="rounded-3xl overflow-hidden">
+                    <div className="p-4 bg-muted/30 border-b border-border/40">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{task.problem_title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {task.difficulty} · {task.points} pts
+                          </p>
+                        </div>
+                        <Badge variant="outline">
+                          {taskSubs.length} submission{taskSubs.length !== 1 ? 's' : ''}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border/40 bg-muted/20">
+                            <th className="text-left p-3 font-medium text-muted-foreground">Rank</th>
+                            <th className="text-left p-3 font-medium text-muted-foreground">Team</th>
+                            <th className="text-right p-3 font-medium text-muted-foreground">Score</th>
+                            <th className="text-left p-3 font-medium text-muted-foreground">Feedback</th>
+                            <th className="text-right p-3 font-medium text-muted-foreground">Submitted</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {taskSubs.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="p-4 text-center text-muted-foreground">
+                                No submissions yet
+                              </td>
+                            </tr>
+                          ) : (
+                            taskSubs.map((sub) => {
+                              const team = teams.find((t) => t.id === sub.team_id)
+                              const subRank = subRanks.get(sub.id)?.rank ?? null
+                              const isMedaled = subRank !== null && subRank <= 3
+                              return (
+                                <tr key={sub.id} className={`border-b border-border/30 ${isMedaled ? 'bg-muted/10' : ''}`}>
+                                  <td className="p-3">
+                                    {subRank === null ? (
+                                      <span className="text-muted-foreground" aria-label="Not ranked">—</span>
+                                    ) : isMedaled ? (
+                                      <span className="text-lg" aria-label={`Rank ${subRank}`}>{medals[subRank - 1]}</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">#{subRank}</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 font-medium">{team?.name || 'Unknown'}</td>
+                                  <td className="p-3 text-right">
+                                    {sub.score !== null ? (
+                                      <span className={isMedaled ? 'font-bold' : ''}>
+                                        {sub.score} / {sub.max_score}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 max-w-xs truncate">
+                                    {sub.feedback ? (
+                                      <span className="text-muted-foreground text-xs">{sub.feedback}</span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-right text-muted-foreground text-xs">
+                                    {formatDate(sub.submitted_at)}
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        <section className="flex flex-wrap gap-3 justify-center pt-4 border-t border-border">
+          <Button variant="outline" onClick={() => window.print()}>
+            <FileText className="h-4 w-4 mr-1" /> Print / PDF
+          </Button>
+          {linkedinShareUrl && (
+            <Button onClick={shareResults} variant="outline">
+              <Linkedin className="h-4 w-4 mr-1" /> Share on LinkedIn
+            </Button>
+          )}
+          {myTeam && myRank && hackathon.certificates !== false && (
+            <Button onClick={downloadCert}>
+              <Award className="h-4 w-4 mr-1" /> Download certificate
+            </Button>
+          )}
+        </section>
+      </main>
+    </div>
+  )
+}

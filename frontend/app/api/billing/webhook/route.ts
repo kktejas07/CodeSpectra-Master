@@ -24,6 +24,7 @@ export const runtime = 'nodejs'
  *   - payment.captured       → mark order paid + insert payment + (re)issue subscription
  *   - payment.failed         → mark order failed + insert failed payment
  *   - refund.created/processed → full refund: markOrderRefunded (order, invoice, plan)
+ *   - payment_link.paid / expired / cancelled → marketplace + certification orders (CORE-039)
  *   - subscription.charged / pending / halted / cancelled / completed / activated
  *       → recurring INR plans (lib/billing/razorpay-subscriptions.ts)
  */
@@ -148,6 +149,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         } else {
           // Partial refund: record it on the payment only; access is unchanged.
           await paymentsCol.updateOne({ id: payment.id }, { $set: { partial_refund_paise: refundAmount } as never })
+        }
+      }
+    }
+    else if (event === 'payment_link.paid' || event === 'payment_link.expired' || event === 'payment_link.cancelled') {
+      // CORE-039: marketplace ("MKT…") and certification ("PCE…") Payment Links. Settled
+      // from Razorpay's view of the link (never this body); idempotent on our side.
+      const link = (entities.payment_link?.entity || {}) as Record<string, unknown>
+      const linkId = String(link.id || '')
+      const ref = String(link.reference_id || '')
+      if (/^plink_[A-Za-z0-9]{6,40}$/.test(linkId)) {
+        if (/^MKT[A-Za-z0-9]{1,37}$/.test(ref)) {
+          const { settleRazorpayOrder } = await import('@/lib/marketplace/settle')
+          await settleRazorpayOrder({ linkId })
+        } else if (/^PCE[A-Za-z0-9]{1,37}$/.test(ref)) {
+          const { settleByRef } = await import('@/lib/pro-certs/service')
+          await settleByRef(linkId)
         }
       }
     }

@@ -138,7 +138,8 @@ export async function rescheduleSession(userId: string, bookingId: string, newSt
   try {
     const r = await col.updateOne(
       { id: b.id, status: 'booked', start: b.start } as never,
-      { $set: { start: newStart, end: newEnd, active_slot: slotKey(product.id, newStart), reminder_sent_at: null, updated_at: nowIso() } },
+      // AUTO-081: unset (not null) so the 24-hour reminder sweep picks the new time up.
+      { $set: { start: newStart, end: newEnd, active_slot: slotKey(product.id, newStart), updated_at: nowIso() }, $unset: { reminder_sent_at: '' } },
     )
     if (!r.modifiedCount) throw new MktError(409, 'This session changed while you were rescheduling. Reload and try again.')
   } catch (e) {

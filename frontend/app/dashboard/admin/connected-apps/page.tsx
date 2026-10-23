@@ -21,7 +21,7 @@ type Platform = { id: string; name: string; issuer: string; client_id: string; d
 type Link = { id: string; course_name: string; exam_title: string; max_points: number; last_sync_at: string | null; last_synced: number }
 type Data = {
   tenant: string; slack: Row; teams: Row; google_classroom: Row; classroom_links: Link[]; classroom_redirect: string
-  lti: { platforms: Platform[]; stats: Record<string, { links: number; sent: number; errors: number }>; login_url: string; launch_url: string; jwks_url: string }
+  lti: { platforms: Platform[]; stats: Record<string, { links: number; sent: number; errors: number; pending?: number }>; login_url: string; launch_url: string; jwks_url: string }
   exams: { id: string; title: string }[]
 }
 const EVENTS = ['application', 'test_completed', 'drive_status'] as const
@@ -215,6 +215,17 @@ function Lti({ d, onChange }: { d: Data; onChange: () => void }) {
     setErr(null)
     try { await call('/api/integrations/lti/platforms', { body: f }); setF(blank); onChange() } catch (e2) { setErr(errText(e2)) }
   }
+  // CORE-041: undelivered scores are retried automatically; this re-sends them now.
+  const [resending, setResending] = useState(false)
+  const pendingGrades = Object.values(d.lti.stats).reduce((a, s) => a + (s.pending ?? 0), 0)
+  const resend = async () => {
+    setResending(true)
+    try {
+      const r = await call<{ sent: number; failed: number }>('/api/integrations/lti/resend-grades', { body: {} })
+      toast({ type: r.failed ? 'error' : 'success', title: t('community.resendGradesDone', { sent: r.sent, failed: r.failed }) })
+      onChange()
+    } catch (e) { toast({ type: 'error', title: t('community.resendGradesFailed'), message: errText(e) }) } finally { setResending(false) }
+  }
   const remove = async (id: string) => {
     if (!window.confirm(t('community.removePlatformConfirm'))) return
     try { await call(`/api/integrations/lti/platforms/${id}`, { method: 'DELETE' }); onChange() } catch (e) { toast({ type: 'error', title: errText(e) }) }
@@ -241,6 +252,14 @@ function Lti({ d, onChange }: { d: Data; onChange: () => void }) {
             )
           })}
         </ul>
+      )}
+      {pendingGrades > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          <span className="text-foreground">{t('community.gradeLinkPending', { count: pendingGrades })}</span>
+          <Button type="button" variant="outline" className="min-h-[44px] rounded-full" onClick={() => void resend()} disabled={resending}>
+            {resending ? t('community.resendingGrades') : t('community.resendGrades')}
+          </Button>
+        </div>
       )}
       <div className="flex flex-wrap items-end gap-2">
         <Field id="lti-site" label={t('community.moodleSite')} className="min-w-[240px] flex-1"><input id="lti-site" type="url" className={fieldClass} value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://" /></Field>

@@ -51,6 +51,12 @@ import {
   updateCodeathonTool, publishCodeathonTool, updateProblemTool, publishProblemTool, addQuestionsToBankTool,
 } from './write/modules'
 
+import {
+  listPendingNewsTool, listSocialQueueTool, listForumReportsTool, listMentorsTool, listCohortsTool, listCouponsTool, listOrgLicencesTool,
+  listCertReviewsTool, listLiveDrivesTool,
+} from './read/operations'
+import { reviewNewsDraftTool, createCouponTool, moderateForumPostTool, decideMentorTool, decideCertReviewTool } from './write/operations'
+
 export const ALL_TOOLS: AnyTool[] = [
   // read
   searchKnowledgeTool,
@@ -88,6 +94,10 @@ export const ALL_TOOLS: AnyTool[] = [
   getDigestTool, runDailyDigestTool,
   getStudyPlanTool, regenerateStudyPlanTool,
   startMockInterviewTool,
+  // operations (AGT-033): news review, social studio, community, mentors, cohorts, coupons/licences, paid certs, live drives
+  listPendingNewsTool, listSocialQueueTool, listForumReportsTool, listMentorsTool, listCohortsTool, listCouponsTool, listOrgLicencesTool,
+  listCertReviewsTool, listLiveDrivesTool,
+  reviewNewsDraftTool, createCouponTool, moderateForumPostTool, decideMentorTool, decideCertReviewTool,
 ]
 
 const BY_NAME = new Map<string, AnyTool>(ALL_TOOLS.map((t) => [t.name, t]))

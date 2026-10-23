@@ -6,6 +6,7 @@ import { CalendarClock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { formatMinor } from '@/lib/marketplace/pricing'
 import type { Currency, ItemKind, ProductVariant } from '@/lib/marketplace/contract'
 import { openCartDrawer, useCart } from './use-cart'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 
 interface Props {
   productId: string
@@ -94,7 +95,9 @@ export function BuyBox(p: Props) {
     else openCartDrawer()
   }
 
+  // CORE-038: no price / Add to cart / Buy now inside the phone apps (store rules).
   return (
+    <NativePurchaseGate>
     <div className="space-y-5">
       <p className="text-3xl font-bold tabular-nums text-cs-ink">{formatMinor(price * qty, p.currency)}</p>
       {p.variants.length > 0 && (
@@ -130,5 +133,6 @@ export function BuyBox(p: Props) {
         )}
       </div>
     </div>
+    </NativePurchaseGate>
   )
 }

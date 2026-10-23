@@ -135,6 +135,28 @@ function makeEmailTemplates(locale: Locale) {
   const longDate = (ms: number) => formatDate(ms, undefined, { month: 'long', day: 'numeric', year: 'numeric' }, locale === 'en' ? undefined : LOCALE_META[locale].intl)
 
   return {
+    /** AUTO-080: the reader's own week (no platform-wide numbers). Unsubscribe link added by deliverOrDefer ('engagement'). */
+    weeklyDigestEmail: (p: { name: string; solved: number; streak: number; events: Array<{ title: string; url: string; deadline: string | null }> }) => {
+      const base = getBaseUrl()
+      const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      const stat = (value: number, label: string) => `<p style="margin:8px 0;font-size:14px;color:${BRAND.text}"><strong>${value}</strong> ${label}</p>`
+      const events = p.events.map((e) => `<li style="margin:6px 0;font-size:14px"><a href="${esc(e.url)}" style="color:${BRAND.green};font-weight:600">${esc(e.title)}</a>${e.deadline ? ` <span style="color:${BRAND.muted};font-size:12px">· ${esc(t('weeklyDigest.applyBy', { date: longDate(Date.parse(e.deadline)) }))}</span>` : ''}</li>`).join('')
+      return {
+        subject: t('weeklyDigest.subject'),
+        html: `${W}
+        ${h1(t('weeklyDigest.heading'))}
+        ${lead(esc(t('weeklyDigest.intro', { name: p.name })))}
+        <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:8px;padding:12px 16px;margin:0 0 16px">
+          ${stat(p.solved, esc(t('weeklyDigest.solved')))}
+          ${stat(p.streak, esc(t('weeklyDigest.streak')))}
+          ${p.solved === 0 ? note(esc(t('weeklyDigest.nudge')), '8px 0 0') : ''}
+        </div>
+        ${events ? `<p style="margin:0 0 4px;font-weight:600;font-size:14px;color:${BRAND.text}">${esc(t('weeklyDigest.eventsHeading'))}</p><ul style="padding-left:18px;margin:0 0 16px">${events}</ul>` : ''}
+        ${baseStyles.button(`${base}/dashboard`, t('button.dashboard'))}
+        ${note(r('weeklyDigest.prefs', { url: `${base}/dashboard/notifications/preferences` }), '16px 0 0')}
+      ${F}`,
+      }
+    },
     welcomeEmail: (name: string) => {
       const base = getBaseUrl()
       const steps = ([1, 2, 3, 4] as const).map((i) => [t(`welcome.step${i}Title`), t(`welcome.step${i}Desc`)])
@@ -330,6 +352,27 @@ function makeEmailTemplates(locale: Locale) {
       ${note(t('atsInvite.expires', { days: params.expiresDays }))}
     ${F}`,
     }),
+
+    /**
+     * SEO-033: short account / security / invite notices (`<key>.subject`,
+     * `.heading`, `.body`, optional `.button` and `.note` in email.json).
+     * `params` go into the HTML and must be escaped by the caller;
+     * `subjectParams` (default `params`) are plain text for the subject.
+     */
+    notice: (args: { key: string; params?: OutboundParams; subjectParams?: OutboundParams; code?: string; buttonUrl?: string }) => {
+      const k = args.key
+      const has = (part: string) => outboundTemplate('email', locale, `${k}.${part}`) !== undefined
+      return {
+        subject: t(`${k}.subject`, args.subjectParams ?? args.params).replace(/[\r\n]+/g, ' ').slice(0, 200),
+        html: `${W}
+      ${h1(t(`${k}.heading`, args.params))}
+      ${lead(r(`${k}.body`, args.params))}
+      ${args.code ? `<p style="font-size:28px;font-weight:700;letter-spacing:6px;font-family:${FONTS.mono};margin:0 0 16px">${args.code}</p>` : ''}
+      ${args.buttonUrl && has('button') ? baseStyles.button(args.buttonUrl, t(`${k}.button`, args.params)) : ''}
+      ${has('note') ? note(r(`${k}.note`, args.params)) : ''}
+    ${F}`,
+      }
+    },
 
     twoFactorBackup: (backupCodes: string) => ({
       subject: t('backup.subject'),

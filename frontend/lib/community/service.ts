@@ -288,6 +288,10 @@ export async function createThread(user: NonNullable<Viewer>, raw: unknown) {
     accepted_reply_id: null, hash: m.hash, last_activity_at: now, created_at: now, updated_at: now,
   }
   await (await threadsCol()).insertOne(t)
+  // AUTO-088: visible community threads (held-for-review posts are not announced).
+  if (t.status === 'visible') void import('@/lib/automation/events').then(({ emit }) => emit('community.thread.created', {
+    user_id: user.id, thread_id: t.id, title: t.title, kind: t.kind, category_id: t.category_id, problem_id: t.problem_id, tags: t.tags, url: `/community/t/${t.id}`,
+  }, { idempotencyKey: `community.thread.created:${t.id}` })).catch(() => {})
   await Promise.all([
     (await followsCol()).updateOne({ thread_id: t.id, user_id: user.id }, { $setOnInsert: { thread_id: t.id, user_id: user.id, created_at: now } }, { upsert: true }),
     (await profilesCol()).updateOne({ user_id: user.id }, { $inc: { posts: 1 } }),

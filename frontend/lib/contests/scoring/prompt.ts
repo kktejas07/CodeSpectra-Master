@@ -48,3 +48,19 @@ export function buildPromptRun(participantPrompt: string, input: string): { syst
     user: `Contestant instructions:\n<<<\n${participantPrompt}\n>>>\n\nInput:\n<<<\n${input}\n>>>`,
   }
 }
+
+/**
+ * AGT-029: a run only counts when every hidden case got a model answer. Any model error (time-out,
+ * provider hiccup) means the run is refused, not scored — the contestant keeps the run and loses no points.
+ */
+export function promptRunComplete(errors: number, total: number): boolean {
+  return total > 0 && errors === 0
+}
+
+/**
+ * AGT-030: Mongo filter that claims one run slot atomically — under the per-person cap and with no
+ * other run of the same person in flight (a stale lock older than `staleBefore` is ignored).
+ */
+export function runSlotClaimFilter(id: string, cap: number, staleBefore: string): Record<string, unknown> {
+  return { id, runs: { $lt: Math.max(1, Math.floor(cap)) }, $or: [{ busy_since: null }, { busy_since: { $lt: staleBefore } }] }
+}

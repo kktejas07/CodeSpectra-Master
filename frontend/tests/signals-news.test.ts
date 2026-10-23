@@ -97,12 +97,13 @@ describe('caps and auto-publish rules', () => {
     expect(aiBudget({ daily_ai_cap: 3, monthly_cost_cap_usd: 0 }, null, now).items).toBe(0)
   })
   it('only trusted + AI-written + unflagged items auto-publish', () => {
-    const base = { trusted: true, autoPublishTrusted: true, aiRewritten: true, flagged: false }
+    const base = { trusted: true, autoPublishTrusted: true, aiRewritten: true, flagged: false, factsVerified: true }
     expect(shouldAutoPublish(base)).toBe(true)
     expect(shouldAutoPublish({ ...base, trusted: false })).toBe(false)
     expect(shouldAutoPublish({ ...base, autoPublishTrusted: false })).toBe(false)
     expect(shouldAutoPublish({ ...base, aiRewritten: false })).toBe(false)
     expect(shouldAutoPublish({ ...base, flagged: true })).toBe(false)
+    expect(shouldAutoPublish({ ...base, factsVerified: false })).toBe(false)
   })
   it('settings patches are validated', () => {
     expect(cleanSignalSettingsPatch({ daily_ai_cap: '20', monthly_cost_cap_usd: 2.345 })).toEqual({ ok: true, patch: { daily_ai_cap: 20, monthly_cost_cap_usd: 2.35 } })

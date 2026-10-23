@@ -1,4 +1,6 @@
 {
+  "id_ocr_paused": "Automatic ID reading is paused. Try again later or ask your proctor to check your ID.",
+  "native_purchase_blocked": "Purchases aren’t available in the app. Manage purchases on the web at codespectra.ai.",
   "unauthorized": "Unauthorized",
   "not_authenticated": "Not authenticated",
   "sign_in_to_continue": "Sign in to continue.",

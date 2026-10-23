@@ -95,7 +95,8 @@ export function aiBudget(s: Pick<SignalSettings, 'daily_ai_cap' | 'monthly_cost_
 }
 
 /** Pure: should an ingested item be published without review? */
-export function shouldAutoPublish(o: { trusted: boolean; autoPublishTrusted: boolean; aiRewritten: boolean; flagged: boolean }): boolean {
-  // A fallback (non-AI) draft or text that tripped the prompt guard always waits for a human.
-  return o.trusted && o.autoPublishTrusted && o.aiRewritten && !o.flagged
+export function shouldAutoPublish(o: { trusted: boolean; autoPublishTrusted: boolean; aiRewritten: boolean; flagged: boolean; factsVerified?: boolean }): boolean {
+  // A fallback (non-AI) draft, text that tripped the prompt guard, or (AGT-031) a draft the fact
+  // verifier did not pass always waits for a human. `factsVerified` omitted = not checked = not trusted.
+  return o.trusted && o.autoPublishTrusted && o.aiRewritten && !o.flagged && o.factsVerified === true
 }

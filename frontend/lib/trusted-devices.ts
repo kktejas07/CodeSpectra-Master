@@ -154,16 +154,10 @@ async function codes() {
 
 const codeKey = () => deriveServerKey('email-code')
 
-function faceCodeEmail(code: string) {
-  return {
-    subject: 'Your CodeSpectra sign-in code',
-    html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111827">
-  <h1 style="font-size:20px;margin:0 0 12px">Your sign-in code</h1>
-  <p style="font-size:14px;color:#6b7280;margin:0 0 16px">Someone signed in to your account with face sign-in on a new device. Enter this code to finish:</p>
-  <p style="font-size:28px;font-weight:700;letter-spacing:6px;font-family:ui-monospace,Menlo,Consolas,monospace;margin:0 0 16px">${code}</p>
-  <p style="font-size:13px;color:#6b7280;margin:0">The code expires in 10 minutes. If this wasn’t you, don’t share it — change your password and turn off face sign-in in your account settings.</p>
-</div>`,
-  }
+/** SEO-033: in the account owner's language (lib/i18n/recipient). */
+async function faceCodeEmail(uid: string, code: string) {
+  const [{ emailTemplatesFor }, { localeForUser }] = await Promise.all([import('@/lib/email-templates'), import('@/lib/i18n/recipient')])
+  return emailTemplatesFor(await localeForUser(uid)).notice({ key: 'faceCode', code })
 }
 
 /**
@@ -189,7 +183,7 @@ export async function issueFaceEmailCode(uid: string, email: string): Promise<{ 
     expires_at: new Date(now.getTime() + EMAIL_CODE_TTL_MS),
     consumed_at: null,
   })
-  const sent = await sendEmail(email, faceCodeEmail(code), undefined, { category: 'transactional' }).catch(() => ({ success: false }))
+  const sent = await sendEmail(email, await faceCodeEmail(uid, code), undefined, { category: 'transactional' }).catch(() => ({ success: false }))
   if (!sent.success) {
     await c.updateOne({ id: challengeId }, { $set: { consumed_at: new Date() } })
     return { ok: false, reason: 'send_failed' }

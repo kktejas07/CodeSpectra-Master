@@ -46,14 +46,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const name = String(target.fullName || target.name || 'there').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
-  const subject =
-    type === 'reminder'
-      ? 'Reminder: complete your KYC verification'
-      : 'Action required: re-verify your KYC documents'
-  const html =
-    type === 'reminder'
-      ? `<p>Hi ${name},</p><p>This is a reminder to complete your identity (KYC) verification on CodeSpectra.</p><p>Please log in and finish verification at your earliest convenience.</p>`
-      : `<p>Hi ${name},</p><p>Your previous KYC submission needs attention. Please log in and re-submit your verification documents.</p>`
+  // SEO-033: in the user's language, not the admin's.
+  const [{ emailTemplatesFor }, { localeForUser }] = await Promise.all([import('@/lib/email-templates'), import('@/lib/i18n/recipient')])
+  const { subject, html } = emailTemplatesFor(await localeForUser(target.id || userId)).notice({ key: type === 'reminder' ? 'kycReminder' : 'kycReverify', params: { name } })
 
   const result = await sendEmail(target.email, { subject, html }, undefined, { category: 'transactional' })
   if (!result.success) {

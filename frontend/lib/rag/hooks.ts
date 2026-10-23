@@ -83,3 +83,9 @@ export function knowledgeOnUserDeleted(userId: unknown): void {
   if (typeof userId !== 'string' || !userId) return
   void import('./ingest').then(({ purgeUserKnowledge }) => purgeUserKnowledge(userId)).catch((e) => console.error('[rag] purge on account deletion failed:', e))
 }
+
+/** Hosted contest created / edited / published / unpublished / closed (RAG-022). */
+export function knowledgeOnContestChange(contestId: unknown, tenantId?: unknown): void {
+  if (typeof contestId !== 'string' || !contestId) return
+  void enqueueKnowledge({ type: 'contest', id: contestId, tenantId: tid(tenantId) })
+}

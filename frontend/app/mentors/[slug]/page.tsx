@@ -4,6 +4,9 @@ import { notFound } from 'next/navigation'
 import { BadgeCheck, Briefcase, Globe, Languages, Star } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/components/seo/json-ld'
+import { breadcrumbJsonLd, mentorJsonLd, validJsonLd } from '@/lib/seo/jsonld'
+import { getSiteOrigin } from '@/lib/seo/settings'
 import { mentorBySlugCached } from '@/lib/mentors/public-cache'
 import { OfferingBooker } from '@/components/mentors/offering-booker'
 import { CartDrawerButton } from '@/components/marketplace/cart-drawer'
@@ -36,8 +39,19 @@ export default async function MentorPage({ params }: Props) {
   // Verified-purchase reviews of this mentor's session types (published only).
   const reviews = (await Promise.all(m.offerings.slice(0, 6).map((o) => productReviews(o.product_id, 10).catch(() => [])))).flat()
     .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 12)
+  // SEO-036: Person + bookable sessions as Service offers.
+  const site = await getSiteOrigin()
+  const schema = validJsonLd([
+    mentorJsonLd({
+      site, path: `/mentors/${m.slug}`, name: m.display_name, headline: m.headline, image: m.avatar_url, skills: m.skills,
+      sameAs: m.linkedin_url ? [m.linkedin_url] : [],
+      offers: m.offerings.map((o) => ({ name: o.title, description: o.description_md, price: o.price, currency: o.currency })),
+    }),
+    breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Mentors', path: '/mentors' }, { name: m.display_name, path: `/mentors/${m.slug}` }], site),
+  ])
   return (
     <PublicPageWrapper>
+      <JsonLd data={schema} />
       <div className="mx-auto w-full min-w-0 max-w-[1100px] px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-center justify-between gap-4 text-sm">
           <Link href="/mentors" className="text-cs-ink-soft hover:text-cs-ink">← All mentors</Link>

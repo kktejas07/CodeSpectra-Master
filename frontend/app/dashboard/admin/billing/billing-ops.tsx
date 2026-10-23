@@ -17,6 +17,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useAdminT } from '@/lib/i18n/admin'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { ReferralReview } from './referral-review'
 
 interface CurrencyMetrics { currency: string; mrr: number; arr: number; activeSubscriptions: number; churnedSubscriptions: number; logoChurnPct: number; revenueChurnPct: number; arpu: number }
 interface SubRow { id: string; user: string; plan_id: string; state: string; billing_mode: string; ends_at: string; grace_ends_at: string | null }
@@ -277,6 +278,7 @@ export function BillingOps() {
           </Button>
         </Panel>
       ) : null}
+      <ReferralReview />
     </div>
   )
 }

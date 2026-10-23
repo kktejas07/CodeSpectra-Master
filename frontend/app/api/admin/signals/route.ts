@@ -81,9 +81,12 @@ export async function POST(req: NextRequest) {
     const draft = await col.findOne({ id: body.id }, { projection: { _id: 0 } })
     if (!draft) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
-    if (body.action === 'reject') {
-      await col.updateOne({ id: body.id }, { $set: { status: 'rejected', updated_at: nowIso() } })
-      return NextResponse.json({ ok: true, status: 'rejected' })
+    if (body.action === 'reject' || body.action === 'approve') {
+      // Shared with the copilot's review_news_draft (lib/signals/review).
+      const { reviewNewsDraft } = await import('@/lib/signals/review')
+      const r = await reviewNewsDraft(body.id, body.action, gate.user.id)
+      if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+      return NextResponse.json({ ok: true, status: r.status, ...(r.url ? { url: r.url } : {}) })
     }
 
     if (body.action === 'unpublish' || body.action === 'delete') {
@@ -102,11 +105,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, status: 'pending' })
     }
 
-    // approve → publish
-    if (draft.status === 'published') return NextResponse.json({ ok: true, status: 'published', url: `/news/${draft.blog_slug}` })
-    const { publishDraft } = await import('@/lib/signals/publish')
-    const post = await publishDraft(draft, { by: gate.user.id, auto: false })
-    return NextResponse.json({ ok: true, status: 'published', url: `/news/${post.slug}`, post })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   } catch (e) {
     console.error('[signals] POST:', (e as Error)?.message)
     return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })

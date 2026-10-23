@@ -44,7 +44,7 @@ Three services defined in `docker-compose.yml`:
 
 ```yaml
 piston:
-  image: ghcr.io/engineer-man/piston:latest
+  image: ${PISTON_IMAGE:?…}   # digest-pinned, see "Piston sandbox configuration"
   container_name: codespectra-piston
   privileged: true
   expose: ["2000"]   # internal only — never publish (runs arbitrary code, no auth)
@@ -193,8 +193,19 @@ DB_NAME=codespectra
 
 ## Piston Sandbox Configuration
 
-- **Image:** `ghcr.io/engineer-man/piston:latest`
-- **Mode:** `privileged: true` (required for container-in-container)
+- **Image:** pinned by digest — `PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<digest>` in `.env`
+  (SEC-023). `docker compose` refuses to start without it. Run
+  `scripts/pin-piston-image.sh` to resolve the current upstream digest and write it;
+  re-pin only on purpose after reviewing upstream changes.
+- **Capabilities:** `SYS_ADMIN` + `SYS_PTRACE` (Piston's own isolate sandbox needs them)
+- **Network:** `sandbox` — a Docker `internal: true` network with no route out; only
+  `frontend` and `backend` join it. Installing a language runtime needs egress for a
+  moment:
+  ```bash
+  docker network connect bridge codespectra-piston
+  curl -X POST http://localhost:2000/api/v2/packages -d '{"language":"python","version":"3.10.0"}'  # from inside the frontend container
+  docker network disconnect bridge codespectra-piston
+  ```
 - **Port:** `2000`
 - **Healthcheck:** `/api/v2/runtimes` endpoint
 - **API URL inside frontend:** `http://piston:2000/api/v2` (auto-set via docker-compose env)
@@ -221,7 +232,8 @@ pip install -r requirements.txt
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 
 # Start Piston (Docker)
-docker run -d --privileged -p 2000:2000 -v piston-data:/piston ghcr.io/engineer-man/piston:latest
+# local only — production uses the digest-pinned PISTON_IMAGE via compose
+docker run -d --privileged -p 127.0.0.1:2000:2000 -v piston-data:/piston "${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}"
 ```
 
 ### Docker Compose Deployment

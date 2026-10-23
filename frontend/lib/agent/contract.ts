@@ -50,6 +50,7 @@ export type KnowledgeSourceType =
   | 'ats_application' // applicant: stage, match summary, résumé highlights (PII-minimised) — tenant scoped, staff only
   | 'news' // published tech news posts (/news, Signals) (public)
   | 'digest' // published daily digests (/digest/<date>) with their items (public)
+  | 'contest' // hosted contests, all formats (/contests/<slug>): public when published + public + platform (RAG-022)
 
 export type KnowledgeVisibility = 'public' | 'platform_admin' | 'tenant'
 

@@ -30,7 +30,7 @@ export interface EventField {
 export interface EventTypeDef {
   type: string
   label: string
-  group: 'Accounts' | 'Assessments' | 'Billing' | 'Hiring' | 'Events' | 'Marketplace' | 'Content'
+  group: 'Accounts' | 'Assessments' | 'Billing' | 'Hiring' | 'Events' | 'Marketplace' | 'Content' | 'Learning'
   description: string
   fields: EventField[]
   sample: Record<string, unknown>
@@ -121,7 +121,7 @@ export const EVENT_TYPES: readonly EventTypeDef[] = [
   },
   {
     type: 'interview.cancelled', label: 'Interview cancelled', group: 'Hiring',
-    description: 'A standalone interview was cancelled or deleted (waiting runs for it are cancelled).',
+    description: 'A hiring or standalone interview was cancelled (or a standalone one deleted); waiting runs for it are cancelled.',
     fields: [f('interview_id', 'Interview id'), f('kind', 'hiring or standalone'), f('title', 'Title'), f('candidate_name', 'Candidate name'), f('candidate_email', 'Candidate email'), f('scheduled_at', 'Was due at', 'date')],
     sample: { interview_id: 'i_sample', kind: 'standalone', title: 'Technical interview', candidate_name: 'Asha Rao', candidate_email: 'asha@example.com', scheduled_at: '2026-01-10T10:00:00.000Z' },
   },
@@ -184,6 +184,97 @@ export const EVENT_TYPES: readonly EventTypeDef[] = [
     description: 'A new hackathon or coding event was added to the public events feed.',
     fields: [f('event_id', 'Event id'), f('title', 'Title'), f('url', 'Link'), f('starts_at', 'Starts at', 'date'), f('mode', 'Online or offline'), f('city', 'City'), f('source', 'Source')],
     sample: { event_id: 'ev_sample', title: 'Hyderabad AI hack night', url: 'https://codespectra.ai/events/ev_sample', starts_at: '2026-02-01T12:30:00.000Z', mode: 'offline', city: 'Hyderabad', source: 'partner' },
+  },
+  // ── AUTO-088: events from the newer features (emitted with idempotency keys at their write points). ──
+  {
+    type: 'subscription.started', label: 'Plan started', group: 'Billing',
+    description: 'A paid plan started: a new subscription, a switch to another plan or a re-activation (not a same-plan renewal).',
+    fields: [f('user_id', 'User id'), f('subscription_id', 'Subscription id'), f('plan_id', 'Plan id'), f('plan_name', 'Plan name'), f('ends_at', 'Paid until', 'date'), f('trial', 'Trial', 'boolean'), f('previous_plan_id', 'Previous plan id')],
+    sample: { user_id: 'u_sample', subscription_id: 'sub_sample', plan_id: 'pro', plan_name: 'Pro', ends_at: '2026-02-05T09:00:00.000Z', trial: false, previous_plan_id: null },
+  },
+  {
+    type: 'subscription.cancelled', label: 'Plan cancelled', group: 'Billing',
+    description: 'A user cancelled their plan; it stays active until the end of the paid period.',
+    fields: [f('user_id', 'User id'), f('subscription_id', 'Subscription id'), f('plan_id', 'Plan id'), f('access_until', 'Access until', 'date'), f('cancelled_at', 'Cancelled at', 'date')],
+    sample: { user_id: 'u_sample', subscription_id: 'sub_sample', plan_id: 'pro', access_until: '2026-02-05T09:00:00.000Z', cancelled_at: '2026-01-20T09:00:00.000Z' },
+  },
+  {
+    type: 'referral.rewarded', label: 'Referral reward granted', group: 'Billing',
+    description: 'A referrer earned a reward (credit or a free month) for a friend who joined a paid plan.',
+    fields: [f('user_id', 'Referrer user id'), f('reward_id', 'Reward id'), f('kind', 'credit or month'), f('amount_minor', 'Credit (minor units)', 'number'), f('currency', 'Currency')],
+    sample: { user_id: 'u_sample', reward_id: 'rr_sample', kind: 'credit', amount_minor: 50000, currency: 'INR' },
+  },
+  {
+    type: 'licence.expiring', label: 'Organisation licence ending soon', group: 'Billing',
+    description: 'An organisation seat licence ends within 14 days (once per licence and end date).',
+    fields: [f('licence_id', 'Licence id'), f('org_id', 'Organisation id'), f('org_name', 'Organisation'), f('org_kind', 'college or company'), f('plan_key', 'Plan'), f('seats', 'Seats', 'number'), f('seats_used', 'Seats used', 'number'), f('ends_at', 'Ends at', 'date'), f('days_left', 'Days left', 'number')],
+    sample: { licence_id: 'lic_sample', org_id: 't_sample', org_name: 'Sample College', org_kind: 'college', plan_key: 'campus', seats: 200, seats_used: 150, ends_at: '2026-02-01T00:00:00.000Z', days_left: 14 },
+  },
+  {
+    type: 'mentor.booking.created', label: 'Mentor session booked', group: 'Marketplace',
+    description: 'A paid mentor / service session was booked (one event per booking).',
+    fields: [f('booking_id', 'Booking id'), f('order_id', 'Order id'), f('product_id', 'Session id'), f('title', 'Session'), f('seller_id', 'Mentor (seller) id'), f('buyer_id', 'Learner user id'), f('starts_at', 'Starts at', 'date'), f('ends_at', 'Ends at', 'date'), f('join_url', 'Join link')],
+    sample: { booking_id: 'b_sample', order_id: 'o_sample', product_id: 'p_sample', title: '45-minute mock interview', seller_id: 'sel_sample', buyer_id: 'u_sample', starts_at: '2026-01-10T10:00:00.000Z', ends_at: '2026-01-10T10:45:00.000Z', join_url: 'https://meet.example.com/abc' },
+  },
+  {
+    type: 'drive.scheduled', label: 'Drive scheduled', group: 'Hiring',
+    description: 'A live proctored drive was scheduled, or a campus placement drive opened for applications.',
+    fields: [f('drive_id', 'Drive id'), f('kind', 'live or campus'), f('title', 'Title'), f('owner_kind', 'college or company'), f('owner_name', 'Run by'), f('starts_at', 'Starts at', 'date'), f('candidates', 'Candidates', 'number'), f('company_name', 'Company')],
+    sample: { drive_id: 'd_sample', kind: 'live', title: 'Campus hiring drive', owner_kind: 'company', owner_name: 'Acme', starts_at: '2026-01-15T04:30:00.000Z', candidates: 120, company_name: 'Acme' },
+  },
+  {
+    type: 'offer.sent', label: 'Offer sent', group: 'Hiring',
+    description: 'A placement offer was recorded for a student.',
+    fields: [f('offer_id', 'Offer id'), f('kind', 'Kind'), f('user_id', 'Student user id'), f('company_name', 'Company'), f('role_title', 'Role'), f('ctc_minor', 'CTC (minor units)', 'number'), f('currency', 'Currency'), f('joining_date', 'Joining date'), f('drive_id', 'Drive id')],
+    sample: { offer_id: 'of_sample', kind: 'campus', user_id: 'u_sample', company_name: 'Acme', role_title: 'Software engineer', ctc_minor: 120000000, currency: 'INR', joining_date: '2026-07-01', drive_id: 'd_sample' },
+  },
+  {
+    type: 'offer.accepted', label: 'Offer accepted', group: 'Hiring',
+    description: 'A placement offer was marked accepted.',
+    fields: [f('offer_id', 'Offer id'), f('kind', 'Kind'), f('user_id', 'Student user id'), f('company_name', 'Company'), f('role_title', 'Role'), f('ctc_minor', 'CTC (minor units)', 'number'), f('currency', 'Currency'), f('joining_date', 'Joining date'), f('drive_id', 'Drive id')],
+    sample: { offer_id: 'of_sample', kind: 'campus', user_id: 'u_sample', company_name: 'Acme', role_title: 'Software engineer', ctc_minor: 120000000, currency: 'INR', joining_date: '2026-07-01', drive_id: 'd_sample' },
+  },
+  {
+    type: 'bgv.started', label: 'Background check started', group: 'Hiring',
+    description: 'A background verification case was opened and the candidate invited.',
+    fields: [f('case_id', 'Case id'), f('application_id', 'Application id'), f('candidate_name', 'Candidate name'), f('candidate_email', 'Candidate email'), f('job_title', 'Job'), f('region', 'Region')],
+    sample: { case_id: 'bgv_sample', application_id: 'a_sample', candidate_name: 'Asha Rao', candidate_email: 'asha@example.com', job_title: 'Backend engineer', region: 'IN' },
+  },
+  {
+    type: 'talent.invite.sent', label: 'Talent-search invite sent', group: 'Hiring',
+    description: 'A recruiter invited a learner found in talent search to a job or test.',
+    fields: [f('invite_id', 'Invite id'), f('learner_id', 'Learner user id'), f('handle', 'Passport handle'), f('recruiter_id', 'Recruiter id'), f('target_type', 'Invited to'), f('target_id', 'Target id'), f('target_title', 'Target'), f('expires_at', 'Expires at', 'date')],
+    sample: { invite_id: 'ti_sample', learner_id: 'u_sample', handle: 'asha', recruiter_id: 'u_rec', target_type: 'job', target_id: 'j_sample', target_title: 'Backend engineer', expires_at: '2026-01-20T09:00:00.000Z' },
+  },
+  {
+    type: 'pro_cert.passed', label: 'Proctored certification passed', group: 'Assessments',
+    description: 'A learner passed a proctored certification and the credential was issued (or renewed).',
+    fields: [f('user_id', 'User id'), f('credential_id', 'Credential id'), f('program_id', 'Program id'), f('program_slug', 'Program slug'), f('program_title', 'Program'), f('level', 'Level'), f('score_pct', 'Score %', 'number'), f('expires_at', 'Valid until', 'date'), f('verify_url', 'Verify link'), f('renewal', 'Renewal', 'boolean')],
+    sample: { user_id: 'u_sample', credential_id: 'CS-ABCD-1234', program_id: 'pc_sample', program_slug: 'backend-pro', program_title: 'Backend professional', level: 'professional', score_pct: 82, expires_at: '2028-01-05T09:00:00.000Z', verify_url: '/verify/CS-ABCD-1234', renewal: false },
+  },
+  {
+    type: 'cohort.completed', label: 'Cohort completed', group: 'Learning',
+    description: 'A learner completed a cohort course and received its certificate.',
+    fields: [f('user_id', 'User id'), f('cohort_id', 'Cohort id'), f('cohort_title', 'Cohort'), f('certificate_id', 'Certificate id'), f('score_pct', 'Assignment score %', 'number'), f('completed_at', 'Completed at', 'date')],
+    sample: { user_id: 'u_sample', cohort_id: 'co_sample', cohort_title: 'DSA bootcamp — January', certificate_id: 'cc_sample', score_pct: 78, completed_at: '2026-02-01T09:00:00.000Z' },
+  },
+  {
+    type: 'study_plan.created', label: 'Study plan created', group: 'Learning',
+    description: 'A learner created or rebuilt their study plan.',
+    fields: [f('user_id', 'User id'), f('plan_id', 'Plan id'), f('target_kind', 'Goal type'), f('target_label', 'Goal'), f('days', 'Days', 'number'), f('hours_per_week', 'Hours per week', 'number'), f('rebuilt', 'Rebuilt', 'boolean')],
+    sample: { user_id: 'u_sample', plan_id: 'sp_sample', target_kind: 'company', target_label: 'TCS NQT', days: 30, hours_per_week: 6, rebuilt: false },
+  },
+  {
+    type: 'wa_practice.enrolled', label: 'WhatsApp practice turned on', group: 'Learning',
+    description: 'A learner confirmed WhatsApp daily practice (double opt-in complete). No phone number is included.',
+    fields: [f('user_id', 'User id'), f('enrollment_id', 'Enrolment id'), f('domain', 'Subject'), f('level', 'Level'), f('send_hour', 'Local send hour', 'number'), f('timezone', 'Time zone')],
+    sample: { user_id: 'u_sample', enrollment_id: 'wp_sample', domain: 'dsa', level: 'Medium', send_hour: 19, timezone: 'Asia/Kolkata' },
+  },
+  {
+    type: 'community.thread.created', label: 'Community thread posted', group: 'Learning',
+    description: 'A learner started a visible community thread.',
+    fields: [f('user_id', 'Author user id'), f('thread_id', 'Thread id'), f('title', 'Title'), f('kind', 'Kind'), f('category_id', 'Category id'), f('problem_id', 'Problem id'), f('tags', 'Tags', 'array'), f('url', 'Link')],
+    sample: { user_id: 'u_sample', thread_id: 't_sample', title: 'Two-pointer vs hashing for two-sum?', kind: 'question', category_id: 'cat_sample', problem_id: null, tags: ['arrays'], url: '/community/t/t_sample' },
   },
 ] as const
 

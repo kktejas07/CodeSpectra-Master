@@ -61,10 +61,10 @@ export async function POST(req: NextRequest) {
     { upsert: true },
   )
 
-  await sendEmail(email, {
-    subject: 'Confirm your new CodeSpectra email',
-    html: `<p>Your verification code is <strong>${code}</strong>.</p><p>It expires in 15 minutes.</p>`,
-  }, undefined, { category: 'transactional' })
+  // SEO-033: in the account owner's language (the new address has no account yet).
+  const { emailTemplatesFor } = await import('@/lib/email-templates')
+  const { localeForUser } = await import('@/lib/i18n/recipient')
+  await sendEmail(email, emailTemplatesFor(await localeForUser(user.id)).notice({ key: 'emailChange', code }), undefined, { category: 'transactional' })
 
   return NextResponse.json({ ok: true, message: 'Verification code sent to the new email' })
 }

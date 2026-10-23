@@ -285,8 +285,27 @@ export async function seatUsage(licenceId: string): Promise<{ assigned: number; 
 }
 
 /** Daily: mark ended licences expired (entitlements already stop at ends_at). */
+/** Days before the end date that `licence.expiring` fires (AUTO-088). */
+export const LICENCE_EXPIRING_DAYS = 14
+
 export async function expireLicences(now = new Date()): Promise<number> {
   const { licences } = await licencesCol()
   const r = await licences.updateMany({ status: 'active', ends_at: { $lte: now.toISOString() } }, { $set: { status: 'expired', updated_at: now.toISOString() } })
+  // AUTO-088: organisation workflows can react before the licence ends (one event per licence + end date,
+  // so a renewal that moves ends_at fires again next time). Daily job: a missed day is caught up the next.
+  const soon = await licences.find(
+    { status: 'active', ends_at: { $gt: now.toISOString(), $lte: new Date(now.getTime() + LICENCE_EXPIRING_DAYS * 86_400_000).toISOString() } },
+    { projection: { _id: 0, id: 1, org_id: 1, org_name: 1, org_kind: 1, plan_key: 1, seats: 1, seats_used: 1, ends_at: 1 } },
+  ).limit(1000).toArray().catch(() => [])
+  if (soon.length) {
+    const { emit } = await import('@/lib/automation/events')
+    for (const l of soon) {
+      const days = Math.max(0, Math.ceil((Date.parse(String(l.ends_at)) - now.getTime()) / 86_400_000))
+      await emit('licence.expiring', {
+        licence_id: l.id, org_id: l.org_id, org_name: l.org_name, org_kind: l.org_kind, plan_key: l.plan_key,
+        seats: l.seats, seats_used: l.seats_used, ends_at: l.ends_at, days_left: days,
+      }, { tenantId: l.org_id, idempotencyKey: `licence.expiring:${l.id}:${l.ends_at}` }).catch(() => null)
+    }
+  }
   return r.modifiedCount
 }

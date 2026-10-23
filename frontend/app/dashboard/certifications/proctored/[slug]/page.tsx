@@ -15,6 +15,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { PageHeader, Panel, Section, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useT } from '@/lib/i18n/client'
@@ -154,6 +155,8 @@ export default function ProctoredCertificationPage({ params }: { params: Promise
               {td(`learning.proCertWhy_${why.reason}`, why.reason, { date: why.retry_at ? fmt.date(why.retry_at) : '' })}
             </p>
           ) : (
+            // CORE-038: no price or Buy button inside the phone apps (store rules).
+            <NativePurchaseGate compact>
             <div className="space-y-3">
               {data.eligibility.ok && data.eligibility.renewal && <p className="text-sm text-muted-foreground">{t('learning.proCertRenewalHint')}</p>}
               {currencies.length > 1 && (
@@ -175,6 +178,7 @@ export default function ProctoredCertificationPage({ params }: { params: Promise
                 {busy ? t('learning.proCertRedirecting') : data.eligibility.ok && data.eligibility.renewal ? t('learning.proCertBuyRenewal') : t('learning.proCertBuy')}
               </Button>
             </div>
+            </NativePurchaseGate>
           )}
         </Section>
       </Panel>

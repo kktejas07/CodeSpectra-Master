@@ -10,7 +10,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useT } from '@/lib/i18n/client'
 
-export function NativePurchaseGate({ children, compact = false }: { children: ReactNode; compact?: boolean }) {
+export function NativePurchaseGate({ children, compact = false, fallback }: { children: ReactNode; compact?: boolean; /** shown instead of the note when purchases are hidden (null = nothing) */ fallback?: ReactNode }) {
   const { t } = useT()
   const [allowed, setAllowed] = useState(true)
   useEffect(() => {
@@ -19,6 +19,7 @@ export function NativePurchaseGate({ children, compact = false }: { children: Re
     return () => { live = false }
   }, [])
   if (allowed) return <>{children}</>
+  if (fallback !== undefined) return <>{fallback}</>
   if (compact) return <p className="text-sm text-muted-foreground">{t('common.manageOnWeb')}</p>
   return (
     <div role="note" className="rounded-2xl border border-border bg-card p-6 text-card-foreground">

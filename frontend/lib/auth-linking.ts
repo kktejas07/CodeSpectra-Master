@@ -59,16 +59,14 @@ export async function notifyCredentialReset(email: string, via: 'Google/GitHub' 
   if (!email) return
   try {
     const { sendEmail } = await import('@/lib/send-email')
+    const { emailTemplatesFor } = await import('@/lib/email-templates')
+    const { localeForEmail } = await import('@/lib/i18n/recipient')
+    const { outboundT } = await import('@/lib/i18n/outbound')
     const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'
-    await sendEmail(email, {
-      subject: 'Your CodeSpectra sign-in was secured',
-      html:
-        `<p>You just signed in with ${via}. This email address had never been verified on CodeSpectra, ` +
-        `so to make sure nobody else can use the account we removed its password, two-factor app, face sign-in ` +
-        `and signed out every other session.</p>` +
-        `<p>You can keep signing in with ${via}, or set a new password at <a href="${origin}/auth/forgot-password">${origin}/auth/forgot-password</a>.</p>` +
-        `<p>If this wasn't you, reply to this email right away.</p>`,
-    }, undefined, { category: 'transactional' })
+    // SEO-033: in the account owner's language.
+    const locale = await localeForEmail(email)
+    const viaText = outboundT('email', locale)(via === 'single sign-on' ? 'signinSecured.viaSso' : 'signinSecured.viaOauth')
+    await sendEmail(email, emailTemplatesFor(locale).notice({ key: 'signinSecured', params: { via: viaText, url: `${origin}/auth/forgot-password` } }), undefined, { category: 'transactional' })
   } catch {
     /* best effort */
   }

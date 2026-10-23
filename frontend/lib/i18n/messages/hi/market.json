@@ -1,4 +1,5 @@
 {
+  "razorpay": "Razorpay",
   "somethingWentWrong": "कुछ गड़बड़ हो गई।",
   "cancelThisOrder": "यह ऑर्डर कैंसिल करें?",
   "cancelValue": "{value} कैंसिल करें?",

@@ -251,6 +251,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'User not found or already deleted' }, { status: 404 })
     }
     invalidateAuthProfile(targetId)
+    // AUTO-085: same cascade as self-deletion (nightly data hygiene retries any failure).
+    await import('@/lib/account-purge').then(async (m) => m.purgeAccountData(await getMongoDb(), targetId)).catch(() => null)
+    await import('@/lib/rag/hooks').then((h) => h.knowledgeOnUserDeleted(targetId)).catch(() => {})
     await auditAdmin(gate.user, 'admin.user.delete', 'user', `user/${targetId}`, `email=${target.email}`, 'critical')
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {

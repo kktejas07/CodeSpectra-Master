@@ -13,6 +13,7 @@ import { listResumeIds, loadResume } from './resumes'
 import { listExternalEventIds, listMarketplaceProductIds, loadExternalEvent, loadMarketplaceProduct } from './content'
 import { listAtsApplicationIds, listAtsJobIds, loadAtsApplication, loadAtsJob } from './ats'
 import { listDigestIds, listNewsPostIds, loadDigest, loadNewsPost } from './digest'
+import { loadContest } from './contests'
 
 /** Ids per list call for derived source types (RAG-005: plain collection types are paged instead). */
 export const SWEEP_LIMIT = 50_000
@@ -38,6 +39,7 @@ export async function loadSource(db: Db, type: KnowledgeSourceType, id: string):
     case 'ats_application': return loadAtsApplication(db, id)
     case 'news': return loadNewsPost(db, id)
     case 'digest': return loadDigest(db, id)
+    case 'contest': return loadContest(db, id)
     default: return null
   }
 }
@@ -65,6 +67,7 @@ export async function listSourceIds(db: Db, type: KnowledgeSourceType, tenantId?
     case 'ats_application': return listAtsApplicationIds(db, limit, tenantId)
     case 'news': return tenantId ? [] : listNewsPostIds(db, limit)
     case 'digest': return tenantId ? [] : listDigestIds(db, limit)
+    case 'contest': return listEventIds(db, 'contests', limit, tenantId)
     default: return []
   }
 }
@@ -86,6 +89,7 @@ const PAGED: Partial<Record<KnowledgeSourceType, { collection: string; filter: R
   ats_application: { collection: 'ats_applications', filter: { status: { $ne: 'withdrawn' } }, tenantOwned: true },
   news: { collection: 'blog_posts', filter: { status: 'published', tags: 'signals', id: { $type: 'string' } }, tenantOwned: false },
   digest: { collection: 'daily_digests', filter: { status: 'published' }, tenantOwned: false },
+  contest: { collection: 'contests', filter: {}, tenantOwned: true },
 }
 
 /** Every id of a type, in pages (paged types) or one list (derived types). */

@@ -8,7 +8,7 @@ what a browser can't do. It sits next to the Expo app in `mobile/` (see
 | Capability | Native side | Web side |
 | --- | --- | --- |
 | Push (FCM) | `@capacitor/push-notifications`, channel `general`, small icon | `lib/native-bridge.ts` `registerNativePush()` → existing `POST /api/notifications/push-token {platform:'android'}`; server already sends FCM to native tokens (`lib/push-notifications.ts`) |
-| Notification tap / App Links | `MainActivity` + `DeepLinks.java` open FCM `data.link` (site path) or `https://<host>/…` | `public/.well-known/assetlinks.json` |
+| Notification tap / App Links | `MainActivity` + `DeepLinks.java` open FCM `data.link` (site path) or `https://<host>/…` | `app/.well-known/assetlinks.json/route.ts` (built from settings, 404 until set) |
 | Biometric unlock | `@aparajita/capacitor-biometric-auth` (STRONG only) + `@aparajita/capacitor-secure-storage` (Android Keystore) | `offerBiometricUnlock` / `biometricUnlock`; `POST /api/mobile/session` (enroll / unlock / revoke, rotating device-bound refresh token, hash-only storage) |
 | Proctored lockdown | `CodeSpectraNativePlugin`: screen pinning (`startLockTask`), `FLAG_SECURE`, hide overlays (31+), screenshot (34+) / screen-recording (35+) callbacks, external displays, multi-window, app background, focus loss, obscured touches, back disabled | `components/integrity/IntegrityMonitor.tsx` starts it when the test's **Full screen** signal is on and stops it on submit/unmount; events → `/api/integrity/events` (mapped types) and `/api/proctor/events` (`native_*`) |
 | Device integrity | Play Integrity (`com.google.android.play:integrity`), classic request with server nonce | `GET/POST /api/mobile/integrity` → Google `decodeIntegrityToken` → `mobile_device_trust` (24 h) + `device_integrity_<trust>` on the attempt's proctor timeline. A signal only. |
@@ -66,10 +66,11 @@ Pinned versions: Capacitor 8.5.3 and plugins are exact in `package.json` +
    AAB to Internal testing, then fill the listing with
    [`docs/PLAY_STORE.md`](docs/PLAY_STORE.md).
 4. **App Links** — from Play Console → *Test and release → App integrity →
-   App signing*, copy the **App signing key** SHA-256 into
-   `frontend/public/.well-known/assetlinks.json` (prod package; add the upload
-   key's SHA-256 too if you sideload release builds; the debug keystore's for
-   dev/staging). Verify with
+   App signing*, copy the **App signing key** SHA-256 (`AA:BB:…`) into
+   Admin → server secrets `android_sha256_cert_fingerprints` (env
+   `ANDROID_SHA256_CERT_FINGERPRINTS`, comma-separated; add the upload key's
+   too if you sideload release builds). `/.well-known/assetlinks.json` is built
+   from it plus `android_package_names` and returns 404 until it is set. Verify with
    `adb shell pm get-app-links ai.codespectra.app`.
 5. **Play Integrity** — Play Console → *App integrity → Play Integrity API*:
    link a Google Cloud project and enable the API there. In that project
@@ -122,7 +123,7 @@ npx cap open ios                       # Xcode: pick your team, run on a device
 | --- | --- | --- |
 | Push (APNs via FCM) | `AppDelegate`: Firebase turns the APNs token into an FCM token → push plugin `registration` | `registerNativePush()` → `POST /api/notifications/push-token {platform:'ios'}`; server sends FCM as for Android (+ `apns` sound); tap → `data.link` opened by the bridge |
 | Face ID / Touch ID unlock | `@aparajita/capacitor-biometric-auth` (LocalAuthentication) + `@aparajita/capacitor-secure-storage` (Keychain, *when unlocked, this device only*); `NSFaceIDUsageDescription` | same `/api/mobile/session` flow as Android |
-| Universal Links | `App.entitlements` (`applinks:` / `webcredentials:codespectra.ai`), `SceneDelegate` → `CodeSpectraViewController.open` (same-host only, `DeepLinks.swift`) | `public/.well-known/apple-app-site-association` (`TEAMID` placeholder), `application/json` header in `next.config.mjs` |
+| Universal Links | `App.entitlements` (`applinks:` / `webcredentials:codespectra.ai`), `SceneDelegate` → `CodeSpectraViewController.open` (same-host only, `DeepLinks.swift`) | `app/.well-known/apple-app-site-association/route.ts` (built from `apple_team_id` + `ios_bundle_ids`, 404 until set) |
 | Proctored lockdown | `CodeSpectraNativePlugin`: Guided Access request / instructions + state (`lock_task_exit` / `lock_task_declined`), `UIScreen.isCaptured` (recording / mirroring → `screen_recording` + cover), `userDidTakeScreenshotNotification` (`screenshot`), external screens, background / focus loss, app-switcher cover | unchanged `IntegrityMonitor` → `/api/integrity/events` + `/api/proctor/events` (`meta.source: ios`) |
 | Device integrity | App Attest (attest once, then assertions); DeviceCheck when App Attest is unsupported | `POST /api/mobile/integrity {platform:'ios'}` → `lib/mobile/app-attest.ts` (chain to Apple's App Attestation root, nonce, App ID, counter; DeviceCheck server API) → `mobile_device_trust` |
 | Purchases | `CS_IAP_ENABLED` build setting (default `NO`) | purchase buttons hidden in the app — [`docs/IN_APP_PURCHASES.md`](docs/IN_APP_PURCHASES.md) |
@@ -139,8 +140,9 @@ via fastlane when secrets exist). Store listing: [`docs/APP_STORE.md`](docs/APP_
 ### iOS owner setup (once)
 
 1. **Team id** — Apple Developer → Membership → Team ID: GitHub secret
-   `APPLE_TEAM_ID`, Admin → server secrets `apple_team_id`, and replace
-   `TEAMID` in `frontend/public/.well-known/apple-app-site-association`.
+   `APPLE_TEAM_ID`, and Admin → server secrets `apple_team_id` (or the
+   `APPLE_TEAM_ID` env on the web server) — `/.well-known/apple-app-site-association`
+   is generated from it.
 2. **Identifier** `ai.codespectra.app` with Push Notifications, Associated
    Domains, App Attest.
 3. **APNs key** (.p8) → upload in Firebase (Cloud Messaging → Apple app

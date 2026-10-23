@@ -53,15 +53,9 @@ export async function POST(req: NextRequest) {
           const link = `${getAppOrigin()}/newsletter/confirm?t=${encodeURIComponent(token)}`
           let delivered = false
           try {
-            const r = await sendEmail(email, {
-              subject: 'Confirm your CodeSpectra newsletter subscription',
-              html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;padding:24px">
-                <h1 style="font-size:20px;margin:0 0 8px">Confirm your subscription</h1>
-                <p style="color:#4b5563;font-size:14px;margin:0 0 16px">Someone, hopefully you, asked to subscribe this address to the CodeSpectra newsletter again. You unsubscribed earlier, so we need you to confirm first. The link expires in 48 hours.</p>
-                <a href="${link}" style="display:inline-block;background:#6366f1;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600">Confirm subscription</a>
-                <p style="color:#9ca3af;font-size:12px;margin-top:24px">If this wasn't you, ignore this email and you'll stay unsubscribed.</p>
-              </div>`,
-            }, undefined, { category: 'transactional' })
+            // SEO-033: the requester's language (saved setting, else the page they used).
+            const [{ emailTemplatesFor }, { localeForRequester }] = await Promise.all([import('@/lib/email-templates'), import('@/lib/i18n/recipient')])
+            const r = await sendEmail(email, emailTemplatesFor(await localeForRequester(email)).notice({ key: 'newsletterConfirm', buttonUrl: link }), undefined, { category: 'transactional' })
             delivered = r.success
             if (!delivered) console.error('[newsletter] confirmation email failed:', r.error)
           } catch (e) {

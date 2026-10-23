@@ -148,6 +148,8 @@ export async function runDataHygiene(now = new Date()): Promise<Record<string, n
       db.collection('certification_attempts').updateMany({ user_id: uid }, { $unset: { 'snapshot.email': '' } }),
       db.collection('automation_events').updateMany({ 'payload.user_id': uid }, { $unset: { 'payload.email': '', 'payload.name': '' } }),
       db.collection('email_unsubscribes').deleteMany({ user_id: uid }),
+      // AUTO-085: the full account cascade (WhatsApp practice, guardians, study plans, mentors, cohorts, community, AI usage…).
+      import('@/lib/account-purge').then((m) => m.purgeAccountData(db, uid, now)),
     ])
     anonymised++
   }

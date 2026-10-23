@@ -78,7 +78,10 @@ describe('shared scheduler: scheduled cron routes (A-019)', () => {
     const daily = SCHEDULED_ROUTES.find((r) => r.id === 'daily-digest')!
     const at8 = new Date('2026-10-19T08:00:00Z')
     expect(scheduledRouteDue(daily, at8, null)).toBe(true)
-    expect(scheduledRouteDue(daily, new Date('2026-10-19T08:01:00Z'), null)).toBe(false)
+    // AUTO-087: a missed slot is caught up on the first tick after it (within the catch-up window)…
+    expect(scheduledRouteDue(daily, new Date('2026-10-19T08:01:00Z'), null)).toBe(true)
+    // …but not half a day later.
+    expect(scheduledRouteDue(daily, new Date('2026-10-19T20:01:00Z'), null)).toBe(false)
     // An external cron already ran it 2 minutes ago → skip (no double digest).
     expect(scheduledRouteDue(daily, at8, '2026-10-19T07:58:00Z')).toBe(false)
     expect(scheduledRouteDue(daily, at8, '2026-10-18T08:00:00Z')).toBe(true)

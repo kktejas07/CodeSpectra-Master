@@ -103,7 +103,14 @@ export async function updateDrive(ctx: StaffContext, id: string, raw: Record<str
   }
   await col.updateOne({ id, college_id: ctx.college.tenant_id }, { $set: set })
   const next = (await col.findOne({ id }, { projection: { _id: 0 } }))!
-  if (next.status === 'open' && cur.status !== 'open') void notifyDriveOpen(next, ctx.college).catch((e) => logger.error('[campus] drive notify failed', (e as Error).message))
+  if (next.status === 'open' && cur.status !== 'open') {
+    void notifyDriveOpen(next, ctx.college).catch((e) => logger.error('[campus] drive notify failed', (e as Error).message))
+    // AUTO-088: a campus placement drive opened for applications (once per drive).
+    void import('@/lib/automation/events').then(({ emit }) => emit('drive.scheduled', {
+      drive_id: next.id, kind: 'campus', title: next.title, owner_kind: 'college', owner_name: ctx.college.name,
+      starts_at: next.schedule.test_at ?? next.schedule.interview_at ?? next.schedule.apply_by, candidates: null, company_name: next.company.name,
+    }, { tenantId: ctx.college.tenant_id, idempotencyKey: `drive.scheduled:campus:${next.id}` })).catch(() => {})
+  }
   return next
 }
 
@@ -205,6 +212,7 @@ export async function createOffer(ctx: StaffContext, raw: unknown): Promise<Offe
     status: i.status, year, created_by: ctx.user.id, created_at: now, updated_at: now,
   }
   await (await offersCol()).insertOne(doc)
+  void emitOfferEvent(doc, ctx.college.tenant_id)
   if (i.drive_id) await (await applicationsCol()).updateOne({ drive_id: i.drive_id, student_id: student.id }, { $set: { status: 'offered', updated_at: now } })
   if (student.user_id) {
     void import('@/lib/notifications').then(({ notify }) => notify({
@@ -235,7 +243,18 @@ export async function updateOffer(ctx: StaffContext, id: string, raw: Record<str
   }
   const r = await (await offersCol()).findOneAndUpdate({ id, college_id: ctx.college.tenant_id }, { $set: set }, { returnDocument: 'after', projection: { _id: 0 } })
   if (!r) throw new CampusError('Offer not found', 404)
+  if (set.status) void emitOfferEvent(r, ctx.college.tenant_id)
   return r
+}
+
+/** AUTO-088: offer.sent (status offered) / offer.accepted — one event per offer and status. Never throws. */
+async function emitOfferEvent(o: OfferDoc, tenantId: string): Promise<void> {
+  const type = o.status === 'offered' ? 'offer.sent' : o.status === 'accepted' ? 'offer.accepted' : null
+  if (!type) return
+  await import('@/lib/automation/events').then(({ emit }) => emit(type, {
+    offer_id: o.id, kind: 'campus', user_id: o.user_id ?? null, company_name: o.company_name, role_title: o.role_title,
+    ctc_minor: o.ctc_minor, currency: o.currency, joining_date: o.joining_date ?? null, drive_id: o.drive_id ?? null,
+  }, { tenantId, idempotencyKey: `${type}:campus:${o.id}` })).catch(() => {})
 }
 
 export async function listOffers(ctx: StaffContext, year?: number | null): Promise<Array<OfferDoc & { student_name: string }>> {

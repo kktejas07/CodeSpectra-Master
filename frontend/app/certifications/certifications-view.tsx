@@ -6,6 +6,9 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { HeroIllustration, PageHero } from '@/components/landing/page-hero'
 import { EmptyState } from '@/components/ui/empty-state'
 import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/components/seo/json-ld'
+import { breadcrumbJsonLd, courseJsonLd, validJsonLd } from '@/lib/seo/jsonld'
+import { getSiteOrigin } from '@/lib/seo/settings'
 import { publicPageMetadata } from '@/lib/i18n/public-page'
 import { formatMinor } from '@/lib/marketplace/pricing'
 import { programBySlugCached, publishedProgramsCached } from '@/lib/pro-certs/public-cache'
@@ -86,8 +89,17 @@ export async function CertificationDetailView({ slug, locale }: { slug: string; 
     [Target, t('hubs.certPassMark'), `${p.pass_percent}%`],
     [Award, t('hubs.certValidity'), t('hubs.certMonths', { count: p.validity_months })],
   ] as const
+  // SEO-036: Course (proctored online certification) + breadcrumb.
+  const site = await getSiteOrigin()
+  const path = localizedPath(`/certifications/${p.slug}`, locale)
+  const inr = p.price.INR
+  const schema = validJsonLd([
+    courseJsonLd({ site, name: p.title, description: p.summary || p.description, path, price: inr != null ? inr / 100 : null, currency: inr != null ? 'INR' : null }),
+    breadcrumbJsonLd([{ name: t('hubs.certTitle'), path: localizedPath('/certifications', locale) }, { name: p.title, path }], site),
+  ])
   return (
     <PublicPageWrapper>
+      <JsonLd data={schema} />
       <PageHero
         title={p.title}
         lead={p.summary}

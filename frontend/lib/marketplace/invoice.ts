@@ -30,7 +30,7 @@ button{margin-top:24px;background:#2F5BE7;color:#fff;border:0;border-radius:999p
 <div class="head"><div><h1>Tax invoice</h1><div class="muted">Invoice ${escapeHtml(o.number)} · ${escapeHtml(date)}</div></div>
 <div style="text-align:right"><strong>${escapeHtml(platform.name)}</strong>${platform.address ? `<div class="muted">${escapeHtml(platform.address)}</div>` : ''}${platform.gstin ? `<div class="muted">GSTIN ${escapeHtml(platform.gstin)}</div>` : ''}</div></div>
 <div class="head" style="margin-top:20px"><div><div class="muted">Billed to</div>${escapeHtml(addr?.name || o.buyer_email)}${addr ? `<div class="muted">${escapeHtml([addr.line1, addr.line2, addr.city, addr.state, addr.postal_code, addr.country].filter(Boolean).join(', '))}</div>` : ''}</div>
-<div style="text-align:right"><div class="muted">Payment</div>${escapeHtml(o.payment.gateway === 'phonepe' ? 'PhonePe' : 'Card (Stripe)')} · ${escapeHtml(o.payment.status)}</div></div>
+<div style="text-align:right"><div class="muted">Payment</div>${escapeHtml(o.payment.gateway === 'phonepe' ? 'PhonePe' : o.payment.gateway === 'razorpay' ? 'Razorpay' : 'Card (Stripe)')} · ${escapeHtml(o.payment.status)}</div></div>
 <table><thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead><tbody>${rows}</tbody></table>
 <table class="tot"><tbody>
 <tr><td>Subtotal</td><td class="num">${m(o.subtotal)}</td></tr>

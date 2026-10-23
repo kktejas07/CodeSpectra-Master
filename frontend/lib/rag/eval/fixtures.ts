@@ -6,7 +6,7 @@
  * hackathon, a platform upload and a platform test).
  *
  * These are stored in the shapes the real loaders read (exams, exam_submissions,
- * proctor_events, hackathons, codeathons, rag_uploads, resume_drafts, resumes,
+ * proctor_events, hackathons, codeathons, contests, rag_uploads, resume_drafts, resumes,
  * user, courses, question_bank), so ingestion runs through lib/rag/sources/*.
  * Names are invented. Nothing here is used outside the evaluation.
  */
@@ -257,6 +257,35 @@ const CODEATHONS: Doc[] = [
   },
 ]
 
+// Hosted contests (RAG-022): a public platform prompt-a-thon, a platform draft and one organisation's internal CTF.
+const CONTESTS: Doc[] = [
+  {
+    id: 'ct-prompt-diwali', slug: 'diwali-prompt-a-thon', tenant_id: null, format: 'prompt_a_thon', status: 'published', visibility: 'public',
+    title: 'Diwali Prompt-a-thon 2026', summary: 'Write the best prompt for festive customer-support replies.',
+    description: 'Craft one instruction that makes the model answer shoppers politely in Hindi or English. Your prompt runs against hidden test inputs.',
+    schedule: { registration_opens_at: null, registration_closes_at: null, starts_at: iso('2026-11-01T10:00:00Z'), ends_at: iso('2026-11-02T10:00:00Z'), timezone: 'Asia/Kolkata' },
+    participation: { mode: 'solo', team_min: 1, team_max: 1, max_entries: 0 }, leaderboard: { visibility: 'live' }, certificates: { audience: 'top_n', top_n: 10 },
+    judging: { rubric: [], judges: [], drop_high_low: false }, prize_text: '₹50,000 and goodies for the top ten', results_released: false,
+    config: { tasks: [{ id: 't1', title: 'Polite festive refund reply', points: 100 }], runs_per_user: 10 },
+  },
+  {
+    id: 'ct-golf-draft', slug: 'winter-code-golf', tenant_id: null, format: 'code_golf', status: 'draft', visibility: 'public',
+    title: 'Winter Code Golf', summary: 'Shortest Python solutions win.', description: 'Draft: five short puzzles, fewest characters wins.',
+    schedule: { starts_at: iso('2026-12-20T10:00:00Z'), ends_at: iso('2026-12-20T13:00:00Z'), timezone: 'UTC' },
+    participation: { mode: 'solo', team_min: 1, team_max: 1, max_entries: 0 }, leaderboard: { visibility: 'live' }, certificates: { audience: 'all', top_n: 3 },
+    judging: { rubric: [], judges: [], drop_high_low: false }, prize_text: '', results_released: false, config: { tasks: [] },
+  },
+  {
+    id: 'acme-ct-ctf', slug: 'acme-internal-ctf', tenant_id: TENANT_A, format: 'ctf', status: 'published', visibility: 'unlisted',
+    title: 'Acme internal capture the flag', summary: 'Security onboarding CTF for new hires.',
+    description: 'Web exploitation, cryptography and forensics challenges for the new security team members.',
+    schedule: { starts_at: iso('2026-11-10T09:00:00Z'), ends_at: iso('2026-11-10T17:00:00Z'), timezone: 'Asia/Kolkata' },
+    participation: { mode: 'team', team_min: 2, team_max: 3, max_entries: 0 }, leaderboard: { visibility: 'after_end' }, certificates: { audience: 'none', top_n: 3 },
+    judging: { rubric: [], judges: [], drop_high_low: false }, prize_text: '', results_released: false,
+    config: { tasks: [{ id: 'c1', title: 'Cookie forgery', category: 'web', points: 200 }, { id: 'c2', title: 'Weak RSA', category: 'crypto', points: 300 }] },
+  },
+]
+
 const COURSES: Doc[] = [
   {
     id: 'c-sql-basics', title: 'SQL for beginners', level: 'Beginner', category: 'Databases', tags: ['sql', 'databases'],
@@ -408,6 +437,7 @@ export const SYNTHETIC_OWNERS: Record<string, { tenant: string | null; adminOnly
   for (const e of FEED_EVENTS) out[`external_event:${e.id}`] = { tenant: null, adminOnly: false }
   for (const p of NEWS_POSTS) out[`news:${p.id}`] = { tenant: null, adminOnly: false }
   for (const d of DIGESTS) out[`digest:${d.id}`] = { tenant: null, adminOnly: false }
+  for (const c of CONTESTS) out[`contest:${c.id}`] = { tenant: (c.tenant_id as string | null) ?? null, adminOnly: !c.tenant_id && (c.status === 'draft' || c.visibility !== 'public') }
   return out
 })()
 
@@ -430,6 +460,7 @@ export async function seedEvalCorpus(db: InsertableDb, problems: readonly Doc[])
   await put('ats_applications', ATS_APPLICATIONS)
   await put('hackathons', HACKATHONS)
   await put('codeathons', CODEATHONS)
+  await put('contests', CONTESTS)
   await put('courses', COURSES)
   await put('question_bank', QUESTIONS)
   await put('rag_uploads', UPLOADS)

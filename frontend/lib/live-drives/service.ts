@@ -190,6 +190,14 @@ export async function updateDrive(user: APIUser, id: string, raw: unknown): Prom
   await col.updateOne({ id }, { $set: set })
   await logAction(drive.id, null, user.id, 'drive_update', null, { fields: Object.keys(set).filter((k) => k !== 'updated_at') })
   // Slack / Teams alert for the organisation (lib/integrations; no-op when not connected).
+  // AUTO-088: workflows can react to a drive being scheduled (one event per drive + start time).
+  if (set.status === 'scheduled') {
+    const startAt = String((set.schedule as LiveDriveDoc['schedule'] | undefined)?.start_at ?? drive.schedule.start_at)
+    void import('@/lib/automation/events').then(({ emit }) => emit('drive.scheduled', {
+      drive_id: id, kind: 'live', title: String(set.title ?? drive.title), owner_kind: drive.owner.kind, owner_name: drive.owner.name,
+      starts_at: startAt, candidates: drive.candidate_count, company_name: drive.test.company_name,
+    }, { tenantId: drive.owner.tenant_id, idempotencyKey: `drive.scheduled:live:${id}:${startAt}` })).catch((e) => console.error('[automation] emit failed:', e))
+  }
   if (set.status) void import('@/lib/integrations/chat-send').then(({ notifyHiringChat }) => notifyHiringChat(drive.owner.tenant_id, 'drive_status', { drive_id: id, title: drive.title, status: set.status, starts_at: drive.schedule.start_at, candidates: drive.candidate_count }, `drive:${id}:${String(set.status)}:${set.updated_at}`)).catch(() => {})
   return (await col.findOne({ id }, { projection: { _id: 0 } }))!
 }

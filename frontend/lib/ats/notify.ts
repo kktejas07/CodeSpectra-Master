@@ -101,6 +101,24 @@ async function tenantTemplate(tenantId: string, key: 'rejection_email' | 'offer_
   }
 }
 
+/**
+ * SEO-033: the built-in rejection / offer text in the candidate's language
+ * (a tenant's own template is sent as written).
+ */
+async function defaultTemplate(kind: 'rejection' | 'offer', email: string | null | undefined): Promise<{ subject: string; body: string }> {
+  const fallback = kind === 'rejection' ? DEFAULT_REJECTION : DEFAULT_OFFER
+  try {
+    const [{ localeForEmail }, { outboundTemplate }] = await Promise.all([import('@/lib/i18n/recipient'), import('@/lib/i18n/outbound')])
+    const locale = await localeForEmail(email)
+    return {
+      subject: outboundTemplate('email', locale, `atsDefault.${kind}.subject`) ?? fallback.subject,
+      body: outboundTemplate('email', locale, `atsDefault.${kind}.body`) ?? fallback.body,
+    }
+  } catch {
+    return fallback
+  }
+}
+
 async function send(to: string | null, msg: { subject: string; html: string }): Promise<boolean> {
   if (!to) return false
   try {
@@ -188,14 +206,14 @@ export async function notifyStageEntry(ctx: {
   try {
     if (stage.type === 'rejected') {
       if (notify.email !== false) {
-        const t = (await tenantTemplate(job.tenant_id, 'rejection_email')) || DEFAULT_REJECTION
+        const t = (await tenantTemplate(job.tenant_id, 'rejection_email')) || (await defaultTemplate('rejection', candidate.email))
         await send(candidate.email, wrapEmail(renderText(t.subject, vars), textToHtml(renderText(t.body, vars))))
       }
       return // no WhatsApp/client pings for rejections
     }
     if (stage.type === 'offer') {
       if (notify.email !== false) {
-        const t = (await tenantTemplate(job.tenant_id, 'offer_email')) || DEFAULT_OFFER
+        const t = (await tenantTemplate(job.tenant_id, 'offer_email')) || (await defaultTemplate('offer', candidate.email))
         const v = { ...vars, offer_summary: offerSummary(job, stage) }
         await send(candidate.email, wrapEmail(renderText(t.subject, v), textToHtml(renderText(t.body, v))))
       }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { NewsView, newsMetadata, type SP } from '@/app/news/news-view'
 import { langOf, type LangParams } from '@/lib/i18n/public-page'
+import { PublicPageI18n } from '@/components/i18n/public-page-i18n'
 
 // Same caching as the English page (per request; filters come from searchParams).
 export const dynamic = 'force-dynamic'
@@ -10,5 +11,6 @@ export async function generateMetadata({ params, searchParams }: { params: LangP
 }
 
 export default async function Page({ params, searchParams }: { params: LangParams; searchParams: SP }) {
-  return <NewsView searchParams={searchParams} locale={await langOf(params)} />
+  const locale = await langOf(params)
+  return <PublicPageI18n locale={locale} ns={['learn']}><NewsView searchParams={searchParams} locale={locale} /></PublicPageI18n>
 }
