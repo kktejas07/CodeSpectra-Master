@@ -10,6 +10,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
 import { EmptyState } from '@/components/ui/empty-state'
 import { NotifyBox } from '@/components/events-feed/notify-box'
+import { AskBox } from '@/components/public-ask/ask-box'
 import { JsonLd } from '@/components/seo/json-ld'
 import { NEWS_TOPICS, newsTopicLabel } from '@/lib/signals/feeds'
 import { parseNewsParams, type NewsCard } from '@/lib/signals/news'
@@ -150,6 +151,7 @@ export async function NewsView({ searchParams, locale }: { searchParams: SP; loc
           )}
         </div>
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <AskBox locale={locale === 'hi' || locale === 'te' ? locale : 'en'} />
           <NotifyBox topic="news" />
           <p className="flex items-start gap-2 px-2 text-xs leading-relaxed text-muted-foreground">
             <Newspaper className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />

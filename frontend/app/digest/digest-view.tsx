@@ -12,6 +12,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
 import { EmptyState } from '@/components/ui/empty-state'
 import { NotifyBox } from '@/components/events-feed/notify-box'
+import { AskBox } from '@/components/public-ask/ask-box'
 import { JsonLd } from '@/components/seo/json-ld'
 import { digestCached, digestListCached } from '@/lib/digest/cached'
 import { getDigestConfig } from '@/lib/digest/store'
@@ -150,6 +151,7 @@ export async function DigestListView({ locale }: { locale: Locale }) {
           )}
         </div>
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <AskBox locale={l} />
           <NotifyBox topic="digest" />
           <p className="px-2 text-xs leading-relaxed text-muted-foreground">{t('hubs.digestNote')}</p>
         </aside>
@@ -203,6 +205,7 @@ export async function DigestDetailView({ date, locale }: { date: string; locale:
           <Link href={localizedPath('/digest', locale)} className="inline-flex min-h-10 items-center gap-2 text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('hubs.digestAllDigests')} <ArrowRight className="h-4 w-4" aria-hidden /></Link>
         </div>
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <AskBox locale={l} />
           <NotifyBox topic="digest" />
           <p className="px-2 text-xs leading-relaxed text-muted-foreground">{t('hubs.digestNote')}</p>
         </aside>

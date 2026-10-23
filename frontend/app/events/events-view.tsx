@@ -4,6 +4,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
 import { DeviceShowcase } from '@/components/visuals'
 import { EventsExplorer } from '@/components/events-feed/events-explorer'
+import { AskBox } from '@/components/public-ask/ask-box'
 import { eventsFeedCached } from '@/lib/cache/public-data'
 import { getAppOrigin } from '@/lib/app-origin'
 import type { Locale } from '@/lib/i18n/config'
@@ -27,6 +28,7 @@ export async function EventsView({ locale }: { locale: Locale }) {
         art={<DeviceShowcase variant="candidate" compact />}
       />
       <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8">
+        <AskBox className="mb-8" locale={locale === 'hi' || locale === 'te' ? locale : 'en'} />
         <EventsExplorer events={events} origin={getAppOrigin()} />
       </div>
     </PublicPageWrapper>

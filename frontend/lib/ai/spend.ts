@@ -34,7 +34,7 @@ export interface AiCostSettings {
 export const DEFAULT_NON_CRITICAL = [
   'question-bot', 'signals-*', 'blog-*', 'learn-*', 'events-feed-summary', 'ebook-outline', 'course-video-*',
   'study-plan-note', 'company-tests:generate', 'generate-problem*', 'module-quiz', 'arena-adapt', 'generate-course',
-  'cover-image', 'social_studio', 'daily_digest',
+  'cover-image', 'social_studio', 'daily_digest', 'public_ask',
 ]
 
 export const DEFAULT_AI_COST_SETTINGS: AiCostSettings = {

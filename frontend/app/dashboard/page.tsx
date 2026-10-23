@@ -18,6 +18,7 @@ import { useTour } from '@/components/tour/tour-context'
 import { WELCOME_TOUR_STEPS, autoPlayPageTour, startPageHints, type TourHint } from '@/lib/tour-driver'
 import { Panel } from '@/components/app/page-kit'
 import { LearnerBento } from '@/components/dashboard/learner-bento'
+import { AskBox } from '@/components/public-ask/ask-box'
 import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
@@ -211,6 +212,7 @@ export default function DashboardPage() {
         </div>
       ) : null}
       <LearnerBento stats={{ ...stats, loaded: statsLoaded, failed: statsFailed }} />
+      <AskBox className="mt-6" />
       </div>
 
       <div data-hint="contribution-graph">
