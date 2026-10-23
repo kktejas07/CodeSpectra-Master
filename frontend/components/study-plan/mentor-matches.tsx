@@ -13,20 +13,8 @@ import { Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import type { MentorMatch, MatchReason } from '@/lib/assistants/mentors/match'
 import { localizedPath } from '@/lib/i18n/public-paths'
+import { languageName } from '@/lib/i18n/language-name'
 
-/** SEO-047: stored mentor languages ("hindi", "te") → the name in the reader's language. */
-const LANGUAGE_CODES: Record<string, string> = { english: 'en', hindi: 'hi', telugu: 'te', tamil: 'ta', kannada: 'kn', malayalam: 'ml', marathi: 'mr', bengali: 'bn', gujarati: 'gu', punjabi: 'pa', urdu: 'ur', odia: 'or' }
-export function languageName(value: string, locale: string): string {
-  const v = value.trim().toLowerCase()
-  const code = LANGUAGE_CODES[v] ?? (/^[a-z]{2,3}$/.test(v) ? v : null)
-  if (code) {
-    try {
-      const name = new Intl.DisplayNames([locale], { type: 'language' }).of(code)
-      if (name && name.toLowerCase() !== code) return name
-    } catch { /* old browser: fall through */ }
-  }
-  return value ? value[0].toUpperCase() + value.slice(1) : value
-}
 
 export function MentorMatches() {
   const { t, fmt, locale } = useT()

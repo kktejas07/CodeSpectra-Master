@@ -54,7 +54,7 @@ function eventFaqs(ev: PublicFeedEvent, where: string, t: PublicTranslator): QA[
   const out: QA[] = []
   if (ev.starts_at) out.push({ q: t('hubs.dtFaqWhenQ', { title: ev.title }), a: t('hubs.dtFaqWhenA', { range: formatRange(ev.starts_at, ev.ends_at, 'UTC') }) })
   out.push({ q: t('hubs.dtFaqWhereQ', { title: ev.title }), a: ev.mode === 'online' ? t('hubs.dtFaqWhereOnline') : ev.mode === 'hybrid' ? t('hubs.dtFaqWhereHybrid', { where }) : t('hubs.dtFaqWhereInPerson', { where }) })
-  if (ev.registration_deadline) out.push({ q: t('hubs.dtFaqRegQ'), a: t('hubs.dtFaqRegA', { date: utc(ev.registration_deadline) }) })
+  if (ev.registration_deadline) out.push({ q: t('hubs.dtFaqRegQ'), a: utc(ev.registration_deadline) })
   out.push({ q: t('hubs.dtFaqHowQ'), a: ev.internal ? t('hubs.dtFaqHowInternal') : ev.organiser ? t('hubs.dtFaqHowExternalOrg', { organiser: ev.organiser }) : t('hubs.dtFaqHowExternal') })
   if (ev.prize_text) out.push({ q: t('hubs.dtFaqPrizeQ'), a: t('hubs.dtFaqPrizeA', { prizes: ev.prize_text }) })
   return out

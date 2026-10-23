@@ -316,7 +316,6 @@
   "dtFaqWhereHybrid": "It is hybrid: online and in person at {where}.",
   "dtFaqWhereInPerson": "In person at {where}.",
   "dtFaqRegQ": "When does registration close?",
-  "dtFaqRegA": "{date}.",
   "dtFaqHowQ": "How do I register?",
   "dtFaqHowInternal": "Open the event page on CodeSpectra and sign in to register your team.",
   "dtFaqHowExternal": "Register on the organiser’s site; CodeSpectra lists the event and links to it.",
