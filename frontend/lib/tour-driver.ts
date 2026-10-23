@@ -264,6 +264,15 @@ const registry: Record<string, TourStep[]> = {}
 // Flag to suppress markTourSeen when destroying the old instance to replay.
 let replaying = false
 
+const ARIA_POPUP_CAPABLE = 'button,a[href],input,select,textarea,summary,[role="button"],[role="combobox"],[role="link"],[role="menuitem"],[role="tab"],[role="treeitem"],[role="gridcell"],[role="row"],[role="application"]'
+
+/** Remove aria-haspopup / aria-expanded where the element's role doesn't allow them. */
+export function stripUnsupportedTourAria(el: Element): void {
+  if (el.matches(ARIA_POPUP_CAPABLE)) return
+  el.removeAttribute('aria-haspopup')
+  el.removeAttribute('aria-expanded')
+}
+
 function getDriver(): Driver | null {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null
   if (!instance) {
@@ -279,6 +288,10 @@ function getDriver(): Driver | null {
       nextBtnText: 'Next',
       prevBtnText: 'Back',
       doneBtnText: 'Finish',
+      // driver.js marks every highlighted element aria-haspopup/aria-expanded,
+      // which is invalid ARIA on plain containers (axe: aria-allowed-attr) and
+      // confuses screen readers. Keep them only on elements that support them.
+      onHighlighted: (el) => { if (el) stripUnsupportedTourAria(el) },
       onDestroyed: () => {
         // ponytail: mark seen on EVERY destroy (finish, X, overlay click) —
         // but NOT when we're destroying the old instance to replay.
