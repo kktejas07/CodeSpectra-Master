@@ -13,7 +13,7 @@
 import 'server-only'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso, type BillingOrderDoc } from '@/lib/db/billing'
-import { domainMatches, emailDomain, LICENCE_PLAN_KEY, licenceAmount, licenceLive, normDomain, normEmail, planSeatAssignment, renewalEnd, seatsFree } from './licence-rules'
+import { approvedLicenceDomains, cleanLicenceDomains, domainMatches, emailDomain, LICENCE_PLAN_KEY, licenceAmount, licenceDomainProblem, licenceLive, normEmail, planSeatAssignment, renewalEnd, seatsFree } from './licence-rules'
 import { getBillingSettings } from './settings'
 
 export interface LicenceDoc {
@@ -30,6 +30,8 @@ export interface LicenceDoc {
   starts_at: string | null
   ends_at: string | null
   email_domains: string[]
+  /** SEC-033: domains allowed to auto-assign seats (superadmin-approved or tenant-verified); missing on old rows */
+  approved_domains?: string[]
   auto_assign: boolean
   order_ids: string[]
   source: 'checkout' | 'manual'
@@ -164,9 +166,39 @@ export async function issueManualLicence(input: { orgId: string; seats: number; 
   return doc
 }
 
-export async function updateLicenceSettings(licenceId: string, orgId: string | null, patch: { email_domains?: string[]; auto_assign?: boolean }): Promise<LicenceDoc | null> {
+export class LicenceDomainError extends Error {
+  constructor(public code: string, public domain: string) { super(`Domain ${domain} can't be used for automatic seats`) }
+}
+
+/** Domains that may auto-assign seats for this row (legacy rows: their domains minus public ones). */
+export function autoAssignDomains(l: Pick<LicenceDoc, 'email_domains' | 'approved_domains'>): string[] {
+  const list = Array.isArray(l.approved_domains) ? l.approved_domains : l.email_domains || []
+  return list.filter((d) => !licenceDomainProblem(d))
+}
+
+export async function updateLicenceSettings(
+  licenceId: string,
+  orgId: string | null,
+  patch: { email_domains?: string[]; auto_assign?: boolean },
+  actor: { superadmin: boolean } = { superadmin: false },
+): Promise<LicenceDoc | null> {
   const $set: Record<string, unknown> = { updated_at: nowIso() }
-  if (patch.email_domains) $set.email_domains = [...new Set(patch.email_domains.map(normDomain).filter((d): d is string => !!d))].slice(0, 10)
+  if (patch.email_domains) {
+    // SEC-033: no free-mail or shared-suffix domains, and new domains need proof before they hand out seats.
+    const clean = cleanLicenceDomains(patch.email_domains)
+    if (!clean.ok) throw new LicenceDomainError(clean.code, clean.domain)
+    const { licences } = await licencesCol()
+    const cur = await licences.findOne({ id: licenceId, ...(orgId ? { org_id: orgId } : {}) }, { projection: { _id: 0, org_id: 1, approved_domains: 1, email_domains: 1 } })
+    if (!cur) return null
+    const tenant = actor.superadmin ? null : await (await getMongoDb()).collection('tenants').findOne({ id: cur.org_id }, { projection: { _id: 0, verified_email_domains: 1 } })
+    $set.email_domains = clean.domains
+    $set.approved_domains = approvedLicenceDomains({
+      domains: clean.domains,
+      previouslyApproved: autoAssignDomains(cur),
+      tenantVerified: Array.isArray(tenant?.verified_email_domains) ? (tenant!.verified_email_domains as unknown[]).map(String) : [],
+      bySuperadmin: actor.superadmin,
+    })
+  }
   if (patch.auto_assign !== undefined) $set.auto_assign = patch.auto_assign
   const { licences } = await licencesCol()
   await licences.updateOne({ id: licenceId, ...(orgId ? { org_id: orgId } : {}) }, { $set })
@@ -267,7 +299,7 @@ export async function licenceSeatFor(userId: string, email: string | null | unde
   const candidates = parts.map((_, i) => parts.slice(i).join('.')).filter((d) => d.includes('.'))
   const auto = await licences.find({ status: 'active', auto_assign: true, email_domains: { $in: candidates }, ends_at: { $gt: nowIso() } }, { projection: { _id: 0 } }).limit(5).toArray()
   for (const lic of auto) {
-    if (!domainMatches(e, lic.email_domains) || seatsFree(lic) <= 0) continue
+    if (!domainMatches(e, autoAssignDomains(lic)) || seatsFree(lic) <= 0) continue
     if (await insertSeat(lic, e, 'domain', 'system:domain', userId)) return lic
   }
   return null

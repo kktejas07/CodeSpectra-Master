@@ -46,7 +46,7 @@ export function contestSource(c: Doc): ExtractedSource | null {
     str(c.summary, 500),
     fmt?.description ? `## How this format works\n${fmt.description}` : '',
     str(c.description, 8000),
-    tasks.length ? `## ${fmt?.task.plural || 'Tasks'}\n${tasks.slice(0, 60).map((t) => `- ${str(t.title, 200) || 'Task'}${t.category ? ` (${str(t.category, 60)})` : ''}${Number(t.points) ? `, ${Number(t.points)} points` : ''}`).join('\n')}` : '',
+    tasks.length ? `## ${fmt?.task?.plural || 'Tasks'}\n${tasks.slice(0, 60).map((t) => `- ${str(t.title, 200) || 'Task'}${t.category ? ` (${str(t.category, 60)})` : ''}${Number(t.points) ? `, ${Number(t.points)} points` : ''}`).join('\n')}` : '',
     rubric.length ? `## Judging rubric\n${rubric.slice(0, 20).map((r) => `- ${str(r.name ?? r.label, 120)}${Number(r.weight) ? `: ${Number(r.weight)}%` : ''}`).join('\n')}` : '',
   ].filter(Boolean).join('\n\n')
   return {

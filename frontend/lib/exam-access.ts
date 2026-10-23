@@ -17,8 +17,9 @@ import { candidateExtendedFields } from '@/lib/question-extensions'
 type Doc = Record<string, unknown>
 
 /** Superadmin, or a tenant_admin of the entity's own tenant (a missing tenantId never matches). */
-export function isTenantStaff(user: Pick<APIUser, 'role' | 'tenantId'> | null | undefined, entity: Doc): boolean {
+export function isTenantStaff(user: Pick<APIUser, 'role' | 'tenantId' | 'adminTwoFactorRequired'> | null | undefined, entity: Doc): boolean {
   if (!user) return false
+  if (user.adminTwoFactorRequired) return false // SEC-029: admin 2FA owed → no staff access
   if (user.role === 'superadmin') return true
   return user.role === 'tenant_admin' && !!user.tenantId && entity.tenant_id === user.tenantId
 }

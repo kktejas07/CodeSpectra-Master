@@ -71,6 +71,7 @@ describe('RAG offline evaluation', () => {
     expect(hybrid.metrics.duplicate_hit_rate).toBe(0)
     // RAG-020 CI gate: quality floors a few points under the measured values
     // (wave 4: keyword s@5 93.9%, MRR 0.840; hybrid s@5 92.9%, MRR 0.836).
+    // Audit 5 (RAG-020 weighted fusion, guides 23-35, contests): keyword s@5 93.4%, MRR 0.825; hybrid s@5 ~91.8%, MRR 0.840.
     expect(keyword.metrics.success[5]).toBeGreaterThanOrEqual(0.9)
     expect(keyword.metrics.mrr).toBeGreaterThanOrEqual(0.78)
     expect(hybrid.metrics.success[5]).toBeGreaterThanOrEqual(0.88)

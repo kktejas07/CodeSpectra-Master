@@ -10,7 +10,7 @@
  */
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { getAPIUser, type APIUser } from '@/lib/route-auth'
+import { admin2faRequiredError, getAPIUser, type APIUser } from '@/lib/route-auth'
 import { logger } from '@/lib/logger'
 import { collegesCol, clean } from './store'
 import type { CollegeDoc } from './types'
@@ -29,6 +29,8 @@ export function campusRoleFor(user: Pick<APIUser, 'id' | 'role' | 'tenantId'>, c
 
 /** The college this staff member works for (superadmin: the one asked for). */
 export async function loadStaffContext(user: APIUser, requested?: string | null): Promise<StaffContext | null> {
+  // SEC-029: an admin who still owes 2FA gets no staff context (withStaff answers admin_2fa_required).
+  if (user.adminTwoFactorRequired) return null
   const col = await collegesCol()
   let college: CollegeDoc | null = null
   if (user.role === 'superadmin') {
@@ -73,6 +75,8 @@ export async function readJson(req: Request, maxBytes = 2_500_000): Promise<Reco
 export async function withStaff(req: Request, fn: (ctx: StaffContext) => Promise<NextResponse | Response>, opts: { adminOnly?: boolean } = {}): Promise<NextResponse | Response> {
   const user = await withUser()
   if (!user) return unauthorized()
+  const tfa = admin2faRequiredError(user) // SEC-029
+  if (tfa) return NextResponse.json({ error: tfa.error, code: tfa.code }, { status: tfa.status })
   const requested = new URL(req.url).searchParams.get('college')
   const ctx = await loadStaffContext(user, requested)
   if (!ctx) return noCollege()

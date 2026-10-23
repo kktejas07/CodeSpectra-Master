@@ -24,6 +24,13 @@ export interface APIUser {
   lastLoginAt?: Date | null
   /** Tenant/organization the user belongs to (from the user doc). */
   tenantId?: string | null
+  /**
+   * SEC-029: a superadmin / tenant_admin whose required 2FA grace period has
+   * ended. Every privileged gate (requireAdmin, requireAts, campus staff,
+   * licences, live drives, exam staff via isTenantStaff) refuses such a user;
+   * the 2FA setup routes (requireAuth) still work.
+   */
+  adminTwoFactorRequired?: boolean
 }
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
@@ -76,8 +83,11 @@ async function buildAPIUser(
   const account = resolveAccount(profile, { tenantActive })
   if (!account.ok || !profile) return null
   const name = profile.fullName || profile.name || tokenName || undefined
+  const id = String(profile.id || profile._id || uid)
+  const tfa = account.role === 'superadmin' || account.role === 'tenant_admin' ? await admin2faApiBlock({ id, role: account.role }) : null
   return {
-    id: String(profile.id || profile._id || uid),
+    ...(tfa ? { adminTwoFactorRequired: true } : {}),
+    id,
     email: (typeof profile.email === 'string' && profile.email) || fallbackEmail || '',
     role: account.role,
     name: name ?? undefined,
@@ -198,6 +208,13 @@ export async function requireAdmin() {
   const tfa = await admin2faApiBlock(user)
   if (tfa) return tfa
   return { user }
+}
+
+/** SEC-029: the 403 body for a privileged gate when the caller still owes admin 2FA (null = fine). */
+export function admin2faRequiredError(user: Pick<APIUser, 'adminTwoFactorRequired'> | null | undefined): { error: string; status: 403; code: 'admin_2fa_required' } | null {
+  return user?.adminTwoFactorRequired
+    ? { error: 'Turn on two-factor authentication to use admin tools (Account → Security).', status: 403, code: 'admin_2fa_required' }
+    : null
 }
 
 /** requireSuperAdmin: role-based check (DB permissions add granularity, never restrict) */

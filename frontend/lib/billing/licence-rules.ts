@@ -5,6 +5,7 @@
  * A seat grants Pro entitlements while the licence is live.
  */
 import { z } from 'zod'
+import { PUBLIC_MAIL_DOMAINS } from '@/lib/campus/types'
 
 export const MAX_LICENCE_SEATS = 50_000
 export const MAX_SEAT_ROWS = 5_000
@@ -17,6 +18,8 @@ export interface LicenceLike {
   seats?: number | null
   seats_used?: number | null
   email_domains?: string[] | null
+  /** SEC-033: the subset of email_domains allowed to auto-assign seats */
+  approved_domains?: string[] | null
   auto_assign?: boolean | null
 }
 
@@ -43,6 +46,53 @@ export function normDomain(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
   const d = raw.trim().toLowerCase().replace(/^@/, '')
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) && d.length <= 253 ? d : null
+}
+
+/**
+ * SEC-033: domains an organisation may never claim for automatic seats —
+ * public mailbox providers and shared public suffixes (ac.in, edu.in, co.uk, …).
+ */
+const PUBLIC_MAILBOX_DOMAINS = new Set([
+  ...PUBLIC_MAIL_DOMAINS,
+  'yahoo.in', 'outlook.in', 'hotmail.co.uk', 'live.in', 'ymail.com', 'rocketmail.com', 'pm.me', 'tutanota.com', 'tuta.io',
+  'fastmail.com', 'hey.com', 'qq.com', '163.com', '126.com', 'mail.ru', 'yandex.ru', 'gmx.de', 'web.de', 'zohomail.in',
+])
+const SHARED_SECOND_LEVEL = new Set(['ac', 'edu', 'co', 'gov', 'org', 'net', 'nic', 'res', 'gen', 'firm', 'ind', 'com', 'mil', 'sch', 'nhs', 'ltd', 'plc', 'me'])
+
+export type LicenceDomainProblem = 'invalid' | 'public_mail' | 'public_suffix'
+
+export function licenceDomainProblem(raw: unknown): LicenceDomainProblem | null {
+  const d = normDomain(raw)
+  if (!d) return 'invalid'
+  if (PUBLIC_MAILBOX_DOMAINS.has(d)) return 'public_mail'
+  const labels = d.split('.')
+  // "ac.in", "edu.au", "co.uk": a whole suffix shared by many organisations.
+  if (labels.length === 2 && SHARED_SECOND_LEVEL.has(labels[0])) return 'public_suffix'
+  return null
+}
+
+/** Normalise a domain list for a licence; the first unusable one is reported. */
+export function cleanLicenceDomains(list: unknown[]): { ok: true; domains: string[] } | { ok: false; code: `licence_domain_${LicenceDomainProblem}`; domain: string } {
+  const out: string[] = []
+  for (const raw of list) {
+    const problem = licenceDomainProblem(raw)
+    if (problem) return { ok: false, code: `licence_domain_${problem}`, domain: String(raw ?? '').trim().slice(0, 80) }
+    const d = normDomain(raw)!
+    if (!out.includes(d)) out.push(d)
+  }
+  return { ok: true, domains: out.slice(0, 10) }
+}
+
+/**
+ * SEC-033: which of the licence's domains may hand out seats automatically.
+ * A superadmin's save approves its domains; an organisation admin's own save
+ * keeps earlier approvals and adds only domains the organisation has proved
+ * (tenants.verified_email_domains). Everything else waits for a superadmin.
+ */
+export function approvedLicenceDomains(p: { domains: string[]; previouslyApproved: string[]; tenantVerified: string[]; bySuperadmin: boolean }): string[] {
+  if (p.bySuperadmin) return [...p.domains]
+  const ok = new Set([...p.previouslyApproved, ...p.tenantVerified].map((d) => d.toLowerCase()))
+  return p.domains.filter((d) => ok.has(d))
 }
 
 export function emailDomain(email: string): string {

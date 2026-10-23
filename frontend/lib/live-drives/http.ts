@@ -4,7 +4,7 @@
  */
 import 'server-only'
 import { NextResponse } from 'next/server'
-import { getAPIUser, type APIUser } from '@/lib/route-auth'
+import { admin2faRequiredError, getAPIUser, type APIUser } from '@/lib/route-auth'
 import { apiErrorBody } from '@/lib/api-errors'
 import { logger } from '@/lib/logger'
 import { LiveDriveError } from './service'
@@ -26,6 +26,8 @@ export async function body(req: Request, maxBytes = 512_000): Promise<unknown> {
 export async function handle(name: string, fn: (user: APIUser) => Promise<Response>): Promise<Response> {
   const user = await getAPIUser()
   if (!user) return json({ error: 'Unauthorized', code: 'unauthorized' }, 401)
+  const tfa = admin2faRequiredError(user) // SEC-029
+  if (tfa) return json({ error: tfa.error, code: tfa.code }, tfa.status)
   try {
     return await fn(user)
   } catch (e) {

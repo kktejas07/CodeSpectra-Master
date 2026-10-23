@@ -1,4 +1,9 @@
 {
+  "assess_answer_too_long": "अपना जवाब {max} अक्षरों से कम रखें।",
+  "assess_question_answered": "आप इस सवाल का जवाब पहले ही दे चुके हैं।",
+  "licence_domain_invalid": "“{domain}” सही ईमेल डोमेन नहीं है।",
+  "licence_domain_public_mail": "{domain} एक सार्वजनिक ईमेल सेवा है। अपने संगठन का अपना डोमेन इस्तेमाल करें।",
+  "licence_domain_public_suffix": "{domain} कई संगठनों में साझा है। अपने संगठन का अपना डोमेन इस्तेमाल करें (जैसे college.ac.in)।",
   "id_ocr_paused": "ऑटोमैटिक ID रीडिंग अभी रुकी हुई है। बाद में कोशिश करें या अपने प्रॉक्टर से ID जाँचने को कहें।",
   "native_purchase_blocked": "ऐप में खरीदारी उपलब्ध नहीं है। खरीदारी codespectra.ai वेबसाइट पर मैनेज करें।",
   "unauthorized": "आप साइन इन नहीं हैं। साइन इन करके फिर कोशिश करें।",

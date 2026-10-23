@@ -19,6 +19,6 @@ export async function PUT(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const parsed = Body.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid settings', code: 'invalid_input' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   return NextResponse.json({ settings: await saveEbookSettings(parsed.data, gate.user.id) })
 }

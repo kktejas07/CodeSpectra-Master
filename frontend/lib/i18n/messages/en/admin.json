@@ -1,4 +1,5 @@
 {
+  "licences.domainsPending": "Waiting for approval: {domains}. People with these addresses get a seat once CodeSpectra confirms your organisation owns the domain — contact support to verify it.",
   "billingOps.referralReviewTitle": "Referral rewards to review",
   "billingOps.referralReviewBody": "These friends signed in or paid from the same network as the person who referred them (often college or hostel Wi-Fi), but share no device or payment method. Grant the reward if it looks genuine.",
   "billingOps.referralReviewLoading": "Loading referral rewards…",

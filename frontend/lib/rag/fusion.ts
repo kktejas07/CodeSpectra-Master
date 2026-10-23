@@ -9,10 +9,12 @@ export const RRF_K = 60
  * RAG-020: per-list weights for hybrid fusion, tuned on the offline golden set
  * (lib/rag/eval). Keyword ranks count more than vector ranks: on short paraphrased
  * questions the lexical list is the more reliable one, the vector list mostly
- * breaks ties and rescues pure paraphrases. Confirm changes with the weekly live eval.
+ * breaks ties and rescues pure paraphrases. Offline golden set (2026-10-23, 140 questions):
+ * k 60 / 1:1 → s@3 0.869, s@5 0.902, MRR 0.851; k 10 / 1:1.5 → s@3 0.885, s@5 0.918, MRR 0.840.
+ * The local embedder is only a proxy: confirm changes with the weekly live eval.
  * Ops can override with RAG_RRF_K / RAG_RRF_VECTOR_WEIGHT / RAG_RRF_KEYWORD_WEIGHT.
  */
-export const FUSION_DEFAULTS = { k: 20, vector: 1, keyword: 1.5 }
+export const FUSION_DEFAULTS = { k: 10, vector: 1, keyword: 1.5 }
 
 /** Fusion knobs from the environment, clamped; defaults when unset or invalid. Pure given `env`. */
 export function fusionConfig(env: Record<string, string | undefined> = process.env): { k: number; vector: number; keyword: number } {

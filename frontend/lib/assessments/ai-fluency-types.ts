@@ -22,6 +22,8 @@ export interface FluencyEvaluation {
   strengths: string[]
   improvements: string[]
   detailedFeedback: string
+  /** SEC-032: the answer contained instructions aimed at the grader — score capped, reasons logged. */
+  integrityFlags?: string[]
 }
 
 export interface FluencyAnswerEntry {

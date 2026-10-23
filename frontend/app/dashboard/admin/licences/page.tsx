@@ -34,6 +34,8 @@ interface Licence {
   starts_at: string | null
   ends_at: string | null
   email_domains: string[]
+  /** SEC-033: domains allowed to hand out seats automatically (missing = legacy, all) */
+  approved_domains?: string[]
   auto_assign: boolean
   usage?: { assigned: number; joined: number; byDomain: number }
 }
@@ -298,6 +300,10 @@ export default function LicencesPage() {
                       <p className="text-sm text-muted-foreground">{t('licences.domainBody')}</p>
                       <Label htmlFor="lic-domains">{t('licences.domains')}</Label>
                       <Input id="lic-domains" value={domains} onChange={(e) => setDomains(e.target.value)} placeholder={t('licences.domainsPlaceholder')} />
+                      {(() => {
+                        const pending = Array.isArray(current.approved_domains) ? current.email_domains.filter((d) => !current.approved_domains!.includes(d)) : []
+                        return pending.length ? <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground">{t('licences.domainsPending', { domains: pending.join(', ') })}</p> : null
+                      })()}
                       <div className="flex items-center gap-3">
                         <Switch id="lic-auto" checked={current.auto_assign} onCheckedChange={(v) => void saveDomains(v)} disabled={busy === 'domains'} />
                         <Label htmlFor="lic-auto">{t('licences.autoAssign')}</Label>
