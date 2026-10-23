@@ -523,6 +523,27 @@ export async function moderationAction(user: NonNullable<Viewer>, raw: Record<st
   return { ok: true }
 }
 
+/** Reporter id of the community moderator loop (lib/agent-loops/loops/community-mod). */
+export const AGENT_REPORTER_ID = 'agent:community-moderator'
+
+/** Community moderator loop: hide clear spam / restore it, with the reasons shown to moderators. */
+export async function systemSetPostStatus(type: 'thread' | 'reply', id: string, status: 'visible' | 'hidden', reasons: string[]): Promise<void> {
+  await setStatus(type, id, status)
+  const moderation = { reasons: reasons.slice(0, 8), ai: null }
+  if (type === 'thread') await (await threadsCol()).updateOne({ id }, { $set: { moderation } })
+  else await (await repliesCol()).updateOne({ id }, { $set: { moderation } })
+}
+
+/** Community moderator loop: one open report in the moderators' queue (once per post). */
+export async function systemReport(type: 'thread' | 'reply', id: string, threadId: string, reason: ReportReason, note: string): Promise<boolean> {
+  try {
+    await (await reportsCol()).insertOne({ id: newPostId('rp'), target_type: type, target_id: id, thread_id: threadId, group_id: null, reporter_id: AGENT_REPORTER_ID, reason, note: note.slice(0, 1000), status: 'open', action: null, resolved_by: null, created_at: nowIso(), resolved_at: null })
+    return true
+  } catch {
+    return false // already reported by the loop
+  }
+}
+
 /** Superadmin grants or removes forum moderator rights. */
 export async function setModerator(actor: NonNullable<Viewer>, raw: Record<string, unknown>) {
   if (actor.role !== 'superadmin') throw fail('Only platform admins can appoint moderators.', 403, 'community_superadmin_only')

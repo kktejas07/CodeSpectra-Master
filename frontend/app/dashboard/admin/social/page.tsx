@@ -25,6 +25,7 @@ import { PLATFORM_LABELS, SOCIAL_ITEM_TYPES, SOCIAL_PLATFORMS, type SocialQueueD
 import { SocialComposer, cardUrl } from './composer'
 import { SocialRoundup } from './roundup'
 import { SocialStats } from './stats'
+import { SocialPack } from './pack'
 
 type ListItem = Omit<SocialQueueDoc, 'captions'>
 type Filters = { type: string; status: 'all' | 'not_posted' | 'posted'; platform: string; q: string; from: string; to: string }
@@ -45,6 +46,12 @@ export default function AdminSocialStudioPage() {
   const [error, setError] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
+
+  // ?tab=pack opens Today's pack (link from the social pack notification).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('tab')
+    if (q === 'pack' || q === 'roundup' || q === 'stats' || q === 'posted') setTab(q)
+  }, [])
 
   const effective: Filters = tab === 'posted' ? { ...filters, status: 'posted' } : filters
 
@@ -226,12 +233,14 @@ export default function AdminSocialStudioPage() {
       <Tabs value={tab} onValueChange={(v) => { setTab(v); setPage(1) }}>
         <TabsList className="mb-4 flex w-full justify-start overflow-x-auto">
           <TabsTrigger value="queue">{t('social.tab.queue')}</TabsTrigger>
+          <TabsTrigger value="pack">{t('social.tab.pack')}</TabsTrigger>
           <TabsTrigger value="posted">{t('social.tab.posted')}</TabsTrigger>
           <TabsTrigger value="roundup">{t('social.tab.roundup')}</TabsTrigger>
           <TabsTrigger value="stats">{t('social.tab.stats')}</TabsTrigger>
         </TabsList>
         <TabsContent value="queue">{tab === 'queue' ? list : null}</TabsContent>
         <TabsContent value="posted">{tab === 'posted' ? list : null}</TabsContent>
+        <TabsContent value="pack">{tab === 'pack' ? <SocialPack onOpen={setOpenId} /> : null}</TabsContent>
         <TabsContent value="roundup">{tab === 'roundup' ? <SocialRoundup onOpen={setOpenId} /> : null}</TabsContent>
         <TabsContent value="stats">{tab === 'stats' ? <SocialStats /> : null}</TabsContent>
       </Tabs>

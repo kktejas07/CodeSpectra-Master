@@ -209,6 +209,15 @@ export async function runPlatformCron(now: Date = new Date(), opts: { longInBack
     }, { maxAttempts: 3, retryAfterMs: 30 * 60_000, leaseMs: 30 * 60_000 })
   }
 
+  // ── Agent loops (lib/agent-loops): each checks its switch + schedule and claims its window (every 5 min) ──
+  if (minute.getUTCMinutes() % 5 === 0) {
+    const merge = (r: { ran: string[]; skipped: string[]; failed: string[] }) => { report.ran.push(...r.ran); report.failed.push(...r.failed) }
+    const loops = import('./agent-loops/runner').then((m) => m.runDueAgentLoops(now))
+    // Link checks, the sandbox and AI make these slow: background lane when the in-process loop allows it.
+    if (opts.longInBackground) { (report.background ||= []).push('agent-loops'); void loops.catch((e) => console.error('[platform-cron] agent loops:', (e as Error)?.message)) }
+    else merge(await loops.catch(() => ({ ran: [], skipped: [], failed: ['agent-loops'] })))
+  }
+
   // ── HTTP cron routes on their schedules ──────────────────────────────────
   if (process.env.PLATFORM_CRON_IN_PROCESS !== '0') {
     // AUTO-087: a route is due on its cron minute or the first tick after it (catch-up window),

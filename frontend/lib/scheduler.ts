@@ -412,6 +412,12 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     // weekly copilot eval. Here (not only the in-process loop) so serverless /api/cron/tick runs it,
     // with a DB lease (one replica even without Redis) and a heartbeat.
     await job('knowledge', minute, async () => (await import('./rag/ingest')).runKnowledgeTick(), { leaseMs: 5 * 60_000 })
+    // Wave 15 assistants (lib/assistants/tick.ts): revenue scan, org onboarding, weekly placement report,
+    // mentor follow-ups. Checked hourly; each loop claims its own window + heartbeat (assistant-*).
+    await (await import('./assistants/tick')).runAssistantsTick(now).catch((e) => console.error('[scheduler] assistants error:', e))
+    // Hiring agents (lib/agent/hiring-loops/tick.ts): sourcer, interview scheduler, assessment author,
+    // integrity reviewer. Each claims its own window + heartbeat; they only draft proposals unless an org enabled auto-send.
+    await (await import('./agent/hiring-loops/tick')).runHiringLoopsTick(now).catch((e) => console.error('[scheduler] hiring agents error:', e))
   }
   if (opts.heavyInBackground) {
     report.background = ['learn', 'events-feed', 'news-digest', 'content-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports', 'knowledge']

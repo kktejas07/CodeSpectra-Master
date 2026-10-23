@@ -276,6 +276,82 @@ export const EVENT_TYPES: readonly EventTypeDef[] = [
     fields: [f('user_id', 'Author user id'), f('thread_id', 'Thread id'), f('title', 'Title'), f('kind', 'Kind'), f('category_id', 'Category id'), f('problem_id', 'Problem id'), f('tags', 'Tags', 'array'), f('url', 'Link')],
     sample: { user_id: 'u_sample', thread_id: 't_sample', title: 'Two-pointer vs hashing for two-sum?', kind: 'question', category_id: 'cat_sample', problem_id: null, tags: ['arrays'], url: '/community/t/t_sample' },
   },
+  // Wave 15 agent loops (lib/agent-loops).
+  {
+    type: 'agent_loop.run_finished', label: 'Agent loop finished a run', group: 'Content', scope: 'platform',
+    description: 'A scheduled agent loop (content QA, SEO gaps, community moderator, analytics insights, social pack) finished a run.',
+    fields: [f('loop', 'Loop'), f('run_id', 'Run id'), f('trigger', 'Schedule or manual'), f('findings', 'Findings', 'number'), f('new_findings', 'New findings', 'number')],
+    sample: { loop: 'content-qa', run_id: 'alr_sample', trigger: 'schedule', findings: 4, new_findings: 2 },
+  },
+  {
+    type: 'social.pack_ready', label: 'Daily social pack ready', group: 'Content', scope: 'platform',
+    description: 'Today’s ready-to-post pack is in the Social studio (nothing is posted automatically).',
+    fields: [f('day', 'Day'), f('items', 'Items', 'number'), f('url', 'Link')],
+    sample: { day: '2026-10-23', items: 3, url: '/dashboard/admin/social?tab=pack' },
+  },
+  // Wave 15 hiring agents (lib/agent/hiring-loops).
+  {
+    type: 'hiring_agent.proposals', label: 'Hiring agent drafted proposals', group: 'Hiring',
+    description: 'A hiring agent (sourcer, interview scheduler, assessment author, integrity reviewer) drafted proposals for an admin to confirm, or auto-sent steps the organisation allowed.',
+    fields: [f('agent', 'Agent'), f('run_id', 'Run id'), f('proposals', 'Proposals waiting', 'number'), f('auto_sent', 'Auto-sent', 'number'), f('conversation_id', 'Copilot conversation id')],
+    sample: { agent: 'sourcer', run_id: 'run_sample', proposals: 3, auto_sent: 0, conversation_id: 'conv_sample' },
+  },
+  // Wave 15 nudges (lib/automation/system/nudges-*.ts; emitted by "Nudge signals" / the follow-up automations).
+  {
+    type: 'assessment.invite.expiring', label: 'Test invite closing soon', group: 'Assessments',
+    description: 'A test invite with no submission yet closes in 72 or 2 hours (once per invite and step).',
+    fields: [f('invite_id', 'Invite id'), f('exam_id', 'Test id'), f('exam_title', 'Test title'), f('email', 'Candidate email'), f('name', 'Candidate name'), f('user_id', 'Candidate user id'), f('hours_left', 'Hours left', 'number'), f('expires_at', 'Closes at', 'date')],
+    sample: { invite_id: 'inv_sample', exam_id: 'e_sample', exam_title: 'Backend engineer screen', email: 'asha@example.com', name: 'Asha Rao', user_id: 'u_sample', hours_left: 72, expires_at: '2026-01-10T09:00:00.000Z' },
+  },
+  {
+    type: 'offer.pending', label: 'Offer waiting for an answer', group: 'Hiring',
+    description: 'A candidate has been in an offer stage for 2 days (step candidate_2d) or 5 days (step recruiter_5d) without moving.',
+    fields: [f('application_id', 'Application id'), f('job_id', 'Job id'), f('job_title', 'Job'), f('candidate_id', 'Candidate id'), f('step', 'Step'), f('days_waiting', 'Days waiting', 'number'), f('stage_entered_at', 'In the offer stage since', 'date'), f('expires_at', 'Offer deadline', 'date')],
+    sample: { application_id: 'a_sample', job_id: 'j_sample', job_title: 'Backend engineer', candidate_id: 'c_sample', step: 'candidate_2d', days_waiting: 2, stage_entered_at: '2026-01-08T09:00:00.000Z', expires_at: '2026-01-15T09:00:00.000Z' },
+  },
+  {
+    type: 'offer.expired', label: 'Offer expired', group: 'Hiring',
+    description: 'An offer reached its deadline without an answer and was flagged expired (offer follow-ups automation).',
+    fields: [f('application_id', 'Application id'), f('job_id', 'Job id'), f('job_title', 'Job'), f('candidate_id', 'Candidate id'), f('expires_at', 'Deadline', 'date')],
+    sample: { application_id: 'a_sample', job_id: 'j_sample', job_title: 'Backend engineer', candidate_id: 'c_sample', expires_at: '2026-01-15T09:00:00.000Z' },
+  },
+  {
+    type: 'bgv.overdue', label: 'Background check overdue at the vendor', group: 'Hiring',
+    description: 'A vendor check is past its expected time (vendor SLA under Admin → Automations → Nudge limits).',
+    fields: [f('case_id', 'Case id'), f('application_id', 'Application id'), f('candidate_name', 'Candidate name'), f('job_title', 'Job'), f('vendor', 'Vendor'), f('check', 'Check'), f('days_overdue', 'Days overdue', 'number')],
+    sample: { case_id: 'bgv_sample', application_id: 'a_sample', candidate_name: 'Asha Rao', job_title: 'Backend engineer', vendor: 'idfy', check: 'employment', days_overdue: 2 },
+  },
+  {
+    type: 'drive.no_show', label: 'Drive no-shows', group: 'Hiring',
+    description: 'A live drive closed for joining and some rostered candidates never started (once per drive).',
+    fields: [f('drive_id', 'Drive id'), f('title', 'Drive'), f('no_shows', 'No-shows', 'number'), f('starts_at', 'Started at', 'date')],
+    sample: { drive_id: 'd_sample', title: 'Campus hiring drive', no_shows: 12, starts_at: '2026-01-15T04:30:00.000Z' },
+  },
+  {
+    type: 'cohort.member_at_risk', label: 'Cohort learner at risk', group: 'Learning',
+    description: 'A cohort learner missed two assignments or has been quiet for 7 days (at most once a week per learner).',
+    fields: [f('cohort_id', 'Cohort id'), f('cohort_title', 'Cohort'), f('user_id', 'Learner user id'), f('email', 'Learner email'), f('name', 'Learner name'), f('reasons', 'Reasons', 'array'), f('missed_assignments', 'Missed assignments', 'number'), f('days_inactive', 'Days inactive', 'number'), f('week', 'Week (Monday)')],
+    sample: { cohort_id: 'co_sample', cohort_title: 'DSA bootcamp — January', user_id: 'u_sample', email: 'asha@example.com', name: 'Asha Rao', reasons: ['missed_assignments'], missed_assignments: 2, days_inactive: 3, week: '2026-01-12' },
+  },
+  {
+    type: 'talent.invite.pending', label: 'Talent-search invite unanswered', group: 'Hiring',
+    description: 'A learner has not answered a talent-search invite after 3 days (step day3) or it expires within a day (step last_day).',
+    fields: [f('invite_id', 'Invite id'), f('learner_id', 'Learner user id'), f('target_type', 'Invited to'), f('target_title', 'Target'), f('step', 'Step'), f('expires_at', 'Expires at', 'date')],
+    sample: { invite_id: 'ti_sample', learner_id: 'u_sample', target_type: 'job', target_title: 'Backend engineer', step: 'day3', expires_at: '2026-01-20T09:00:00.000Z' },
+  },
+  // Wave 15 assistants (lib/assistants).
+  {
+    type: 'support.ticket_created', label: 'Support ticket from the help assistant', group: 'Accounts', scope: 'platform',
+    description: 'A learner or company user turned a help-assistant answer into a support ticket.',
+    fields: [f('ticket_id', 'Ticket id'), f('category', 'Category'), f('source', 'Source')],
+    sample: { ticket_id: 'tk_sample', category: 'billing', source: 'assistant' },
+  },
+  {
+    type: 'placement.report_ready', label: 'Weekly placement report ready', group: 'Learning',
+    description: 'The placement assistant built a college\'s weekly report (once per college and ISO week).',
+    fields: [f('college_id', 'College organisation id'), f('week', 'ISO week'), f('students', 'Students', 'number'), f('active', 'Students practising', 'number'), f('to_nudge', 'Students to nudge', 'number')],
+    sample: { college_id: 't_sample', week: '2026-W43', students: 420, active: 260, to_nudge: 35 },
+  },
 ] as const
 
 export type AutomationEventType = (typeof EVENT_TYPES)[number]['type']

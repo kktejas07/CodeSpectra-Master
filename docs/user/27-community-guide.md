@@ -27,4 +27,4 @@ Every post goes through the moderation pipeline: profanity is masked or rejected
 
 ## For moderators
 
-Platform admins appoint forum moderators. The **moderation queue** (`/dashboard/community/moderation`) shows held posts and open reports. A moderator can approve, hide, remove or restore a post, dismiss reports, lock or pin a thread, and ban an author for 1–365 days. The AI copilot can list the queue and draft these actions for a moderator to confirm.
+Platform admins appoint forum moderators. The **moderation queue** (`/dashboard/community/moderation`) shows held posts and open reports. A moderator can approve, hide, remove or restore a post, dismiss reports, lock or pin a thread, and ban an author for 1–365 days. The AI copilot can list the queue and draft these actions for a moderator to confirm. When the platform switches on the **community moderator** agent loop, it reports doubtful new posts into this queue (reporter: community moderator) and may hide clear spam; see the [agent loops guide](./agent-loops-guide.md).

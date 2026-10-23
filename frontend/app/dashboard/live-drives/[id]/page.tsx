@@ -28,6 +28,7 @@ import { GRID_TONE, STATUS_TONE, fmtClock, selectCls } from '../ui'
 import { CandidateDrawer } from './candidate-drawer'
 import { SetupPanel } from './setup-panel'
 import { ResultsPanel } from './results-panel'
+import { NoShowsPanel } from './no-shows-panel'
 import type { ControlData } from './types'
 
 type Tab = 'live' | 'setup' | 'results'
@@ -202,6 +203,7 @@ export default function ControlRoomPage() {
       ) : null}
 
       {data && owner && tab === 'setup' ? <SetupPanel id={id} drive={data.drive} /> : null}
+      {data && owner && tab === 'results' ? <NoShowsPanel id={id} /> : null}
       {data && owner && tab === 'results' ? <ResultsPanel id={id} drive={data.drive} /> : null}
 
       {open && data ? <CandidateDrawer driveId={id} candidateId={open} onClose={() => setOpen(null)} onChanged={() => void poll()} /> : null}

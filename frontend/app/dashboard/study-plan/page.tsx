@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { ITEM_LABELS, type PlanItem } from '@/lib/study-plan/types'
 import type { PlanView } from '@/lib/study-plan/service'
 import { useT } from '@/lib/i18n/client'
+import { MentorMatches } from '@/components/study-plan/mentor-matches'
 
 interface Targets { patterns: { id: string; label: string; company: string }[]; domains: { id: string; label: string }[] }
 
@@ -132,6 +133,7 @@ export default function StudyPlanPage() {
         </Panel>
         <Reminders view={view} onSaved={(r) => setView({ ...view, plan: { ...view.plan, reminders: r } })} />
       </div>
+      <MentorMatches />
       {p.history.length > 0 && (
         <Panel className="mt-5 p-5">
           <h2 className="mb-3 text-lg font-semibold text-foreground">{t('dashboard.pastWeeks')}</h2>

@@ -65,12 +65,15 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/ai-usage',
   '/dashboard/admin/question-generator',
   '/dashboard/admin/question-bot',
+  // Wave 15 assistants: switches, caps and run log (lib/assistants).
+  '/dashboard/admin/assistants',
   '/dashboard/admin/interview-sim',
   '/dashboard/admin/company-patterns',
   '/dashboard/admin/courses',
   '/dashboard/admin/courses/[id]',
   '/dashboard/admin/cron-jobs',
   '/dashboard/admin/automations',
+  '/dashboard/admin/agent-loops',
 
   // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
@@ -160,6 +163,8 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/sme-review',
   // Admin AI copilot: every /api/admin/agent route scopes tenant admins to their organisation.
   '/dashboard/admin/agent',
+  // Hiring agents (sourcer, scheduler, author, integrity): /api/admin/hiring-agents scopes tenant admins to their organisation.
+  '/dashboard/admin/hiring-agents',
   // Knowledge sources for the copilot: /api/admin/knowledge scopes tenant admins to their organisation.
   '/dashboard/admin/knowledge',
   // Workflow builder: /api/workflows scopes tenant admins to their organisation's workflows.
@@ -170,6 +175,8 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/connected-apps',
   // New cohort: POST /api/cohorts requires an organisation admin.
   '/dashboard/cohorts/new',
+  // Org onboarding checklist: /api/assistants/onboarding scopes tenant admins to their own organisation.
+  '/dashboard/admin/onboarding',
 ]
 
 /**
@@ -382,8 +389,11 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/workflows': 'Workflows',
   '/dashboard/admin/cron-jobs': 'Cron jobs',
   '/dashboard/admin/automations': 'Automations',
+  '/dashboard/admin/agent-loops': 'Agent loops',
   '/dashboard/admin/question-generator': 'Question generator',
   '/dashboard/admin/question-bot': 'Question bot',
+  '/dashboard/admin/assistants': 'Assistants',
+  '/dashboard/admin/onboarding': 'Get set up',
   '/dashboard/admin/interview-sim': 'Mock interviews',
   '/dashboard/admin/company-patterns': 'Company patterns',
   '/dashboard/admin/courses': 'Course management',
@@ -512,6 +522,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/predictive-validity': 'Predictive validity',
   '/dashboard/admin/sme-review': 'SME review',
   '/dashboard/admin/agent': 'AI copilot',
+  '/dashboard/admin/hiring-agents': 'Hiring agents',
   '/dashboard/admin/knowledge': 'Knowledge',
   '/dashboard/hiring': 'Hiring',
   '/dashboard/hiring/jobs': 'Hiring jobs',

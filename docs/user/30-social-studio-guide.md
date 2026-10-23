@@ -21,4 +21,8 @@ Every newly published item is queued: events from the events feed, tech news, co
 
 Use **Share** to open the network's share page with the caption filled in, then **Mark posted**. The weekly **roundup** picks the week's top items into one post, and **Stats** shows posts per network per week.
 
+## Today's pack
+
+The **Today's pack** tab shows the daily social pack (switched on in **Admin → Agent loops**): the best new items with captions per network and language, share cards and suggested posting times. It never posts — open each item, share it and mark it posted. See the [agent loops guide](./agent-loops-guide.md).
+
 The AI copilot can list the queue (what still needs posting) for platform admins.

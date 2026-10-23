@@ -305,5 +305,17 @@
   "stopGenerating": "Stop generating",
   "sendMessage": "Send message",
   "copilotDisclaimer": "The copilot can make mistakes. Check previews before you confirm.",
-  "readRepliesAloud": "Read replies aloud"
+  "readRepliesAloud": "Read replies aloud",
+  "mmTitle": "Mentors who can help",
+  "mmDesc": "Picked from your focus areas, target company, language and time zone.",
+  "mmReasonSkill": "Strong in {value}",
+  "mmReasonCompany": "Worked at {value}",
+  "mmReasonLanguage": "Speaks {value}",
+  "mmReasonTimezone": "Similar time zone",
+  "mmReasonRating": "Rated {value}",
+  "mmRating": "{value} from {n} reviews",
+  "mmOffering": "{title} · {minutes} min · {price}",
+  "mmEmpty": "No mentor matches yet. Practise a bit more or browse all mentors.",
+  "mmBrowse": "Browse mentors",
+  "mmBook": "View sessions"
 }

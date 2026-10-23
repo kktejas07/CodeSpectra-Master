@@ -45,3 +45,7 @@
 | [33-live-drives-guide.md](./33-live-drives-guide.md) | Live proctored drives |
 | [34-paid-certifications-guide.md](./34-paid-certifications-guide.md) | Paid proctored certifications |
 | [35-tech-news-guide.md](./35-tech-news-guide.md) | Tech news and the fact verifier |
+| [agent-loops-guide.md](./agent-loops-guide.md) | Agent loops: content QA, SEO gaps, community moderator, analytics insights, daily social pack |
+| [hiring-agents-guide.md](./hiring-agents-guide.md) | Hiring agents: sourcer, interview scheduler, assessment author, integrity reviewer |
+| [assistants-guide.md](./assistants-guide.md) | Assistants: support chat, org onboarding, placement officer, mentor matching, revenue and renewals |
+| [nudges-guide.md](./nudges-guide.md) | Reminders and follow-ups (nudges): shared frequency cap, each nudge, organisation templates |

@@ -468,5 +468,7 @@
   "guardian_unsubscribe_invalid": "ఈ సభ్యత్వ రద్దు లింక్ చెల్లదు.",
   "accommodation_invalid": "+25%, +50% లేదా మీకు నచ్చిన మొత్తం (1–300% లేదా 1–600 నిమిషాలు) ఎంచుకోండి.",
   "accommodation_reason_required": "ఆడిట్ రికార్డు కోసం చిన్న కారణం రాయండి.",
-  "accommodation_candidate_not_found": "ఆ అభ్యర్థికి ఖాతా దొరకలేదు."
+  "accommodation_candidate_not_found": "ఆ అభ్యర్థికి ఖాతా దొరకలేదు.",
+  "assistant_off": "సహాయ అసిస్టెంట్ ఆఫ్‌లో ఉంది.",
+  "assistant_daily_limit": "మీరు ఈరోజు {n} ప్రశ్నలు అడిగారు. రేపు మళ్లీ ప్రయత్నించండి లేదా టికెట్ తెరవండి."
 }

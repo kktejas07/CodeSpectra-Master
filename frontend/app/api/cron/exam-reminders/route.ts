@@ -51,7 +51,8 @@ async function postImpl(req: NextRequest) {
       // Claim first so two overlapping runs can't both send.
       const claim = await db.collection('candidate_invites').updateOne(
         { id: invite.id, reminded_at: { $exists: false } },
-        { $set: { reminded_at: now.toISOString() } },
+        // reminder_count / reminder_steps: shown on the results page ("reminded 2×") and shared with the W15 invite ladder.
+        { $set: { reminded_at: now.toISOString(), last_reminded_at: now.toISOString() }, $inc: { reminder_count: 1 }, $addToSet: { reminder_steps: '24h' } },
       )
       if (claim.modifiedCount !== 1) continue
 
@@ -88,7 +89,7 @@ async function postImpl(req: NextRequest) {
       else {
         failed++
         // Let the next run retry a reminder that never went out.
-        await db.collection('candidate_invites').updateOne({ id: invite.id }, { $unset: { reminded_at: '' } }).catch(() => {})
+        await db.collection('candidate_invites').updateOne({ id: invite.id }, { $unset: { reminded_at: '' }, $inc: { reminder_count: -1 }, $pull: { reminder_steps: '24h' } } as never).catch(() => {})
       }
     }
 

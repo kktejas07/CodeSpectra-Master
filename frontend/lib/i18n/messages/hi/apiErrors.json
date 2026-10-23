@@ -468,5 +468,7 @@
   "guardian_unsubscribe_invalid": "यह सदस्यता छोड़ने का लिंक मान्य नहीं है।",
   "accommodation_invalid": "+25%, +50% या अपनी मात्रा (1–300% या 1–600 मिनट) चुनें।",
   "accommodation_reason_required": "ऑडिट रिकॉर्ड के लिए एक छोटा कारण लिखें।",
-  "accommodation_candidate_not_found": "उस उम्मीदवार का कोई खाता नहीं मिला।"
+  "accommodation_candidate_not_found": "उस उम्मीदवार का कोई खाता नहीं मिला।",
+  "assistant_off": "मदद सहायक बंद है।",
+  "assistant_daily_limit": "आपने आज {n} सवाल पूछ लिए हैं। कल फिर कोशिश करें या टिकट खोलें।"
 }
