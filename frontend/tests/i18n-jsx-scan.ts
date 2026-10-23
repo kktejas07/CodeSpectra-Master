@@ -16,7 +16,9 @@ export const ROOT = path.resolve(__dirname, '..')
 export const SCAN_DIRS = [
   'app/dashboard',
   ...['achievements', 'ai', 'assessment', 'cad', 'campus', 'challenges', 'code-scanner', 'codeathons', 'courses', 'dashboard', 'gamification',
-    'hiring', 'integrity', 'interview-sim', 'kyc', 'leagues', 'marketplace', 'mentors', 'passport', 'problems', 'proctoring', 'pwa', 'resources', 'scanner'].map((d) => `components/${d}`),
+    'hiring', 'integrity', 'interview-sim', 'kyc', 'leagues', 'marketplace', 'mentors', 'passport', 'problems', 'proctoring', 'pwa', 'resources', 'scanner',
+    // SEO-043: contest pages (public detail, workspace, judging) and hackathon widgets.
+    'contests', 'hackathons'].map((d) => `components/${d}`),
 ]
 const SKIP_DIRS = ['app/dashboard/admin', 'components/marketplace/admin', 'components/dashboard/settings']
 const SKIP_PARENTS = new Set(['code', 'pre', 'kbd', 'samp', 'script', 'style', 'text', 'tspan', 'title', 'svg', 'math'])

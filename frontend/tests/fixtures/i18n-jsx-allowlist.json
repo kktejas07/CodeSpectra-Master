@@ -240,6 +240,48 @@
    "match score"
   ]
  },
+ "components/contests/config-editor.tsx": {
+  "why": "organiser-only settings editor on the admin contest page (admin pages stay English; field labels come from lib/contests/formats)",
+  "text": [
+   "hidden from entrants",
+   "label rows stored. Paste or load a new file to replace them.",
+   "aria-label=\"Load labels CSV\"",
+   "placeholder=\"id,target\"",
+   "Settings",
+   "Remove",
+   "Add"
+  ]
+ },
+ "components/contests/contest-detail.tsx": {
+  "why": "example team code format",
+  "text": [
+   "placeholder=\"ABCD1234\""
+  ]
+ },
+ "components/hackathons/event-step-indicator.tsx": {
+  "why": "only on admin hackathon create / edit pages (admin pages stay English)",
+  "text": [
+   "Step",
+   "of"
+  ]
+ },
+ "components/hackathons/not-event-staff.tsx": {
+  "why": "only on admin hackathon pages (admin pages stay English)",
+  "text": [
+   "title=\"You can't manage this event\"",
+   "description=\"It belongs to another organization. You can manage events your organization created.\"",
+   "actionLabel=\"Back to your events\""
+  ]
+ },
+ "components/hackathons/tenant-filter.tsx": {
+  "why": "superadmin-only filter on admin hackathon / codeathon lists (admin pages stay English)",
+  "text": [
+   "Organization",
+   "placeholder=\"All organizations\"",
+   "All organizations",
+   "Platform events (no organization)"
+  ]
+ },
  "components/marketplace/seller/coupons.tsx": {
   "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
   "text": [

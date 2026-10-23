@@ -2,8 +2,7 @@
 
 /**
  * Small pieces shared by the public contest pages, the workspace and admin:
- * format icons, phase badge, time formatting in the contest's time zone, and
- * the leaderboard table.
+ * format icons, phase badge and time formatting in the contest's time zone.
  */
 import {
   Bug, Brain, Database, FileCode2, Flag, GitPullRequest, Lightbulb, Network, Ruler, Undo2, type LucideIcon,
@@ -42,39 +41,9 @@ export function fmtWhen(iso: string | null | undefined, timeZone = 'UTC'): strin
   }
 }
 
-export interface BoardRow { rank: number | null; tied: boolean; name: string; kind: 'user' | 'team'; total: number; solved: number; me: boolean }
-
-export function LeaderboardTable({ rows, unit, emptyText }: { rows: BoardRow[]; unit?: string; emptyText?: string }) {
-  if (!rows.length) return <p className="py-6 text-center text-sm text-muted-foreground">{emptyText || 'No scores yet.'}</p>
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <caption className="sr-only">Leaderboard</caption>
-        <thead>
-          <tr className="border-b border-border text-left text-muted-foreground">
-            <th scope="col" className="w-16 py-2 pr-3 font-medium">Rank</th>
-            <th scope="col" className="py-2 pr-3 font-medium">Name</th>
-            <th scope="col" className="py-2 pr-3 text-right font-medium">Solved</th>
-            <th scope="col" className="py-2 text-right font-medium">{unit || 'Score'}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.name}-${i}`} className={cn('border-b border-border/60', r.me && 'bg-primary/5')}>
-              <td className="py-2 pr-3 font-mono tabular-nums">{r.rank === null ? '–' : `${r.rank}${r.tied ? '=' : ''}`}</td>
-              <td className="py-2 pr-3">
-                <span className="font-medium text-foreground">{r.name}</span>
-                {r.me && <span className="ml-2 text-xs text-primary">(you)</span>}
-              </td>
-              <td className="py-2 pr-3 text-right tabular-nums">{r.solved}</td>
-              <td className="py-2 text-right font-mono tabular-nums">{Number.isInteger(r.total) ? r.total : r.total.toFixed(4)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
+// BoardRow / LeaderboardTable live in ./leaderboard (translated, compete area), so the
+// cached public /contests hub that imports this file doesn't need that catalog.
+export type { BoardRow } from './leaderboard'
 
 export async function jsonApi<T = Record<string, unknown>>(url: string, init?: RequestInit): Promise<T> {
   const { csrfFetch } = await import('@/lib/csrf-fetch')

@@ -142,6 +142,11 @@ describe('no new hard-coded English in signed-in app JSX', () => {
     }
     expect(problems, 'wrap these in t() (add keys to the area catalog) or allow-list them with a reason').toEqual([])
   })
+  it('allow-list only shrinks (SEO-038)', () => {
+    // Was 208 strings; lower this cap whenever entries are translated, never raise it.
+    const total = Object.entries(ALLOW).reduce((n, [f, e]) => n + (f.startsWith('_') || typeof e !== 'object' ? 0 : e.text.length), 0)
+    expect(total).toBeLessThanOrEqual(200)
+  })
   it('allow-list has no stale entries', () => {
     const stale: string[] = []
     for (const [f, entry] of Object.entries(ALLOW)) {
