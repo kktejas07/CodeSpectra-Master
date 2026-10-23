@@ -218,7 +218,8 @@ export async function runPlatformCron(now: Date = new Date(), opts: { longInBack
       const last = await getCronRuns(candidates.map((r) => r.id))
       for (const r of candidates) {
         const row = last[r.id]
-        const lastOk = row && row.last_status === 'ok' ? row.last_run_at : null
+        // A partial run (time budget reached, e.g. weekly digest) is ok but unfinished: continue it in the catch-up window.
+        const lastOk = row && row.last_status === 'ok' && !row.last_partial ? row.last_run_at : null
         const slot = scheduledRouteSlot(r, minute, lastOk)
         if (!slot) { report.skipped.push(r.id); continue }
         const slotKey = slot.toISOString().slice(0, 16)
@@ -239,7 +240,8 @@ export async function runPlatformCron(now: Date = new Date(), opts: { longInBack
           const req = new NextRequest(new URL(r.path, base), { method: 'POST', headers: { authorization: `Bearer ${internalCronToken()}` } })
           // The route's own withCronHeartbeat records the run.
           const res = await mod.POST(req as never)
-          await finish(res.status < 400, `HTTP ${res.status}`)
+          // Partial: release the slot claim for a retry (lease bookkeeping only; the heartbeat stays ok).
+          await finish(res.status < 400 && res.headers.get('x-cron-partial') !== '1', res.status < 400 ? 'partial' : `HTTP ${res.status}`)
           return res.status < 400
         }
         if (r.long && opts.longInBackground) {

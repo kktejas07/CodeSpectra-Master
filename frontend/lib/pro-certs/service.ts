@@ -24,7 +24,7 @@ import { DEFAULT_DOMAINS, domainBankFilter } from '@/lib/question-bot/domains'
 import { normalizeSections } from '@/lib/exam-sections'
 import { attempts, credentials, exposure, isDup, orders, programs } from './db'
 import {
-  addMonths, attemptEligibility, credentialIdFrom, discountedPrice, credentialState, decideOutcome, isProCredentialId, priceFor,
+  addMonths, attemptEligibility, duplicateAttemptFor, credentialIdFrom, discountedPrice, credentialState, decideOutcome, isProCredentialId, priceFor,
   publicProgram, publishProblems, renewedExpiry, scorePercent, selectQuestions, sectionQuestionCount, type Eligibility, type PoolItem,
 } from './pure'
 import {
@@ -278,12 +278,6 @@ async function replaceOpenCheckouts(userId: string, programId: string): Promise<
     const c = await col.updateOne({ id: o.id, status: 'pending' }, { $set: { status: 'cancelled', updated_at: nowIso() } })
     if (c.modifiedCount === 1) await closePaymentPage(o)
   }
-}
-
-/** Pure: does a paid order duplicate an attempt that is already open for the program? */
-export function duplicateAttemptFor(orderId: string, open: Array<Pick<AttemptDoc, 'id' | 'order_id' | 'status'>>): string | null {
-  const other = open.find((a) => a.order_id !== orderId && (a.status === 'ready' || a.status === 'in_review'))
-  return other ? other.id : null
 }
 
 /** CORE-040: a second payment for one attempt — no attempt, refund it (once), admin sees `refund.ok === false`. */

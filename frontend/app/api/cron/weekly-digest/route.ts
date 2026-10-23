@@ -19,8 +19,8 @@ const BUDGET_MS = 240_000
  * Weekly digest (AUTO-080): each recently active learner's own week — problems
  * solved, streak and a few upcoming public events — in their language.
  * Recipients are streamed (no full user list in memory) and claimed per user
- * + week, so a run that hits its time budget answers 503 and the next run
- * (platform-cron catch-up window or an external retry) continues where it stopped.
+ * + week, so a run that hits its time budget answers 200 { partial, remaining } and the
+ * next run (platform-cron catch-up window or an external retry) continues where it stopped.
  */
 async function postImpl(req: NextRequest) {
   if (!isCronAuthorized(req)) {
@@ -61,8 +61,9 @@ async function postImpl(req: NextRequest) {
     let empty = 0
     let checked = 0
     let outOfTime = false
+    let remaining = 0
     for await (const u of cursor) {
-      if (Date.now() - started > BUDGET_MS) { outOfTime = true; break }
+      if (outOfTime || Date.now() - started > BUDGET_MS) { outOfTime = true; remaining++; continue }
       checked++
       const id = String(u.id ?? u._id)
       if (off.has(id)) continue
@@ -87,9 +88,10 @@ async function postImpl(req: NextRequest) {
       }
     }
 
-    const body = { sent, deferred, skipped, empty, checked, period, ...(outOfTime ? { partial: true } : {}) }
-    // 503 marks the run unfinished so the catch-up run picks up the remaining users (claims prevent repeats).
-    return NextResponse.json(body, { status: outOfTime ? 503 : 200 })
+    // Stopping at the time budget is progress, not failure: 200 + x-cron-partial so the heartbeat stays ok and
+    // the next catch-up run continues (per-user claims prevent repeats). Only real errors return 5xx.
+    const body = { sent, deferred, skipped, empty, checked, period, ...(outOfTime ? { partial: true, remaining } : {}) }
+    return NextResponse.json(body, { status: 200, headers: outOfTime ? { 'x-cron-partial': '1' } : undefined })
   } catch (e) {
     console.error('[weekly-digest] error:', (e as Error)?.message)
     return NextResponse.json({ error: 'Failed to send digest' }, { status: 500 })

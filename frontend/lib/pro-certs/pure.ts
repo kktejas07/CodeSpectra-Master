@@ -341,3 +341,9 @@ export function publishProblems(p: Pick<ProgramDoc, 'price' | 'blueprint'>): str
   if (new Set(ids).size !== ids.length) out.push('duplicate_section_id')
   return out
 }
+
+/** CORE-040: does a paid order duplicate an attempt that is already open for the program? Returns that attempt's id. */
+export function duplicateAttemptFor(orderId: string, open: ReadonlyArray<{ id: string; order_id: string; status: AttemptStatus }>): string | null {
+  const other = open.find((a) => a.order_id !== orderId && (a.status === 'ready' || a.status === 'in_review'))
+  return other ? other.id : null
+}

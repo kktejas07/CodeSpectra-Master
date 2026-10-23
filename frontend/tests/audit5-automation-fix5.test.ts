@@ -211,3 +211,29 @@ describe('small fixes (AUTO-081 / 086 / 091)', () => {
     expect(read('lib/ai/usage-record.ts')).toContain('$pull: { alerts: t }')
   })
 })
+
+describe('weekly digest time budget is a partial ok run, not a failure (AUTO-080)', () => {
+  it('records the heartbeat as ok + partial and the route answers 200 with remaining', async () => {
+    const { vi } = await import('vitest')
+    const writes: Array<Record<string, unknown>> = []
+    vi.resetModules()
+    vi.doMock('@/lib/mongodb', () => ({
+      getMongoDb: async () => ({ collection: () => ({ updateOne: async (_f: unknown, u: { $set: Record<string, unknown>; $inc: Record<string, number> }) => { writes.push({ ...u.$set, failures: u.$inc.failures }) } }) }),
+    }))
+    const { withCronHeartbeat } = await import('@/lib/cron-heartbeat')
+    const partial = withCronHeartbeat('weekly-digest', async () => Response.json({ partial: true, remaining: 10 }, { headers: { 'x-cron-partial': '1' } }))
+    const res = await partial(new Request('http://x/api/cron/weekly-digest'))
+    expect(res.status).toBe(200)
+    expect(writes[0]).toMatchObject({ last_status: 'ok', last_partial: true, failures: 0 })
+    const done = withCronHeartbeat('weekly-digest', async () => Response.json({ sent: 1 }))
+    await done(new Request('http://x/api/cron/weekly-digest'))
+    expect(writes[1]).toMatchObject({ last_status: 'ok', last_partial: false })
+    vi.doUnmock('@/lib/mongodb')
+    vi.resetModules()
+    const src = read('app/api/cron/weekly-digest/route.ts')
+    expect(src).toContain("'x-cron-partial': '1'")
+    expect(src).not.toContain('503')
+    // The runner continues a partial run inside the catch-up window.
+    expect(read('lib/platform-cron.ts')).toContain('!row.last_partial')
+  })
+})

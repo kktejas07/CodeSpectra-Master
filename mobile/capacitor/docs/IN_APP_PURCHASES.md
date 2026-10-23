@@ -6,19 +6,25 @@ Both store apps hide every purchase action by default:
 
 | Where | In a browser | In the app (IAP off) |
 | --- | --- | --- |
-| `/dashboard/pricing`, `/dashboard/checkout` | plans + checkout | "Manage your plan on the web" note (no button, no link, no prices) |
-| Billing → *Upgrade / change plan* | button | the same note, short form |
+| `/dashboard/pricing`, `/dashboard/checkout` | plans + checkout | "Manage purchases on the web" note (no button, no link, no prices) |
+| Billing → *Upgrade / change plan* | button | the same note, short form (plan-change panel hidden) |
 | Problem packs → *Unlock* | button | the same note, short form |
+| Proctored certification → *Buy attempt* | price + button | the same note, short form |
+| Marketplace buy box (courses, e-books, packs, mentor sessions, cohorts), cart, checkout | add to cart / buy | the note; cart button hidden |
+| Organisation licences → *Buy* | form + button | the note |
 
 Code: `components/native/native-purchase-gate.tsx` → `nativePurchasesAllowed()`
 in `frontend/lib/native-bridge.ts`. Existing plans and purchases keep working in
 the app (entitlements come from the server), only *buying* is hidden.
 
-The marketplace (`/marketplace`, mentor sessions / physical items) is **not**
-gated: Apple 3.1.3(d)/(e) and Play allow outside payment for person-to-person
-real-time services and physical goods. Re-check this if the marketplace starts
-selling digital content (courses, packs, recordings) — wrap its `BuyBox` /
-`CheckoutClient` in `NativePurchaseGate` then.
+**Server side (CORE-038, audit 5):** every checkout route (`/api/billing/checkout`,
+`/api/billing/change-plan`, `/api/pro-certs/<slug>/checkout`,
+`/api/marketplace/checkout`, `/api/licences`) refuses a request whose user agent
+is the app shell (`CodeSpectraAndroid/` / `CodeSpectraIOS/`) with 403
+`native_purchase_blocked` — unless the build sent `CSIAP/1` **and** the server
+has `NATIVE_IAP_ENABLED=1` (`frontend/lib/billing/native-checkout.ts`). Keep both
+off until a real store-billing flow exists. Mentor sessions are gated too (owner
+decision), even though person-to-person services could use outside payment.
 
 ### Build flag
 
