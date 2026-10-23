@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isSuperAdminCaller } from '@/lib/route-auth'
 import { errorResponse, json } from '@/lib/marketplace/seller-api'
 
 /** GET /api/marketplace/seller/me → { seller | null, default_commission_bps, stripe_configured, is_superadmin } (superadmin: ?as=platform) */
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   try {
     const { ensurePlatformSeller, getSellerByUser, publicSeller, stripeConfigured } = await import('@/lib/marketplace/sellers')
     const { getSettings } = await import('@/lib/marketplace/settings')
-    const asPlatform = new URL(req.url).searchParams.get('as') === 'platform' && a.user.role === 'superadmin'
+    const asPlatform = new URL(req.url).searchParams.get('as') === 'platform' && isSuperAdminCaller(a.user)
     const s = asPlatform ? await ensurePlatformSeller() : await getSellerByUser(a.user.id)
     const settings = await getSettings()
     return json({
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       hold_days: settings.hold_days,
       require_product_review: settings.require_product_review,
       stripe_configured: await stripeConfigured(),
-      is_superadmin: a.user.role === 'superadmin',
+      is_superadmin: isSuperAdminCaller(a.user),
     })
   } catch (e) {
     return errorResponse(e, 'seller me')

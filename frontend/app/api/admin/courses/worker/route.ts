@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { cancelJob, readWorkerStatus, recoverStaleRunningJobs, requeueJob, requeueOrphanRunningJobs } from '@/lib/courses/process-job'
 
@@ -8,10 +8,8 @@ export const dynamic = 'force-dynamic'
 
 /** Worker liveness for the Course Generator UI. */
 export async function GET() {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   const status = await readWorkerStatus()
   const db = await getMongoDb()
@@ -35,10 +33,8 @@ export async function GET() {
 
 /** Enqueue / retry / cancel. Generation itself runs in the course-worker container. */
 export async function POST(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const body = await request.json()

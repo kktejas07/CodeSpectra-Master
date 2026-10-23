@@ -13,7 +13,7 @@ import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { mergeLoopSettings, type AgentLoopSettings, type LoopSettingsPatch } from './settings'
 import type { AgentLoopId } from './registry'
-import type { FindingDoc, FindingInput, LoopRunDoc } from './types'
+import { APPLYING_STALE_MS, type FindingDoc, type FindingInput, type LoopRunDoc } from './types'
 
 const nowIso = () => new Date().toISOString()
 const RUN_KEEP_MS = 180 * 86_400_000
@@ -132,13 +132,14 @@ export async function upsertFindings(loop: AgentLoopId, runId: string, items: re
   const c = await findingsCol()
   const ts = now.toISOString()
   const reopenBefore = new Date(now.getTime() - REOPEN_AFTER_MS).toISOString()
+  const staleApplying = new Date(now.getTime() - APPLYING_STALE_MS).toISOString()
   let created = 0
   for (const f of items) {
     const fields = { kind: f.kind, severity: f.severity, params: f.params ?? {}, target: f.target, proposal: f.proposal ?? null, detail: f.detail ?? null, tenant_id: f.tenant_id ?? null, run_id: runId, updated_at: ts }
     const status = f.status ?? 'open'
     try {
       const r = await c.updateOne(
-        { key: f.key, $or: [{ status: 'open' }, { decided_at: { $lt: reopenBefore } }] },
+        { key: f.key, $or: [{ status: 'open' }, { status: 'applying', updated_at: { $lt: staleApplying } }, { decided_at: { $lt: reopenBefore } }] },
         { $set: { ...fields, status, ...(status !== 'open' ? { decided_at: ts, decided_by: 'agent', result: f.result ?? null } : {}) }, $setOnInsert: { id: `alf_${randomUUID()}`, key: f.key, loop, created_at: ts } },
         { upsert: true },
       )
@@ -171,9 +172,14 @@ export async function getFinding(id: string): Promise<FindingDoc | null> {
   return (await (await findingsCol()).findOne({ id }, { projection: { _id: 0 } })) as FindingDoc | null
 }
 
-/** Atomic open → applying claim (a double click applies once). */
-export async function claimFinding(id: string): Promise<FindingDoc | null> {
-  return (await (await findingsCol()).findOneAndUpdate({ id, status: 'open' }, { $set: { status: 'applying', updated_at: nowIso() } }, { returnDocument: 'after', projection: { _id: 0 } })) as FindingDoc | null
+/** Atomic open → applying claim (a double click applies once); a stale "applying" (crashed apply) can be claimed again. */
+export async function claimFinding(id: string, now = new Date()): Promise<FindingDoc | null> {
+  const stale = new Date(now.getTime() - APPLYING_STALE_MS).toISOString()
+  return (await (await findingsCol()).findOneAndUpdate(
+    { id, $or: [{ status: 'open' }, { status: 'applying', updated_at: { $lt: stale } }] },
+    { $set: { status: 'applying', updated_at: now.toISOString() } },
+    { returnDocument: 'after', projection: { _id: 0 } },
+  )) as FindingDoc | null
 }
 
 export async function settleFinding(id: string, status: 'applied' | 'dismissed' | 'failed' | 'open', by: string, result: { ok: boolean; message: string } | null): Promise<FindingDoc | null> {

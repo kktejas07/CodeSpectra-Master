@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller, isSuperAdminCaller } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { knowledgeOnTestChange } from '@/lib/rag/hooks'
 import { isExamStaff } from '@/lib/exam-access'
@@ -24,9 +24,9 @@ export async function GET() {
 
     // Non-admin users see open exams + exams they were invited to or have submitted
     let filter: Record<string, unknown> = {}
-    if (gate.user.role === 'superadmin') {
+    if (isSuperAdminCaller(gate.user)) {
       filter = {}
-    } else if (gate.user.role === 'tenant_admin') {
+    } else if (gate.user.role === 'tenant_admin' && isAdminCaller(gate.user)) { // SEC-029
       // Tenant admins only see exams created within their organization
       filter = gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null }
     } else {
@@ -100,7 +100,7 @@ export async function GET() {
         : 0
 
       const isReleased = userSub?.score_released === true
-      const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
+      const isAdmin = isAdminCaller(gate.user)
       // Non-admins must never receive answer keys via the list endpoint.
       // ponytail: the old destructure (`...safeExam`) dropped questionList
       // in BOTH branches, so the admin edit page always saw Questions (0).
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+  if (!isAdminCaller(user)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
@@ -150,7 +150,7 @@ export async function PATCH(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+  if (!isAdminCaller(user)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
@@ -166,7 +166,7 @@ export async function DELETE(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+  if (!isAdminCaller(user)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {

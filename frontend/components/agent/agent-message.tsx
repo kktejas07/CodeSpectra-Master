@@ -9,16 +9,24 @@ import { cn } from '@/lib/utils'
 import { AgentMarkdown, safeHref } from './agent-markdown'
 import { ProposalCard } from './proposal-card'
 import { BundleCard, ClarifyCard, PlanChecklist } from './loop-parts'
-import { actionIdsOf, citationsOf, stepLabel } from './transcript'
+import { actionIdsOf, citationsOf, stepLabel, STEP_LABEL_EN, type StepLabelT } from './transcript'
 import type { ActionMap, BundleMap, UiItem, UiStep } from './types'
+import { useAdminT, type AdminT } from '@/lib/i18n/admin'
 
 type Step = UiStep
 
-const SOURCE_LABEL: Record<string, string> = {
-  problem: 'Problem', question: 'Question', course: 'Course', doc: 'Help', test: 'Test',
-  test_result_summary: 'Results', hackathon: 'Hackathon', codeathon: 'Codeathon', upload: 'Upload',
-  resume: 'Résumé', attempt_summary: 'Attempt', marketplace_product: 'Marketplace', external_event: 'Event',
-  ats_job: 'Job', ats_application: 'Applicant', news: 'News', digest: 'Digest',
+/** SEO-044: step labels, specialist names and source types from the admin catalog (copilot.*). */
+function useStepT(): { a: AdminT; tr: StepLabelT; label: (tool: string, args: unknown, running: boolean) => string; agentName: (s: Step) => string; summary: (s: string) => string } {
+  const a = useAdminT()
+  const tr: StepLabelT = { step: (k, p) => a.td(`copilot.step.${k}`, STEP_LABEL_EN[k] ?? k, p), agent: (id, fb) => a.td(`copilot.specialist.${id}`, fb) }
+  const DEFAULT_SUMMARY: Record<string, string> = { Stopped: a.t('copilot.stepStopped'), Failed: a.t('copilot.status.failed'), Done: a.t('copilot.status.done') }
+  return {
+    a,
+    tr,
+    label: (tool, args, running) => stepLabel(tool, args, running, tr),
+    agentName: (s) => (s.agent ? tr.agent(s.agent.id, s.agent.label) : tr.agent('specialist', 'Specialist')),
+    summary: (x) => DEFAULT_SUMMARY[x] ?? x,
+  }
 }
 
 export function UserBubble({ text }: { text: string }) {
@@ -38,23 +46,24 @@ function StepIcon({ status }: { status: Step['status'] }) {
 }
 
 function StepRow({ s }: { s: Step }) {
+  const L = useStepT()
   return (
     <li className="text-sm">
       <span className="flex items-start gap-2">
         <span className="mt-0.5">{s.agent ? <Bot className="h-3.5 w-3.5 text-primary" aria-hidden /> : <StepIcon status={s.status} />}</span>
         <span className="min-w-0">
-          <span className="text-foreground">{stepLabel(s.tool, s.args, s.status === 'running')}</span>
-          {s.summary && s.status !== 'running' && <span className="text-muted-foreground"> — {s.summary}</span>}
+          <span className="text-foreground">{L.label(s.tool, s.args, s.status === 'running')}</span>
+          {s.summary && s.status !== 'running' && <span className="text-muted-foreground"> — {L.summary(s.summary)}</span>}
           {!!s.retries && (
             <span className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <RotateCw className="h-3 w-3" aria-hidden /> retried {s.retries}×
+              <RotateCw className="h-3 w-3" aria-hidden /> {L.a.t('copilot.retried', { count: s.retries })}
             </span>
           )}
         </span>
       </span>
       {s.agent && (s.children?.length ?? 0) > 0 && (
         // Sub-agent timeline: the specialist's own steps, same permissions as yours.
-        <ol className="ml-[7px] mt-1.5 space-y-1.5 border-l border-border/70 pl-4" aria-label={`${s.agent.label} steps`}>
+        <ol className="ml-[7px] mt-1.5 space-y-1.5 border-l border-border/70 pl-4" aria-label={L.a.t('copilot.agentSteps', { agent: L.agentName(s) })}>
           {s.children!.map((c) => <StepRow key={c.id} s={c} />)}
         </ol>
       )}
@@ -65,13 +74,14 @@ function StepRow({ s }: { s: Step }) {
 function ToolSteps({ steps }: { steps: Step[] }) {
   const running = steps.some((s) => s.status === 'running' || s.children?.some((c) => c.status === 'running'))
   const [open, setOpen] = useState(false)
+  const L = useStepT()
   const last = steps[steps.length - 1]
   const lastChild = last.children?.[last.children.length - 1]
   const heading = running
-    ? lastChild && lastChild.status === 'running' ? `${last.agent?.label ?? 'Specialist'}: ${stepLabel(lastChild.tool, lastChild.args, true)}` : stepLabel(last.tool, last.args, true)
+    ? lastChild && lastChild.status === 'running' ? `${L.agentName(last)}: ${L.label(lastChild.tool, lastChild.args, true)}` : L.label(last.tool, last.args, true)
     : steps.length === 1
-      ? stepLabel(last.tool, last.args, false)
-      : `${steps.length} steps`
+      ? L.label(last.tool, last.args, false)
+      : L.a.t('copilot.nSteps', { count: steps.length })
   return (
     <div className="rounded-xl border border-border/70 bg-muted/30">
       <button
@@ -94,9 +104,10 @@ function ToolSteps({ steps }: { steps: Step[] }) {
 }
 
 function CitationChips({ hits }: { hits: KnowledgeHit[] }) {
+  const { t, td } = useAdminT()
   if (!hits.length) return null
   return (
-    <div className="flex flex-wrap gap-1.5" aria-label="Sources">
+    <div className="flex flex-wrap gap-1.5" aria-label={t('copilot.sources')}>
       {hits.slice(0, 10).map((h, i) => {
         const href = h.url ? safeHref(h.url) : ''
         return (
@@ -107,15 +118,15 @@ function CitationChips({ hits }: { hits: KnowledgeHit[] }) {
                 className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
                 <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold tabular-nums text-primary">{i + 1}</span>
-                <span className="truncate">{h.title || 'Source'}</span>
+                <span className="truncate">{h.title || t('copilot.source')}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-80 max-w-[calc(100vw-2rem)] space-y-2" align="start">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <FileText className="h-3.5 w-3.5" aria-hidden />
-                {SOURCE_LABEL[h.source_type] ?? h.source_type}
+                {td(`copilot.src.${h.source_type}`, h.source_type)}
               </div>
-              <p className="text-sm font-semibold text-foreground">{h.title || 'Source'}</p>
+              <p className="text-sm font-semibold text-foreground">{h.title || t('copilot.source')}</p>
               {h.snippet && <p className="line-clamp-6 text-sm text-muted-foreground">{h.snippet}</p>}
               {href && (
                 <Link
@@ -124,7 +135,7 @@ function CitationChips({ hits }: { hits: KnowledgeHit[] }) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                 >
-                  Open source <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  {t('copilot.openSource')} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                 </Link>
               )}
             </PopoverContent>
@@ -173,6 +184,7 @@ export function AssistantMessage({
       else blocks.push({ kind: 'steps', steps: [p] })
     }
   }
+  const { t } = useAdminT()
   const citations = citationsOf(item.parts)
   const empty = !blocks.length && !item.error && !item.plan?.length
 
@@ -185,7 +197,7 @@ export function AssistantMessage({
         {item.plan && item.plan.length > 0 && <PlanChecklist steps={item.plan} />}
         {empty && item.streaming && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Thinking…
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t('copilot.thinking')}
           </p>
         )}
         {blocks.map((b, i) =>
@@ -206,13 +218,13 @@ export function AssistantMessage({
                 .map((s) => (s.bundleId && bundles ? bundles[s.bundleId] : undefined))
                 .filter((x): x is NonNullable<typeof x> => !!x)
                 .map((bd) => (
-                  <BundleCard key={bd.id} bundle={bd} actions={actions} onConfirm={onConfirmBundle ?? (async () => 'Bundles are not available here.')} onCancel={onCancelBundle ?? (async () => null)} />
+                  <BundleCard key={bd.id} bundle={bd} actions={actions} onConfirm={onConfirmBundle ?? (async () => t('copilot.bundlesUnavailable'))} onCancel={onCancelBundle ?? (async () => null)} />
                 ))}
             </div>
           ),
         )}
         {item.streaming && item.revised && (
-          <p className="text-xs text-muted-foreground" role="status">Checking the answer against what the tools returned…</p>
+          <p className="text-xs text-muted-foreground" role="status">{t('copilot.selfCheck')}</p>
         )}
         {citations.length > 0 && <CitationChips hits={citations} />}
         {item.error && (

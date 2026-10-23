@@ -99,7 +99,14 @@ async function schedulerBody(ctx: LoopRunContext<'scheduler'>): Promise<{ messag
     if (!act) continue
     if (act.action === 'book_requested') {
       const r = await ctx.propose('book_requested', { application_id: iv.application_id, scheduled_at: act.slot }, { kind: 'book_requested', ref: iv.id })
-      if (r.ok) drafted++
+      if (r.ok) {
+        drafted++
+        // Remember the drafted slot so the next hourly run doesn't draft it again (AGT-035).
+        if (!r.auto_sent) {
+          const prev = (states.get(iv.id) as OfferState | undefined)
+          await setState(ctx.tenantId, 'scheduler', iv.id, { ...(prev ?? { offers: 0 }), book_slot: act.slot, book_proposed_at: ctx.now.toISOString(), book_action_id: r.action?.id ?? null })
+        }
+      }
       continue
     }
     const { slots, timezone } = await svc.slotsFor({ ...iv, status: 'awaiting_schedule' } as never, ctx.now)
@@ -111,7 +118,7 @@ async function schedulerBody(ctx: LoopRunContext<'scheduler'>): Promise<{ messag
       // A proposal counts as an offer for pacing (the tool counts deliveries too).
       if (!r.auto_sent) {
         const prev = (states.get(iv.id) as OfferState | undefined)
-        await setState(ctx.tenantId, 'scheduler', iv.id, { offers: prev?.offers ?? 0, last_offer_at: ctx.now.toISOString(), last_slots: offer.map((x) => x.start), proposed: true })
+        await setState(ctx.tenantId, 'scheduler', iv.id, { ...(prev ?? {}), offers: prev?.offers ?? 0, last_offer_at: ctx.now.toISOString(), last_slots: offer.map((x) => x.start), proposed: true })
       }
     }
   }

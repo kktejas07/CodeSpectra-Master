@@ -433,7 +433,9 @@ export async function runStudyPlanTick(now = new Date(), opts: { maxAdapt?: numb
     if (!claimed.modifiedCount) continue
     const mins = open.reduce((a, i) => a + i.minutes, 0)
     const { notify } = await import('@/lib/notifications')
-    await notify({
+    // study_plan.reminder is an engagement type: it goes through the shared per-person cap (AUTO-094).
+    const sent = await notify({
+      budget: { class: 'engagement', topic: 'study-plan-reminder', object: `${p.id}:${day}`, source: 'study-plan' },
       user_id: p.user_id, type: 'study_plan.reminder', title: "Today's study plan",
       message: `${open.length} item${open.length === 1 ? '' : 's'} left today (about ${mins} min): ${open.slice(0, 2).map((i) => i.title).join('; ').slice(0, 160)}`,
       title_i18n: { key: 'studyPlan.title' },
@@ -442,7 +444,7 @@ export async function runStudyPlanTick(now = new Date(), opts: { maxAdapt?: numb
       // E-mail honours the learner's notification preferences + unsubscribe; WhatsApp only with consent (lib/whatsapp-send).
       send_email: p.reminders.email, send_whatsapp: p.reminders.whatsapp, skip_push: false,
     }).catch(() => null)
-    rep.reminded++
+    if (sent) rep.reminded++
   }
   return rep
 }

@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auditAts, can, requireAts, tenantFromRequest } from '@/lib/ats/access'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import { connectionStatus, getPlatformConfig, getTenantSettings, whatsappReady } from '@/lib/ats/screening/config'
 import { appBaseUrl } from '@/lib/ats/screening/machine'
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       settings,
       status,
       can_edit: can(g.actor, 'settings.manage'),
-      can_edit_platform_keys: user?.role === 'superadmin',
+      can_edit_platform_keys: isSuperAdminCaller(user),
       webhooks: {
         whatsapp: `${base}/api/ats/screening/webhooks/whatsapp`,
         vapi: `${base}/api/ats/screening/webhooks/vapi`,

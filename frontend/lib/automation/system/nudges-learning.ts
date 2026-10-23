@@ -131,14 +131,18 @@ const isoWeek = (now: Date) => {
 
 /** At-risk learners per running cohort (also used by the nudge signals sweep). */
 export async function cohortsAtRisk(now: Date): Promise<{ cohort: Doc; learners: { member: Doc; risk: ReturnType<typeof cohortRisk> }[] }[]> {
-  const { cohortsCol, membersCol, assignmentsCol, submissionsCol, attendanceCol } = await import('@/lib/cohorts/db')
-  const cohorts = (await (await cohortsCol()).find({ status: 'running' }, { projection: { _id: 0, id: 1, title: 1, tenant_id: 1 } }).limit(500).toArray()) as unknown as Doc[]
+  const { cohortsCol, membersCol, assignmentsCol, submissionsCol, attendanceCol, sessionsCol } = await import('@/lib/cohorts/db')
+  const cohorts = (await (await cohortsCol()).find({ status: 'running' }, { projection: { _id: 0, id: 1, title: 1, tenant_id: 1, starts_at: 1 } }).limit(500).toArray()) as unknown as Doc[]
+  const weekAgo = now.getTime() - 7 * 86_400_000
   const out: { cohort: Doc; learners: { member: Doc; risk: ReturnType<typeof cohortRisk> }[] }[] = []
   for (const cohort of cohorts) {
     const assignments = (await (await assignmentsCol()).find({ cohort_id: cohort.id, published: true }, { projection: { _id: 0, id: 1, due_at: 1, late_hours: 1 } }).limit(500).toArray()) as unknown as Doc[]
     const pastDue = assignments.filter((a) => Date.parse(a.due_at) + (Number(a.late_hours) || 0) * 3_600_000 < now.getTime()).map((a) => ({ id: String(a.id) }))
     const members = (await (await membersCol()).find({ cohort_id: cohort.id, role: 'learner', status: 'active' }, { projection: { _id: 0 } }).limit(2000).toArray()) as unknown as Doc[]
     if (!members.length) continue
+    // Was there anything to do this week (a live session or an assignment due)? (AUTO-096)
+    const dueThisWeek = assignments.some((a) => { const t = Date.parse(a.due_at); return t >= weekAgo && t <= now.getTime() })
+    const hadRecentWork = dueThisWeek || !!(await (await sessionsCol()).findOne({ cohort_id: cohort.id, starts_at: { $gte: new Date(weekAgo).toISOString(), $lte: now.toISOString() } } as never, { projection: { _id: 1 } }))
     const ids = members.map((m) => String(m.user_id))
     const subs = await (await submissionsCol()).aggregate<{ _id: string; assignments: string[]; last: string }>([
       { $match: { cohort_id: cohort.id, user_id: { $in: ids } } },
@@ -154,7 +158,7 @@ export async function cohortsAtRisk(now: Date): Promise<{ cohort: Doc; learners:
     for (const m of members) {
       const s = subBy.get(String(m.user_id))
       const lasts = [s?.last, attBy.get(String(m.user_id))].filter((x): x is string => typeof x === 'string').sort()
-      const risk = cohortRisk({ pastDue, submittedIds: new Set(s?.assignments || []), lastActivityAt: lasts[lasts.length - 1] || null, joinedAt: String(m.joined_at) }, now)
+      const risk = cohortRisk({ pastDue, submittedIds: new Set(s?.assignments || []), lastActivityAt: lasts[lasts.length - 1] || null, joinedAt: String(m.joined_at), startsAt: cohort.starts_at ? String(cohort.starts_at) : null, hadRecentWork }, now)
       learners.push({ member: m, risk })
     }
     out.push({ cohort, learners })
@@ -214,12 +218,20 @@ export async function runMentorSessions(now = new Date()): Promise<Record<string
   const db = await getMongoDb()
   const outcomes: NudgeOutcome[] = []
   let flagged = 0
+  // Joins are only recorded when a LiveKit token is minted: without LiveKit nobody could
+  // join, so never report a no-show (AUTO-107).
+  const { livekitConfig } = await import('@/lib/ats/interviews/livekit')
+  const livekitOn = !!(await livekitConfig().catch(() => null))
   for (const b of rows) {
     const m = (await meta.findOne({ booking_id: b.id }, { projection: { _id: 0 } })) as Doc | null
     if (m?.dispute_id) continue
     const product = (await (await productsCol()).findOne({ id: b.product_id }, { projection: { _id: 0, title: 1, service: 1 } })) as Doc | null
+    // The booked line's provider first, like the session page (lib/mentors/sessions getSession).
+    const order = (await db.collection('mkt_orders').findOne({ id: b.order_id }, { projection: { _id: 0, lines: 1 } })) as Doc | null
+    const line = ((order?.lines as Doc[] | undefined) || []).find((l) => l.id === b.line_id) as Doc | undefined
+    const provider = line?.service?.provider || product?.service?.provider
     // Joins are recorded since JOIN_TRACKING_SINCE; older sessions only get the rating ask.
-    const builtIn = product?.service?.provider === 'livekit' && String(b.start) >= JOIN_TRACKING_SINCE
+    const builtIn = livekitOn && provider === 'livekit' && String(b.start) >= JOIN_TRACKING_SINCE
     const reviewed = !!(await (await reviewsCol()).findOne({ product_id: b.product_id, user_id: b.buyer_id }, { projection: { _id: 1 } }))
     const joinRows = builtIn ? ((await db.collection('mentor_session_joins').find({ booking_id: b.id }, { projection: { _id: 0, role: 1, at: 1 } }).toArray()) as Doc[]) : []
     const joins = { buyer: joinRows.find((j) => j.role === 'buyer')?.at ?? null, mentor: joinRows.find((j) => j.role === 'mentor')?.at ?? null }
@@ -235,6 +247,8 @@ export async function runMentorSessions(now = new Date()): Promise<Record<string
     if (outcome === 'feedback') {
       outcomes.push(await deliverNudge({
         automationId: 'mentor-sessions', key: `${String(b.id)}:feedback`, now, to: { userId: String(b.buyer_id), email: buyer?.email || null },
+        // Same topic as the mentor-match assistant's follow-up: one "how was it?" per session (AUTO-097).
+        topic: 'mentor-feedback', object: String(b.id),
         email: nudgeMail({ id: 'sessionFeedback', category: 'engagement', params, name: firstName(buyer?.fullName || buyer?.name), cta: { url: `/dashboard/orders/${encodeURIComponent(String(b.order_id))}` } }),
         inApp: { type: 'mentor.feedback', ...nudgeNote('feedback', { title: 'title', message: 'message' }, params), link: `/dashboard/orders/${encodeURIComponent(String(b.order_id))}`, icon: 'star', skip_push: true },
         stillDue: async () => !(await (await reviewsCol()).findOne({ product_id: b.product_id, user_id: b.buyer_id }, { projection: { _id: 1 } })),
@@ -270,9 +284,12 @@ export async function runMentorSessions(now = new Date()): Promise<Record<string
 
 // ─── Referral reward + talent-invite follow-ups ─────────────────────────────
 
-async function referralRewardMail(p: Doc): Promise<unknown> {
+async function referralRewardMail(p: Doc, job?: { created_at?: string }): Promise<unknown> {
   const uid = String(p.user_id || '')
   if (!uid) return { skipped: true }
+  // Queued while the automation was off: drop it instead of sending a months-old email (AUTO-092).
+  const { followUpTooOld } = await import('../nudges/rules')
+  if (followUpTooOld(job?.created_at, new Date())) return { skipped: 'too_old' }
   const db = await getMongoDb()
   const u = (await db.collection('user').findOne({ id: uid }, { projection: { email: 1, name: 1, fullName: 1 } })) as Doc | null
   const link = '/dashboard/referrals'

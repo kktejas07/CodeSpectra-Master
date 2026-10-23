@@ -3,6 +3,8 @@
  * tests/automation-system-rules.test.ts). No I/O here.
  */
 
+import { autoRenews } from '../nudges/rules'
+
 const DAY = 86_400_000
 const HOUR = 3_600_000
 
@@ -90,9 +92,9 @@ export function expiryReminderDay(endsAt: string, now: Date): 7 | 3 | 1 | null {
 
 export function needsExpiryReminder(sub: { status?: string; billing_mode?: string; cancel_at_period_end?: boolean; past_due?: boolean; trial_ends_at?: string | null }, autoRenewEnabled: boolean): boolean {
   if (sub.status !== 'active' || sub.past_due) return false
-  // Stripe renews on its own unless the user cancelled (or auto-renew is off platform-wide).
-  if (sub.billing_mode === 'stripe_subscription' && !sub.cancel_at_period_end && autoRenewEnabled) return false
-  return true
+  // Stripe and Razorpay subscriptions renew on their own unless cancelled (Stripe: unless
+  // auto-renew is off platform-wide) — those get the pre-charge notice instead (AUTO-093).
+  return !autoRenews(sub, autoRenewEnabled)
 }
 
 // ─── Stuck payment reconciliation (AU-05) ───────────────────────────────────

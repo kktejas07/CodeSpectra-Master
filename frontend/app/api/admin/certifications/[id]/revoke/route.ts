@@ -11,7 +11,7 @@
  * written to the audit log with the reason.
  */
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { gateErrorBody, requireAdmin } from '@/lib/route-auth'
 import { revokeCertificate, CERT_ID_RE } from '@/lib/services/certificates'
 import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
@@ -19,12 +19,10 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  const gate = await requireAdmin().catch(() => null) // SEC-029: enforces admin 2FA
+  if (!gate) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
 
   const rl = rateLimitSlidingWindow(`cert-revoke:${user.id}`, 30, 60_000)
   if (!rl.ok) return NextResponse.json({ error: 'Too many requests. Try again in a minute.', code: 'rate_limited_minute' }, { status: 429 })

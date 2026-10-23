@@ -188,12 +188,13 @@ async function dispatch(ev: AutomationEventDoc): Promise<void> {
 
   // 1. Built-in system automations.
   try {
-    const { systemEventHandlers } = await import('./system/registry')
-    const { isAutomationEnabled } = await import('./settings')
+    const { systemEventHandlers, systemAutomationById, automationOn } = await import('./system/registry')
     for (const h of systemEventHandlers(ev.type)) {
       const key = `sys:${h.automationId}`
       if (results[key] === 'ok' || results[key] === 'off') continue
-      if (!(await isAutomationEnabled(h.automationId))) {
+      // The automation's own default (defaultOn: false) and lock, like its jobs and sweeps (AUTO-092).
+      const a = systemAutomationById(h.automationId)
+      if (!a || !(await automationOn(a))) {
         results[key] = 'off'
         continue
       }

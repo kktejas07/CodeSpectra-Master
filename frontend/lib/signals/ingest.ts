@@ -15,7 +15,7 @@ import type { SignalDraftDoc } from '@/lib/db/signal-drafts'
 import { newSignalId } from '@/lib/db/signal-drafts'
 import { effectiveFeeds } from './feeds'
 import { aiBudget, dayKey, monthKey, shouldAutoPublish } from './settings'
-import { verifySignalDraft } from './verify'
+import { groundFacts, verifySignalDraft } from './verify'
 import type { RssItem } from './rss'
 import type { SignalDraftResult } from './rewrite'
 
@@ -88,9 +88,10 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
           .map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
         const ts = new Date().toISOString()
         // AGT-031: fact verifier — the AI draft may only state what the fact pack / source text says.
-        const factCheck = rewritten
-          ? verifySignalDraft(rewritten, { facts: rewritten.facts, sourceTitle: item.title, sourceSummary: item.summary, pageTitle: page.title, pageDescription: page.description }, new Date(ts))
-          : undefined
+        // AGT-039: the fetched page text is evidence too, and facts it doesn't back are dropped (not evidence, not stored).
+        const evidence = { facts: rewritten?.facts, sourceTitle: item.title, sourceSummary: item.summary, pageTitle: page.title, pageDescription: page.description, sourceText: rewritten?.source_text ?? null }
+        const factCheck = rewritten ? verifySignalDraft(rewritten, evidence, new Date(ts)) : undefined
+        const groundedFacts = rewritten ? groundFacts(rewritten.facts, evidence).kept : undefined
         const doc: SignalDraftDoc = {
           id: newSignalId(),
           title: rewritten?.title || item.title,
@@ -102,7 +103,7 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
           source_title: item.title,
           source_feed: feed.id,
           angle: rewritten?.angle,
-          facts: rewritten?.facts,
+          facts: groundedFacts,
           source_urls: sourceUrls,
           // Publisher's og:image only — no AI-generated images.
           ...(page.image && safeHttpUrl(page.image) ? { cover_image: safeHttpUrl(page.image)! } : {}),

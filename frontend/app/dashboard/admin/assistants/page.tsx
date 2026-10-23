@@ -24,7 +24,7 @@ import type { AssistantId, AssistantMeta, AssistantRunRow, AssistantSettings } f
 interface Row extends AssistantMeta {
   settings: AssistantSettings
   defaults: AssistantSettings
-  stats: { runs: number; failed: number; last_at: string | null }
+  stats: { runs: number; failed: number; last_at: string | null; user_turns?: number }
   ai_today: { calls: number; spent_usd: number | null } | null
 }
 interface Overview { assistants: Row[]; runs: AssistantRunRow[] }
@@ -113,6 +113,7 @@ function AssistantCard({ row, onSaved }: { row: Row; onSaved: () => void }) {
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3 text-xs text-muted-foreground">
         <span>
           {t('assistants.stats', { runs: row.stats.runs, failed: row.stats.failed })}
+          {row.stats.user_turns ? ` · ${t('assistants.userTurns', { n: row.stats.user_turns })}` : ''}
           {row.stats.last_at ? ` · ${t('assistants.lastRun', { when: fmt.relative(row.stats.last_at) })}` : ''}
           {row.ai_today ? ` · ${t('assistants.aiToday', { calls: row.ai_today.calls, spent: row.ai_today.spent_usd === null ? '—' : `$${row.ai_today.spent_usd.toFixed(2)}` })}` : ''}
         </span>

@@ -15,6 +15,21 @@ import { takeAiCall } from './store'
 
 export interface LoopAiTally { calls: number; fallback: LoopAiBlock | null }
 
+/**
+ * The first guards of loopAi without taking a call: the "use AI" switch, the
+ * loop's monthly spend cap and the platform budget hard stop. Loops that call
+ * a feature's own drafter (social pack → Social studio captions) run this
+ * before taking a daily slot so the loop's monthly cap applies to them too (AGT-041).
+ */
+export async function loopAiPrecheck(loop: AgentLoopId, settings: AgentLoopSettings): Promise<LoopAiBlock | null> {
+  const feature = loopDef(loop).aiFeature
+  const { capSpendFor, aiBudgetBlocks } = await import('@/lib/ai/usage-record')
+  const pre = loopAiBlocked(settings, 0, await capSpendFor([feature], 0))
+  if (pre) return pre
+  if (await aiBudgetBlocks(feature)) return 'budget'
+  return null
+}
+
 export async function loopAi(
   loop: AgentLoopId,
   settings: AgentLoopSettings,
@@ -23,12 +38,9 @@ export async function loopAi(
 ): Promise<unknown | null> {
   const feature = loopDef(loop).aiFeature
   const block = (b: LoopAiBlock) => { tally.fallback = b; return null }
-  const [{ capSpendFor, aiBudgetBlocks }, { scanUntrusted, fenceUntrusted, untrustedRule }] = await Promise.all([
-    import('@/lib/ai/usage-record'), import('@/lib/ai/untrusted-input'),
-  ])
-  const pre = loopAiBlocked(settings, 0, await capSpendFor([feature], 0))
+  const { scanUntrusted, fenceUntrusted, untrustedRule } = await import('@/lib/ai/untrusted-input')
+  const pre = await loopAiPrecheck(loop, settings)
   if (pre) return block(pre)
-  if (await aiBudgetBlocks(feature)) return block('budget')
   const parts = Object.entries(req.untrusted ?? {})
   if (parts.some(([, text]) => scanUntrusted(text).flagged)) return block('flagged')
   if (!(await takeAiCall(loop, settings.daily_ai_cap))) return block('daily_cap')

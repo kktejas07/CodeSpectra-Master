@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller } from '@/lib/route-auth'
 import { knowledgeOnEventChange } from '@/lib/rag/hooks'
 import { codeathons, codeathonRegistrations, nowIso } from '@/lib/db/content'
 import { codeathonProblemsVisible } from '@/lib/codeathon-run'
@@ -41,7 +41,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+  if (!isAdminCaller(gate.user)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await params
@@ -82,7 +82,7 @@ export async function DELETE(_request: Request, { params }: IdRouteContext) {
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+  if (!isAdminCaller(gate.user)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await params

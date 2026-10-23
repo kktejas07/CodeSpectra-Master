@@ -470,5 +470,7 @@
   "accommodation_reason_required": "Add a short reason for the audit trail.",
   "accommodation_candidate_not_found": "No account found for that candidate.",
   "assistant_off": "The help assistant is switched off.",
-  "assistant_daily_limit": "You have asked {n} questions today. Try again tomorrow or open a ticket."
+  "assistant_daily_limit": "You have asked {n} questions today. Try again tomorrow or open a ticket.",
+  "hiring_auto_send_owner_only": "Only the organisation owner or a platform admin can turn on auto-send.",
+  "coupon_not_yours": "This coupon was issued to someone else."
 }

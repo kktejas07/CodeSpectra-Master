@@ -31,7 +31,8 @@ export type SupportAsk = z.infer<typeof SupportAskSchema>
 
 export const SupportEscalateSchema = z.object({
   q: z.string().trim().min(2).max(SUPPORT_LIMITS.maxQuestion),
-  answer: z.string().max(4000).optional(),
+  /** Id of the assistant's answer (stored server-side by askSupport); the browser never supplies the answer text (AGT-040). */
+  answer_id: z.string().trim().regex(/^[A-Za-z0-9_-]{6,64}$/).optional(),
   category: z.enum(['general', 'billing', 'technical', 'bug']).default('general'),
 }).strict()
 

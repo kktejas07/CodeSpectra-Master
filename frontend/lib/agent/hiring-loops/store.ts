@@ -11,6 +11,7 @@
  */
 import 'server-only'
 import type { Collection, Db } from 'mongodb'
+import { nextAutoSendBy, type AutoSendBy } from './auto-send'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { logger } from '@/lib/logger'
@@ -29,6 +30,8 @@ export interface SettingsDoc {
   /** The admin the loop's proposals belong to (who last switched it on). */
   owner_id?: string | null
   owner_name?: string | null
+  /** SEC-036: who turned each auto-send step on (owner or superadmin only). */
+  auto_send_by?: AutoSendBy
   running_until?: string | null
   updated_at?: string
   updated_by?: string | null
@@ -133,14 +136,18 @@ const sid = (tenantId: string, loop: LoopId) => `${tenantId}:${loop}`
 
 // ─── Settings ───────────────────────────────────────────────────────────────
 
-export interface LoadedSettings<L extends LoopId = LoopId> { settings: LoopSettings<L>; owner_id: string | null; owner_name: string | null; updated_at: string | null }
+export interface LoadedSettings<L extends LoopId = LoopId> { settings: LoopSettings<L>; owner_id: string | null; owner_name: string | null; updated_at: string | null; auto_send_by: AutoSendBy }
 
 export async function getLoopSettings<L extends LoopId>(tenantId: string, loop: L): Promise<LoadedSettings<L>> {
   const doc = await (await settingsCol()).findOne({ _id: sid(tenantId, loop) })
-  return { settings: mergeSettings(loop, doc), owner_id: doc?.owner_id ?? null, owner_name: doc?.owner_name ?? null, updated_at: doc?.updated_at ?? null }
+  return { settings: mergeSettings(loop, doc), owner_id: doc?.owner_id ?? null, owner_name: doc?.owner_name ?? null, updated_at: doc?.updated_at ?? null, auto_send_by: doc?.auto_send_by ?? {} }
 }
 
-/** Save a validated patch. Switching on (or saving while on) makes `actor` the owner of new proposals. */
+/**
+ * Save a validated patch. Switching on (or saving while on) makes `actor` the owner of new proposals.
+ * Auto-send steps switched on are stamped with `actor` (SEC-036: the route allows that only for the
+ * organisation owner or a superadmin); steps switched off lose their stamp.
+ */
 export async function saveLoopSettings(tenantId: string, loop: LoopId, patch: SettingsPatch, actor: { id: string; name?: string | null }): Promise<LoadedSettings> {
   const cur = await getLoopSettings(tenantId, loop)
   const next = mergeSettings(loop, {
@@ -150,11 +157,12 @@ export async function saveLoopSettings(tenantId: string, loop: LoopId, patch: Se
     params: { ...cur.settings.params, ...(patch.params ?? {}) },
   })
   const becomesOwner = next.enabled && (patch.enabled === true || !cur.owner_id)
+  const autoSendBy = nextAutoSendBy(cur.auto_send_by, cur.settings.auto_send, patch.auto_send, actor, new Date())
   await (await settingsCol()).updateOne(
     { _id: sid(tenantId, loop) },
     {
       $set: {
-        tenant_id: tenantId, loop, ...next, updated_at: nowIso(), updated_by: actor.id,
+        tenant_id: tenantId, loop, ...next, auto_send_by: autoSendBy, updated_at: nowIso(), updated_by: actor.id,
         ...(becomesOwner ? { owner_id: actor.id, owner_name: String(actor.name || '').slice(0, 120) || null } : {}),
       } as never,
     },

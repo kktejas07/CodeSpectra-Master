@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useAdminT } from '@/lib/i18n/admin'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Budget { ok: boolean; daily: { used: number; limit: number }; monthly: { used: number; limit: number } }
 interface Report {
@@ -24,32 +26,35 @@ interface Report {
   settings?: Record<string, unknown>
 }
 
-const fmt = (n: number) => n.toLocaleString('en-US')
 const pct = (u: number, l: number) => (l > 0 ? Math.min(100, Math.round((u / l) * 100)) : 0)
 
-const EDITABLE: { key: string; label: string; help: string }[] = [
-  { key: 'tenant_daily_tokens', label: 'Organisation tokens per day', help: '0 = no limit' },
-  { key: 'tenant_monthly_tokens', label: 'Organisation tokens per month', help: '0 = no limit' },
-  { key: 'platform_daily_tokens', label: 'Platform (no organisation) tokens per day', help: '0 = no limit' },
-  { key: 'user_messages_per_minute', label: 'Messages per admin per minute', help: '1–120' },
-  { key: 'user_messages_per_hour', label: 'Messages per admin per hour', help: '1–5000' },
-  { key: 'max_steps_per_turn', label: 'Steps per message', help: '2–16' },
-  { key: 'max_tokens_per_turn', label: 'Tokens per message', help: '10,000–1,000,000' },
-]
+/** Labels: admin catalog `copilot.budget.<key>`; help is a range (or "0 = no limit"). */
+const EDITABLE = [
+  { key: 'tenant_daily_tokens', help: null },
+  { key: 'tenant_monthly_tokens', help: null },
+  { key: 'platform_daily_tokens', help: null },
+  { key: 'user_messages_per_minute', help: '1–120' },
+  { key: 'user_messages_per_hour', help: '1–5000' },
+  { key: 'max_steps_per_turn', help: '2–16' },
+  { key: 'max_tokens_per_turn', help: '10,000–1,000,000' },
+] as const
 
 function Meter({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const { t, fmt } = useAdminT()
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between text-sm">
         <span className="text-foreground">{label}</span>
-        <span className="tabular-nums text-muted-foreground">{fmt(used)}{limit > 0 ? ` / ${fmt(limit)}` : ' (no limit)'} tokens</span>
+        <span className="tabular-nums text-muted-foreground">{limit > 0 ? t('copilot.meterTokens', { used: fmt.number(used), limit: fmt.number(limit) }) : t('copilot.meterTokensNoLimit', { used: fmt.number(used) })}</span>
       </div>
-      {limit > 0 && <Progress value={pct(used, limit)} aria-label={`${label}: ${pct(used, limit)}% used`} />}
+      {limit > 0 && <Progress value={pct(used, limit)} aria-label={t('copilot.meterAria', { label, pct: pct(used, limit) })} />}
     </div>
   )
 }
 
 export function UsagePanel({ isSuper, budget }: { isSuper: boolean; budget: Budget | null }) {
+  const { t, fmt } = useAdminT()
+  const apiError = useApiError()
   const [open, setOpen] = useState(false)
   const [report, setReport] = useState<Report | null>(null)
   const [loading, setLoading] = useState(false)
@@ -64,7 +69,7 @@ export function UsagePanel({ isSuper, budget }: { isSuper: boolean; budget: Budg
     try {
       const r = await fetch('/api/admin/agent/usage?days=30', { credentials: 'include', cache: 'no-store' })
       const d = (await r.json()) as Report & { error?: string }
-      if (!r.ok) throw new Error(d.error || 'Could not load usage.')
+      if (!r.ok) throw new Error(apiError(d, t('copilot.usageLoadFailed')))
       setReport(d)
       if (d.settings) {
         const s = d.settings as Record<string, unknown>
@@ -76,11 +81,11 @@ export function UsagePanel({ isSuper, budget }: { isSuper: boolean; budget: Budg
         })
       }
     } catch (e) {
-      setErr((e as Error).message)
+      setErr((e as Error).message || t('copilot.usageLoadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [apiError, t])
 
   useEffect(() => { if (open) void load() }, [open, load])
 
@@ -94,8 +99,8 @@ export function UsagePanel({ isSuper, budget }: { isSuper: boolean; budget: Budg
     try {
       const r = await csrfFetch('/api/admin/agent/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const d = (await r.json().catch(() => ({}))) as { error?: string }
-      if (!r.ok) throw new Error(d.error || 'Could not save.')
-      setSaved('Saved. New limits apply within a minute.')
+      if (!r.ok) throw new Error(apiError(d, t('copilot.saveFailed')))
+      setSaved(t('copilot.limitsSaved'))
       void load()
     } catch (e) {
       setErr((e as Error).message)
@@ -111,47 +116,47 @@ export function UsagePanel({ isSuper, budget }: { isSuper: boolean; budget: Budg
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)} className="h-8 gap-1.5 rounded-full px-3">
         <Gauge aria-hidden />
-        Usage
-        {b && !b.ok ? <Badge variant="outline" className="ml-1 border-destructive/40 text-destructive">Limit reached</Badge> : near ? <Badge variant="warning" className="ml-1">80%+</Badge> : null}
+        {t('copilot.usage')}
+        {b && !b.ok ? <Badge variant="outline" className="ml-1 border-destructive/40 text-destructive">{t('copilot.limitReached')}</Badge> : near ? <Badge variant="warning" className="ml-1">80%+</Badge> : null}
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-[92vw] max-w-md overflow-y-auto p-5">
           <SheetHeader className="p-0 pb-4">
-            <SheetTitle>Copilot usage and limits</SheetTitle>
-            <SheetDescription>Every message is charged for the AI it actually uses. Your organisation has a daily and a monthly budget.</SheetDescription>
+            <SheetTitle>{t('copilot.usageTitle')}</SheetTitle>
+            <SheetDescription>{t('copilot.usageDesc')}</SheetDescription>
           </SheetHeader>
           {loading && !report ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading…</p>
+            <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t('copilot.loading')}</p>
           ) : null}
           {err && <p className="mb-3 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{err}</p>}
           {b && (
             <section className="space-y-3">
-              <Meter label="Today" used={b.daily.used} limit={b.daily.limit} />
-              <Meter label="This month" used={b.monthly.used} limit={b.monthly.limit} />
+              <Meter label={t('copilot.today')} used={b.daily.used} limit={b.daily.limit} />
+              <Meter label={t('copilot.thisMonth')} used={b.monthly.used} limit={b.monthly.limit} />
             </section>
           )}
           {report && (
             <section className="mt-5 grid grid-cols-3 gap-2 text-center">
               {[
-                ['Messages', fmt(report.totals.turns)],
-                ['Credits', fmt(report.totals.credits)],
-                ['Model cost', `$${report.totals.cost_usd.toFixed(2)}`],
+                [t('copilot.messages'), fmt.number(report.totals.turns)],
+                [t('copilot.credits'), fmt.number(report.totals.credits)],
+                [t('copilot.modelCost'), `$${report.totals.cost_usd.toFixed(2)}`],
               ].map(([l, v]) => (
                 <div key={l} className="rounded-2xl bg-muted/50 px-2 py-3">
                   <p className="text-lg font-semibold tabular-nums text-foreground">{v}</p>
-                  <p className="text-xs text-muted-foreground">{l} · 30 days</p>
+                  <p className="text-xs text-muted-foreground">{t('copilot.days30', { label: l })}</p>
                 </div>
               ))}
             </section>
           )}
           {report && report.daily.length > 0 && (
             <section className="mt-5">
-              <h3 className="mb-2 text-sm font-medium text-foreground">Last days</h3>
+              <h3 className="mb-2 text-sm font-medium text-foreground">{t('copilot.lastDays')}</h3>
               <ul className="space-y-1 text-sm">
                 {report.daily.slice(-7).reverse().map((d) => (
                   <li key={d.day} className="flex justify-between gap-2 tabular-nums">
-                    <span className="text-muted-foreground">{d.day}</span>
-                    <span className="text-foreground">{fmt(d.tokens)} tokens · {fmt(d.credits)} credits</span>
+                    <span className="text-muted-foreground">{fmt.date(`${d.day}T00:00:00Z`, { day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>
+                    <span className="text-foreground">{t('copilot.dayLine', { tokens: fmt.number(d.tokens), credits: fmt.number(d.credits) })}</span>
                   </li>
                 ))}
               </ul>
@@ -159,28 +164,28 @@ export function UsagePanel({ isSuper, budget }: { isSuper: boolean; budget: Budg
           )}
           {isSuper && report?.settings && (
             <section className="mt-6 space-y-3 border-t border-border/70 pt-5">
-              <h3 className="text-sm font-medium text-foreground">Budgets and limits (platform admins)</h3>
+              <h3 className="text-sm font-medium text-foreground">{t('copilot.budgetsTitle')}</h3>
               {EDITABLE.map((f) => (
                 <div key={f.key} className="grid gap-1">
-                  <Label htmlFor={`budget-${f.key}`} className="text-sm">{f.label}</Label>
+                  <Label htmlFor={`budget-${f.key}`} className="text-sm">{t(`copilot.budget.${f.key}`)}</Label>
                   <Input id={`budget-${f.key}`} type="number" inputMode="numeric" value={form[f.key] ?? ''} onChange={(e) => setForm((x) => ({ ...x, [f.key]: e.target.value }))} />
-                  <p className="text-xs text-muted-foreground">{f.help}</p>
+                  <p className="text-xs text-muted-foreground">{f.help ?? t('copilot.noLimitHelp')}</p>
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1">
-                  <Label htmlFor="budget-tpc" className="text-sm">Tokens per credit</Label>
+                  <Label htmlFor="budget-tpc" className="text-sm">{t('copilot.tokensPerCredit')}</Label>
                   <Input id="budget-tpc" type="number" inputMode="numeric" value={form.tokensPerCredit ?? ''} onChange={(e) => setForm((x) => ({ ...x, tokensPerCredit: e.target.value }))} />
                 </div>
                 <div className="grid gap-1">
-                  <Label htmlFor="budget-upc" className="text-sm">US$ per credit</Label>
+                  <Label htmlFor="budget-upc" className="text-sm">{t('copilot.usdPerCredit')}</Label>
                   <Input id="budget-upc" type="number" inputMode="decimal" step="0.001" value={form.usdPerCredit ?? ''} onChange={(e) => setForm((x) => ({ ...x, usdPerCredit: e.target.value }))} />
                 </div>
               </div>
               {saved && <p className="text-sm text-green-700 dark:text-green-400" role="status">{saved}</p>}
               <Button onClick={() => void save()} disabled={saving} className="min-h-11 sm:min-h-9">
                 {saving && <Loader2 className="animate-spin" aria-hidden />}
-                Save limits
+                {t('copilot.saveLimits')}
               </Button>
             </section>
           )}

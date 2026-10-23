@@ -3,15 +3,40 @@
  * auto-publish, like the digest verifier (lib/digest/verify).
  *
  * Every number (dates, money, counts), proper noun / organisation name and selling claim in the
- * drafted title, excerpt and body must be backed by the extracted fact pack or the source text
- * (feed title + summary + the publisher's og: description). A draft that fails is kept as
+ * drafted title, excerpt and body must be backed by the source text (the fetched pages, feed
+ * title + summary, the publisher's og: description) or by an extracted fact the pages back —
+ * a fact the extraction model made up is not evidence (AGT-039). A draft that fails is kept as
  * `pending` with the issues on `fact_check`, so an admin reviews it instead of it going live.
  */
-import { checkFacts, type FactCheck } from '@/lib/ai/fact-check'
+import { checkFacts, unsupportedNames, unsupportedNumbers, type FactCheck } from '@/lib/ai/fact-check'
 import type { SignalFactStored } from '@/lib/db/signal-drafts'
 
 export interface SignalFactCheck extends FactCheck {
   checked_at: string
+  /** Extracted facts dropped because a number / name in them is not in the fetched pages (AGT-039). */
+  ungrounded?: string[]
+}
+
+type Evidence = { facts?: readonly SignalFactStored[] | null; sourceTitle?: string; sourceSummary?: string; pageTitle?: string; pageDescription?: string; sourceText?: string | null }
+
+const groundText = (e: Evidence) => [e.sourceText, e.sourceTitle, e.pageTitle, e.sourceSummary, e.pageDescription].filter((t): t is string => !!t && !!t.trim()).join('\n')
+
+/**
+ * The extracted facts the fetched pages actually back (AGT-039): a fact whose
+ * numbers or names do not appear in the page text / feed text was made up at
+ * extraction and is dropped, so the article can't lean on it. Pure.
+ */
+export function groundFacts<F extends SignalFactStored>(facts: readonly F[] | null | undefined, e: Evidence): { kept: F[]; dropped: F[] } {
+  const src = groundText(e)
+  const kept: F[] = []
+  const dropped: F[] = []
+  for (const f of facts || []) {
+    const claim = String(f?.claim || '')
+    if (!claim) continue
+    if (src && (unsupportedNumbers(claim, src).length || unsupportedNames(claim, src).length)) dropped.push(f)
+    else kept.push(f)
+  }
+  return { kept, dropped }
 }
 
 /** Article HTML as plain text: tags out, entities decoded, the "Source" link label dropped. Pure. */
@@ -29,11 +54,14 @@ export function articleText(html: string): string {
     .trim()
 }
 
-/** Everything the rewrite was allowed to rely on, as one text. Pure. */
-export function signalEvidenceText(e: { facts?: readonly SignalFactStored[] | null; sourceTitle?: string; sourceSummary?: string; pageTitle?: string; pageDescription?: string }): string {
+/**
+ * Everything the rewrite was allowed to rely on, as one text: the fetched page
+ * text and feed text, plus only the extracted facts those pages back. Pure.
+ */
+export function signalEvidenceText(e: Evidence): string {
   const lines: string[] = []
-  for (const t of [e.sourceTitle, e.pageTitle, e.sourceSummary, e.pageDescription]) if (t && t.trim()) lines.push(t.trim())
-  for (const f of e.facts || []) {
+  for (const t of [e.sourceTitle, e.pageTitle, e.sourceSummary, e.pageDescription, e.sourceText]) if (t && t.trim()) lines.push(t.trim())
+  for (const f of groundFacts(e.facts, e).kept) {
     if (f?.claim) lines.push(String(f.claim))
     if (f?.date) {
       lines.push(String(f.date))
@@ -60,7 +88,8 @@ export function verifySignalDraft(
   const head = checkFacts([draft.title, ...headings].filter(Boolean).join('\n'), facts)
   const numbers = [...new Set([...head.numbers, ...main.numbers])]
   const claims = [...new Set([...head.claims, ...main.claims])]
-  return { ok: !numbers.length && !main.names.length && !claims.length, numbers, names: main.names, claims, checked_at: now.toISOString() }
+  const ungrounded = groundFacts(evidence.facts, evidence).dropped.map((f) => String(f.claim).slice(0, 200))
+  return { ok: !numbers.length && !main.names.length && !claims.length, numbers, names: main.names, claims, checked_at: now.toISOString(), ...(ungrounded.length ? { ungrounded } : {}) }
 }
 
 /** One-line reason for the admin queue. Pure. */

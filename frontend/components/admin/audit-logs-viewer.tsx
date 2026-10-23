@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { unmaskedAuditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface AuditLogsViewerProps {
   logs?: AuditRow[]
@@ -16,6 +17,7 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
   const [loading, setLoading] = useState(!propLogs)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  const { t } = useAdminT()
 
   const fetchLogs = async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true)
@@ -49,7 +51,7 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Clock className="h-5 w-5 text-primary" />
-          Audit logs
+          {t('auditLogs.title')}
         </h2>
         <Button
           variant="outline"
@@ -58,7 +60,7 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
           onClick={() => void fetchLogs(true)}
         >
           {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-          Refresh
+          {t('auditLogs.refresh')}
         </Button>
       </div>
 
@@ -66,15 +68,15 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
         <EmptyState
           compact
           illustration="error"
-          title="Couldn't load audit logs"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('auditLogs.loadFailed')}
+          description={t('common.checkConnection')}
+          actionLabel={t('common.tryAgain')}
           onAction={() => void fetchLogs(true)}
         />
       ) : (
       <>
       {loadError ? (
-        <p className="text-xs text-destructive" role="status">Couldn&apos;t refresh the audit logs — showing the last loaded entries.</p>
+        <p className="text-xs text-destructive" role="status">{t('auditLogs.refreshFailed')}</p>
       ) : null}
       <DataTable
         columns={unmaskedAuditLogColumns}

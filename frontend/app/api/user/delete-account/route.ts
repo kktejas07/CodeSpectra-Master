@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     if (!reauth.ok) return NextResponse.json({ error: reauth.error, needs: reauth.needs }, { status: reauth.status })
 
     const db = await getMongoDb()
-    if (user.role === 'superadmin') {
+    if (user.role === 'superadmin') { // role-scope: last-superadmin safety block (restricts, never grants)
       const others = await db.collection('user').countDocuments({ role: 'superadmin', _id: { $ne: user._id } } as never)
       if (others === 0) {
         return NextResponse.json({ error: 'You are the only superadmin. Make someone else a superadmin first.' }, { status: 409 })

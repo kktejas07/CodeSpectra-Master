@@ -217,6 +217,27 @@ export function admin2faRequiredError(user: Pick<APIUser, 'adminTwoFactorRequire
     : null
 }
 
+/**
+ * SEC-029: role checks for routes that serve both admins and ordinary users
+ * (support tickets, hackathon judging, problem edits …). An admin who still
+ * owes 2FA counts as a non-admin here, exactly like requireAdmin denies them.
+ * Use these instead of comparing `user.role` by hand for any privilege grant.
+ */
+export function isSuperAdminCaller(user: { role?: string | null; tenantId?: string | null; adminTwoFactorRequired?: boolean } | null | undefined): boolean {
+  return !!user && user.role === 'superadmin' && !user.adminTwoFactorRequired
+}
+
+/** Superadmin, or a tenant admin with a tenant — and no admin 2FA owed (SEC-029). */
+export function isAdminCaller(user: { role?: string | null; tenantId?: string | null; adminTwoFactorRequired?: boolean } | null | undefined): boolean {
+  if (!user || user.adminTwoFactorRequired) return false
+  return user.role === 'superadmin' || (user.role === 'tenant_admin' && !!user.tenantId)
+}
+
+/** JSON body for a failed guard: keeps the guard's `code` (e.g. admin_2fa_required). */
+export function gateErrorBody(gate: { error?: string; status?: number; code?: string }): { error: string; code: string } {
+  return { error: gate.error || 'Forbidden', code: gate.code ?? (gate.status === 401 ? 'unauthorized' : 'forbidden') }
+}
+
 /** requireSuperAdmin: role-based check (DB permissions add granularity, never restrict) */
 export async function requireSuperAdmin() {
   const user = await getAPIUser()

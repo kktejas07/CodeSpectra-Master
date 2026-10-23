@@ -20,6 +20,7 @@ import {
 } from '../nudges/rules'
 import { getNudgeSettings } from '../nudges/settings'
 import type { SystemAutomation } from './types'
+import { isoWeekKey } from '@/lib/messaging/budget-rules'
 
 type Doc = Record<string, any>
 const DAY = 86_400_000
@@ -275,6 +276,8 @@ export async function runEmployerWeeklyReport(now = new Date()): Promise<Record<
     ]
     outcomes.push(await deliverNudge({
       automationId: 'employer-weekly-report', key: `${tenantId}:${userId}:${week}`, now, capExempt: true, tenantId,
+      // One Monday hiring report per person: shared with the opt-in hiring-analytics digest (AUTO-100).
+      topic: 'weekly-hiring-report', object: `${tenantId}:${isoWeekKey(new Date(`${week}T12:00:00Z`))}`,
       to: { userId, email: String(u.email) },
       email: nudgeMail({ id: 'weekly', category: 'reports', params: { org }, name: firstName(u.fullName || u.name), extra: lines, cta: { url: '/dashboard/hiring/analytics' } }),
     }))

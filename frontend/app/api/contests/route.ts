@@ -8,6 +8,7 @@ import { listPublicContests } from '@/lib/contests/participation'
 import { createContest, publicContest } from '@/lib/contests/service'
 import { guarded, readJson, respond, unauthorized, withUser } from '@/lib/contests/http'
 import { limitRequest } from '@/lib/rate-limit'
+import { isAdminCaller } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const user = await withUser()
   if (!user) return unauthorized()
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  if (!isAdminCaller(user)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   return guarded('create', async () => respond(await createContest(user, await readJson(req))))
 }

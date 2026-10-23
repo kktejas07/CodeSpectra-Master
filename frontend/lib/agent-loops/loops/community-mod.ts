@@ -12,7 +12,7 @@
 import 'server-only'
 import type { LoopContext } from '../runner'
 import type { FindingInput, LoopResult } from '../types'
-import { classifyPost, reportReasonFor, unansweredQuestions } from '../pure/community-mod'
+import { classifyPost, mergeScanList, nextScanCursor, reportReasonFor, unansweredQuestions } from '../pure/community-mod'
 import { findingKey } from '../pure/content-qa'
 
 const LOOP = 'community-mod'
@@ -36,10 +36,13 @@ export async function runCommunityMod(ctx: LoopContext): Promise<LoopResult> {
     (await threadsCol()).find({ created_at: { $gt: since }, status: 'visible' }, { projection: proj }).sort({ created_at: 1 }).limit(limit).toArray(),
     (await repliesCol()).find({ created_at: { $gt: since }, status: 'visible' }, { projection: proj }).sort({ created_at: 1 }).limit(limit).toArray(),
   ])
-  const posts = [
-    ...threads.map((t) => ({ type: 'thread' as const, id: t.id, thread_id: t.id, title: t.title, text: `${t.title}\n${t.body}`, author: t.author_id, hash: t.hash, at: t.created_at })),
-    ...replies.map((r) => ({ type: 'reply' as const, id: r.id, thread_id: r.thread_id, title: null as string | null, text: r.body, author: r.author_id, hash: r.hash, at: r.created_at })),
-  ]
+  // One list, oldest first; at most `limit` scanned and the cursor only moves past posts actually scanned (AGT-037).
+  type ScanPost = { type: 'thread' | 'reply'; id: string; thread_id: string; title: string | null; text: string; author: string; hash: string; at: string }
+  const merged = mergeScanList<ScanPost>(
+    threads.map((t) => ({ type: 'thread', id: t.id, thread_id: t.id, title: t.title, text: `${t.title}\n${t.body}`, author: t.author_id, hash: t.hash, at: t.created_at })),
+    replies.map((r) => ({ type: 'reply', id: r.id, thread_id: r.thread_id, title: null, text: r.body, author: r.author_id, hash: r.hash, at: r.created_at })),
+  )
+  const posts = merged.slice(0, limit)
   // Duplicate counts (same text hash, last 24 h, any author) and account ages, in two queries.
   const dayAgo = new Date(ctx.now.getTime() - 86_400_000).toISOString()
   const hashes = [...new Set(posts.map((p) => p.hash).filter(Boolean))]
@@ -50,11 +53,9 @@ export async function runCommunityMod(ctx: LoopContext): Promise<LoopResult> {
   const users = authors.length ? await (await getMongoDb()).collection('user').find({ $or: [{ id: { $in: authors } }, { _id: { $in: authors as never[] } }] }, { projection: { _id: 1, id: 1, createdAt: 1, created_at: 1 } }).toArray() : []
   const born = new Map(users.map((u) => [String(u.id || u._id), Date.parse(String(u.createdAt || u.created_at || ''))]))
 
-  let cursor = since
   for (const p of posts) {
     if (ctx.timeUp()) break
     summary.scanned++
-    if (p.at > cursor) cursor = p.at
     const created = born.get(p.author)
     const v = classifyPost({
       spam: spamSignals(p.text),
@@ -76,7 +77,7 @@ export async function runCommunityMod(ctx: LoopContext): Promise<LoopResult> {
     if (await svc.systemReport(p.type, p.id, p.thread_id, reportReasonFor(v.reasons), `Community moderator loop: ${v.reasons.join(', ')}`)) summary.reported++
     findings.push({ key: findingKey(LOOP, v.verdict, p.type, p.id), kind: v.verdict === 'clear_spam' ? 'forum_spam' : 'forum_review', severity: v.verdict === 'clear_spam' ? 'warning' : 'info', target, params: { reasons: v.reasons.join(', ') }, proposal: { action: 'forum_hide', args: { target_type: p.type, target_id: p.id } } })
   }
-  await ctx.saveState({ cursor })
+  await ctx.saveState({ cursor: nextScanCursor(merged, summary.scanned, since) })
 
   // ── Suggested answers for unanswered questions ──────────────────────────
   const recent = await (await threadsCol()).find({ kind: 'question', status: 'visible', reply_count: 0, created_at: { $gte: new Date(ctx.now.getTime() - 7 * 86_400_000).toISOString() } }, { projection: { _id: 0, id: 1, kind: 1, status: 1, reply_count: 1, accepted_reply_id: 1, created_at: 1, title: 1, body: 1 } }).limit(200).toArray()

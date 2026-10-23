@@ -113,6 +113,7 @@ function routeFiles(d: string, out: string[] = []): string[] {
 }
 
 describe('area catalogs are loaded where they are used', () => {
+  // SEO-052: explicit timeouts — these walk / parse hundreds of files and must not flake on a busy runner.
   it('every route only uses namespaces provided by its layouts', () => {
     const problems: string[] = []
     for (const f of routeFiles(path.join(ROOT, 'app'))) {
@@ -121,7 +122,7 @@ describe('area catalogs are loaded where they are used', () => {
       if (missing.length) problems.push(`${path.relative(ROOT, f)}: ${missing.join(', ')}`)
     }
     expect(problems).toEqual([])
-  })
+  }, 60_000)
 })
 
 // ---- hard-coded JSX text ----
@@ -141,7 +142,7 @@ describe('no new hard-coded English in signed-in app JSX', () => {
       for (const s of hardCodedText(f)) if (!allowed.has(s)) problems.push(`${f}: ${JSON.stringify(s)}`)
     }
     expect(problems, 'wrap these in t() (add keys to the area catalog) or allow-list them with a reason').toEqual([])
-  })
+  }, 60_000)
   it('allow-list only shrinks (SEO-038)', () => {
     // Was 208 strings; lower this cap whenever entries are translated, never raise it.
     const total = Object.entries(ALLOW).reduce((n, [f, e]) => n + (f.startsWith('_') || typeof e !== 'object' ? 0 : e.text.length), 0)
@@ -156,5 +157,5 @@ describe('no new hard-coded English in signed-in app JSX', () => {
       for (const s of entry.text) if (!now.has(s)) stale.push(`${f}: ${JSON.stringify(s)}`)
     }
     expect(stale).toEqual([])
-  })
+  }, 60_000)
 })

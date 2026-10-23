@@ -10,6 +10,7 @@ import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
 import { claimDigestSend, deliverOrDefer, escapeHtml, getDigestRecipients } from '@/lib/notifications-delivery'
+import { withBudget } from '@/lib/messaging/budget'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,6 +34,7 @@ async function handle(req: NextRequest) {
     let sent = 0
     let deferred = 0
     let empty = 0
+    let capped = 0
     for (const user of recipients) {
       try {
         const items = await db.collection('notifications')
@@ -58,18 +60,24 @@ async function handle(req: NextRequest) {
             <a href="${appUrl}/dashboard/notifications" style="display:inline-block;background:#6c5ce7;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:600">Open notifications</a>
             <p style="color:#9ca3af;font-size:12px;margin-top:24px">You can turn off the daily digest in <a href="${appUrl}/dashboard/notifications/preferences">notification preferences</a>.</p>
           </div>`
-        const r = await deliverOrDefer(user.id, {
-          // 'engagement': honours unsubscribes and gets the one-click unsubscribe link + headers (AUTO-052).
-          email: { to: user.email, subject: `Your CodeSpectra daily digest (${items.length > 10 ? '10+' : items.length} new)`, html, category: 'engagement' },
+        // A digest counts toward the shared per-person messaging budget (AUTO-094).
+        const res: { r?: Awaited<ReturnType<typeof deliverOrDefer>> } = {}
+        const outcome = await withBudget({ userId: user.id, email: user.email }, { class: 'digest', topic: 'daily-digest', object: period, source: 'daily-digest' }, async () => {
+          res.r = await deliverOrDefer(user.id, {
+            // 'engagement': honours unsubscribes and gets the one-click unsubscribe link + headers (AUTO-052).
+            email: { to: user.email, subject: `Your CodeSpectra daily digest (${items.length > 10 ? '10+' : items.length} new)`, html, category: 'engagement' },
+          })
+          return true
         })
-        if (r === 'deferred') deferred++
+        if (outcome !== 'sent') capped++
+        else if (res.r === 'deferred') deferred++
         else sent++
       } catch (e) {
         console.error('[daily-digest] send failed:', e)
       }
     }
 
-    return NextResponse.json({ sent, deferred, empty, recipients: recipients.length })
+    return NextResponse.json({ sent, deferred, empty, capped, recipients: recipients.length })
   } catch (e) {
     console.error('[daily-digest] error:', e)
     return NextResponse.json({ error: 'Failed to send digest' }, { status: 500 })

@@ -14,6 +14,8 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface TeamMember {
   id: string; name: string; email: string; role: string; joinedAt: string; status: string
@@ -26,6 +28,8 @@ interface PendingInvite {
 export default function TeamManagement() {
   const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
+  const { t, fmt } = useAdminT()
+  const apiError = useApiError()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
@@ -77,9 +81,9 @@ export default function TeamManagement() {
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || 'Could not revoke')
       setInvites((xs) => xs.filter((x) => x.id !== id))
-      addToast({ type: 'success', title: 'Invitation revoked' })
+      addToast({ type: 'success', title: t('team.revoked') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Revoke failed', message: e instanceof Error ? e.message : 'Failed' })
+      addToast({ type: 'error', title: t('team.revokeFailed'), message: e instanceof Error ? e.message : t('team.failed') })
     } finally {
       setRevoking(null)
     }
@@ -111,23 +115,19 @@ export default function TeamManagement() {
         const invited = mode === 'invite' || json.invited === true
         addToast({
           type: 'success',
-          title: invited ? 'Invitation sent' : json.user?.already_member ? 'Already a member' : 'Member added',
-          message: invited
-            ? json.emailed === false
-              ? `The invitation for ${email.trim()} was saved, but the email could not be sent. Check the mail settings and resend.`
-              : `${email.trim()} joins your organization after accepting the invitation.`
-            : json.user?.already_member
-              ? `${email.trim()} is already part of your organization.`
-              : `${email.trim()} added to your organization.`,
+          title: invited ? t('team.invitationSent') : json.user?.already_member ? t('team.alreadyMember') : t('team.memberAdded'),
+          message: t(invited
+            ? json.emailed === false ? 'team.msgEmailFailed' : 'team.msgInvited'
+            : json.user?.already_member ? 'team.msgAlready' : 'team.msgAdded', { email: email.trim() }),
         })
         setEmail(''); setName(''); setPassword('')
         setAddOpen(false)
         await Promise.all([fetchMembers(), fetchInvites()])
       } else {
-        addToast({ type: 'error', title: res.status === 402 ? 'Plan limit reached' : 'Failed', message: json.error || 'Request failed' })
+        addToast({ type: 'error', title: res.status === 402 ? t('team.planLimit') : t('team.failed'), message: apiError(json, t('copilot.requestFailed')) })
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to add member' })
+      addToast({ type: 'error', title: t('team.failed'), message: t('team.addFailed') })
     } finally {
       setAdding(false)
     }
@@ -147,28 +147,28 @@ export default function TeamManagement() {
         illustration="team"
         title={
           <>
-            Organization
+            {t('team.title')}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label="About your organization" />
+                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label={t('team.aboutLabel')} />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Members of your organization. New people get an account here; people who already have one get an invitation to accept.</p>
+                  <p className="text-xs max-w-62.5">{t('team.aboutBody')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </>
         }
-        description="Manage your team and keep an eye on organization activity."
+        description={t('team.description')}
         icon={<Building2 />}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => openDialog('invite')} className="gap-2">
-              <Mail className="h-4 w-4" /> Invite by email
+              <Mail className="h-4 w-4" /> {t('team.inviteByEmail')}
             </Button>
             <Button onClick={() => openDialog('create')} className="gap-2">
-              <UserPlus className="h-4 w-4" /> Add member
+              <UserPlus className="h-4 w-4" /> {t('team.addMember')}
             </Button>
           </div>
         }
@@ -176,32 +176,32 @@ export default function TeamManagement() {
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard label="Team members" value={stats.total} icon={<Users />} />
-        <StatCard label="Active members" value={stats.active} icon={<Building2 />} />
+        <StatCard label={t('team.members')} value={stats.total} icon={<Users />} />
+        <StatCard label={t('team.activeMembers')} value={stats.active} icon={<Building2 />} />
       </div>
 
       {/* Team members */}
       <Panel>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" aria-hidden /> Team members
+            <Users className="h-5 w-5 text-primary" aria-hidden /> {t('team.members')}
           </h2>
-          <Badge variant="secondary" className="tabular-nums">{stats.total} total</Badge>
+          <Badge variant="secondary" className="tabular-nums">{t('team.total', { n: stats.total })}</Badge>
         </div>
         {loadError && members.length === 0 ? (
           <EmptyState
             illustration="error"
-            title="Couldn't load team members"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={t('team.loadFailed')}
+            description={t('common.checkConnection')}
+            actionLabel={t('common.tryAgain')}
             onAction={() => void fetchMembers()}
           />
         ) : members.length === 0 ? (
           <EmptyState
             illustration="team"
-            title="No members yet"
-            description="Add the people who will create and review assessments."
-            actionLabel="Add member"
+            title={t('team.noMembers')}
+            description={t('team.noMembersDesc')}
+            actionLabel={t('team.addMember')}
             onAction={() => openDialog('create')}
             className="border-0 bg-transparent py-6 md:py-8"
           />
@@ -227,7 +227,7 @@ export default function TeamManagement() {
         <Panel>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" aria-hidden /> Pending invitations
+              <Mail className="h-5 w-5 text-primary" aria-hidden /> {t('team.pendingInvites')}
             </h2>
             <Badge variant="secondary" className="tabular-nums">{invites.length}</Badge>
           </div>
@@ -237,12 +237,12 @@ export default function TeamManagement() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">{inv.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    {(inv.role || 'user').replace(/_/g, ' ')} · expires {new Date(inv.expires_at).toLocaleDateString()}
+                    {(inv.role || 'user').replace(/_/g, ' ')} · {t('team.expires', { date: fmt.date(inv.expires_at) })}
                   </p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => void revokeInvite(inv.id)} disabled={revoking === inv.id}>
                   {revoking === inv.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                  Revoke
+                  {t('team.revoke')}
                 </Button>
               </div>
             ))}
@@ -254,16 +254,16 @@ export default function TeamManagement() {
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleAddMember}>
             <DialogHeader>
-              <DialogTitle>{mode === 'invite' ? 'Invite by email' : 'Add member'}</DialogTitle>
+              <DialogTitle>{mode === 'invite' ? t('team.inviteByEmail') : t('team.addMember')}</DialogTitle>
               <DialogDescription>
                 {mode === 'invite'
-                  ? 'Sends an invitation. They join your organization once they accept it.'
-                  : 'Creates an account for this person inside your organization. If they already have an account, they get an invitation instead.'}
+                  ? t('team.inviteDesc')
+                  : t('team.addDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 text-xs">
               <div className="grid gap-2">
-                <Label htmlFor="member-email">Email address</Label>
+                <Label htmlFor="member-email">{t('team.email')}</Label>
                 <Input
                   id="member-email"
                   type="email"
@@ -276,33 +276,33 @@ export default function TeamManagement() {
               </div>
               {mode === 'create' ? (<>
               <div className="grid gap-2">
-                <Label htmlFor="member-name">Full name (optional)</Label>
+                <Label htmlFor="member-name">{t('team.fullName')}</Label>
                 <Input
                   id="member-name"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="Jane Doe"
+                  placeholder={t('team.namePlaceholder')}
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="member-password">Password (optional)</Label>
+                <Label htmlFor="member-password">{t('team.password')}</Label>
                 <Input
                   id="member-password"
                   type="password"
                   autoComplete="new-password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="Leave blank to auto-generate"
+                  placeholder={t('team.passwordPlaceholder')}
                 />
               </div>
               </>) : null}
             </div>
             <DialogFooter className="gap-2 sm:gap-2">
-              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={adding || !email.trim()}>
                 {adding
-                  ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{mode === 'invite' ? 'Sending…' : 'Adding…'}</>
-                  : <><Mail className="h-4 w-4 mr-1" />{mode === 'invite' ? 'Send invitation' : 'Add member'}</>}
+                  ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{mode === 'invite' ? t('team.sending') : t('team.adding')}</>
+                  : <><Mail className="h-4 w-4 mr-1" />{mode === 'invite' ? t('team.sendInvitation') : t('team.addMember')}</>}
               </Button>
             </DialogFooter>
           </form>

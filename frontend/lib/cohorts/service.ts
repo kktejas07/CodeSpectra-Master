@@ -337,6 +337,8 @@ async function inviteToSessions(cohort: CohortDoc, sessions: CohortSessionDoc[])
     const t = await communityT(locale)
     await sendAutomationEmail({
       to: p.email, userId: p.user_id, category: 'events',
+      // A calendar invite they need, not a nudge: not capped by the shared budget.
+      budget: { class: 'transactional', source: 'cohort-sessions' },
       onceKey: `cohort-invite:${cohort.id}:${sessions.map((s) => s.id).join(',').slice(0, 300)}:${p.user_id}`,
       subject: t('mailSessionsSubject', { title: cohort.title }),
       heading: t('mailSessionsHeading', { count: sessions.length }),

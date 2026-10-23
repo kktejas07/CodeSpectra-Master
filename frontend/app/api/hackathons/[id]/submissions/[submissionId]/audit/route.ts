@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
+import { isAdminCaller } from '@/lib/route-auth'
 import { hackathons, hackathonSubmissions, hackathonTeams } from '@/lib/db/qr-events'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
@@ -18,14 +19,14 @@ async function auditsCol() {
   return col
 }
 
-async function checkJudgeOrAdmin(hackathonId: string, user: { id: string; role?: string; tenantId?: string }) {
+async function checkJudgeOrAdmin(hackathonId: string, user: { id: string; role?: string; tenantId?: string; adminTwoFactorRequired?: boolean }) {
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id: hackathonId }, { slug: hackathonId }] })
   if (!hk) return { error: 'not found', code: 'not_found', status: 404 } as const
   if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
     return { error: 'Forbidden', code: 'forbidden', status: 403 } as const
   }
-  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  const isAdmin = isAdminCaller(user) // SEC-029: admin 2FA owed → judge rights only
   const isJudge = (hk.judges || []).includes(user.id)
   if (!isAdmin && !isJudge) {
     return { error: 'Forbidden', code: 'forbidden', status: 403 } as const
@@ -42,7 +43,7 @@ export async function GET(
   if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id, submissionId } = await ctx.params
-  const gate = await checkJudgeOrAdmin(id, user as { id: string; role?: string; tenantId?: string })
+  const gate = await checkJudgeOrAdmin(id, user as { id: string; role?: string; tenantId?: string; adminTwoFactorRequired?: boolean })
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const col = await auditsCol()
@@ -70,7 +71,7 @@ export async function POST(
   }
 
   const { id, submissionId } = await ctx.params
-  const gate = await checkJudgeOrAdmin(id, user as { id: string; role?: string; tenantId?: string })
+  const gate = await checkJudgeOrAdmin(id, user as { id: string; role?: string; tenantId?: string; adminTwoFactorRequired?: boolean })
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const hk = gate.hk
 

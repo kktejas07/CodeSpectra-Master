@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth, getAPIUser, type APIUser } from '@/lib/route-auth'
+import { requireAuth, requireSuperAdmin, gateErrorBody, getAPIUser, isAdminCaller, isSuperAdminCaller, type APIUser } from '@/lib/route-auth'
 import { problems, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
@@ -14,9 +14,9 @@ import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
  */
 function canEditProblem(user: APIUser | null, doc: Pick<ProblemDoc, 'created_by'> & { tenant_id?: string | null }): boolean {
   if (!user) return false
-  if (user.role === 'superadmin') return true
+  if (isSuperAdminCaller(user)) return true // SEC-029: admin 2FA owed → no admin edit rights
   if (doc.created_by && doc.created_by === user.id) return true
-  return user.role === 'tenant_admin' && !!user.tenantId && !!doc.tenant_id && doc.tenant_id === user.tenantId
+  return user.role === 'tenant_admin' && isAdminCaller(user) && !!doc.tenant_id && doc.tenant_id === user.tenantId
 }
 
 /**
@@ -199,13 +199,8 @@ export async function DELETE(
   _request: Request,
   ctx: { params: Promise<{ slug: string }> },
 ) {
-  const gate = await requireAuth()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
-  }
-  if (gate.user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden — superadmin only' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   const { slug } = await ctx.params
   try {
     const col = await problems()

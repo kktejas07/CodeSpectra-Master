@@ -10,8 +10,15 @@
  * `replayPageTour()`. There is no second/other tour implementation.
  */
 
-import { driver, type Driver, type DriveStep } from 'driver.js'
-import { hints, type DriverHint, type Hints } from 'driver.js/hints'
+import type { Driver, DriveStep } from 'driver.js'
+import type { DriverHint, Hints } from 'driver.js/hints'
+
+// SEO-050: driver.js (+ its CSS) is loaded on first use only — see lib/tour-engine.ts.
+let enginePromise: Promise<typeof import('./tour-engine')> | null = null
+function loadEngine() {
+  enginePromise ??= import('./tour-engine').catch((e) => { enginePromise = null; throw e })
+  return enginePromise
+}
 
 export interface TourStep {
   target: string
@@ -273,9 +280,11 @@ export function stripUnsupportedTourAria(el: Element): void {
   el.removeAttribute('aria-expanded')
 }
 
-function getDriver(): Driver | null {
+async function getDriver(): Promise<Driver | null> {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null
   if (!instance) {
+    const { driver } = await loadEngine()
+    if (instance) return instance
     instance = driver({
       showProgress: true,
       progressText: '{{current}} of {{total}}',
@@ -310,15 +319,19 @@ export function registerPageTour(tourId: string, steps: TourStep[]) {
 }
 
 /** Start (or restart) a page tour. No-op on empty steps or server-side. */
-export function startPageTour(tourId: string, steps: TourStep[]) {
+export function startPageTour(tourId: string, steps: TourStep[], opts: { replay?: boolean } = {}) {
   if (!steps || steps.length === 0) return
   registry[tourId] = steps
-  const d = getDriver()
-  if (!d) return
-  if (d.isActive()) d.destroy()
-  activeTourId = tourId
-  d.setSteps(toDriveSteps(steps))
-  d.drive()
+  void getDriver().then((d) => {
+    if (!d || registry[tourId] !== steps) return
+    if (d.isActive()) {
+      replaying = !!opts.replay
+      try { d.destroy() } finally { replaying = false }
+    }
+    activeTourId = tourId
+    d.setSteps(toDriveSteps(steps))
+    d.drive()
+  }).catch(() => { /* chunk failed to load (offline) — the tour just doesn't start */ })
 }
 
 /**
@@ -343,12 +356,7 @@ export function replayPageTour(tourId: string): boolean {
   const steps = registry[tourId]
   if (!steps || steps.length === 0) return false
   clearTourSeen(tourId)
-  replaying = true
-  try {
-    startPageTour(tourId, steps)
-  } finally {
-    replaying = false
-  }
+  startPageTour(tourId, steps, { replay: true })
   return true
 }
 
@@ -400,9 +408,11 @@ function isHintDismissed(id: string): boolean {
   }
 }
 
-function getHints(): Hints | null {
+async function getHints(): Promise<Hints | null> {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null
   if (!hintsInstance) {
+    const { hints } = await loadEngine()
+    if (hintsInstance) return hintsInstance
     hintsInstance = hints({
       popoverClass: TOUR_POPOVER_CLASS,
       buttonText: 'Got it',
@@ -443,12 +453,13 @@ function toDriverHints(hintSetId: string, items: TourHint[]): DriverHint[] {
  */
 export function startPageHints(hintSetId: string, items: TourHint[]) {
   if (!items || items.length === 0) return
-  const h = getHints()
-  if (!h) return
   const pending = toDriverHints(hintSetId, items)
   if (pending.length === 0) return
-  h.setHints(pending)
-  h.show()
+  void getHints().then((h) => {
+    if (!h) return
+    h.setHints(pending)
+    h.show()
+  }).catch(() => { /* chunk failed to load — no beacons */ })
 }
 
 /** Dismiss one hint programmatically (marks it seen so it never returns). */

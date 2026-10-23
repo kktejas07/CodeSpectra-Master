@@ -20,6 +20,8 @@ import type { NotificationDoc } from '@/lib/db/admin'
 import type { Document, Filter } from 'mongodb'
 import type { Locale } from '@/lib/i18n/config'
 import { hasOutboundKey, outboundT, renderOutbound, type OutboundText } from '@/lib/i18n/outbound'
+import type { MessageClass } from '@/lib/messaging/budget-rules'
+import type { MessageBudget } from '@/lib/messaging/budget'
 
 // ─── All platform notification types ────────────────────────────────────────
 
@@ -120,7 +122,55 @@ export const NOTIFICATION_TYPES = {
   'agent_loop.insight': { category: 'system', icon: 'line-chart', default_title: 'Weekly insight', default_link: '/dashboard/admin/agent-loops' },
   'agent_loop.run_finished': { category: 'system', icon: 'bot', default_title: 'Agent loop finished', default_link: '/dashboard/admin/agent-loops' },
   'hiring_agent.proposals': { category: 'system', icon: 'users', default_title: 'Hiring proposals ready', default_link: '/dashboard/admin/hiring-agents' },
+
+  // Reminders and nudges (wave 15 + older reminders, AUTO-105)
+  'streak.saver': { category: 'learning', icon: 'flame', default_title: 'Keep your streak alive', default_link: '/dashboard/arena' },
+  'study_plan.reminder': { category: 'learning', icon: 'calendar-check', default_title: "Today's study plan", default_link: '/dashboard/study-plan' },
+  'drive.reminder': { category: 'assessment', icon: 'clock', default_title: 'Hiring drive reminder', default_link: '/dashboard/assessments' },
+  'drive.no_show': { category: 'assessment', icon: 'alert-circle', default_title: 'You missed a hiring drive', default_link: '/dashboard/assessments' },
+  'assessment.reminder': { category: 'assessment', icon: 'clock', default_title: 'Test invite closing soon', default_link: '/dashboard/assessments' },
+  'pro_cert.expiring': { category: 'learning', icon: 'clock', default_title: 'Certification expiring', default_link: '/dashboard/certifications' },
+  'cohort.reminder': { category: 'learning', icon: 'alert-circle', default_title: 'Catch up with your cohort', default_link: '/dashboard/cohorts' },
+  'cohort.staff': { category: 'learning', icon: 'users', default_title: 'Learners who need help', default_link: '/dashboard/cohorts' },
+  'talent.invite': { category: 'hiring', icon: 'briefcase', default_title: 'An employer invited you', default_link: '/dashboard/passport#invites' },
+  'talent.update': { category: 'hiring', icon: 'award', default_title: 'Talent update', default_link: '/dashboard/hiring/talent' },
+  'hiring.nudge': { category: 'hiring', icon: 'clock', default_title: 'Hiring follow-up', default_link: '/dashboard/hiring' },
+  'ats.bgv': { category: 'hiring', icon: 'shield-check', default_title: 'Background check update', default_link: '/dashboard/hiring' },
+  'billing.plan_expiring': { category: 'billing', icon: 'credit-card', default_title: 'Your plan ends soon', default_link: '/dashboard/billing' },
+  'billing.licence_expiring': { category: 'billing', icon: 'key-round', default_title: 'Licence renewal due', default_link: '/dashboard/admin/licences' },
+  'billing.renewal_reminder': { category: 'billing', icon: 'credit-card', default_title: 'Your plan ends soon', default_link: '/dashboard/billing' },
+  'billing.upgrade_offer': { category: 'billing', icon: 'trending-up', default_title: 'Room to grow on your plan', default_link: '/pricing' },
+  'billing.winback_offer': { category: 'billing', icon: 'gift', default_title: 'An offer to come back', default_link: '/pricing' },
+  'automation.message': { category: 'general', icon: 'bell', default_title: 'Notification', default_link: '' },
 } as const
+
+/**
+ * Message class of a notification type for the shared per-person budget
+ * (AUTO-094, lib/messaging/budget.ts). Types listed here are capped when sent
+ * with notify() directly; everything else (receipts, security, results,
+ * invitations, things a person asked for) bypasses the cap. Senders can pass
+ * `budget` to override or add a topic/object dedupe key.
+ */
+export const NOTIFICATION_BUDGET_CLASS: Readonly<Record<string, MessageClass>> = {
+  'streak.saver': 'engagement',
+  'study_plan.reminder': 'engagement',
+  'onboarding_tips': 'engagement',
+  'placement.nudge': 'engagement',
+  'cohort.reminder': 'engagement',
+  'mentor.session_followup': 'engagement',
+  'mentor.feedback': 'engagement',
+  'talent.invite': 'transactional',
+  'billing.upgrade_offer': 'marketing',
+  'billing.winback_offer': 'marketing',
+  'automation.message': 'engagement',
+  'certification.expiring': 'deadline',
+  'pro_cert.expiring': 'deadline',
+  'billing.plan_expiring': 'deadline',
+  'billing.renewal_reminder': 'deadline',
+  'drive.reminder': 'deadline',
+  'assessment.reminder': 'deadline',
+  'hackathon.ending_soon': 'deadline',
+}
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
 
@@ -158,6 +208,14 @@ interface NotifyInput {
    * for `security` notifications, false otherwise (deferred to window end).
    */
   urgent?: boolean
+  /**
+   * Shared per-person messaging budget (AUTO-094). Default: the type's class in
+   * NOTIFICATION_BUDGET_CLASS (capped types are held when the person is at
+   * their cap — notify returns null); types not listed aren't capped. Pass a
+   * topic + object to send the same thing once whichever sender fires first.
+   * `false` only when the caller already admitted it (deliverNudge).
+   */
+  budget?: MessageBudget | false
 }
 
 /**
@@ -165,8 +223,16 @@ interface NotifyInput {
  * icon, timestamps, etc.). Returns the created notification or null on error.
  */
 export async function notify(input: NotifyInput): Promise<NotificationDoc | null> {
+  let admit: { commit: () => Promise<void>; release: () => Promise<void> } | null = null
   try {
     const typeInfo = NOTIFICATION_TYPES[input.type as NotificationType]
+    const budget = input.budget === false ? null : input.budget ?? (NOTIFICATION_BUDGET_CLASS[input.type] ? { class: NOTIFICATION_BUDGET_CLASS[input.type], source: input.type } : null)
+    if (budget) {
+      const { admitMessage } = await import('@/lib/messaging/budget')
+      const a = await admitMessage({ userId: input.user_id }, budget)
+      if (!a.ok) return null
+      admit = a
+    }
     const col = await notifications()
     const locale = await recipientLocale(input)
     const text = notificationText(input, locale)
@@ -184,6 +250,8 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
       created_at: nowIso(),
     }
     await col.insertOne(doc)
+    if (admit) await admit.commit()
+    admit = null
 
     // Out-of-app delivery (push / email / WhatsApp). Built up front, then sent
     // now or deferred to the end of the user's quiet hours (see
@@ -192,6 +260,7 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
 
     return doc
   } catch (e) {
+    if (admit) await admit.release().catch(() => {})
     console.error('[notifications] Failed: notifications', e)
     return null
   }

@@ -23,6 +23,7 @@ import { claimOnce, col, nowIso, releaseClaim } from './store'
 import { normalizeEmail } from './outbox'
 import { outboundT, renderOutbound, type OutboundText } from '@/lib/i18n/outbound'
 import type { Locale } from '@/lib/i18n/config'
+import type { MessageBudget } from '@/lib/messaging/budget'
 
 export type MailCategory = 'transactional' | 'engagement' | 'billing' | 'security' | 'hiring' | 'assessment' | 'events' | 'reports'
 
@@ -193,6 +194,13 @@ export interface AutomationMail extends MailContent {
   fromName?: string
   /** Catalog keys (email namespace) for non-English recipients; English uses the text above. */
   i18n?: MailI18n
+  /**
+   * Shared per-person messaging budget (AUTO-094, lib/messaging/budget.ts).
+   * Default: the class that fits `category` (engagement → capped, events →
+   * deadline, billing/security/transactional → not capped). `false` only when
+   * the caller already admitted the message (deliverNudge).
+   */
+  budget?: MessageBudget | false
 }
 
 export interface MailI18n {
@@ -233,7 +241,7 @@ export function dedupeKey(kind: DedupeKind, ref: string, to: string): string {
   return `dedupe:${kind}:${String(ref).slice(0, 200)}:${to.toLowerCase()}`
 }
 
-export type MailOutcome = 'sent' | 'deferred' | 'queued' | 'duplicate' | 'skipped_unsubscribed' | 'skipped_preferences' | 'skipped_suppressed' | 'skipped_invalid' | 'failed'
+export type MailOutcome = 'sent' | 'deferred' | 'queued' | 'duplicate' | 'capped' | 'skipped_unsubscribed' | 'skipped_preferences' | 'skipped_suppressed' | 'skipped_invalid' | 'failed'
 
 async function userForEmail(db: Db, email: string): Promise<{ id: string } | null> {
   const u = await db.collection('user').findOne({ email }, { projection: { id: 1, _id: 1 } }).catch(() => null)
@@ -258,9 +266,28 @@ export async function sendAutomationEmail(mail: AutomationMail): Promise<MailOut
     if (mail.onceKey) await releaseClaim(`mail:${mail.onceKey}`)
     return 'duplicate'
   }
-  const release = async () => {
+  const releaseClaims = async () => {
     if (mail.onceKey) await releaseClaim(`mail:${mail.onceKey}`)
     if (dKey) await releaseClaim(dKey)
+  }
+  let admit: { commit: () => Promise<void>; release: () => Promise<void> } | null = null
+  if (mail.budget !== false) {
+    const { admitMessage } = await import('@/lib/messaging/budget')
+    const { classForMailCategory } = await import('@/lib/messaging/budget-rules')
+    const a = await admitMessage({ userId, email: to }, mail.budget ?? { class: classForMailCategory(mail.category), source: 'mail' }).catch(() => null)
+    if (a && !a.ok) {
+      await releaseClaims()
+      return a.outcome
+    }
+    admit = a
+  }
+  const release = async () => {
+    await releaseClaims()
+    if (admit) await admit.release()
+  }
+  const sent = async <T extends MailOutcome>(o: T): Promise<T> => {
+    if (admit) await admit.commit()
+    return o
   }
 
   const unsubScope = CRITICAL.has(mail.category) ? 'engagement' : mail.category
@@ -280,14 +307,17 @@ export async function sendAutomationEmail(mail: AutomationMail): Promise<MailOut
     if (userId && !mail.urgent) {
       const { deliverOrDefer } = await import('@/lib/notifications-delivery')
       const r = await deliverOrDefer(userId, { email: { to, subject, html, headers, fromName, category: mail.category, managed: true } })
-      if (r === 'deferred') return 'deferred'
-      return 'sent'
+      if (r === 'deferred') return sent('deferred')
+      return sent('sent')
     }
     const { sendEmail } = await import('@/lib/send-email')
     const r = await sendEmail(to, { subject, html }, undefined, { category: 'notification', headers, fromName })
-    if (r.success) return 'sent'
-    if (r.suppressed) return 'skipped_suppressed'
-    if (r.queued) return 'queued'
+    if (r.success) return sent('sent')
+    if (r.suppressed) {
+      if (admit) await admit.release()
+      return 'skipped_suppressed'
+    }
+    if (r.queued) return sent('queued')
     await release()
     return 'failed'
   } catch (e) {

@@ -129,9 +129,14 @@ export async function purgeAccountData(db: Db, uid: string, now = new Date()): P
   }
   // Link ids were read above, so report logs and links can go in parallel.
   const plan = accountPurgePlan(uid, ids, now)
+  // The seller's products are archived below: note their ids so they leave the RAG index at once (RAG-024).
+  const productIds = ids.sellerIds.length
+    ? (await Promise.resolve().then(() => db.collection('mkt_products').find({ seller_id: { $in: ids.sellerIds }, status: { $ne: 'archived' } }, { projection: { _id: 0, id: 1 } }).limit(2000).toArray()).catch(() => [])).map((p) => String((p as { id?: unknown }).id || '')).filter(Boolean)
+    : []
   const results = await Promise.allSettled(plan.map((op) => op.kind === 'delete'
     ? db.collection(op.collection).deleteMany(op.filter)
     : db.collection(op.collection).updateMany(op.filter, op.update)))
   const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [plan[i].collection] : []))
+  if (productIds.length) void import('@/lib/rag/hooks').then((h) => h.knowledgeOnMarketplaceProduct(productIds)).catch(() => {})
   return { ok: results.length - failed.length, failed }
 }

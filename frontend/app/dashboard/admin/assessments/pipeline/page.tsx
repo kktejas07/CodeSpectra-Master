@@ -25,6 +25,7 @@ import {
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, StatCard, Panel } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface ExamOption {
   id: string
@@ -93,6 +94,7 @@ type RecruitStageKey = (typeof RECRUITMENT_STAGES)[number]['key']
 export default function PipelinePage() {
   const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
+  const { t } = useAdminT()
 
   const [exams, setExams] = useState<ExamOption[]>([])
   const [loadingExams, setLoadingExams] = useState(true)
@@ -127,7 +129,7 @@ export default function PipelinePage() {
   const moveStage = async (candidate: PipelineCandidate, stage: RecruitStageKey) => {
     const key = candidate.userId || candidate.id
     if (!candidate.userId) {
-      addToast({ type: 'error', title: 'Cannot move', message: 'No account linked to this candidate.' })
+      addToast({ type: 'error', title: t('pipeline.cannotMove'), message: t('pipeline.noAccount') })
       return
     }
     if (stageOf(candidate) === stage) return
@@ -151,7 +153,7 @@ export default function PipelinePage() {
         else n[key] = prev
         return n
       })
-      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Failed to save stage' })
+      addToast({ type: 'error', title: e instanceof Error ? e.message : t('pipeline.saveFailed') })
     } finally {
       setSavingStage(null)
     }
@@ -162,7 +164,7 @@ export default function PipelinePage() {
       .filter((c) => stageOf(c) !== 'none')
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     if (rows.length === 0) {
-      addToast({ type: 'info', title: 'No candidates have been moved to a stage yet' })
+      addToast({ type: 'info', title: t('pipeline.noneMoved') })
       return
     }
     const header = 'name,email,stage,score_pct'
@@ -198,7 +200,7 @@ export default function PipelinePage() {
         if (d.error) throw new Error(d.error)
         setPipeline(d)
       })
-      .catch(err => addToast({ type: 'error', title: err.message || 'Failed to load pipeline' }))
+      .catch(err => addToast({ type: 'error', title: err.message || t('pipeline.loadFailed') }))
       .finally(() => setLoadingPipeline(false))
   }, [selectedExamId, addToast])
 
@@ -210,17 +212,17 @@ export default function PipelinePage() {
       <PageHeader
         illustration="assessment"
         className="mb-0"
-        title="Candidate pipeline"
-        description="Track candidates through each stage of an assessment and move them between hiring rounds."
+        title={t('pipeline.title')}
+        description={t('pipeline.description')}
         icon={<LayoutDashboard />}
       />
 
       {/* Exam selector */}
       <Panel className="p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <span className="shrink-0 text-sm font-medium text-muted-foreground">Assessment</span>
+          <span className="shrink-0 text-sm font-medium text-muted-foreground">{t('pipeline.assessment')}</span>
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-            <SelectTrigger aria-label="Assessment">
+            <SelectTrigger aria-label={t('pipeline.assessment')}>
               <SelectValue placeholder={loadingExams ? 'Loading...' : 'Select an assessment'} />
             </SelectTrigger>
             <SelectContent>
@@ -234,7 +236,7 @@ export default function PipelinePage() {
 
       {/* Empty state: no exam selected */}
       {!selectedExamId && (
-        <EmptyState variant="search" title="Pick an assessment to see its pipeline" description="Choose one from the list above." />
+        <EmptyState variant="search" title={t('pipeline.pick')} description={t('pipeline.pickDesc')} />
       )}
 
       {/* Loading */}
@@ -250,10 +252,10 @@ export default function PipelinePage() {
         <>
           {/* Stats cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total invited" value={pipeline.stats.total} icon={<Users />} />
-            <StatCard label="Completion rate" value={`${pipeline.stats.total > 0 ? Math.round(((pipeline.stats.completed + pipeline.stats.passed + pipeline.stats.failed) / pipeline.stats.total) * 100) : 0}%`} icon={<TrendingUp />} />
-            <StatCard label="Pass rate" value={`${pipeline.stats.passRate}%`} icon={<Trophy />} />
-            <StatCard label="Average score" value={`${pipeline.stats.avgScore}%`} icon={<BarChart3 />} />
+            <StatCard label={t('pipeline.totalInvited')} value={pipeline.stats.total} icon={<Users />} />
+            <StatCard label={t('pipeline.completionRate')} value={`${pipeline.stats.total > 0 ? Math.round(((pipeline.stats.completed + pipeline.stats.passed + pipeline.stats.failed) / pipeline.stats.total) * 100) : 0}%`} icon={<TrendingUp />} />
+            <StatCard label={t('pipeline.passRate')} value={`${pipeline.stats.passRate}%`} icon={<Trophy />} />
+            <StatCard label={t('pipeline.avgScore')} value={`${pipeline.stats.avgScore}%`} icon={<BarChart3 />} />
           </div>
 
           {/* Kanban columns */}
@@ -264,12 +266,12 @@ export default function PipelinePage() {
                 <div key={key} className="flex flex-col">
                   <div className={`flex items-center gap-2 rounded-t-2xl border ${border} ${bg} px-3 py-2`}>
                     <Icon className={`h-4 w-4 ${color}`} />
-                    <span className={`text-sm font-semibold ${color}`}>{label}</span>
+                    <span className={`text-sm font-semibold ${color}`}>{t(`pipeline.stage.${key}`) || label}</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{items.length}</Badge>
                   </div>
                   <div className={`flex-1 border border-t-0 ${border} rounded-b-2xl bg-card/50 max-h-96 overflow-y-auto`}>
                     {items.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-muted-foreground">No candidates</div>
+                      <div className="py-8 text-center text-xs text-muted-foreground">{t('pipeline.noCandidates')}</div>
                     ) : (
                       <div className="p-2 space-y-2">
                         {items.map(c => (
@@ -304,20 +306,20 @@ export default function PipelinePage() {
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Recruitment pipeline</h2>
+                <h2 className="text-lg font-semibold">{t('pipeline.recruitment')}</h2>
                 <p className="text-xs text-muted-foreground">
-                  Drag a candidate card between columns to move them (e.g. Shortlisted → HR Round → Offer). Saves instantly.
+                  {t('pipeline.dragHint')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-xs">
-                  {submitted.filter((c) => stageOf(c) === 'shortlisted').length} shortlisted
+                  {t('pipeline.shortlistedCount', { n: submitted.filter((c) => stageOf(c) === 'shortlisted').length })}
                 </Badge>
                 <Badge variant="secondary" className="text-xs">
-                  {submitted.filter((c) => stageOf(c) !== 'none').length}/{submitted.length} placed
+                  {t('pipeline.placedCount', { placed: submitted.filter((c) => stageOf(c) !== 'none').length, total: submitted.length })}
                 </Badge>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={exportShortlistCsv}>
-                  <Download className="h-3.5 w-3.5" /> Export shortlist CSV
+                  <Download className="h-3.5 w-3.5" /> {t('pipeline.exportCsv')}
                 </Button>
               </div>
             </div>
@@ -338,12 +340,12 @@ export default function PipelinePage() {
                     }}
                   >
                     <div className={`flex items-center gap-2 rounded-t-2xl border ${border} ${bg} px-3 py-2`}>
-                      <span className={`text-sm font-semibold ${color}`}>{label}</span>
+                      <span className={`text-sm font-semibold ${color}`}>{t(`pipeline.rstage.${key}`) || label}</span>
                       <Badge variant="secondary" className="ml-auto text-xs">{items.length}</Badge>
                     </div>
                     <div className={`min-h-40 flex-1 border border-t-0 ${border} rounded-b-2xl bg-card/50 max-h-[28rem] overflow-y-auto`}>
                       {items.length === 0 ? (
-                        <div className="py-8 text-center text-xs text-muted-foreground">Drop candidates here</div>
+                        <div className="py-8 text-center text-xs text-muted-foreground">{t('pipeline.dropHere')}</div>
                       ) : (
                         <div className="p-2 space-y-2">
                           {items.map((c) => {
@@ -355,7 +357,7 @@ export default function PipelinePage() {
                                 onDragStart={(e) => { setDraggingKey(k); e.dataTransfer.effectAllowed = 'move' }}
                                 onDragEnd={() => setDraggingKey(null)}
                                 className={`cursor-grab active:cursor-grabbing rounded-xl border border-border/60 bg-card p-2.5 space-y-1 hover:shadow-sm transition-shadow ${draggingKey === k ? 'opacity-50' : ''}`}
-                                title="Drag to another stage"
+                                title={t('pipeline.dragTitle')}
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <p className="text-sm font-medium truncate">{c.name}</p>
@@ -368,8 +370,8 @@ export default function PipelinePage() {
                                       {c.scorePct ?? c.score}%
                                     </Badge>
                                   )}
-                                  {c.passed === true && <Badge variant="success" className="text-[10px]">Passed</Badge>}
-                                  {c.passed === false && <Badge variant="danger" className="text-[10px]">Below cutoff</Badge>}
+                                  {c.passed === true && <Badge variant="success" className="text-[10px]">{t('pipeline.passed')}</Badge>}
+                                  {c.passed === false && <Badge variant="danger" className="text-[10px]">{t('pipeline.belowCutoff')}</Badge>}
                                 </div>
                               </div>
                             )
@@ -387,9 +389,9 @@ export default function PipelinePage() {
           {pipeline.stats.total === 0 && (
             <EmptyState
               illustration="assessment"
-              title="No candidates yet"
-              description="Invite candidates or schedule a bulk run from the Assessments page."
-              actionLabel="Go to assessments"
+              title={t('pipeline.noCandidatesYet')}
+              description={t('pipeline.noCandidatesYetDesc')}
+              actionLabel={t('pipeline.goToAssessments')}
               actionHref="/dashboard/admin/assessments"
             />
           )}

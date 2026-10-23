@@ -4,12 +4,13 @@ CodeSpectra sends a small set of automatic reminders and follow-ups, called nudg
 
 ## What every nudge respects
 
-- **One shared limit per person.** Every nudge counts toward the same cap, which is 2 a day and 6 a week by default (Admin → Automations → Nudge limits). A deadline reminder gets one extra slot that day, for example a last-chance test invite, a drive starting in an hour or an offer about to expire. A nudge held back by the cap is tried again on the next run while its time window is still open.
+- **One shared limit per person.** Every reminder, tip and digest sent to a learner or candidate counts toward the same cap, whichever feature sends it: these nudges, the streak saver, study-plan reminders, event and test-invite reminders, plan-expiry reminders, daily and weekly digests, WhatsApp practice prompts, organisation workflows and the assistants. The cap is 2 a day and 6 a week by default (Admin → Automations → Nudge limits). A deadline reminder gets one extra slot that day, for example a last-chance test invite, a drive starting in an hour, an event about to start or a plan ending tomorrow. A message held back by the cap is tried again on the next run while its time window is still open.
+- **Never the same thing twice.** When two features would send the same message, you get it once. Examples: the request to rate a mentor session, the Monday hiring report, a renewal reminder from the revenue assistant on the same day as the automatic one.
 - **Stops once you act.** Each reminder checks again right before it goes out. If you submitted the test, paid, renewed, answered the invite or caught up, nothing is sent.
 - **Your settings.** Every email has an unsubscribe link. Turning email off in your notification preferences turns these off too. Quiet hours hold reminders until the quiet period ends. WhatsApp goes only to people who agreed to it and haven't replied STOP.
 - **Your language.** Emails and in-app notes arrive in your interface language (English, Hindi or Telugu).
 
-Two kinds of message don't count toward the cap. The notice sent 3 days before an automatic renewal charge is one. Digests for hiring staff and mentors are the other.
+Some messages never count toward the cap, but are still sent only once: receipts and other service emails (test invites, interview times, calendar invites), security notices, payment notices (a failed payment, a licence renewal), the notice sent 3 days before an automatic renewal charge, and reports for hiring staff and mentors. People on a plan that renews automatically (card or UPI mandate) get that pre-charge notice and never a "renew now" reminder.
 
 ## The nudges
 

@@ -6,6 +6,7 @@
  *   - per-user limit (per_user_limit, default 1)
  *   - plan restriction (plan_ids: plan keys such as "pro"; empty = any plan)
  *   - first purchase only (the buyer has never paid for anything)
+ *   - personal coupons (user_id): only that user — fails closed when the caller is unknown (SEC-035 / CORE-049)
  */
 import { normalizePlanKey } from '@/lib/entitlements-core'
 
@@ -18,6 +19,7 @@ export interface CouponRestrictions {
   per_user_limit?: number | null
   plan_ids?: string[] | null
   first_purchase_only?: boolean | null
+  user_id?: string | null
 }
 
 export type CouponRefusal =
@@ -28,6 +30,7 @@ export type CouponRefusal =
   | 'coupon_user_limit'
   | 'coupon_wrong_plan'
   | 'coupon_first_purchase_only'
+  | 'coupon_not_yours'
 
 export const COUPON_REFUSAL_MESSAGES: Record<CouponRefusal, string> = {
   coupon_inactive: 'Invalid or inactive coupon code.',
@@ -37,6 +40,7 @@ export const COUPON_REFUSAL_MESSAGES: Record<CouponRefusal, string> = {
   coupon_user_limit: 'You have already used this coupon code.',
   coupon_wrong_plan: 'This coupon does not apply to this plan.',
   coupon_first_purchase_only: 'This coupon is only for your first purchase.',
+  coupon_not_yours: 'This coupon was issued to someone else.',
 }
 
 export function perUserLimit(c: Pick<CouponRestrictions, 'per_user_limit'>): number {
@@ -46,10 +50,11 @@ export function perUserLimit(c: Pick<CouponRestrictions, 'per_user_limit'>): num
 
 export function couponEligibility(
   c: CouponRestrictions,
-  ctx: { planId: string; userRedemptions: number; hasPaidBefore: boolean; now?: Date },
+  ctx: { planId: string; userRedemptions: number; hasPaidBefore: boolean; userId?: string | null; now?: Date },
 ): { ok: true } | { ok: false; code: CouponRefusal } {
   const now = (ctx.now ?? new Date()).getTime()
   if (c.active === false) return { ok: false, code: 'coupon_inactive' }
+  if (c.user_id && c.user_id !== ctx.userId) return { ok: false, code: 'coupon_not_yours' }
   if (c.starts_at && Date.parse(c.starts_at) > now) return { ok: false, code: 'coupon_not_started' }
   if (c.valid_until && Date.parse(c.valid_until) < now) return { ok: false, code: 'coupon_expired' }
   const max = Number(c.max_uses) || 0

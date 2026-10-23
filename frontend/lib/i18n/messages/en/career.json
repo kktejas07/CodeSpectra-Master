@@ -870,5 +870,14 @@
   "rbTemplate:minimal": "Minimal",
   "rbTemplate:elegant": "Elegant",
   "rbTemplate:professional": "Professional",
-  "rbTemplate:creative": "Creative"
+  "rbTemplate:creative": "Creative",
+  "assignments": "Assignments",
+  "assignmentsHint": "Company practice tests assigned from the placement copilot, and who has finished them. A student is done once they complete an attempt after the assignment.",
+  "noAssignments": "No assignments yet",
+  "noAssignmentsDesc": "Ask the placement copilot to assign a company practice test to a group of students.",
+  "couldntLoadAssignments": "We couldn’t load assignments",
+  "assignedOn": "Assigned {date}",
+  "completedOf": "{done} of {total} completed",
+  "startedCount": "{count} started",
+  "inProgress": "in progress"
 }

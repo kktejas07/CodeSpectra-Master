@@ -66,7 +66,7 @@ interface Tenant {
 }
 
 export default function AdminExamsPage() {
-  const { t: tx } = useAdminT()
+  const { t: tx, rich } = useAdminT()
   const gate = usePageGuard('tenant_admin')
   // Platform timezone (Settings → General) for every date display / entry.
   const tz = usePlatformTimezone()
@@ -557,7 +557,7 @@ export default function AdminExamsPage() {
     }
   }
 
-  const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: 'Title', sortable: true, cell: (r) => (
+  const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: tx('assessList.col.title'), sortable: true, cell: (r) => (
       <button
         type="button"
         title={tx('assess.openResults')}
@@ -567,27 +567,27 @@ export default function AdminExamsPage() {
         {r.title}
       </button>
     ) },
-    { key: 'subject', header: 'Subject', sortable: true, cell: (r) => r.subject },
-    { key: 'tenant', header: 'Organization', sortable: true, cell: (r) => {
+    { key: 'subject', header: tx('assessList.col.subject'), sortable: true, cell: (r) => r.subject },
+    { key: 'tenant', header: tx('assessList.col.organization'), sortable: true, cell: (r) => {
       if (!r.tenant_id) return <span className="text-muted-foreground">{tx('assess.platform')}</span>
       const tenant = tenants.find(t => t.id === r.tenant_id)
       if (!tenant && gate.user?.role !== 'superadmin') return <span>{tx('assess.yourOrganisation')}</span>
       return tenant?.name || <span className="text-muted-foreground">{tx('assess.unknown')}</span>
     }},
-    { key: 'screening', header: 'Screening', sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
-    { key: 'level', header: 'Level', sortable: true, cell: (r) => r.level },
-    { key: 'duration', header: 'Duration', sortable: true, cell: (r) => `${r.duration} min` },
-    { key: 'questions', header: 'Questions', sortable: true, cell: (r) => r.questions },
-    { key: 'status', header: 'Status', cell: (r) => (
+    { key: 'screening', header: tx('assessList.col.screening'), sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
+    { key: 'level', header: tx('assessList.col.level'), sortable: true, cell: (r) => r.level },
+    { key: 'duration', header: tx('assessList.col.duration'), sortable: true, cell: (r) => tx('assessList.minutes', { n: r.duration }) },
+    { key: 'questions', header: tx('assessList.col.questions'), sortable: true, cell: (r) => r.questions },
+    { key: 'status', header: tx('assessList.col.status'), cell: (r) => (
       <Badge variant={r.published ? 'success' : 'secondary'}>
-        {r.published ? 'Published' : 'Draft'}
+        {r.published ? tx('assess.published') : tx('assessList.draft')}
       </Badge>
     )},
-    { key: 'stats', header: 'Stats', cell: (r) => (
+    { key: 'stats', header: tx('assessList.col.stats'), cell: (r) => (
       <div className="flex flex-col gap-0.5 text-xs text-muted-foreground whitespace-nowrap">
-        <span>{r.invites || 0} invites sent</span>
-        <span>{r.attempts || 0} submitted</span>
-        <span>{r.released || 0} released</span>
+        <span>{tx('assessList.statInvites', { n: r.invites || 0 })}</span>
+        <span>{tx('assessList.statSubmitted', { n: r.attempts || 0 })}</span>
+        <span>{tx('assessList.statReleased', { n: r.released || 0 })}</span>
       </div>
     )},
     { key: 'actions', header: '', cell: (r) => (
@@ -600,24 +600,24 @@ export default function AdminExamsPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuItem onSelect={() => setTimeout(() => openInviteModal(r), 0)} disabled={!r.published} className="gap-2">
-              <Send className="h-4 w-4" /> Invite candidate
+              <Send className="h-4 w-4" /> {tx('assess.inviteCandidate')}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setTimeout(() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }, 0)} disabled={!r.published} className="gap-2">
-              <Users className="h-4 w-4" /> Bulk invite
+              <Users className="h-4 w-4" /> {tx('assessList.bulkInvite')}
             </DropdownMenuItem>
             {r.published && (
               <DropdownMenuItem onSelect={() => setTimeout(() => openLinkDialog(r), 0)} className="gap-2">
-                <Link2 className="h-4 w-4" /> Share links
+                <Link2 className="h-4 w-4" /> {tx('assessList.shareLinks')}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/results`)} className="gap-2">
-              <Eye className="h-4 w-4" /> View results
+              <Eye className="h-4 w-4" /> {tx('assessList.viewResults')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/edit`)} className="gap-2">
-              <Edit className="h-4 w-4" /> Edit assessment
+              <Edit className="h-4 w-4" /> {tx('assessList.editAssessment')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive">
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4" /> {tx('assessList.delete')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -626,7 +626,7 @@ export default function AdminExamsPage() {
   ]
 
   const bulkActions: BulkAction[] = [
-    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+    { label: tx('assessList.delete'), variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
   ]
 
   if (!gate.ready) return null
@@ -644,13 +644,13 @@ export default function AdminExamsPage() {
           actions={
             <>
               <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
-                <Upload className="w-4 h-4" />Invite candidates
+                <Upload className="w-4 h-4" />{tx('assessList.inviteCandidates')}
               </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
-                <LayoutDashboard className="w-4 h-4" />Pipeline
+                <LayoutDashboard className="w-4 h-4" />{tx('assessList.pipeline')}
               </Button>
               <Button className="gap-2" onClick={openAddModal}>
-                <Plus className="w-4 h-4" />Add assessment
+                <Plus className="w-4 h-4" />{tx('assessList.addAssessment')}
               </Button>
             </>
           }
@@ -669,7 +669,7 @@ export default function AdminExamsPage() {
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-card p-3">
         <span className="text-sm font-medium text-muted-foreground">{tx('assess.created')}</span>
         <Input aria-label={tx('assess.createdFrom')} type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
-        <span className="text-muted-foreground">to</span>
+        <span className="text-muted-foreground">{tx('assessList.to')}</span>
         <Input aria-label={tx('assess.createdTo')} type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
         <div className="flex items-center gap-1">
           {([['7d', '7D'], ['30d', '30D'], ['90d', '90D'], ['year', 'Year']] as const).map(([val, label]) => (
@@ -699,7 +699,7 @@ export default function AdminExamsPage() {
         <DataTable
           columns={columns}
           data={visibleExams}
-          searchPlaceholder="Search assessments..."
+          searchPlaceholder={tx('assessList.searchPlaceholder')}
           searchKeys={['title', 'subject', 'level', 'tenant_id']}
           bulkActions={bulkActions}
           loading={loading}
@@ -710,7 +710,7 @@ export default function AdminExamsPage() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingExam ? 'Edit assessment' : 'Create assessment'}</DialogTitle>
+            <DialogTitle>{editingExam ? tx('assessList.editAssessment') : tx('assessList.createAssessment')}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4 py-4">
             <div className="col-span-1 sm:col-span-2 lg:col-span-3 grid gap-2">
@@ -791,7 +791,7 @@ export default function AdminExamsPage() {
               />
               <span>
                 {tx('assess.requirePersonalLinks')}
-                <span className="block text-xs text-muted-foreground font-normal">Disable legacy ?share=true URLs — candidates must use token links or invites.</span>
+                <span className="block text-xs text-muted-foreground font-normal">{tx('assessList.requireLinksHint')}</span>
               </span>
             </label>
             <div className="grid gap-2">
@@ -873,7 +873,7 @@ export default function AdminExamsPage() {
             <div className="sm:col-span-2 lg:col-span-3 rounded-lg border bg-muted/20 p-4 space-y-3">
               <div>
                 <p className="text-sm font-medium">{tx('assess.identityVerification')}</p>
-                <p className="text-xs text-muted-foreground">Turn off either step to let candidates skip it. Both off = consent only, exam starts directly.</p>
+                <p className="text-xs text-muted-foreground">{tx('assessList.identityHint')}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireIdVerification">
@@ -886,7 +886,7 @@ export default function AdminExamsPage() {
                 />
                 <span>
                   {tx('assess.requireIdVerification')}
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture/upload a Government ID (OCR name match). Off = skip ID step.</span>
+                  <span className="block text-xs text-muted-foreground font-normal">{tx('assessList.idHint')}</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireFaceCapture">
@@ -899,7 +899,7 @@ export default function AdminExamsPage() {
                 />
                 <span>
                   {tx('assess.requireFaceCapture')}
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates take a live selfie. With ID on too, reviewers see an advisory face match score. Off = skip face step.</span>
+                  <span className="block text-xs text-muted-foreground font-normal">{tx('assessList.faceHint')}</span>
                 </span>
               </label>
               </div>
@@ -917,8 +917,8 @@ export default function AdminExamsPage() {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     {noCameraPolicy === 'block'
-                      ? 'Candidates without a working camera can’t start the test.'
-                      : 'Candidates upload a photo of their ID instead. Their result is flagged “No camera — needs manual identity review”.'}
+                      ? tx('assessList.noCameraBlockHint')
+                      : tx('assessList.noCameraAllowHint')}
                   </p>
                 </div>
               )}
@@ -979,7 +979,7 @@ export default function AdminExamsPage() {
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {!editingExam && !saving && questions > 0 && <Wand2 className="mr-2 h-4 w-4" />}
               {!editingExam && !saving && questions === 0 && <Plus className="mr-2 h-4 w-4" />}
-              {editingExam ? 'Save changes' : questions > 0 ? 'Generate with AI' : 'Create blank assessment'}
+              {editingExam ? tx('assessList.saveChanges') : questions > 0 ? tx('assessList.generateWithAi') : tx('assessList.createBlank')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -990,7 +990,7 @@ export default function AdminExamsPage() {
           <SheetHeader>
             <SheetTitle>{tx('assess.inviteCandidate')}</SheetTitle>
             <SheetDescription>
-              Send an assessment invitation to a candidate for <strong>{invitingExam?.title}</strong>.
+              {rich('assessList.inviteFor', { title: <strong>{invitingExam?.title}</strong> })}
             </SheetDescription>
           </SheetHeader>
           {!generatedLink ? (
@@ -1024,7 +1024,7 @@ export default function AdminExamsPage() {
                   <p className="font-medium">{tx('assess.invitationSent')}</p>
                 </div>
                 <p className="text-sm text-green-700/80 dark:text-green-400/80">
-                  Link emailed to <strong>{candEmail}</strong>
+                  {rich('assessList.linkEmailedTo', { email: <strong>{candEmail}</strong> })}
                 </p>
               </div>
               <div className="space-y-2">
@@ -1050,7 +1050,7 @@ export default function AdminExamsPage() {
       <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Bulk invite candidates — {bulkInviteExam?.title}</DialogTitle>
+            <DialogTitle>{tx('assessList.bulkTitle', { title: bulkInviteExam?.title ?? '' })}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
             {bulkResults ? (
@@ -1058,7 +1058,7 @@ export default function AdminExamsPage() {
                 <div className={`rounded-lg border p-4 ${bulkResults.failed === 0 ? 'border-green-500/20 bg-green-500/10' : 'border-amber-500/20 bg-amber-500/10'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    <p className="font-medium">{bulkResults.sent} invite(s) sent, {bulkResults.failed} failed</p>
+                    <p className="font-medium">{tx('assessList.bulkResult', { sent: bulkResults.sent, failed: bulkResults.failed })}</p>
                   </div>
                   {bulkResults.errors.length > 0 && (
                     <div className="text-xs text-muted-foreground space-y-1 max-h-32 overflow-y-auto">
@@ -1075,8 +1075,8 @@ export default function AdminExamsPage() {
             <div className="grid gap-2">
                   <Label>{tx('assess.pasteCsvEmailName')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    <strong>CSV:</strong> {tx('assess.oneCandidatePerLine')} <code>email,name</code> or <code>jane@example.com,Jane</code>
-                    <br />Names are optional. Header row is detected automatically.
+                    <strong>CSV:</strong> {tx('assess.oneCandidatePerLine')} <code>email,name</code> {tx('assessList.csvOr')} <code>jane@example.com,Jane</code>
+                    <br />{tx('assessList.csvNamesOptional')}
                   </p>
                   <div className="max-h-62.5 overflow-y-auto border rounded-md">
                     <Textarea
@@ -1094,7 +1094,7 @@ export default function AdminExamsPage() {
                     setBulkCsvText(sample)
                     setBulkPreview(null)
                   }} className="gap-2">
-                    <Download className="h-3.5 w-3.5" /> Sample CSV
+                    <Download className="h-3.5 w-3.5" /> {tx('assessList.sampleCsv')}
                   </Button>
                   <input
                     id="bulk-file-input"
@@ -1109,7 +1109,7 @@ export default function AdminExamsPage() {
                     }}
                   />
                   <Button variant="outline" size="sm" onClick={() => document.getElementById('bulk-file-input')?.click()} className="gap-2">
-                    <Upload className="h-3.5 w-3.5" /> Upload file
+                    <Upload className="h-3.5 w-3.5" /> {tx('assessList.uploadFile')}
                   </Button>
                   <Button onClick={() => {
                     const candidates = parseBulkCsv(bulkCsvText)
@@ -1124,7 +1124,7 @@ export default function AdminExamsPage() {
                 </div>
                 {bulkPreview && (
                   <div className="border rounded-md p-3 bg-muted/20 space-y-2">
-                    <p className="text-sm font-medium">{bulkPreview.length} candidate(s) found</p>
+                    <p className="text-sm font-medium">{tx('assessList.candidatesFound', { count: bulkPreview.length })}</p>
                     <div className="max-h-48 overflow-y-auto space-y-1 text-xs">
                       {bulkPreview.map((c, i) => (
                         <div key={i} className="flex items-center gap-2 py-1 border-b border-border/40 last:border-0">
@@ -1144,7 +1144,7 @@ export default function AdminExamsPage() {
               <Button variant="outline" onClick={() => setIsBulkInviteOpen(false)}>{tx('common.cancel')}</Button>
               <Button onClick={handleBulkInvite} disabled={bulkSending || !bulkPreview || bulkPreview.length === 0}>
                 {bulkSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                Send {bulkPreview?.length || 0} invites
+                {tx('assessList.sendInvites', { count: bulkPreview?.length || 0 })}
               </Button>
             </DialogFooter>
           )}
@@ -1154,7 +1154,7 @@ export default function AdminExamsPage() {
       <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
         <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Share links — {linkExam?.title}</DialogTitle>
+            <DialogTitle>{tx('assessList.shareTitle', { title: linkExam?.title ?? '' })}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-5">
             <div className="grid gap-2">
@@ -1246,7 +1246,7 @@ export default function AdminExamsPage() {
               {linkLoading ? (
                 <p className="text-sm text-muted-foreground">{tx('assess.loadingLinks')}</p>
               ) : linkRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No links yet. Set the options above and click 'Create & copy link'.</p>
+                <p className="text-sm text-muted-foreground">{tx('assessList.noLinks')}</p>
               ) : (
                 <div className="border rounded-md divide-y divide-border/40 max-h-72 overflow-y-auto">
                   {linkRows.map((l) => (
@@ -1313,7 +1313,7 @@ export default function AdminExamsPage() {
             <Button variant="outline" onClick={() => setIsLinkOpen(false)}>{tx('common.close')}</Button>
             <Button onClick={handleCreateLink} disabled={linkCreating || (linkType === 'invited' && !linkEmail.includes('@'))}>
               {linkCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-              Create & copy link
+              {tx('assessList.createCopyLink')}
             </Button>
           </DialogFooter>
         </DialogContent>

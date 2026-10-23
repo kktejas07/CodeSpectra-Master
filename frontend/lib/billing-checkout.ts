@@ -6,12 +6,17 @@
 import 'server-only'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
+import { nativeCheckoutBlock } from '@/lib/billing/native-checkout'
 import { CheckoutError, PaymentService } from '@/lib/payment-service'
 import { hasUserUsedCoupon } from '@/lib/db/billing'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 import { CONTACT_SALES_HREF, isValidPlanId, parseInterval } from '@/lib/billing-plan-mode'
 
 export async function handleCheckoutRequest(req: NextRequest): Promise<NextResponse> {
+  // CORE-038 / SEC-034: the store-rule block lives in the shared handler so
+  // every checkout path (incl. the deprecated /api/billing/create-order) gets it.
+  const blocked = nativeCheckoutBlock(req)
+  if (blocked) return blocked as NextResponse
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

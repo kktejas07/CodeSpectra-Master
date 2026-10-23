@@ -91,9 +91,14 @@ export async function POST(req: NextRequest) {
 
     if (body.action === 'unpublish' || body.action === 'delete') {
       if (draft.blog_slug) {
-        await (await blogPosts()).deleteOne({ slug: draft.blog_slug })
+        const post = await (await blogPosts()).findOneAndDelete({ slug: draft.blog_slug }, { projection: { _id: 0, id: 1 } })
         const { revalidateContent } = await import('@/lib/cache/revalidate')
         await revalidateContent('news', draft.blog_slug)
+        // Out of the RAG index (public Ask, copilot) now, not at the nightly sweep (RAG-024).
+        if (post?.id) {
+          const { knowledgeOnNewsPost } = await import('@/lib/rag/hooks')
+          knowledgeOnNewsPost(String(post.id))
+        }
       }
       if (body.action === 'delete') {
         await col.deleteOne({ id: body.id })

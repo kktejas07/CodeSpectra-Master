@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
 
 export const runtime = 'nodejs'
@@ -26,10 +26,8 @@ async function cfFetch(token: string, path: string) {
 }
 
 export async function GET() {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   const secrets = await readServerSecrets()
   const zoneId = (secrets.cloudflare_zone_id?.trim() || '') || process.env.CLOUDFLARE_ZONE_ID?.trim() || ''

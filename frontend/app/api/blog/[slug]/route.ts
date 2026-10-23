@@ -94,6 +94,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (existing.status === 'published' || patch.status === 'published') {
       await revalidateContent('news', existing.slug)
       if (typeof patch.slug === 'string' && patch.slug !== existing.slug) await revalidateContent('news', patch.slug)
+      // Tech news posts are RAG sources: re-index an edit, drop an unpublish at once (RAG-024).
+      const { knowledgeOnNewsPost } = await import('@/lib/rag/hooks')
+      knowledgeOnNewsPost(String(existing.id))
     }
     return NextResponse.json({ post: await col.findOne({ id: existing.id }) })
   } catch (e) {
@@ -107,9 +110,13 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const { slug } = await ctx.params
-    const r = await (await blogPosts()).deleteOne({ slug })
-    if (!r.deletedCount) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
+    const r = await (await blogPosts()).findOneAndDelete({ slug }, { projection: { _id: 0, id: 1 } })
+    if (!r) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     await revalidateContent('news', slug)
+    if (r.id) {
+      const { knowledgeOnNewsPost } = await import('@/lib/rag/hooks')
+      knowledgeOnNewsPost(String(r.id))
+    }
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[blog] DELETE:', e)

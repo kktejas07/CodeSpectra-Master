@@ -1,9 +1,11 @@
 /**
  * Scheduled assistant loops (server only), called from the scheduler's content
  * lane (lib/scheduler.ts) — so both the in-process loop and /api/cron/tick run
- * them. Checked once an hour (minute 7); each loop claims its own window in the
- * database (lib/automation/job-lease → one replica, heartbeat in the job health
- * registry, retried when a run fails), so a missed hour is caught up next hour.
+ * them. Checked on every tick (no exact-minute gate: an every-5-minutes external cron or a
+ * skipped minute still runs them — CORE-045 / AUTO-106); each loop claims its
+ * own window in the database (lib/automation/job-lease → one replica, heartbeat
+ * in the job health registry, retried when a run fails), so each hour / day /
+ * week runs once and a missed one is caught up on the next tick.
  *
  *   assistant-mentor-followup   hourly
  *   assistant-revenue           daily from 04:30 UTC (10:00 IST)
@@ -13,13 +15,10 @@
 import 'server-only'
 import type { AssistantId } from './registry'
 
-export const ASSISTANT_TICK_MINUTE = 7
-
 const at = (now: Date, h: number, m: number) => now.getUTCHours() > h || (now.getUTCHours() === h && now.getUTCMinutes() >= m)
 
 export async function runAssistantsTick(now = new Date()): Promise<{ ran: string[]; skipped: string[] }> {
   const out = { ran: [] as string[], skipped: [] as string[] }
-  if (now.getUTCMinutes() !== ASSISTANT_TICK_MINUTE) return out
   const { runLeasedJob, dayWindow } = await import('@/lib/automation/job-lease')
   const { isoWeek } = await import('./placement/select')
   const job = async (name: string, window: string, fn: () => Promise<unknown>) => {

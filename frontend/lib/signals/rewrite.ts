@@ -28,6 +28,8 @@ export interface SignalDraftResult {
   angle: string
   /** Prompt-guard reasons found in the fetched source text (forces human review). */
   flags: string[]
+  /** The fetched page text the facts were extracted from (fact-check evidence, AGT-039; not stored). */
+  source_text?: string
 }
 
 function parseJsonObject(res: {
@@ -281,6 +283,7 @@ export async function researchThenDraft(args: {
     source_urls: sourceUrls,
     angle,
     flags,
+    source_text: pages.map((p) => `${p.title || ''}\n${p.text}`).join('\n\n').slice(0, 40_000),
   }
 }
 

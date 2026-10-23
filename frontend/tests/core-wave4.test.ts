@@ -14,6 +14,9 @@ const auth = vi.hoisted(() => ({ user: null as null | { id: string; email: strin
 vi.mock('@/lib/route-auth', () => ({
   requireAuth: async () => (auth.user ? { user: auth.user } : { error: 'Unauthorized', status: 401 }),
   getAPIUser: async () => auth.user,
+  // SEC-029 2FA-aware role helpers (same rules as lib/route-auth).
+  isSuperAdminCaller: (u: { role?: string; adminTwoFactorRequired?: boolean } | null) => !!u && u.role === 'superadmin' && !u.adminTwoFactorRequired,
+  isAdminCaller: (u: { role?: string; tenantId?: string | null; adminTwoFactorRequired?: boolean } | null) => !!u && !u.adminTwoFactorRequired && (u.role === 'superadmin' || (u.role === 'tenant_admin' && !!u.tenantId)),
 }))
 vi.mock('@/lib/ats/access', () => ({ resolveActorFor: vi.fn(async () => null) }))
 vi.mock('@/lib/upstash-rate-limit', () => ({ rateLimitAIRedis: async () => ({ ok: true }), rateLimitRedis: async () => ({ ok: true }) }))

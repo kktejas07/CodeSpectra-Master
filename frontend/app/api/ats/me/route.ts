@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller } from '@/lib/route-auth'
 import { ATS_TENANT_COOKIE, listMyMemberships, resolveActorFor, tenantFromRequest } from '@/lib/ats/access'
 
 /**
@@ -16,13 +16,13 @@ export async function GET(req: NextRequest) {
       {
         memberships,
         current: actor ? { tenant_id: actor.tenantId, role: actor.role, client_id: actor.clientId } : null,
-        superadmin: user.role === 'superadmin',
+        superadmin: isSuperAdminCaller(user),
       },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
   } catch (e) {
     console.error('[ats/me] GET failed:', e)
-    return NextResponse.json({ memberships: [], current: null, superadmin: user.role === 'superadmin' })
+    return NextResponse.json({ memberships: [], current: null, superadmin: isSuperAdminCaller(user) })
   }
 }
 

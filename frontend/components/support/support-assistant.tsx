@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 
 interface Result { n: number; title: string; url: string }
-interface Answer { mode: 'ai' | 'fallback'; fallback: string | null; answer: string | null; facts: string[]; cited: number[]; results: Result[]; escalate: boolean }
+interface Answer { mode: 'ai' | 'fallback'; fallback: string | null; answer: string | null; facts: string[]; cited: number[]; results: Result[]; escalate: boolean; answer_id?: string | null }
 type Turn = { id: number; role: 'user'; text: string } | { id: number; role: 'assistant'; q: string; a: Answer; ticket?: 'busy' | 'done' }
 
 export function SupportAssistant({ onTicketCreated }: { onTicketCreated?: () => void }) {
@@ -67,7 +67,7 @@ export function SupportAssistant({ onTicketCreated }: { onTicketCreated?: () => 
   const escalate = async (turn: Extract<Turn, { role: 'assistant' }>) => {
     setTurns((p) => p.map((x) => (x.id === turn.id ? { ...x, ticket: 'busy' } as Turn : x)))
     try {
-      const r = await csrfFetch('/api/support/assistant/escalate', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: turn.q, ...(turn.a.answer ? { answer: turn.a.answer } : {}) }) })
+      const r = await csrfFetch('/api/support/assistant/escalate', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: turn.q, ...(turn.a.answer_id ? { answer_id: turn.a.answer_id } : {}) }) })
       const d = await r.json().catch(() => null)
       if (!r.ok) throw new Error(apiError(d))
       setTurns((p) => p.map((x) => (x.id === turn.id ? { ...x, ticket: 'done' } as Turn : x)))
@@ -151,7 +151,7 @@ export function SupportAssistant({ onTicketCreated }: { onTicketCreated?: () => 
           <Textarea
             id="support-assistant-q" rows={2} maxLength={600} value={q} onChange={(e) => setQ(e.target.value)}
             placeholder={t('account.saPlaceholder')}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void ask() } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask() } }}
           />
         </div>
         <Button type="submit" disabled={busy || q.trim().length < 2} className="rounded-full sm:mb-0.5">

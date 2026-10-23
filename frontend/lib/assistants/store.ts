@@ -2,7 +2,13 @@
  * Assistants persistence (server only).
  *
  *   assistant_settings  { _id: AssistantId, ...AssistantSettings, updated_at, updated_by }
- *   assistant_runs      AssistantRunRow — the admin run log (TTL 90 days)
+ *   assistant_runs      AssistantRunRow — the admin run log of loop / copilot runs (TTL 90 days)
+ *   assistant_turns     AssistantRunRow with trigger 'user' — help-chat questions, mentor
+ *                       suggestion views (TTL 30 days); kept apart so they never bury the
+ *                       scheduled runs in the admin log (AGT-045)
+ *   assistant_answers   { id, user_ref, q, answer, expires_at } — the help assistant's real
+ *                       answer, so an escalation ticket quotes it from here, never from the
+ *                       browser (AGT-040; TTL 1 day)
  *   assistant_counters  { id, n, expires_at } — daily AI calls, per-user question counts (TTL)
  *   assistant_marks     { key, assistant, at, expires_at } — "already did this" marks for
  *                       idempotent loops / cooldowns (unique key, TTL)
@@ -28,6 +34,15 @@ const runsCol = lazyCollection<RunDoc>('assistant_runs', (c) => Promise.all([
   c.createIndex({ id: 1 }, { unique: true, name: 'assistant_runs_id' }),
   c.createIndex({ assistant: 1, started_at: -1 }, { name: 'assistant_runs_assistant_started' }),
   c.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0, name: 'assistant_runs_ttl' }),
+]))
+const turnsCol = lazyCollection<RunDoc>('assistant_turns', (c) => Promise.all([
+  c.createIndex({ assistant: 1, started_at: -1 }, { name: 'assistant_turns_assistant_started' }),
+  c.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0, name: 'assistant_turns_ttl' }),
+]))
+interface AnswerDoc { id: string; user_ref: string; q: string; answer: string; expires_at: Date }
+const answersCol = lazyCollection<AnswerDoc>('assistant_answers', (c) => Promise.all([
+  c.createIndex({ id: 1 }, { unique: true, name: 'assistant_answers_id' }),
+  c.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0, name: 'assistant_answers_ttl' }),
 ]))
 const countersCol = lazyCollection<CounterDoc>('assistant_counters', (c) => Promise.all([
   c.createIndex({ id: 1 }, { unique: true, name: 'assistant_counters_id' }),
@@ -148,10 +163,14 @@ export async function aiUsageToday(id: AssistantId, now = new Date()): Promise<{
 
 // ─── Run log ────────────────────────────────────────────────────────────────
 
+/** Where a row is logged: user-triggered turns go to assistant_turns, loop / copilot runs to the run log (pure). */
+export const runLogFor = (trigger: AssistantRunRow['trigger']): 'turns' | 'runs' => (trigger === 'user' ? 'turns' : 'runs')
+
 export async function recordRun(row: Omit<AssistantRunRow, 'id' | 'started_at' | 'finished_at'> & { started_at?: string }): Promise<AssistantRunRow> {
   const started = row.started_at ?? nowIso()
-  const doc: RunDoc = { ...row, id: newId(), started_at: started, finished_at: nowIso(), message: String(row.message || '').slice(0, 400), expires_at: new Date(Date.now() + 90 * DAY) }
-  await (await runsCol()).insertOne({ ...doc }).catch((e) => console.error('[assistants] run log write failed', (e as Error)?.message))
+  const turn = runLogFor(row.trigger) === 'turns'
+  const doc: RunDoc = { ...row, id: newId(), started_at: started, finished_at: nowIso(), message: String(row.message || '').slice(0, 400), expires_at: new Date(Date.now() + (turn ? 30 : 90) * DAY) }
+  await (await (turn ? turnsCol : runsCol)()).insertOne({ ...doc }).catch((e) => console.error('[assistants] run log write failed', (e as Error)?.message))
   const { expires_at: _e, ...out } = doc
   void _e
   return out
@@ -163,11 +182,35 @@ export async function listRuns(assistant: AssistantId | null, limit = 30): Promi
 }
 
 /** Counts per assistant over the last N days (admin page + copilot activity tool). */
-export async function runStats(days = 7, now = new Date()): Promise<Record<string, { runs: number; failed: number; last_at: string | null }>> {
+export async function runStats(days = 7, now = new Date()): Promise<Record<string, { runs: number; failed: number; last_at: string | null; user_turns: number }>> {
   const since = new Date(now.getTime() - days * DAY).toISOString()
-  const rows = await (await runsCol()).aggregate<{ _id: string; runs: number; failed: number; last_at: string }>([
-    { $match: { started_at: { $gte: since } } },
-    { $group: { _id: '$assistant', runs: { $sum: 1 }, failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } }, last_at: { $max: '$started_at' } } },
-  ]).toArray().catch(() => [])
-  return Object.fromEntries(rows.map((r) => [r._id, { runs: r.runs, failed: r.failed, last_at: r.last_at ?? null }]))
+  const group = { $group: { _id: '$assistant', runs: { $sum: 1 }, failed: { $sum: { $cond: [{ $eq: ['$status', 'failed'] }, 1, 0] } }, last_at: { $max: '$started_at' } } }
+  type G = { _id: string; runs: number; failed: number; last_at: string }
+  const [rows, turns] = await Promise.all([
+    (await runsCol()).aggregate<G>([{ $match: { started_at: { $gte: since } } }, group]).toArray().catch(() => [] as G[]),
+    (await turnsCol()).aggregate<G>([{ $match: { started_at: { $gte: since } } }, group]).toArray().catch(() => [] as G[]),
+  ])
+  const out: Record<string, { runs: number; failed: number; last_at: string | null; user_turns: number }> = {}
+  for (const r of rows) out[r._id] = { runs: r.runs, failed: r.failed, last_at: r.last_at ?? null, user_turns: 0 }
+  for (const t of turns) out[t._id] = { ...(out[t._id] ?? { runs: 0, failed: 0, last_at: null }), user_turns: t.runs }
+  return out
+}
+
+// ─── Help-assistant answers (escalation quotes) ─────────────────────────────
+
+/** Keep the assistant's real answer for a day; returns the id the browser sends back on escalation. */
+export async function saveAnswer(userId: string, q: string, answer: string): Promise<string | null> {
+  const id = newId()
+  try {
+    await (await answersCol()).insertOne({ id, user_ref: userRef(userId), q: q.slice(0, 2000), answer: answer.slice(0, 3000), expires_at: new Date(Date.now() + DAY) })
+    return id
+  } catch {
+    return null
+  }
+}
+
+/** The stored answer, only for the user it was given to. */
+export async function loadAnswer(userId: string, id: string): Promise<{ q: string; answer: string } | null> {
+  const row = await (await answersCol()).findOne({ id, user_ref: userRef(userId), expires_at: { $gt: new Date() } }, { projection: { _id: 0, q: 1, answer: 1 } }).catch(() => null)
+  return row ? { q: row.q, answer: row.answer } : null
 }

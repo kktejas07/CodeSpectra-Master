@@ -74,8 +74,16 @@ describe('RAG offline evaluation', () => {
     // Audit 5 (RAG-020 weighted fusion, guides 23-35, contests): keyword s@5 93.4%, MRR 0.825; hybrid s@5 ~91.8%, MRR 0.840.
     expect(keyword.metrics.success[5]).toBeGreaterThanOrEqual(0.9)
     expect(keyword.metrics.mrr).toBeGreaterThanOrEqual(0.78)
-    expect(hybrid.metrics.success[5]).toBeGreaterThanOrEqual(0.88)
+    expect(hybrid.metrics.success[5]).toBeGreaterThanOrEqual(0.9)
     expect(hybrid.metrics.mrr).toBeGreaterThanOrEqual(0.78)
+    // Audit 6 (RAG-020 keyword-first fusion, k 1 / keyword 10): hybrid s@3 0.893, s@5 0.934, multi-hop s@3 0.833,
+    // MRR 0.820 — equal to keyword-only at top 3 / 5 and multi-hop, better at s@10. Hybrid must never lose to keyword there.
+    expect(hybrid.metrics.success[3]).toBeGreaterThanOrEqual(keyword.metrics.success[3])
+    expect(hybrid.metrics.success[5]).toBeGreaterThanOrEqual(keyword.metrics.success[5])
+    expect(hybrid.metrics.success[10]).toBeGreaterThanOrEqual(keyword.metrics.success[10])
+    const multiHop = (m: typeof hybrid.metrics) => m.by_kind.find((k) => k.kind === 'multi_hop')?.success_at_3 ?? 0
+    expect(multiHop(hybrid.metrics)).toBeGreaterThanOrEqual(multiHop(keyword.metrics))
+    expect(multiHop(hybrid.metrics)).toBeGreaterThanOrEqual(0.8)
     // The hiring sources (RAG-001) are indexed and findable.
     const hiring = keyword.results.filter((r) => r.id.startsWith('hr-'))
     expect(hiring.length).toBeGreaterThanOrEqual(5)

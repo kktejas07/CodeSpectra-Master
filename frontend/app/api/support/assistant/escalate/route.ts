@@ -1,5 +1,5 @@
 /**
- * POST /api/support/assistant/escalate { q, answer?, category? } — turn a help-assistant
+ * POST /api/support/assistant/escalate { q, answer_id?, category? } — turn a help-assistant
  * question into a support ticket in the caller's own name (3 per minute, like tickets).
  */
 import { NextRequest, NextResponse } from 'next/server'

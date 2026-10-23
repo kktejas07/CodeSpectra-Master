@@ -3,8 +3,9 @@
  * Mongo-backed queue (rag_sources rows with status 'queued'), sweeps and the
  * scheduler tick.
  *
- *  - Hooks call `enqueueKnowledge(type, id)` on create / update / delete; the
- *    loader decides: a source that no longer exists (or is now a draft) is removed.
+ *  - Hooks call `refreshKnowledge(type, id)` on create / update / delete: queued,
+ *    and a source the loader no longer returns (deleted, unpublished, hidden,
+ *    draft) is removed at once — not at the next tick or the nightly sweep.
  *  - lib/scheduler.ts calls `runKnowledgeTick()` every minute: a nightly full
  *    sweep (02:00 UTC) + up to ~40 s of queue work. A Redis lock (when Redis is
  *    configured) keeps replicas from double-working; each row is also claimed
@@ -200,6 +201,35 @@ export async function enqueueKnowledge(items: EnqueueItem | EnqueueItem[], opts:
     console.error('[rag] enqueue failed:', e)
     return 0
   }
+}
+
+/** At most this many sources per write are checked inline; the rest wait for the queue tick. */
+export const REMOVE_NOW_MAX = 50
+
+/**
+ * Write-path refresh (RAG-024): queue the sources, then — right away, not at
+ * the next tick or the nightly sweep — remove any that the loader no longer
+ * returns (deleted, unpublished, hidden, now a draft). Existing ones are
+ * re-indexed by the queue as before (embedding stays off the request path).
+ * Never throws.
+ */
+export async function refreshKnowledge(items: EnqueueItem | EnqueueItem[], deps: { load?: typeof loadSource; remove?: typeof removeSource } = {}): Promise<{ queued: number; removed: number }> {
+  const list = (Array.isArray(items) ? items : [items]).filter((i) => i && (KNOWLEDGE_SOURCE_TYPES as readonly string[]).includes(i.type) && typeof i.id === 'string' && i.id)
+  const queued = await enqueueKnowledge(list)
+  let removed = 0
+  try {
+    const load = deps.load ?? loadSource
+    const remove = deps.remove ?? removeSource
+    const db = await getMongoDb()
+    for (const i of list.slice(0, REMOVE_NOW_MAX)) {
+      if (await load(db, i.type, i.id)) continue
+      await remove(i.type, i.id)
+      removed++
+    }
+  } catch (e) {
+    console.error('[rag] immediate removal failed (the queue will retry):', (e as Error)?.message)
+  }
+  return { queued, removed }
 }
 
 /** Claim the next queued (or stale indexing) row atomically. */

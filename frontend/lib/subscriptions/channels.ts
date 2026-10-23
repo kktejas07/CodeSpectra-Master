@@ -14,6 +14,19 @@ import type { DeliveryType, SubscriberDoc, Topic } from './types'
 
 export type SendOutcome = 'sent' | 'failed' | 'duplicate' | 'skipped' | 'deferred'
 
+/** Shared per-person budget class of a subscriber message (AUTO-094): confirmations aren't capped. */
+export function subscriberMessageClass(type: DeliveryType): 'transactional' | 'deadline' | 'digest' {
+  if (type === 'confirm' || type === 'optin' || type === 'test') return 'transactional'
+  return type === 'reminder' ? 'deadline' : 'digest'
+}
+
+/** Admit one subscriber message to the shared budget; null = held by the cap. */
+async function admitSubscriber(sub: SubscriberDoc, type: DeliveryType): Promise<{ commit: () => Promise<void>; release: () => Promise<void> } | null> {
+  const { admitMessage } = await import('@/lib/messaging/budget')
+  const a = await admitMessage({ userId: sub.user_id, email: sub.email }, { class: subscriberMessageClass(type), source: `subscriptions:${type}` }).catch(() => ({ ok: true as const, commit: async () => {}, release: async () => {} }))
+  return a.ok ? a : null
+}
+
 export async function manageUrl(sub: Pick<SubscriberDoc, 'id' | 'token_nonce'>, extra: Record<string, string> = {}): Promise<string> {
   const t = await linkToken(sub.id, sub.token_nonce, 'manage')
   const q = new URLSearchParams({ s: sub.id, t, ...extra })
@@ -58,8 +71,10 @@ interface EmailJob {
 export async function sendSubscriberEmail(sub: SubscriberDoc, job: EmailJob): Promise<SendOutcome> {
   if (!sub.email) return 'skipped'
   if (!(sub.email_status === 'active' || (job.allowPending && sub.email_status === 'pending'))) return 'skipped'
+  const admit = await admitSubscriber(sub, job.type)
+  if (!admit) return 'skipped'
   const key = job.idempotent === false ? null : await claimDelivery({ subscriberId: sub.id, type: job.type, ref: job.ref, channel: 'email', topic: job.topic })
-  if (job.idempotent !== false && !key) return 'duplicate'
+  if (job.idempotent !== false && !key) { await admit.release(); return 'duplicate' }
   const manage = await manageUrl(sub)
   const unsub = await manageUrl(sub, { action: 'unsubscribe', scope: job.topic ? `topic:${job.topic}` : 'email' })
   const html = renderEmailShell({ heading: job.heading, bodyHtml: job.bodyHtml, preheader: job.preheader, manageUrl: manage, unsubscribeUrl: unsub, reason: job.reason })
@@ -67,9 +82,11 @@ export async function sendSubscriberEmail(sub: SubscriberDoc, job: EmailJob): Pr
     const { sendEmail } = await import('@/lib/send-email')
     const r = await sendEmail(sub.email, { subject: job.subject, html }, undefined, { category: 'newsletter' })
     if (key) await finishDelivery(key, { ok: r.success, error: r.error, postalMessageId: r.postalMessageId })
+    await (r.success ? admit.commit() : admit.release())
     return r.success ? 'sent' : 'failed'
   } catch (e) {
     if (key) await finishDelivery(key, { ok: false, error: (e as Error).message })
+    await admit.release()
     return 'failed'
   }
 }
@@ -106,17 +123,21 @@ export async function sendSubscriberWhatsApp(sub: SubscriberDoc, job: WhatsAppJo
   }
   const inSession = inWhatsAppSession(sub.whatsapp_last_inbound_at, now)
   if (!inSession && !job.template?.name) return 'skipped'
+  const admit = await admitSubscriber(sub, job.type)
+  if (!admit) return 'skipped'
   const key = job.idempotent === false ? null : await claimDelivery({ subscriberId: sub.id, type: job.type, ref: job.ref, channel: 'whatsapp', topic: job.topic })
-  if (job.idempotent !== false && !key) return 'duplicate'
+  if (job.idempotent !== false && !key) { await admit.release(); return 'duplicate' }
   try {
     const t = await transport()
     const r = inSession
       ? await t.sendText(sub.phone, job.text)
       : await t.sendTemplate(sub.phone, { name: job.template!.name, language: job.template!.language, bodyParams: job.template!.params }, job.text)
     if (key) await finishDelivery(key, { ok: r.ok, error: r.error, providerId: r.id ?? null })
+    await (r.ok ? admit.commit() : admit.release())
     return r.ok ? 'sent' : 'failed'
   } catch (e) {
     if (key) await finishDelivery(key, { ok: false, error: (e as Error).message })
+    await admit.release()
     return 'failed'
   }
 }

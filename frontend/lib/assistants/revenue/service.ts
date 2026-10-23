@@ -10,7 +10,7 @@ import 'server-only'
 import { getMongoDb } from '@/lib/mongodb'
 import { logger } from '@/lib/logger'
 import { activeMarks, getAssistantSettings, markOnce, proposalOwner, recordRun } from '../store'
-import { detectSignals, pickProposals, winbackCode, type CouponRow, type LicenceRow, type RevenueSignal, type SubRow, type UsageRow } from './signals'
+import { detectSignals, pickProposals, reminderTopic, winbackCode, type CouponRow, type LicenceRow, type RevenueSignal, type SubRow, type UsageRow } from './signals'
 
 const DAY = 86_400_000
 
@@ -79,7 +79,8 @@ export async function runRevenueLoop(now = new Date(), trigger: 'cron' | 'manual
   let posted = 0, failed = 0, conversation: string | null = null
   if (pick.picks.length && owner) {
     const { postProposals } = await import('../proactive')
-    const lines = pick.picks.map((p) => `- ${p.label}`).join('\n')
+    const hints = await alreadyRemindedHints(pick.picks, now)
+    const lines = pick.picks.map((p) => `- ${p.label}${hints.get(p.key) || ''}`).join('\n')
     const insight = signals.filter((x) => !x.tool).slice(0, 5).map((x) => `- ${x.label}`).join('\n')
     const res = await postProposals(
       { userId: owner.id, role: 'superadmin', tenantId: null, email: owner.email, ...(owner.name ? { name: owner.name } : {}) },
@@ -121,13 +122,39 @@ export async function recipientsFor(target: { user_id?: string; org_id?: string 
   return u ? [String(u.id ?? u._id)] : []
 }
 
+/**
+ * " (already reminded by plan-expiry on 2026-10-20)" for proposals whose
+ * person already got the same reminder from an automation (AUTO-098).
+ */
+async function alreadyRemindedHints(picks: readonly RevenueSignal[], now: Date): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const { lastTopicSend } = await import('@/lib/messaging/budget')
+  for (const p of picks) {
+    if (p.tool !== 'send_renewal_reminder') continue
+    const t = reminderTopic(p.key, now)
+    if (!t) continue
+    const people = p.subject === 'org' ? await orgAdmins(p.subject_id) : [p.subject_id]
+    for (const uid of people) {
+      const hit = await lastTopicSend({ userId: uid }, t.topic, t.objectPrefix).catch(() => null)
+      if (hit) {
+        out.set(p.key, ` (already reminded${hit.source ? ` by ${hit.source}` : ''} on ${hit.at.slice(0, 10) || 'an earlier day'})`)
+        break
+      }
+    }
+  }
+  return out
+}
+
 /** Renewal / payment / licence reminder (billing notifications: in-app + e-mail, recipient's language). */
 export async function sendRenewalReminder(target: { user_id?: string; org_id?: string }, signalKey: string, reason: string, cooldownDays: number) {
   const to = await recipientsFor(target)
   const { notify } = await import('@/lib/notifications')
-  let sent = 0
+  // Same topic as plan-expiry / dunning / renewal-nudges: never a second reminder the same day (AUTO-098).
+  const t = reminderTopic(signalKey, new Date())
+  let sent = 0, held = 0
   for (const id of to) {
     const r = await notify({
+      budget: t ? { class: t.class, topic: t.topic, object: t.object, source: 'revenue-assistant' } : { class: 'deadline', source: 'revenue-assistant' },
       user_id: id, type: reason === 'payment' ? 'billing.payment_failed' : 'billing.renewal_reminder',
       title: reason === 'licence' ? 'Your organisation licence ends soon' : reason === 'payment' ? 'Update your payment method' : 'Your plan ends soon',
       title_i18n: { key: reason === 'licence' ? 'assistantRenewLicenceTitle' : reason === 'payment' ? 'assistantRenewPaymentTitle' : 'assistantRenewPlanTitle' },
@@ -135,10 +162,11 @@ export async function sendRenewalReminder(target: { user_id?: string; org_id?: s
       link: reason === 'licence' ? '/dashboard/admin/licences' : '/dashboard/billing', send_email: true,
     })
     if (r) sent++
+    else held++
   }
   await markOnce('revenue', `done:${signalKey}`, cooldownDays).catch(() => false)
-  await recordRun({ assistant: 'revenue', trigger: 'copilot', status: sent ? 'ok' : 'partial', tenant_id: target.org_id ?? null, message: `Renewal reminder (${reason}) sent to ${sent} recipient(s)`, counts: { sent } })
-  return { sent }
+  await recordRun({ assistant: 'revenue', trigger: 'copilot', status: sent ? 'ok' : 'partial', tenant_id: target.org_id ?? null, message: `Renewal reminder (${reason}) sent to ${sent} recipient(s)${held ? `, ${held} skipped (already reminded today or at their message limit)` : ''}`, counts: { sent, held } })
+  return { sent, held }
 }
 
 export async function sendUpgradeOffer(orgId: string, signalKey: string, reason: string, cooldownDays: number) {
@@ -163,7 +191,8 @@ export async function sendWinbackOffer(actorId: string, userId: string, subscrip
   const { createCoupon } = await import('@/lib/billing/coupon-admin')
   const code = winbackCode(subscriptionKey)
   const validUntil = new Date(Date.now() + 14 * DAY).toISOString().slice(0, 10)
-  const res = await createCoupon(actorId, { code, discount_type: 'percentage', discount_value: percentOff, max_uses: 1, per_user_limit: 1, valid_until: validUntil, applies_to: 'plans' })
+  // CORE-049: personal — only the lapsed user can redeem it (a forwarded code is refused).
+  const res = await createCoupon(actorId, { code, discount_type: 'percentage', discount_value: percentOff, max_uses: 1, per_user_limit: 1, valid_until: validUntil, applies_to: 'plans' }, { userId })
   if (!res.ok && !/already exists/i.test(res.error)) throw new Error(res.error)
   const to = await recipientsFor({ user_id: userId })
   const { notify } = await import('@/lib/notifications')

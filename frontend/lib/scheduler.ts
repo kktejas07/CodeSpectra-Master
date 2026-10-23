@@ -371,6 +371,10 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
 
   // ── Heavy content lane ────────────────────────────────────────────────────
   const heavy = async () => {
+    // Wave 15 assistants (lib/assistants/tick.ts): revenue scan, org onboarding, weekly placement report,
+    // mentor follow-ups. Checked every tick; each loop claims its own window + heartbeat (assistant-*).
+    // First in the lane so a slow content job can't push them past a timeout (CORE-045 / AUTO-106).
+    await (await import('./assistants/tick')).runAssistantsTick(now).catch((e) => console.error('[scheduler] assistants error:', e))
     // Learn hub (lib/learn/generate.ts): publish due posts; drafts until today's quota; weekly digest.
     await job('learn', minute, async () => (await import('./learn/generate')).runLearnTick(now), { leaseMs: 10 * 60_000 })
     // Events feed (lib/events-feed/tick.ts): source pulls, WhatsApp alerts + reminders, weekly digest.
@@ -412,9 +416,6 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     // weekly copilot eval. Here (not only the in-process loop) so serverless /api/cron/tick runs it,
     // with a DB lease (one replica even without Redis) and a heartbeat.
     await job('knowledge', minute, async () => (await import('./rag/ingest')).runKnowledgeTick(), { leaseMs: 5 * 60_000 })
-    // Wave 15 assistants (lib/assistants/tick.ts): revenue scan, org onboarding, weekly placement report,
-    // mentor follow-ups. Checked hourly; each loop claims its own window + heartbeat (assistant-*).
-    await (await import('./assistants/tick')).runAssistantsTick(now).catch((e) => console.error('[scheduler] assistants error:', e))
     // Hiring agents (lib/agent/hiring-loops/tick.ts): sourcer, interview scheduler, assessment author,
     // integrity reviewer. Each claims its own window + heartbeat; they only draft proposals unless an org enabled auto-send.
     await (await import('./agent/hiring-loops/tick')).runHiringLoopsTick(now).catch((e) => console.error('[scheduler] hiring agents error:', e))

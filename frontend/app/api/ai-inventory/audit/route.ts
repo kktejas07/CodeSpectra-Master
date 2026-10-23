@@ -21,7 +21,7 @@ import { promises as fs } from 'fs'
 import { spawn } from 'child_process'
 import { NextResponse } from 'next/server'
 import path from 'path'
-import { getAPIUser } from '@/lib/api-auth'
+import { gateErrorBody, requireSuperAdmin } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -106,9 +106,6 @@ const ADVISORIES: Advisory[] = [
 ]
 
 // Platform-wide audit (spawns tooling on the host): superadmin only.
-function isAdmin(role?: string | null): boolean {
-  return role === 'superadmin'
-}
 
 function shouldUseRealAudit(): boolean {
   return process.env.NODE_ENV === 'production' || process.env.AI_INVENTORY_REAL_AUDIT === '1'
@@ -358,11 +355,8 @@ async function auditNpmReal(): Promise<{ findings: Finding[]; ok: boolean; stder
 /* -------------------- Route handler -------------------- */
 
 export async function GET() {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   const useReal = shouldUseRealAudit()
   const errors: Record<string, string> = {}

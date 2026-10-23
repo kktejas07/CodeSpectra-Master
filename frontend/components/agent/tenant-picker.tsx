@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Building2 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { useAdminT } from '@/lib/i18n/admin'
 
 /** Value used for "Whole platform" (the server treats it like null). */
 export const PLATFORM_SCOPE = 'platform'
@@ -47,23 +48,24 @@ export function TenantPicker({
   id?: string
 }) {
   const { tenants, loading } = useTenantOptions(true)
+  const { t } = useAdminT()
   const current = value ?? PLATFORM_SCOPE
   // Keep a stored tenant selectable even if it is not in the list (deleted/renamed).
-  const missing = value && !tenants.some((t) => t.id === value)
+  const missing = value && !tenants.some((o) => o.id === value)
   return (
     <div className={cn('flex items-center gap-2', className)}>
-      <label htmlFor={id} className="sr-only">Organisation scope</label>
+      <label htmlFor={id} className="sr-only">{t('copilot.scopeLabel')}</label>
       <Select value={current} onValueChange={(v) => onChange(v === PLATFORM_SCOPE ? null : v)} disabled={disabled || loading}>
-        <SelectTrigger id={id} className="h-8 w-[14rem] max-w-full rounded-full" aria-label="Organisation scope">
+        <SelectTrigger id={id} className="h-8 w-[14rem] max-w-full rounded-full" aria-label={t('copilot.scopeLabel')}>
           <Building2 aria-hidden className="size-4 text-muted-foreground" />
-          <SelectValue placeholder={loading ? 'Loading organisations…' : 'Whole platform'} />
+          <SelectValue placeholder={loading ? t('copilot.loadingOrgs') : t('copilot.wholePlatform')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={PLATFORM_SCOPE}>Whole platform</SelectItem>
-          {missing && <SelectItem value={value!}>Organisation {value}</SelectItem>}
-          {tenants.map((t) => (
-            <SelectItem key={t.id} value={t.id}>
-              {t.name}{t.is_active ? '' : ' (inactive)'}
+          <SelectItem value={PLATFORM_SCOPE}>{t('copilot.wholePlatform')}</SelectItem>
+          {missing && <SelectItem value={value!}>{t('copilot.orgId', { id: value })}</SelectItem>}
+          {tenants.map((o) => (
+            <SelectItem key={o.id} value={o.id}>
+              {o.is_active ? o.name : t('copilot.inactive', { name: o.name })}
             </SelectItem>
           ))}
         </SelectContent>

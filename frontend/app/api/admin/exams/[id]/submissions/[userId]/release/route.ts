@@ -39,6 +39,15 @@ export async function PATCH(
       }, { status: 400 })
     }
 
+    // Integrity hold (set_integrity_hold): stays unreleased like the bulk release does,
+    // until the hold is released from the integrity review (AGT-038).
+    if (submission.integrity_hold === true) {
+      return NextResponse.json({
+        error: 'This score is on an integrity hold. Release the hold from the integrity review first, then release the score.',
+        code: 'integrity_hold',
+      }, { status: 409 })
+    }
+
     const exam = await db.collection('exams').findOne({ id: examId })
     const examTitle = exam?.title || 'Technical Assessment'
     // Pass/fail uses the exam's remembered cutoff (bulk release stores it).
@@ -51,12 +60,12 @@ export async function PATCH(
     const isPass = pct !== null && pct >= cutoff
 
     const result = await db.collection('exam_submissions').updateOne(
-      { exam_id: examId, user_id: userId },
+      { exam_id: examId, user_id: userId, integrity_hold: { $ne: true } },
       { $set: { released_at: nowIso(), score_released: true, passed: isPass, cutoff } },
     )
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Submission not found or on an integrity hold' }, { status: 409 })
     }
 
     // Verifiable certificate when the released score meets the pass mark (idempotent per exam + user).

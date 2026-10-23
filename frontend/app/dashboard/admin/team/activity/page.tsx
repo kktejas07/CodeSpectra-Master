@@ -22,6 +22,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface DayData {
   date: string
@@ -63,6 +64,7 @@ export default function TeamActivityPage() {
   const [userStats, setUserStats] = useState<UserStat[]>([])
   const [recentActivity, setRecentActivity] = useState<ActivityEvent[]>([])
   const [totalMembers, setTotalMembers] = useState(0)
+  const { t } = useAdminT()
 
   useEffect(() => {
     if (!gate.ready) return
@@ -107,18 +109,18 @@ export default function TeamActivityPage() {
     <div className="space-y-6">
       <PageHeader
         illustration="team"
-        title="Team activity"
-        description="What your team has been doing over the last 12 weeks."
+        title={t('teamActivity.title')}
+        description={t('teamActivity.description')}
         icon={<Activity />}
         actions={
           <>
             <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
               <Users className="h-4 w-4" aria-hidden />
-              <span className="text-sm font-medium tabular-nums">{totalMembers} members</span>
+              <span className="text-sm font-medium tabular-nums">{t('teamActivity.members', { count: totalMembers })}</span>
             </Badge>
-            <Button variant="outline" size="sm" className="gap-1.5" title="Back" asChild>
+            <Button variant="outline" size="sm" className="gap-1.5" title={t('teamActivity.back')} asChild>
               <Link href="/dashboard/admin/team">
-                <ArrowLeft className="h-4 w-4" aria-hidden /> Back to team
+                <ArrowLeft className="h-4 w-4" aria-hidden /> {t('teamActivity.backToTeam')}
               </Link>
             </Button>
           </>
@@ -138,10 +140,10 @@ export default function TeamActivityPage() {
         <Panel>
           <div className="mb-4 flex items-center gap-2">
             <Trophy className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Top contributors</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('teamActivity.topContributors')}</h2>
           </div>
           {userStats.length === 0 ? (
-            <EmptyState illustration="team" title="No activity yet" description="Contributors appear once members start scanning, reviewing or solving." className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState illustration="team" title={t('teamActivity.noActivity')} description={t('teamActivity.noActivityDesc')} className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {userStats.slice(0, 10).map((user, idx) => (
@@ -161,17 +163,17 @@ export default function TeamActivityPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
-                    <span className="flex items-center gap-1" title="Scans">
+                    <span className="flex items-center gap-1" title={t('teamActivity.scans')}>
                       <Activity className="h-3 w-3" aria-hidden />{user.scans}
                     </span>
-                    <span className="flex items-center gap-1" title="Reviews">
+                    <span className="flex items-center gap-1" title={t('teamActivity.reviews')}>
                       <Code2 className="h-3 w-3" aria-hidden />{user.reviews}
                     </span>
-                    <span className="flex items-center gap-1" title="Fixes">
+                    <span className="flex items-center gap-1" title={t('teamActivity.fixes')}>
                       <Zap className="h-3 w-3" aria-hidden />{user.fixes}
                     </span>
                     <Badge variant="secondary" className="ml-1 text-xs">
-                      {user.total} total
+                      {t('teamActivity.total', { n: user.total })}
                     </Badge>
                   </div>
                 </div>
@@ -183,10 +185,10 @@ export default function TeamActivityPage() {
         <Panel>
           <div className="mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Recent team activity</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('teamActivity.recent')}</h2>
           </div>
           {recentActivity.length === 0 ? (
-            <EmptyState variant="notifications" title="No recent activity yet" description="Team actions will be listed here as they happen." className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState variant="notifications" title={t('teamActivity.noRecent')} description={t('teamActivity.noRecentDesc')} className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="relative space-y-0 border-l border-border pl-5">
               {recentActivity.slice(0, 8).map((event, idx) => (

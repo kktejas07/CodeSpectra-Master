@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { useAdminT } from '@/lib/i18n/admin'
 
 export type FieldValue = string | boolean
 
@@ -48,8 +49,11 @@ export function toFormValues(schema: JsonSchema, args: Record<string, unknown>):
   return out
 }
 
-/** Form values → args (empty fields omitted). Throws with a field-specific message. Pure. */
-export function fromFormValues(schema: JsonSchema, values: Record<string, FieldValue>): Record<string, unknown> {
+export interface FormErrors { notNumber: (field: string) => string; notJson: (field: string) => string }
+const EN_ERRORS: FormErrors = { notNumber: (f) => `${f} must be a number.`, notJson: (f) => `${f} is not valid JSON.` }
+
+/** Form values → args (empty fields omitted). Throws with a field-specific message (in `errors`' language). Pure. */
+export function fromFormValues(schema: JsonSchema, values: Record<string, FieldValue>, errors: FormErrors = EN_ERRORS): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [k, s] of Object.entries(schema.properties ?? {})) {
     if (k.startsWith('_') || !(k in values)) continue
@@ -63,11 +67,11 @@ export function fromFormValues(schema: JsonSchema, values: Record<string, FieldV
     if (!t) continue
     if (kind === 'number') {
       const n = Number(t)
-      if (!Number.isFinite(n)) throw new Error(`${humanKey(k)} must be a number.`)
+      if (!Number.isFinite(n)) throw new Error(errors.notNumber(humanKey(k)))
       out[k] = s.type === 'integer' ? Math.round(n) : n
     } else if (kind === 'list') out[k] = t.split(',').map((x) => x.trim()).filter(Boolean)
     else if (kind === 'json') {
-      try { out[k] = JSON.parse(t) } catch { throw new Error(`${humanKey(k)} is not valid JSON.`) }
+      try { out[k] = JSON.parse(t) } catch { throw new Error(errors.notJson(humanKey(k))) }
     } else out[k] = t
   }
   return out
@@ -84,6 +88,7 @@ export function SchemaForm({
   values: Record<string, FieldValue>
   onChange: (key: string, value: FieldValue) => void
 }) {
+  const { t } = useAdminT()
   const required = new Set(schema.required ?? [])
   const entries = Object.entries(schema.properties ?? {}).filter(([k]) => !k.startsWith('_'))
   return (
@@ -131,7 +136,7 @@ export function SchemaForm({
                 {...(kind === 'number' && s.maximum !== undefined ? { max: s.maximum } : {})}
               />
             )}
-            {kind === 'list' ? <p className="text-xs text-muted-foreground">Separate items with commas.</p> : help}
+            {kind === 'list' ? <p className="text-xs text-muted-foreground">{t('copilot.separateCommas')}</p> : help}
           </div>
         )
       })}

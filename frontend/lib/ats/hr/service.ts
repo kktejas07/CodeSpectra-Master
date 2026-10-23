@@ -16,7 +16,9 @@ import type { AtsActor, AtsApplication, AtsCandidate, AtsJob, PipelineStage, Sta
 import { atsApplications, atsCandidates, atsJobs } from '../db'
 import { AtsError, isCurrentEntry, recordStageResult, setApplicationStatus, stageKey } from '../engine'
 import { COMP_MAX, canSeeCompensation, currencyForCountry, parseCompensation, periodsFor, withCompensation } from '../compensation'
-import { renderText, textToHtml, wrapEmail } from '../notify'
+import { mailLocale, textToHtml, wrapEmail } from '../notify'
+import { outboundT } from '@/lib/i18n/outbound'
+import { formatDate } from '@/lib/i18n/format'
 import { atsHrForms, newId, nowIso, publicHrForm, type AtsHrFormDoc } from './db'
 import { formTimes, hrConfig, hrDecisionGate, newHrNonce, signHrToken, verifyHrToken } from './rules'
 
@@ -64,17 +66,17 @@ async function companyName(job: Pick<AtsJob, 'tenant_id' | 'client_id'>): Promis
 async function sendFormLink(form: AtsHrFormDoc, candidate: AtsCandidate, job: AtsJob, kind: 'invite' | 'reminder'): Promise<boolean> {
   const url = await formLink(form)
   const company = await companyName(job)
-  const due = form.deadline ? new Date(form.deadline).toDateString() : 'soon'
-  const vars = { candidate_name: candidate.name || 'there', job_title: job.title, company, due }
-  const subject = kind === 'invite' ? `Next step for ${job.title}: confirm your compensation details` : `Reminder: confirm your compensation details for ${job.title}`
-  const body = kind === 'invite'
-    ? 'Hi {{candidate_name}},\n\nYour application for {{job_title}} at {{company}} has reached the HR round. Please confirm your current (or last drawn) and expected compensation and your notice period using the secure link below — it takes about two minutes and needs no account.\n\nPlease complete it by {{due}}.\n\n{{company}} hiring team'
-    : 'Hi {{candidate_name}},\n\nA quick reminder to confirm your compensation details for {{job_title}} at {{company}}. The form is due by {{due}}.\n\n{{company}} hiring team'
+  // SEO-033: in the candidate's saved language (email.json `atsMail.hr.*`).
+  const locale = await mailLocale(candidate.email)
+  const t = outboundT('email', locale)
+  const due = form.deadline ? formatDate(locale, form.deadline, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : t('atsMail.hr.soon')
+  const v = { name: candidate.name || t('atsMail.nameFallback'), role: job.title, company, due }
+  const subject = t(`atsMail.hr.subject.${kind}`, v)
   let ok = false
   if (candidate.email) {
     try {
       const { sendEmail } = await import('@/lib/send-email')
-      const r = await sendEmail(candidate.email, wrapEmail(subject, textToHtml(renderText(body, vars)), { url, label: 'Confirm compensation' }), undefined, { category: 'ats' })
+      const r = await sendEmail(candidate.email, wrapEmail(subject, textToHtml(t(`atsMail.hr.body.${kind}`, v)), { url, label: t('atsMail.hr.cta') }, locale), undefined, { category: 'ats' })
       ok = !!r?.success
     } catch (e) {
       console.error('[ats/hr] email failed:', (e as Error)?.message)
@@ -86,7 +88,7 @@ async function sendFormLink(form: AtsHrFormDoc, candidate: AtsCandidate, job: At
       const { sendWhatsAppToCandidate } = await import('@/lib/whatsapp-send')
       const r = await sendWhatsAppToCandidate(candidate, {
         kind: 'hiring', title: subject,
-        text: renderText(kind === 'invite' ? 'Hi {{candidate_name}}, please confirm your compensation details for {{job_title}} at {{company}} by {{due}}.' : 'Reminder: please confirm your compensation details for {{job_title}} by {{due}}.', vars).slice(0, 900),
+        text: t(`atsMail.hr.wa.${kind}`, v).slice(0, 900),
         link: url,
       })
       if (r.sent) ok = true

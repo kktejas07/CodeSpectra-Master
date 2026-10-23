@@ -9,7 +9,8 @@ import { getMongoDb } from '@/lib/mongodb'
 import { getAppOrigin } from '@/lib/app-origin'
 import { emit } from '../events'
 import { sendAutomationEmail } from '../mailer'
-import { claimOnce } from '../store'
+import { withBudget } from '@/lib/messaging/budget'
+import { claimOnce, releaseClaim } from '../store'
 import { configValue, getSystemSettings } from '../settings'
 import { hoursLeftLabel, reminderWindow } from './rules'
 import type { SystemAutomation } from './types'
@@ -96,14 +97,18 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
     const left = hoursLeftLabel(m.at, now)
     for (const uid of users) {
       if (Date.now() - started > budgetMs) return { moments: moments.length, reminders }
-      if (!(await claimOnce(`evrem:${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}:${uid}`))) continue
+      const remKey = `evrem:${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}:${uid}`
+      if (!(await claimOnce(remKey))) continue
       const starting = m.phase === 'start'
       const title = starting ? `${m.name} starts in ${left}` : `${m.name}: submissions close in ${left}`
-      await notify({ user_id: uid, type: starting ? 'hackathon.started' : 'hackathon.ending_soon', title, message: starting ? 'Get your team ready.' : 'Submit your work before the deadline.', title_i18n: { key: starting ? 'event.starts.title' : 'event.closes.title', params: { name: m.name, left } }, message_i18n: { key: starting ? 'event.starts.message' : 'event.closes.message' }, link: m.url.replace(getAppOrigin(), ''), icon: 'clock', skip_push: m.window === '24h' })
       const u = (await db.collection('user').findOne({ id: uid }, { projection: { email: 1, name: 1, fullName: 1 } })) as Doc | null
+      // One message over email + bell + WhatsApp through the shared per-person budget (AUTO-094).
+      const outcome = await withBudget({ userId: uid, email: typeof u?.email === 'string' ? u.email : null }, { class: 'deadline', topic: 'event-reminder', object: `${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}`, source: 'event-reminders' }, async () => {
+      const n = await notify({ budget: false, user_id: uid, type: starting ? 'hackathon.started' : 'hackathon.ending_soon', title, message: starting ? 'Get your team ready.' : 'Submit your work before the deadline.', title_i18n: { key: starting ? 'event.starts.title' : 'event.closes.title', params: { name: m.name, left } }, message_i18n: { key: starting ? 'event.starts.message' : 'event.closes.message' }, link: m.url.replace(getAppOrigin(), ''), icon: 'clock', skip_push: m.window === '24h', urgent: m.window === '1h' })
+      let mailed = false
       if (u?.email) {
-        await sendAutomationEmail({
-          to: String(u.email), userId: uid, category: 'events', urgent: m.window === '1h',
+        mailed = ['sent', 'deferred', 'queued'].includes(await sendAutomationEmail({
+          to: String(u.email), userId: uid, category: 'events', urgent: m.window === '1h', budget: false,
           subject: title,
           heading: starting ? `${m.name} is almost here` : `Last call for ${m.name}`,
           bodyText: starting
@@ -111,14 +116,17 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
             : `Hi ${String(u.fullName || u.name || 'there')},\n\nSubmissions for ${m.name} close in ${left}. Submit what you have — you can still improve it until the deadline.`,
           cta: { label: starting ? 'Open the event' : 'Submit now', url: m.url },
           reason: `You got this email because you registered for ${m.name}.`,
-        })
+        }))
       }
       if (m.window === '1h' && settings.config.wa_template_event) {
         const { whatsappRecipientForUser, sendWhatsAppTemplate, templateLanguageForUser } = await import('../whatsapp')
         const lang = await templateLanguageForUser(uid, { wa_template_language: configValue(settings.config, 'wa_template_language'), wa_template_locales: settings.config.wa_template_locales })
         await sendWhatsAppTemplate(await whatsappRecipientForUser(uid), { name: settings.config.wa_template_event, ...lang, params: [m.name, left] }, { userId: uid }).catch(() => null)
       }
-      reminders++
+      return !!n || mailed
+      }, now)
+      if (outcome === 'sent') reminders++
+      else if (outcome === 'capped') await releaseClaim(remKey) // try again on the next sweep while the window lasts
     }
   }
   return { moments: moments.length, reminders }

@@ -5,7 +5,9 @@
  * throws. Idempotency is the caller's job (service.ts claimSend).
  */
 import { escapeHtml } from '@/lib/safe-html'
-import { textToHtml, wrapEmail } from '@/lib/ats/notify'
+import { mailLocale, textToHtml, wrapEmail } from '@/lib/ats/notify'
+import { outboundT } from '@/lib/i18n/outbound'
+import { formatDate } from '@/lib/i18n/format'
 import type { AtsCandidate } from '@/lib/ats/contract'
 import { CHECK_LABEL, REGION_LABELS, SUMMARY_OF_RIGHTS_PLACEHOLDER } from './catalog'
 import type { BgvCaseDoc } from './types'
@@ -40,30 +42,35 @@ async function whatsapp(candidate: Pick<AtsCandidate, 'phone' | 'consent'> | nul
 
 const p = (t: string) => `<p style="margin:0 0 14px">${escapeHtml(t)}</p>`
 
+// SEO-033: candidate emails in the candidate's saved language (email.json `atsMail.bgv.*`).
+// The attached report summary and summary of rights stay in English (legal text).
+
 export async function sendInvite(c: BgvCaseDoc, candidate: AtsCandidate | null, link: string, company: string, kind: 'invite' | 'reminder' | 'resend'): Promise<boolean> {
-  const name = c.candidate_name || 'there'
-  const deadline = c.deadline ? new Date(c.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : null
-  const subject = kind === 'reminder'
-    ? `Reminder: complete your background verification for ${c.job_title}`
-    : `Background verification for ${c.job_title} at ${company}`
+  const to = c.candidate_email ?? candidate?.email
+  const locale = await mailLocale(to)
+  const t = outboundT('email', locale)
+  const name = c.candidate_name || t('atsMail.nameFallback')
+  const deadline = c.deadline ? formatDate(locale, c.deadline, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : null
+  const v = { name, role: c.job_title, company, region: REGION_LABELS[c.region], link }
+  const subject = t(kind === 'reminder' ? 'atsMail.bgv.subject.reminder' : 'atsMail.bgv.subject.invite', v)
   const body = [
-    p(`Hi ${name},`),
-    p(kind === 'reminder'
-      ? `Your background verification for ${c.job_title} at ${company} isn't finished yet.`
-      : `As the next step for ${c.job_title} at ${company}, please complete a background verification (${REGION_LABELS[c.region]}). You'll review a consent notice first, then fill in a few details and upload documents. You can save and come back any time.`),
-    deadline ? p(`Please finish by ${deadline}.`) : '',
-    p('This link is personal — please do not forward it.'),
+    p(t('atsMail.greeting', v)),
+    p(t(kind === 'reminder' ? 'atsMail.bgv.reminderBody' : 'atsMail.bgv.inviteBody', v)),
+    deadline ? p(t('atsMail.bgv.deadline', { date: deadline })) : '',
+    p(t('atsMail.bgv.personal')),
   ].join('')
-  const ok = await send(c.candidate_email ?? candidate?.email, wrapEmail(subject, body, { url: link, label: kind === 'reminder' ? 'Continue verification' : 'Start verification' }))
-  await whatsapp(candidate, `Hi ${name}, ${kind === 'reminder' ? 'a reminder to complete' : 'please complete'} your background verification for ${c.job_title} at ${company}: ${link}`)
+  const ok = await send(to, wrapEmail(subject, body, { url: link, label: t(kind === 'reminder' ? 'atsMail.bgv.ctaContinue' : 'atsMail.bgv.ctaStart') }, locale))
+  await whatsapp(candidate, t(kind === 'reminder' ? 'atsMail.bgv.waReminder' : 'atsMail.bgv.waInvite', v))
   return ok
 }
 
 export async function sendInfoRequest(c: BgvCaseDoc, link: string, company: string, checkLabel: string, message: string): Promise<boolean> {
-  const subject = `More information needed: ${checkLabel}`
-  const body = p(`Hi ${c.candidate_name || 'there'}, the ${company} hiring team needs a little more for your ${checkLabel} check:`) +
+  const locale = await mailLocale(c.candidate_email)
+  const t = outboundT('email', locale)
+  const subject = t('atsMail.bgv.infoSubject', { check: checkLabel })
+  const body = p(t('atsMail.bgv.infoBody', { name: c.candidate_name || t('atsMail.nameFallback'), company, check: checkLabel })) +
     `<blockquote style="margin:0 0 14px;padding:8px 14px;border-left:3px solid #2F5BE7;color:#374151">${textToHtml(message)}</blockquote>`
-  return send(c.candidate_email, wrapEmail(subject, body, { url: link, label: 'Update my details' }))
+  return send(c.candidate_email, wrapEmail(subject, body, { url: link, label: t('atsMail.bgv.infoCta') }, locale))
 }
 
 /** Plain-text copy of the verification results (attached to adverse-action notices). */
@@ -84,27 +91,31 @@ export function reportText(c: BgvCaseDoc, company: string): string {
 const attach = (name: string, text: string) => [{ name, content_type: 'text/plain', data: Buffer.from(text, 'utf8').toString('base64') }]
 
 export async function sendPreAdverse(c: BgvCaseDoc, company: string, finalOn: string): Promise<boolean> {
-  const subject = `Pre-adverse action notice — ${c.job_title} at ${company}`
+  const locale = await mailLocale(c.candidate_email)
+  const t = outboundT('email', locale)
+  const v = { role: c.job_title, company, date: finalOn }
+  const subject = t('atsMail.bgv.preAdverse.subject', v)
   const text = [
-    `Dear ${c.candidate_name || 'candidate'},`,
-    `${company} is considering a decision not to proceed with your application for ${c.job_title} based in whole or in part on information in your background check. A copy of the report summary is attached${c.vendor === 'checkr' ? ', and the consumer reporting agency (Checkr) provides the full report' : ''}, together with a summary of your rights.`,
-    `No final decision has been made. If any information is inaccurate or incomplete, or you want to give us context, please reply to this email before ${finalOn}. You may also dispute the report directly with the consumer reporting agency.`,
+    t('atsMail.dear', { name: c.candidate_name || t('atsMail.candidateFallback') }),
+    t(c.vendor === 'checkr' ? 'atsMail.bgv.preAdverse.p1Checkr' : 'atsMail.bgv.preAdverse.p1', v),
+    t('atsMail.bgv.preAdverse.p2', v),
     SUMMARY_OF_RIGHTS_PLACEHOLDER,
   ].join('\n\n')
-  return send(c.candidate_email, wrapEmail(subject, textToHtml(text)), [...attach('background-check-summary.txt', reportText(c, company)), ...attach('summary-of-rights.txt', SUMMARY_OF_RIGHTS_PLACEHOLDER)])
+  return send(c.candidate_email, wrapEmail(subject, textToHtml(text), undefined, locale), [...attach('background-check-summary.txt', reportText(c, company)), ...attach('summary-of-rights.txt', SUMMARY_OF_RIGHTS_PLACEHOLDER)])
 }
 
 export async function sendFinalAdverse(c: BgvCaseDoc, company: string): Promise<boolean> {
-  const subject = `Adverse action notice — ${c.job_title} at ${company}`
+  const locale = await mailLocale(c.candidate_email)
+  const t = outboundT('email', locale)
+  const v = { role: c.job_title, company, vendor: c.vendor }
+  const subject = t('atsMail.bgv.adverse.subject', v)
   const text = [
-    `Dear ${c.candidate_name || 'candidate'},`,
-    `After reviewing your background check and any information you sent us, ${company} has decided not to proceed with your application for ${c.job_title}.`,
-    c.vendor !== 'manual'
-      ? `The consumer reporting agency (${c.vendor}) did not make this decision and cannot explain why it was made. You have the right to a free copy of your report from the agency within 60 days, and to dispute the accuracy or completeness of any information in it with the agency.`
-      : 'You may ask us for a copy of the verification results and dispute anything you believe is inaccurate.',
+    t('atsMail.dear', { name: c.candidate_name || t('atsMail.candidateFallback') }),
+    t('atsMail.bgv.adverse.p1', v),
+    t(c.vendor !== 'manual' ? 'atsMail.bgv.adverse.vendor' : 'atsMail.bgv.adverse.manual', v),
     SUMMARY_OF_RIGHTS_PLACEHOLDER,
   ].join('\n\n')
-  return send(c.candidate_email, wrapEmail(subject, textToHtml(text)), attach('summary-of-rights.txt', SUMMARY_OF_RIGHTS_PLACEHOLDER))
+  return send(c.candidate_email, wrapEmail(subject, textToHtml(text), undefined, locale), attach('summary-of-rights.txt', SUMMARY_OF_RIGHTS_PLACEHOLDER))
 }
 
 /** In-app notification to the job's recruiters (else the tenant's ATS admins / recruiters). */

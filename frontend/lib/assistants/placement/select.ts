@@ -84,6 +84,9 @@ export interface ReportInput {
   applications_week: number
   offers_week: number
   to_nudge: number
+  /** CORE-048: students who have not completed a recent practice assignment, and how many assignments that is. */
+  assignments_pending?: number
+  assignments_open?: number
 }
 
 export interface PlacementReport {
@@ -106,12 +109,13 @@ export function buildPlacementReport(i: ReportInput, now = new Date()): Placemen
     i.drives_open.length ? `${i.drives_open.length} open drive(s); ${soon.length} close within 7 days${soon.length ? `: ${soon.slice(0, 3).map((d) => `${d.title} (${d.applicants} applied)`).join(', ')}` : ''}.` : 'No open drives.',
     i.weak_areas.length ? `Weakest areas: ${i.weak_areas.slice(0, 3).map((w) => `${w.area} ${w.avg}%`).join(', ')}.` : 'Not enough practice data for weak areas yet.',
     i.to_nudge ? `${i.to_nudge} student(s) could use a nudge (no practice or low readiness).` : 'No students need a nudge right now.',
+    ...(i.assignments_pending ? [`${i.assignments_pending} student(s) have not finished ${i.assignments_open ?? 0} practice assignment(s) yet (Placement → Assignments).`] : []),
   ]
   return {
     college: i.college,
     headline: `Weekly placement report — ${i.college}`,
     lines,
-    numbers: { students: i.students, active: i.active, readiness_avg: i.readiness_avg, applications_week: i.applications_week, offers_week: i.offers_week, open_drives: i.drives_open.length, closing_soon: soon.length, to_nudge: i.to_nudge },
+    numbers: { students: i.students, active: i.active, readiness_avg: i.readiness_avg, applications_week: i.applications_week, offers_week: i.offers_week, open_drives: i.drives_open.length, closing_soon: soon.length, to_nudge: i.to_nudge, assignments_pending: i.assignments_pending ?? 0 },
   }
 }
 

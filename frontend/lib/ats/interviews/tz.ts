@@ -71,10 +71,10 @@ export function zonedTimeToUtc(year: number, month: number, day: number, hour: n
 }
 
 /** "Mon 20 Oct 2026, 10:30 (Asia/Kolkata)" — for emails and messages. */
-export function formatInZone(iso: string | Date, tz: string): string {
+export function formatInZone(iso: string | Date, tz: string, locale: string = 'en'): string {
   const d = new Date(iso)
   try {
-    const s = new Intl.DateTimeFormat('en-GB', {
+    const s = new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale, {
       timeZone: tz,
       weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hourCycle: 'h23',

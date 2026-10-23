@@ -423,8 +423,15 @@ export async function sendHiringDigests(now = new Date()): Promise<{ tenants: nu
       const locale = await localeForRecipient({ userId: uid, email: m.email })
       const unsub = `/api/ats/analytics/digest/unsubscribe?t=${encodeURIComponent(t.tenant_id)}&u=${encodeURIComponent(uid)}&k=${digestUnsubToken(key, t.tenant_id, uid)}`
       const mail = renderDigestEmail(locale, { orgName: String(org?.name || ''), numbers, range: digestRange(now), unsubPath: unsub })
-      const r = await sendEmail(m.email, mail, undefined, { category: 'hiring_digest', headers: mail.headers }).catch(() => null)
-      if (r?.success || r?.queued) sent++
+      // One Monday hiring report per person: the "Weekly employer report" automation uses the same
+      // topic, so whoever reaches them first wins (AUTO-100). Staff reports aren't capped.
+      const { withBudget } = await import('@/lib/messaging/budget')
+      const { isoWeekKey } = await import('@/lib/messaging/budget-rules')
+      const outcome = await withBudget({ userId: uid, email: m.email }, { class: 'transactional', topic: 'weekly-hiring-report', object: `${t.tenant_id}:${isoWeekKey(now)}`, source: 'hiring-analytics-digest' }, async () => {
+        const r = await sendEmail(m.email, mail, undefined, { category: 'hiring_digest', headers: mail.headers }).catch(() => null)
+        return !!(r?.success || r?.queued)
+      }, now)
+      if (outcome === 'sent') sent++
     }
   }
   return { tenants: enabled.length, sent }

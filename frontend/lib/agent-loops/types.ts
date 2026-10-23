@@ -84,3 +84,16 @@ export interface LoopResult {
   findings: FindingInput[]
   notes?: string[]
 }
+
+/**
+ * A finding left in "applying" this long (the process died between claim and
+ * settle) counts as open again: it can be applied, dismissed, or refreshed by
+ * the next run (AGT-042). Applies run a single service call, so minutes is plenty.
+ */
+export const APPLYING_STALE_MS = 10 * 60_000
+
+/** The status a finding effectively has now (stale "applying" → "open"). Pure. */
+export function effectiveFindingStatus(f: Pick<FindingDoc, 'status' | 'updated_at'>, now = new Date()): FindingStatus {
+  if (f.status === 'applying' && now.getTime() - Date.parse(f.updated_at) > APPLYING_STALE_MS) return 'open'
+  return f.status
+}

@@ -20,11 +20,12 @@ import { PlacementOverview } from '@/components/campus/placement-overview'
 import { PlacementStudents } from '@/components/campus/placement-students'
 import { PlacementReadiness } from '@/components/campus/placement-readiness'
 import { PlacementDrives } from '@/components/campus/placement-drives'
+import { PlacementAssignments } from '@/components/campus/placement-assignments'
 import { PlacementSettings } from '@/components/campus/placement-settings'
 import type { CollegeDoc } from '@/lib/campus/types'
 import { useT } from '@/lib/i18n/client'
 
-const TABS = ['overview', 'students', 'readiness', 'drives', 'settings'] as const
+const TABS = ['overview', 'students', 'readiness', 'drives', 'assignments', 'settings'] as const
 type Tab = (typeof TABS)[number]
 
 interface CollegeResponse {
@@ -126,6 +127,7 @@ function PlacementInner() {
               <TabsTrigger value="students">{tr('career.students')}</TabsTrigger>
               <TabsTrigger value="readiness">{tr('career.readiness')}</TabsTrigger>
               <TabsTrigger value="drives">{tr('career.drives')}</TabsTrigger>
+              <TabsTrigger value="assignments">{tr('career.assignments')}</TabsTrigger>
               <TabsTrigger value="settings">{tr('career.settings')}</TabsTrigger>
             </TabsList>
           </div>
@@ -133,6 +135,7 @@ function PlacementInner() {
           <TabsContent value="students"><PlacementStudents /></TabsContent>
           <TabsContent value="readiness"><PlacementReadiness /></TabsContent>
           <TabsContent value="drives"><PlacementDrives /></TabsContent>
+          <TabsContent value="assignments"><PlacementAssignments /></TabsContent>
           <TabsContent value="settings"><PlacementSettings /></TabsContent>
         </Tabs>
         {ctx!.college.departments.length === 0 && tab !== 'settings' && (

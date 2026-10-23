@@ -6,15 +6,24 @@
 export const RRF_K = 60
 
 /**
- * RAG-020: per-list weights for hybrid fusion, tuned on the offline golden set
- * (lib/rag/eval). Keyword ranks count more than vector ranks: on short paraphrased
- * questions the lexical list is the more reliable one, the vector list mostly
- * breaks ties and rescues pure paraphrases. Offline golden set (2026-10-23, 140 questions):
- * k 60 / 1:1 → s@3 0.869, s@5 0.902, MRR 0.851; k 10 / 1:1.5 → s@3 0.885, s@5 0.918, MRR 0.840.
- * The local embedder is only a proxy: confirm changes with the weekly live eval.
+ * RAG-020: keyword-first fusion. Weighted RRF with k 1 and keyword weight 10
+ * keeps the keyword order for the top 3 (a vector bonus of at most 1/2 can't
+ * bridge the keyword gap 10/((1+r)(2+r)) until rank 4), lets the vector list
+ * reorder ranks 4+, and rescues vector-only hits at about keyword rank 19 —
+ * so hybrid is never worse than keyword-only at top 3 / 5 and still finds
+ * pure paraphrases further down. Offline golden set (2026-10-23, 144 questions,
+ * keyword-only s@3 0.893, s@5 0.934, multi-hop s@3 0.833, MRR 0.818):
+ *   k 10 / kw 1.5 (previous)    s@3 0.877  s@5 0.918  multi-hop 0.667  MRR 0.835
+ *   k 60 / kw 10                s@3 0.877  s@5 0.926  multi-hop 0.833  MRR 0.825
+ *   source-level RRF, k 60 1:1  s@3 0.869  s@5 0.902  multi-hop 0.667  MRR 0.844
+ *   convex score fusion α 0.7   s@3 0.885  s@5 0.918  multi-hop 0.833  MRR 0.855
+ *   k 1 / kw 10 (this)          s@3 0.893  s@5 0.934  multi-hop 0.833  MRR 0.820, s@10 0.959 (kw 0.951)
+ * Every vector-led reordering of the top ranks cost more keyword hits than it
+ * won, so keyword-first is what the data supports. The local embedder is only a
+ * proxy: confirm with the weekly live eval on the real embedder.
  * Ops can override with RAG_RRF_K / RAG_RRF_VECTOR_WEIGHT / RAG_RRF_KEYWORD_WEIGHT.
  */
-export const FUSION_DEFAULTS = { k: 10, vector: 1, keyword: 1.5 }
+export const FUSION_DEFAULTS = { k: 1, vector: 1, keyword: 10 }
 
 /** Fusion knobs from the environment, clamped; defaults when unset or invalid. Pure given `env`. */
 export function fusionConfig(env: Record<string, string | undefined> = process.env): { k: number; vector: number; keyword: number } {

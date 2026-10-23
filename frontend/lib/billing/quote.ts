@@ -48,7 +48,7 @@ export async function checkoutQuote(input: {
     const v = await validateCoupon(input.couponCode, { target: 'plans', currency: plan.currency })
     if (!v.valid || !v.coupon) coupon = { code: input.couponCode.toUpperCase(), error: v.error || 'Invalid coupon.', errorCode: 'coupon_invalid' }
     else {
-      const verdict = couponEligibility(v.coupon, { planId: plan.id, userRedemptions: await userCouponRedemptions(v.coupon.id, input.userId), hasPaidBefore: input.hasPaidBefore })
+      const verdict = couponEligibility(v.coupon, { planId: plan.id, userId: input.userId, userRedemptions: await userCouponRedemptions(v.coupon.id, input.userId), hasPaidBefore: input.hasPaidBefore })
       if (!verdict.ok) {
         const { COUPON_REFUSAL_MESSAGES } = await import('./coupon-eligibility')
         coupon = { code: v.coupon.code, error: COUPON_REFUSAL_MESSAGES[verdict.code], errorCode: verdict.code }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller } from '@/lib/route-auth'
 import { interviewSessions, nowIso } from '@/lib/db/interviews'
 import { interviewPatch, interviewRole } from '@/lib/interview-access'
 
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+  if (!isAdminCaller(gate.user)) {
     return NextResponse.json({ error: 'forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await ctx.params

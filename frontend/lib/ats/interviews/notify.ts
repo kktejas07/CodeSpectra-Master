@@ -6,7 +6,9 @@
 import { buildIcs, googleCalendarUrl, type CalendarEvent } from '@/lib/calendar/ics'
 import { escapeHtml } from '@/lib/safe-html'
 import { getAppOrigin } from '@/lib/app-origin'
-import { wrapEmail } from '@/lib/ats/notify'
+import { mailLocale, wrapEmail } from '@/lib/ats/notify'
+import { outboundT, type OutboundTranslator } from '@/lib/i18n/outbound'
+import type { Locale } from '@/lib/i18n/config'
 import type { AtsCandidate } from '@/lib/ats/contract'
 import type { AtsInterviewDoc } from './db'
 import { formatInZone } from './tz'
@@ -14,10 +16,10 @@ import { PROVIDER_LABELS } from './providers/types'
 
 export type NoticeKind = 'scheduled' | 'rescheduled' | 'cancelled' | 'reminder_24h' | 'reminder_1h'
 
-function where(iv: AtsInterviewDoc): string {
+function where(iv: AtsInterviewDoc, t: OutboundTranslator = outboundT('email', 'en')): string {
   if (iv.mode === 'f2f') {
     const l = iv.location_details
-    return [l?.address || iv.location, l?.room ? `Room: ${l.room}` : ''].filter(Boolean).join(' · ') || 'Location to be confirmed'
+    return [l?.address || iv.location, l?.room ? t('atsMail.iv.room', { room: l.room }) : ''].filter(Boolean).join(' · ') || t('atsMail.iv.locationTbc')
   }
   return PROVIDER_LABELS[iv.provider || 'livekit']
 }
@@ -49,11 +51,11 @@ function rowsHtml(rows: [string, string | null | undefined][]): string {
     .join('')}</table>`
 }
 
-async function send(to: string | null | undefined, msg: { subject: string; html: string }, ics?: string): Promise<boolean> {
+async function send(to: string | null | undefined, msg: { subject: string; html: string }, ics?: string, headers?: Record<string, string>): Promise<boolean> {
   if (!to) return false
   try {
     const { sendEmail } = await import('@/lib/send-email')
-    const r = await sendEmail(to, msg, undefined, { category: 'ats', ...(ics ? { attachments: icsAttachment(ics) } : {}) })
+    const r = await sendEmail(to, msg, undefined, { category: 'ats', ...(ics ? { attachments: icsAttachment(ics) } : {}), ...(headers ? { headers } : {}) })
     return !!r?.success
   } catch (e) {
     console.error('[ats/interviews] email failed:', (e as Error)?.message)
@@ -72,76 +74,101 @@ async function whatsapp(candidate: Pick<AtsCandidate, 'phone' | 'consent'> | nul
   }
 }
 
-const SUBJECT: Record<NoticeKind, string> = {
-  scheduled: 'Interview scheduled',
-  rescheduled: 'Interview rescheduled',
-  cancelled: 'Interview cancelled',
-  reminder_24h: 'Reminder: interview tomorrow',
-  reminder_1h: 'Reminder: interview in an hour',
-}
+/**
+ * SEO-033: every candidate / panel message is written in the recipient's saved
+ * language (lib/i18n/recipient), from email.json `atsMail.*`. The self-schedule
+ * invite reuses the hiring scheduler agent's subject, button, footer and
+ * unsubscribe text (lib/agent/hiring-loops/i18n) so a candidate gets the same
+ * "Pick a time" email whether the agent or a recruiter sent it.
+ */
+const reminderKind = (k: NoticeKind) => k === 'reminder_24h' || k === 'reminder_1h'
 
 /** Candidate notice. `joinUrl` is the candidate's link (virtual). */
 export async function noticeCandidate(iv: AtsInterviewDoc, candidate: AtsCandidate | null, kind: NoticeKind, joinUrl: string | null, company: string): Promise<void> {
+  const to = candidate?.email ?? iv.candidate_email
+  const locale = await mailLocale(to)
+  const t = outboundT('email', locale)
   const tz = iv.timezone || 'UTC'
-  const when = iv.scheduled_at ? formatInZone(iv.scheduled_at, tz) : ''
-  const name = candidate?.name || iv.candidate_name || 'there'
-  const role = iv.job_title || 'the role'
-  const subject = `${SUBJECT[kind]}: ${role} at ${company}`
-  const intro = kind === 'cancelled'
-    ? `Hi ${name}, your interview for ${role} at ${company} has been cancelled. The hiring team will contact you about next steps.`
-    : `Hi ${name}, ${kind === 'rescheduled' ? 'your interview has a new time' : kind.startsWith('reminder') ? 'this is a reminder of your interview' : `your interview for ${role} at ${company} is booked`}.`
-  const rows: [string, string | null | undefined][] = kind === 'cancelled' ? [['Role', role]] : [
-    ['Role', role],
-    ['When', when],
-    ['Length', `${iv.duration_min} minutes`],
-    ['Where', where(iv)],
+  const when = iv.scheduled_at ? formatInZone(iv.scheduled_at, tz, locale) : ''
+  const name = candidate?.name || iv.candidate_name || t('atsMail.nameFallback')
+  const role = iv.job_title || t('atsMail.roleFallback')
+  const p = { name, role, company }
+  const subject = t(`atsMail.iv.subject.${kind}`, p)
+  const intro = t(`atsMail.iv.intro.${kind === 'cancelled' ? 'cancelled' : kind === 'rescheduled' ? 'rescheduled' : reminderKind(kind) ? 'reminder' : 'scheduled'}`, p)
+  const minutes = t('atsMail.iv.minutes', { count: iv.duration_min })
+  const rows: [string, string | null | undefined][] = kind === 'cancelled' ? [[t('atsMail.row.role'), role]] : [
+    [t('atsMail.row.role'), role],
+    [t('atsMail.row.when'), when],
+    [t('atsMail.row.length'), minutes],
+    [t('atsMail.row.where'), where(iv, t)],
     ...(iv.mode === 'f2f'
-      ? ([['Map', iv.location_details?.map_url], ['Instructions', iv.location_details?.instructions]] as [string, string | null | undefined][])
+      ? ([[t('atsMail.row.map'), iv.location_details?.map_url], [t('atsMail.row.instructions'), iv.location_details?.instructions]] as [string, string | null | undefined][])
       : []),
   ]
   const calUrl = kind !== 'cancelled' && iv.scheduled_at
-    ? googleCalendarUrl({ title: `Interview: ${role} at ${company}`, start: iv.scheduled_at, end: new Date(Date.parse(iv.scheduled_at) + iv.duration_min * 60_000), location: iv.mode === 'f2f' ? where(iv) : joinUrl || undefined, description: joinUrl || '' })
+    ? googleCalendarUrl({ title: t('atsMail.iv.calendarTitle', p), start: iv.scheduled_at, end: new Date(Date.parse(iv.scheduled_at) + iv.duration_min * 60_000), location: iv.mode === 'f2f' ? where(iv, t) : joinUrl || undefined, description: joinUrl || '' })
     : null
   const body = `<p style="margin:0 0 14px">${escapeHtml(intro)}</p>${rowsHtml(rows)}${
-    calUrl ? `<p style="margin:0 0 6px;font-size:13px"><a href="${escapeHtml(calUrl)}" style="color:#2F5BE7">Add to Google Calendar</a> · the attached .ics works with Outlook and Apple Calendar.</p>` : ''}`
-  const cta = kind !== 'cancelled' && iv.mode === 'virtual' && joinUrl ? { url: joinUrl, label: 'Join interview' } : undefined
+    calUrl ? `<p style="margin:0 0 6px;font-size:13px"><a href="${escapeHtml(calUrl)}" style="color:#2F5BE7">${escapeHtml(t('atsMail.iv.calendarLink'))}</a> · ${escapeHtml(t('atsMail.iv.calendarNote'))}</p>` : ''}`
+  const cta = kind !== 'cancelled' && iv.mode === 'virtual' && joinUrl ? { url: joinUrl, label: t('atsMail.iv.join') } : undefined
   const ics = kind === 'scheduled' || kind === 'rescheduled' ? interviewIcs(iv, joinUrl) : undefined
-  await send(candidate?.email ?? iv.candidate_email, wrapEmail(subject, body, cta), ics)
+  await send(to, wrapEmail(subject, body, cta, locale), ics)
 
   if (kind !== 'reminder_1h') {
     const wa = kind === 'cancelled'
-      ? `Hi ${name}, your interview for ${role} at ${company} has been cancelled. We'll be in touch.`
-      : `Hi ${name}, ${SUBJECT[kind].toLowerCase()} for ${role} at ${company}: ${when}${iv.mode === 'virtual' && joinUrl ? `. Join: ${joinUrl}` : iv.mode === 'f2f' ? `. ${where(iv)}` : ''}`
+      ? t('atsMail.iv.wa.cancelled', p)
+      : `${t(`atsMail.iv.wa.${kind}`, { ...p, when })}${iv.mode === 'virtual' && joinUrl ? `. ${t('atsMail.iv.wa.join', { url: joinUrl })}` : iv.mode === 'f2f' ? `. ${where(iv, t)}` : ''}`
     await whatsapp(candidate, wa)
   }
 }
 
-/** Self-schedule invitation with the slot-picker link. */
+/** Self-schedule invitation with the slot-picker link (same subject / button / footer as the scheduler agent's offer). */
 export async function inviteToSchedule(iv: AtsInterviewDoc, candidate: AtsCandidate, link: string, company: string): Promise<void> {
-  const role = iv.job_title || 'the role'
-  const subject = `Pick a time for your ${role} interview at ${company}`
-  const body = `<p style="margin:0 0 14px">${escapeHtml(`Hi ${candidate.name || 'there'}, you're invited to a ${iv.duration_min}-minute ${iv.mode === 'f2f' ? 'in-person' : 'video'} interview for ${role} at ${company}. Choose a time that works for you.`)}</p>`
-  await send(candidate.email, wrapEmail(subject, body, { url: link, label: 'Choose a time' }))
-  await whatsapp(candidate, `Hi ${candidate.name || 'there'}, please pick a time for your ${role} interview at ${company}: ${link}`)
+  const locale = await mailLocale(candidate.email)
+  const t = outboundT('email', locale)
+  const { hlt, hlLocale } = await import('@/lib/agent/hiring-loops/i18n')
+  const hl = hlLocale(locale)
+  const name = candidate.name || t('atsMail.nameFallback')
+  const role = iv.job_title || t('atsMail.roleFallback')
+  if (candidate.email) {
+    const { isUnsubscribed, unsubscribeUrl, listUnsubscribeHeaders } = await import('@/lib/automation/mailer')
+    if (!(await isUnsubscribed(candidate.email, 'hiring').catch(() => false))) {
+      const intro = t('atsMail.iv.inviteIntro', { name, role, company, minutes: iv.duration_min, mode: t(iv.mode === 'f2f' ? 'atsMail.iv.mode.f2f' : 'atsMail.iv.mode.video') })
+      const unsub = unsubscribeUrl(candidate.email, 'hiring')
+      const body = `<p style="margin:0 0 14px">${escapeHtml(intro)}</p>`
+        + `<p style="margin:16px 0 0;font-size:12px;color:#6b7280">${escapeHtml(hlt(hl, 'mail.footer', { company }))}${unsub ? ` · <a href="${escapeHtml(unsub)}" style="color:#6b7280">${escapeHtml(hlt(hl, 'mail.unsubscribe'))}</a>` : ''}</p>`
+      await send(candidate.email, wrapEmail(hlt(hl, 'mail.subject', { role, company }), body, { url: link, label: hlt(hl, 'mail.pick') }, locale), undefined, listUnsubscribeHeaders(candidate.email, 'hiring'))
+    }
+  }
+  await whatsapp(candidate, t('atsMail.iv.waInvite', { name, role, company, link }))
 }
 
-/** Panel notice (each member separately). */
+/** Panel notice (each member separately, in their own language). */
 export async function noticePanel(iv: AtsInterviewDoc, kind: NoticeKind, panelUrl: string, members = iv.panel): Promise<void> {
   const tz = iv.timezone || 'UTC'
-  const when = iv.scheduled_at ? formatInZone(iv.scheduled_at, tz) : ''
-  const subject = `${SUBJECT[kind]}: ${iv.candidate_name || 'candidate'} — ${iv.job_title || 'interview'}`
   // External meetings: the provider link; built-in video: the interview page.
   const meet = iv.mode === 'virtual' && iv.provider && iv.provider !== 'livekit' ? iv.join_url || null : null
-  const rows: [string, string | null | undefined][] = [
-    ['Candidate', iv.candidate_name],
-    ['Role', iv.job_title],
-    ['Stage', iv.stage_name],
-    ...(kind === 'cancelled' ? [] : ([['When', when], ['Length', `${iv.duration_min} minutes`], ['Where', where(iv)], ['Meeting link', meet]] as [string, string | null][])),
-  ]
-  const intro = kind === 'cancelled' ? 'This interview was cancelled.' : 'Open the interview page to read the résumé, join the meeting and submit your scorecard.'
-  const html = wrapEmail(subject, `<p style="margin:0 0 14px">${escapeHtml(intro)}</p>${rowsHtml(rows)}`, { url: panelUrl, label: 'Open interview' })
   const ics = kind === 'scheduled' || kind === 'rescheduled' ? interviewIcs(iv, meet || panelUrl) : undefined
-  for (const m of members) await send(m.email, html, ics)
+  const byLocale = new Map<Locale, { subject: string; html: string }>()
+  for (const m of members) {
+    const locale = await mailLocale(m.email)
+    let msg = byLocale.get(locale)
+    if (!msg) {
+      const t = outboundT('email', locale)
+      const when = iv.scheduled_at ? formatInZone(iv.scheduled_at, tz, locale) : ''
+      const subject = t(`atsMail.panel.subject.${kind}`, { candidate: iv.candidate_name || t('atsMail.candidateFallback'), role: iv.job_title || t('atsMail.interviewFallback') })
+      const rows: [string, string | null | undefined][] = [
+        [t('atsMail.row.candidate'), iv.candidate_name],
+        [t('atsMail.row.role'), iv.job_title],
+        [t('atsMail.row.stage'), iv.stage_name],
+        ...(kind === 'cancelled' ? [] : ([[t('atsMail.row.when'), when], [t('atsMail.row.length'), t('atsMail.iv.minutes', { count: iv.duration_min })], [t('atsMail.row.where'), where(iv, t)], [t('atsMail.row.meeting'), meet]] as [string, string | null][])),
+      ]
+      const intro = t(kind === 'cancelled' ? 'atsMail.panel.introCancelled' : 'atsMail.panel.intro')
+      msg = wrapEmail(subject, `<p style="margin:0 0 14px">${escapeHtml(intro)}</p>${rowsHtml(rows)}`, { url: panelUrl, label: t('atsMail.panel.open') }, locale)
+      byLocale.set(locale, msg)
+    }
+    await send(m.email, msg, ics)
+  }
 }
 
 /** In-app notification to people who schedule (job recruiters, else ATS admins/recruiters). */
