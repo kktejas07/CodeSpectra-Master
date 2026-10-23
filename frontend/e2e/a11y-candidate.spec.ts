@@ -87,7 +87,23 @@ for (const path of PAGES) {
         await expectNoCritical(page, `${path} (questions)`)
       }
     }
-    const kb = await tabPass(page)
+    // The first-visit tour now loads lazily (SEO-050) and can open just as the
+    // Tab pass starts; while its highlight animates, driver.js traps Tab with
+    // no popover to focus yet. Let it settle: either the popover is up, or no
+    // tour is running.
+    const settle = async () => {
+      await page.waitForFunction(() => {
+        if (!document.body.classList.contains('driver-active')) return true
+        const pop = document.querySelector('.driver-popover') as HTMLElement | null
+        return !!pop && pop.getBoundingClientRect().height > 0 && !!pop.querySelector('button')
+      }, undefined, { timeout: 8_000 }).catch(() => {})
+      await page.waitForTimeout(500)
+    }
+    await settle()
+    let kb = await tabPass(page)
+    // The tour opened mid-pass (focus lost to <body> on the very first stop):
+    // let it settle and run the pass again — the result must still be clean.
+    if (kb.stops === 0) { await settle(); kb = await tabPass(page) }
     expect(kb.stops, 'Tab reaches interactive elements').toBeGreaterThan(0)
     expect(kb.problems).toEqual([])
   })
