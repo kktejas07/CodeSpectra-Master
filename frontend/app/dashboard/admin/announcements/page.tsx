@@ -19,6 +19,7 @@ import { SkeletonButton, SkeletonCard, SkeletonText } from '@/components/ui/skel
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { sanitizeArticleHtml } from '@/lib/safe-html'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Announcement {
   id: string; title: string; message: string; link?: string; image?: string
@@ -27,6 +28,7 @@ interface Announcement {
 }
 
 export default function AnnouncementsPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const imageFileRef = useRef<HTMLInputElement>(null)
@@ -114,13 +116,13 @@ export default function AnnouncementsPage() {
     <div className="space-y-6">
       <PageHeader
         illustration="notifications"
-        title="Announcements"
-        description="Send a message to users in the app, by email, push or WhatsApp."
+        title={ta('annAdm.announcements')}
+        description={ta('annAdm.sendAMessageToUsersIn')}
         icon={<Megaphone />}
         actions={
           <>
-            <Button variant={activeTab === 'compose' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('compose')} aria-pressed={activeTab === 'compose'}><Send className="h-4 w-4 mr-1" /> Compose</Button>
-            <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')} aria-pressed={activeTab === 'history'}><Clock className="h-4 w-4 mr-1" /> History (<span className="tabular-nums">{historyTotal}</span>)</Button>
+            <Button variant={activeTab === 'compose' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('compose')} aria-pressed={activeTab === 'compose'}><Send className="h-4 w-4 mr-1" /> {ta('annAdm.compose')}</Button>
+            <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')} aria-pressed={activeTab === 'history'}><Clock className="h-4 w-4 mr-1" /> {ta('annAdm.history')}<span className="tabular-nums">{historyTotal}</span>)</Button>
           </>
         }
       />
@@ -129,22 +131,22 @@ export default function AnnouncementsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
           <div className="xl:col-span-3 space-y-6">
             <Panel>
-              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Send className="h-4 w-4" /> New announcement</h2>
+              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Send className="h-4 w-4" /> {ta('annAdm.newAnnouncement')}</h2>
               <div className="space-y-4">
                 <div>
-                  <Label>Title *</Label>
-                  <Input aria-label="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mt-1.5" placeholder="Platform maintenance scheduled" maxLength={100} />
+                  <Label>{ta('annAdm.title')}</Label>
+                  <Input aria-label={ta('annAdm.title2')} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mt-1.5" placeholder={ta('annAdm.platformMaintenanceScheduled')} maxLength={100} />
                   <p className="text-xs tabular-nums text-muted-foreground mt-1">{form.title.length}/100</p>
                 </div>
 
                 {/* Image Upload */}
                 <div>
-                  <Label>Image <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Label>{ta('annAdm.image')} <span className="text-muted-foreground text-xs">{ta('annAdm.optional')}</span></Label>
                   <input ref={imageFileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                   {form.image ? (
                     <div className="relative mt-1.5 overflow-hidden rounded-xl border border-border">
                       <img src={form.image} alt="" className="w-full h-32 object-cover" />
-                      <Button size="sm" variant="destructive" className="absolute top-2 right-2 h-7 w-7 p-0" aria-label="Remove image" onClick={() => setForm(f => ({ ...f, image: '' }))}><X className="h-4 w-4" /></Button>
+                      <Button size="sm" variant="destructive" className="absolute top-2 right-2 h-7 w-7 p-0" aria-label={ta('annAdm.removeImage')} onClick={() => setForm(f => ({ ...f, image: '' }))}><X className="h-4 w-4" /></Button>
                     </div>
                   ) : (
                     <button type="button" onClick={() => imageFileRef.current?.click()} disabled={uploadingImage}
@@ -156,19 +158,19 @@ export default function AnnouncementsPage() {
                 </div>
 
                 <div>
-                  <Label>Message *</Label>
+                  <Label>{ta('annAdm.message')}</Label>
                   <div className="mt-1.5">
-                    <RichTextEditor value={form.message} onChange={msg => setForm(f => ({ ...f, message: msg }))} placeholder="Write your announcement..." minHeight={150} />
+                    <RichTextEditor value={form.message} onChange={msg => setForm(f => ({ ...f, message: msg }))} placeholder={ta('annAdm.writeYourAnnouncement')} minHeight={150} />
                   </div>
                 </div>
 
                 <div>
-                  <Label>Link <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input aria-label="Link (optional)" value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="mt-1.5" placeholder="https://codespectra.ai/learn/update" type="url" />
+                  <Label>{ta('annAdm.link')} <span className="text-muted-foreground text-xs">{ta('annAdm.optional')}</span></Label>
+                  <Input aria-label={ta('annAdm.linkOptional')} value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="mt-1.5" placeholder="https://codespectra.ai/learn/update" type="url" />
                 </div>
 
                 <div>
-                  <Label>Send to</Label>
+                  <Label>{ta('annAdm.sendTo')}</Label>
                   <div className="grid grid-cols-2 gap-2 mt-1.5">
                     {targetOptions.map(opt => (
                       <button key={opt.value} onClick={() => setForm(f => ({ ...f, target: opt.value }))}
@@ -186,27 +188,27 @@ export default function AnnouncementsPage() {
 
             {/* Channels */}
             <Panel>
-              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Bell className="h-4 w-4" /> Delivery channels</h2>
+              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Bell className="h-4 w-4" /> {ta('annAdm.deliveryChannels')}</h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">In-app notification</span></div><Switch aria-label="In-app notification" checked={form.send_in_app} onCheckedChange={v => setForm(f => ({ ...f, send_in_app: v }))} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Email</span></div><Switch aria-label="Email" checked={form.send_email} onCheckedChange={v => setForm(f => ({ ...f, send_email: v }))} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Push notification</span></div><Switch aria-label="Push notification" checked={form.send_push} onCheckedChange={v => setForm(f => ({ ...f, send_push: v }))} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('annAdm.inAppNotification')}</span></div><Switch aria-label={ta('annAdm.inAppNotification')} checked={form.send_in_app} onCheckedChange={v => setForm(f => ({ ...f, send_in_app: v }))} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('annAdm.email')}</span></div><Switch aria-label={ta('annAdm.email')} checked={form.send_email} onCheckedChange={v => setForm(f => ({ ...f, send_email: v }))} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('annAdm.pushNotification')}</span></div><Switch aria-label={ta('annAdm.pushNotification')} checked={form.send_push} onCheckedChange={v => setForm(f => ({ ...f, send_push: v }))} /></div>
                 <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span></div><Switch aria-label="WhatsApp" checked={form.send_whatsapp} onCheckedChange={v => setForm(f => ({ ...f, send_whatsapp: v }))} /></div>
               </div>
             </Panel>
 
             {/* Schedule */}
             <Panel>
-              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Clock className="h-4 w-4" /> Schedule</h2>
-              <Label>Schedule for later <span className="text-muted-foreground text-xs">(leave empty to send now)</span></Label>
-              <Input aria-label="Schedule for later (leave empty to send now)" type="datetime-local" value={form.schedule_at} onChange={e => setForm(f => ({ ...f, schedule_at: e.target.value }))} className="mt-1.5" />
+              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Clock className="h-4 w-4" /> {ta('annAdm.schedule')}</h2>
+              <Label>{ta('annAdm.scheduleForLater')} <span className="text-muted-foreground text-xs">{ta('annAdm.leaveEmptyToSendNow')}</span></Label>
+              <Input aria-label={ta('annAdm.scheduleForLaterLeaveEmptyTo')} type="datetime-local" value={form.schedule_at} onChange={e => setForm(f => ({ ...f, schedule_at: e.target.value }))} className="mt-1.5" />
             </Panel>
 
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setPreviewOpen(p => !p)} className="gap-1.5"><Eye className="h-3.5 w-3.5" /> Preview</Button>
+              <Button variant="outline" size="sm" onClick={() => setPreviewOpen(p => !p)} className="gap-1.5"><Eye className="h-3.5 w-3.5" /> {ta('annAdm.preview')}</Button>
               <Button onClick={send} disabled={sending || !form.title.trim() || !form.message.trim()} className="gap-1.5">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Send to {targetOptions.find(o => o.value === form.target)?.label}
+                {ta('annAdm.sendTo')} {targetOptions.find(o => o.value === form.target)?.label}
               </Button>
             </div>
           </div>
@@ -214,7 +216,7 @@ export default function AnnouncementsPage() {
           {/* Preview */}
           <div className="xl:col-span-2 space-y-6">
             <Panel>
-              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Eye className="h-4 w-4" /> Live preview</h2>
+              <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Eye className="h-4 w-4" /> {ta('annAdm.livePreview')}</h2>
               <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
                 {form.image && <img src={form.image} alt="" className="w-full h-24 object-cover rounded mb-3" />}
                 <div className="flex items-start gap-3">
@@ -227,9 +229,9 @@ export default function AnnouncementsPage() {
                 </div>
               </div>
               <div className="flex gap-2 mt-3 flex-wrap">
-                {form.send_in_app && <Badge variant="outline" className="text-[10px]"><Megaphone className="h-2.5 w-2.5 mr-0.5" /> In-app</Badge>}
-                {form.send_email && <Badge variant="outline" className="text-[10px]"><Mail className="h-2.5 w-2.5 mr-0.5" /> Email</Badge>}
-                {form.send_push && <Badge variant="outline" className="text-[10px]"><ExternalLink className="h-2.5 w-2.5 mr-0.5" /> Push</Badge>}
+                {form.send_in_app && <Badge variant="outline" className="text-[10px]"><Megaphone className="h-2.5 w-2.5 mr-0.5" /> {ta('annAdm.inApp')}</Badge>}
+                {form.send_email && <Badge variant="outline" className="text-[10px]"><Mail className="h-2.5 w-2.5 mr-0.5" /> {ta('annAdm.email')}</Badge>}
+                {form.send_push && <Badge variant="outline" className="text-[10px]"><ExternalLink className="h-2.5 w-2.5 mr-0.5" /> {ta('annAdm.push')}</Badge>}
                 {form.send_whatsapp && <Badge variant="outline" className="text-[10px]"><MessageCircle className="h-2.5 w-2.5 mr-0.5" /> WhatsApp</Badge>}
               </div>
             </Panel>
@@ -238,11 +240,11 @@ export default function AnnouncementsPage() {
       ) : (
         /* History */
         <Panel className="p-5">
-          <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Clock className="h-4 w-4" /> Sent announcements ({historyTotal})</h2>
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Clock className="h-4 w-4" /> {ta('annAdm.sentAnnouncements')}{historyTotal})</h2>
           {loadingHistory ? (
             <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : history.length === 0 ? (
-            <EmptyState variant="notifications" title="Nothing sent yet" description="Announcements you send from Compose will be listed here." className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState variant="notifications" title={ta('annAdm.nothingSentYet')} description={ta('annAdm.announcementsYouSendFromComposeWill')} className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {history.map(ann => (
@@ -255,9 +257,9 @@ export default function AnnouncementsPage() {
                       {ann.link && <a href={ann.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">{ann.link}</a>}
                       <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
                         <span>{formatDate(ann.created_at)}</span>
-                        {ann.channels?.in_app && <Badge variant="outline" className="text-[10px]">In-app</Badge>}
-                        {ann.channels?.email && <Badge variant="outline" className="text-[10px]">Email</Badge>}
-                        {ann.channels?.push && <Badge variant="outline" className="text-[10px]">Push</Badge>}
+                        {ann.channels?.in_app && <Badge variant="outline" className="text-[10px]">{ta('annAdm.inApp')}</Badge>}
+                        {ann.channels?.email && <Badge variant="outline" className="text-[10px]">{ta('annAdm.email')}</Badge>}
+                        {ann.channels?.push && <Badge variant="outline" className="text-[10px]">{ta('annAdm.push')}</Badge>}
                         {ann.channels?.whatsapp && <Badge variant="outline" className="text-[10px]">WhatsApp</Badge>}
                       </div>
                     </div>

@@ -31,6 +31,7 @@ import {
 import { cn } from '@/lib/utils'
 import { parseCandidateText, validateRows } from '@/lib/assessment-invite-rows'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface ExamOption {
   id: string
@@ -54,6 +55,7 @@ const MAX_ROWS = 500
 interface InviteStatus { id: string; email: string; delivery_status: string; delivery_error?: string | null }
 
 export default function BulkSchedulePage() {
+  const { t: ta } = useAdminT()
   // Company admins invite to their own organisation's tests (the API enforces it).
   const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
@@ -205,7 +207,7 @@ export default function BulkSchedulePage() {
     {
       key: 'status', header: 'Status', sortable: true,
       cell: r => r.status === 'valid'
-        ? <Badge variant="success" className="gap-1"><Check className="h-3 w-3" />Valid</Badge>
+        ? <Badge variant="success" className="gap-1"><Check className="h-3 w-3" />{ta('bulkAdm.valid')}</Badge>
         : <Badge variant="danger" className="gap-1"><XCircle className="h-3 w-3" />{r.error}</Badge>,
     },
   ]
@@ -217,8 +219,8 @@ export default function BulkSchedulePage() {
       {/* Header */}
       <PageHeader
         className="mb-0"
-        title="Invite candidates"
-        description="Upload a CSV or paste emails to invite candidates to one assessment. Each candidate gets their own link by email."
+        title={ta('bulkAdm.inviteCandidates')}
+        description={ta('bulkAdm.uploadACsvOrPasteEmails')}
         icon={<Upload />}
       />
 
@@ -244,8 +246,8 @@ export default function BulkSchedulePage() {
         {/* Step 0: Select Assessment */}
         {step === 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Select assessment</h2>
-            <p className="text-sm text-muted-foreground">Choose which assessment to schedule for your candidates. Search by title or role.</p>
+            <h2 className="text-lg font-semibold">{ta('bulkAdm.selectAssessment')}</h2>
+            <p className="text-sm text-muted-foreground">{ta('bulkAdm.chooseWhichAssessmentToScheduleFor')}</p>
             <Popover open={examPickerOpen} onOpenChange={setExamPickerOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -267,9 +269,9 @@ export default function BulkSchedulePage() {
               </PopoverTrigger>
               <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
                 <Command>
-                  <CommandInput placeholder="Search assessments..." />
+                  <CommandInput placeholder={ta('bulkAdm.searchAssessments')} />
                   <CommandList>
-                    <CommandEmpty>No assessment found.</CommandEmpty>
+                    <CommandEmpty>{ta('bulkAdm.noAssessmentFound')}</CommandEmpty>
                     <CommandGroup>
                       {exams.map(e => (
                         <CommandItem
@@ -291,7 +293,7 @@ export default function BulkSchedulePage() {
             </Popover>
             <div className="flex justify-end">
               <Button disabled={!selectedExamId} onClick={() => setStep(1)}>
-                Next <ArrowRight className="ml-2 h-4 w-4" />
+                {ta('bulkAdm.next')} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -300,13 +302,12 @@ export default function BulkSchedulePage() {
         {/* Step 1: Upload CSV */}
         {step === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Add candidates</h2>
+            <h2 className="text-lg font-semibold">{ta('bulkAdm.addCandidates')}</h2>
             <p className="text-sm text-muted-foreground">
-              CSV columns: <code className="bg-muted px-1 rounded">email</code> (required),
+              {ta('bulkAdm.csvColumns')} <code className="bg-muted px-1 rounded">email</code> {ta('bulkAdm.required')}
               <code className="bg-muted px-1 rounded">name</code>,
               <code className="bg-muted px-1 rounded">company</code>,
-              <code className="bg-muted px-1 rounded">role</code> (optional).
-              Header row is auto-detected. BOM is stripped.
+              <code className="bg-muted px-1 rounded">role</code> {ta('bulkAdm.optionalHeaderRowIsAutoDetected')}
             </p>
 
             <div
@@ -320,11 +321,11 @@ export default function BulkSchedulePage() {
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
               role="button"
               tabIndex={0}
-              aria-label="Choose a CSV file of candidates"
+              aria-label={ta('bulkAdm.chooseACsvFileOfCandidates')}
             >
               <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-3" aria-hidden />
-              <p className="text-sm font-medium">Drag & drop a CSV file or click to browse</p>
-              <p className="text-xs text-muted-foreground mt-1">Supports .csv and .txt files</p>
+              <p className="text-sm font-medium">{ta('bulkAdm.dragDropACsvFileOr')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{ta('bulkAdm.supportsCsvAndTxtFiles')}</p>
             </div>
 
             <input
@@ -340,7 +341,7 @@ export default function BulkSchedulePage() {
             />
 
             <div className="grid gap-2">
-              <Label htmlFor="paste-emails">Or paste emails</Label>
+              <Label htmlFor="paste-emails">{ta('bulkAdm.orPasteEmails')}</Label>
               <Textarea
                 id="paste-emails"
                 rows={5}
@@ -348,15 +349,15 @@ export default function BulkSchedulePage() {
                 onChange={e => setPasted(e.target.value)}
                 placeholder={'jane@example.com\nRavi Kumar <ravi@example.com>\nalex@example.com, sam@example.com'}
               />
-              <p className="text-xs text-muted-foreground">One per line or separated by commas. Up to {MAX_ROWS} per batch.</p>
+              <p className="text-xs text-muted-foreground">{ta('bulkAdm.onePerLineOrSeparatedBy', { MAX_ROWS: MAX_ROWS })}</p>
             </div>
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(0)}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <ArrowLeft className="mr-2 h-4 w-4" /> {ta('bulkAdm.back')}
               </Button>
               <Button disabled={!pasted.trim()} onClick={() => parseCsv(pasted, 'Pasted list')}>
-                Preview <ArrowRight className="ml-2 h-4 w-4" />
+                {ta('bulkAdm.preview')} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -367,23 +368,21 @@ export default function BulkSchedulePage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Preview candidates</h2>
+                <h2 className="text-lg font-semibold">{ta('bulkAdm.previewCandidates')}</h2>
                 <p className="text-sm text-muted-foreground">
                   File: {csvFileName}
                 </p>
               </div>
               <div className="flex gap-3 text-sm">
-                <Badge variant="success">{validCount} valid</Badge>
-                {invalidCount > 0 && <Badge variant="danger">{invalidCount} invalid</Badge>}
+                <Badge variant="success">{ta('bulkAdm.valid2', { validCount: validCount })}</Badge>
+                {invalidCount > 0 && <Badge variant="danger">{ta('bulkAdm.invalid', { invalidCount: invalidCount })}</Badge>}
               </div>
             </div>
 
             {invalidCount > 0 && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
                 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <span className="text-amber-700 dark:text-amber-400">
-                  {invalidCount} row(s) will be skipped. Invalid rows are highlighted below.
-                </span>
+                <span className="text-amber-700 dark:text-amber-400">{ta('bulkAdm.rowSWillBeSkippedInvalid', { invalidCount: invalidCount })}</span>
               </div>
             )}
 
@@ -398,10 +397,10 @@ export default function BulkSchedulePage() {
 
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => { setStep(1); setCandidates([]); setCsvFileName('') }}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <ArrowLeft className="mr-2 h-4 w-4" /> {ta('bulkAdm.back')}
               </Button>
               <Button disabled={validCount === 0} onClick={() => setStep(3)}>
-                Next <ArrowRight className="ml-2 h-4 w-4" />
+                {ta('bulkAdm.next')} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -410,36 +409,36 @@ export default function BulkSchedulePage() {
         {/* Step 3: Schedule Settings */}
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Schedule settings</h2>
+            <h2 className="text-lg font-semibold">{ta('bulkAdm.scheduleSettings')}</h2>
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="deadline">Deadline (optional)</Label>
+                <Label htmlFor="deadline">{ta('bulkAdm.deadlineOptional')}</Label>
                 <Input
                   id="deadline"
                   type="datetime-local"
                   value={deadline}
                   onChange={e => setDeadline(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">Candidates must complete before this date. Default: 7 days.</p>
+                <p className="text-xs text-muted-foreground">{ta('bulkAdm.candidatesMustCompleteBeforeThisDate')}</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="duration">Duration override (optional)</Label>
+                <Label htmlFor="duration">{ta('bulkAdm.durationOverrideOptional')}</Label>
                 <Input
                   id="duration"
                   type="number"
                   min="1"
-                  placeholder="Use assessment default"
+                  placeholder={ta('bulkAdm.useAssessmentDefault')}
                   value={durationMinutes}
                   onChange={e => setDurationMinutes(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">Override the assessment's default duration in minutes.</p>
+                <p className="text-xs text-muted-foreground">{ta('bulkAdm.overrideTheAssessmentSDefaultDuration')}</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="message">Custom email message (optional)</Label>
+                <Label htmlFor="message">{ta('bulkAdm.customEmailMessageOptional')}</Label>
                 <Textarea
                   id="message"
                   rows={3}
-                  placeholder="Add a personal note to the invitation email..."
+                  placeholder={ta('bulkAdm.addAPersonalNoteToThe')}
                   value={customMessage}
                   onChange={e => setCustomMessage(e.target.value)}
                 />
@@ -447,10 +446,10 @@ export default function BulkSchedulePage() {
             </div>
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(2)}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <ArrowLeft className="mr-2 h-4 w-4" /> {ta('bulkAdm.back')}
               </Button>
               <Button onClick={() => setStep(4)}>
-                Next <ArrowRight className="ml-2 h-4 w-4" />
+                {ta('bulkAdm.next')} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -459,17 +458,17 @@ export default function BulkSchedulePage() {
         {/* Step 4: Confirm */}
         {step === 4 && !result && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Confirm and send</h2>
+            <h2 className="text-lg font-semibold">{ta('bulkAdm.confirmAndSend')}</h2>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 space-y-2 text-sm">
               <p><strong>Assessment:</strong> {selectedExam?.title}</p>
-              <p><strong>Candidates:</strong> {validCount} valid candidates will be invited</p>
+              <p><strong>Candidates:</strong> {validCount} {ta('bulkAdm.validCandidatesWillBeInvited')}</p>
               {deadline && <p><strong>Deadline:</strong> {formatDateTime(deadline)}</p>}
-              {durationMinutes && <p><strong>Duration override:</strong> {durationMinutes} minutes</p>}
-              {customMessage && <p><strong>Custom message:</strong> Yes</p>}
+              {durationMinutes && <p><strong>{ta('bulkAdm.durationOverride')}</strong> {durationMinutes} {ta('bulkAdm.minutes')}</p>}
+              {customMessage && <p><strong>{ta('bulkAdm.customMessage')}</strong> {ta('bulkAdm.yes')}</p>}
             </div>
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(3)}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <ArrowLeft className="mr-2 h-4 w-4" /> {ta('bulkAdm.back')}
               </Button>
               <Button onClick={handleSend} disabled={sending} className="gap-2">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -490,14 +489,14 @@ export default function BulkSchedulePage() {
                   <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                 )}
                 <div>
-                  <p className="font-semibold text-lg">{result.created} invite(s) created</p>
-                  {result.failed > 0 && <p className="text-amber-700 dark:text-amber-400">{result.failed} skipped</p>}
+                  <p className="font-semibold text-lg">{ta('bulkAdm.inviteSCreated', { created: result.created })}</p>
+                  {result.failed > 0 && <p className="text-amber-700 dark:text-amber-400">{ta('bulkAdm.skipped', { failed: result.failed })}</p>}
                 </div>
               </div>
               {statuses.length > 0 && (
                 <div className="mt-4 max-h-80 overflow-y-auto rounded-xl border border-border bg-card">
                   <table className="w-full text-sm">
-                    <thead><tr className="text-left text-xs text-muted-foreground"><th className="px-3 py-2">Email</th><th className="px-3 py-2">Email status</th></tr></thead>
+                    <thead><tr className="text-left text-xs text-muted-foreground"><th className="px-3 py-2">{ta('bulkAdm.email')}</th><th className="px-3 py-2">{ta('bulkAdm.emailStatus')}</th></tr></thead>
                     <tbody>
                       {statuses.map(s => (
                         <tr key={s.id} className="border-t border-border/60">
@@ -526,10 +525,10 @@ export default function BulkSchedulePage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>
-                Back to assessments
+                {ta('bulkAdm.backToAssessments')}
               </Button>
               <Button onClick={() => router.push(`/dashboard/admin/assessments/${selectedExamId}/results`)}>
-                View results
+                {ta('bulkAdm.viewResults')}
               </Button>
             </div>
           </div>

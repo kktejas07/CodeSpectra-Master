@@ -333,6 +333,14 @@ export async function runIntegrityReview(examId: string, reason: string): Promis
         bodyText: `${summary}\n\nOpen the results page to see each flagged candidate before you release scores.`,
         cta: { label: 'Review results', url: `/dashboard/admin/assessments/${examId}/results` },
         reason: 'You get this because you organise this test.',
+        // SEO-054: the organiser's language.
+        i18n: {
+          subject: { key: 'auto.integrity.subject', params: { title: exam.title ? String(exam.title) : { t: 'auto.integrity.yourTest' } } },
+          heading: { key: 'auto.integrity.heading' },
+          body: [{ key: 'auto.integrity.summary', params: { pairs: report.pairs, ai: report.aiFlags, leaks: report.leaks, flagged: flagged.size } }, { key: 'auto.integrity.body' }],
+          cta: { key: 'auto.integrity.cta' },
+          reason: { key: 'auto.integrity.reason' },
+        },
       })
     }
   }
@@ -395,6 +403,13 @@ export async function weeklyResultsDigest(now = new Date()): Promise<{ tenants: 
         bodyText: `New submissions: ${subs}\nWaiting for review: ${pending}\nResults released: ${released}`,
         cta: { label: 'Open assessments', url: '/dashboard/admin/assessments' },
         reason: 'You get this weekly summary because you administer tests for your organisation.',
+        i18n: {
+          subject: { key: 'auto.weeklyResults.subject' },
+          heading: { key: 'auto.weeklyResults.heading' },
+          body: { key: 'auto.weeklyResults.body', params: { subs, pending, released } },
+          cta: { key: 'auto.weeklyResults.cta' },
+          reason: { key: 'auto.weeklyResults.reason' },
+        },
       })
     }
     sent++

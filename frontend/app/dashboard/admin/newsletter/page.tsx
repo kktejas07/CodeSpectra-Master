@@ -21,6 +21,7 @@ import { compressHtmlImages } from '@/lib/image-compress'
 import EmailPreviewFrame from '@/components/newsletter/email-preview-frame'
 import { SkeletonList, SkeletonStats } from '@/components/ui/skeleton-boneyard'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Campaign {
   id: string
@@ -84,6 +85,7 @@ function toLocalInput(value: string): string {
 }
 
 export default function NewsletterPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const heroFileRef = useRef<HTMLInputElement>(null)
@@ -354,12 +356,12 @@ export default function NewsletterPage() {
       <PageHeader
         illustration="inbox"
         icon={<Megaphone />}
-        title="Newsletter"
-        description="Write a campaign, preview it, send a test, then send it by email, push, in-app or WhatsApp."
+        title={ta('nlAdm.newsletter')}
+        description={ta('nlAdm.writeACampaignPreviewItSend')}
         actions={
           <>
-            <Button variant={activeTab === 'compose' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('compose')}><Send className="h-4 w-4 mr-1" /> Compose</Button>
-            <Button variant={activeTab === 'campaigns' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('campaigns')}><BarChart3 className="h-4 w-4 mr-1" /> Campaigns</Button>
+            <Button variant={activeTab === 'compose' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('compose')}><Send className="h-4 w-4 mr-1" /> {ta('nlAdm.compose')}</Button>
+            <Button variant={activeTab === 'campaigns' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('campaigns')}><BarChart3 className="h-4 w-4 mr-1" /> {ta('nlAdm.campaigns')}</Button>
           </>
         }
         className="mb-0"
@@ -367,11 +369,11 @@ export default function NewsletterPage() {
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
-        <StatCard label="Subscribers" value={recipientCount} icon={<UsersIcon />} />
-        <StatCard label="Campaigns" value={stats.totalCampaigns} icon={<Megaphone />} />
-        <StatCard label="Emails sent" value={stats.totalEmailsSent.toLocaleString()} icon={<Mail />} />
-        <StatCard label="Failed" value={<span className={stats.totalEmailsFailed > 0 ? 'text-red-600 dark:text-red-400' : undefined}>{stats.totalEmailsFailed}</span>} icon={<AlertCircle />} />
-        <StatCard label="Push and in-app" value={stats.totalPushSent + stats.totalInAppSent} icon={<ExternalLink />} />
+        <StatCard label={ta('nlAdm.subscribers')} value={recipientCount} icon={<UsersIcon />} />
+        <StatCard label={ta('nlAdm.campaigns')} value={stats.totalCampaigns} icon={<Megaphone />} />
+        <StatCard label={ta('nlAdm.emailsSent')} value={stats.totalEmailsSent.toLocaleString()} icon={<Mail />} />
+        <StatCard label={ta('nlAdm.failed')} value={<span className={stats.totalEmailsFailed > 0 ? 'text-red-600 dark:text-red-400' : undefined}>{stats.totalEmailsFailed}</span>} icon={<AlertCircle />} />
+        <StatCard label={ta('nlAdm.pushAndInApp')} value={stats.totalPushSent + stats.totalInAppSent} icon={<ExternalLink />} />
         <StatCard label="WhatsApp" value={stats.totalWhatsAppSent || 0} icon={<MessageCircle />} />
       </div>
 
@@ -382,11 +384,11 @@ export default function NewsletterPage() {
             <Panel>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold flex items-center gap-2">
-                  <Send className="h-4 w-4 text-primary" /> Compose newsletter
-                  {editingId && <Badge variant="default"><PencilLine className="h-3 w-3 mr-1" />Editing draft</Badge>}
+                  <Send className="h-4 w-4 text-primary" /> {ta('nlAdm.composeNewsletter')}
+                  {editingId && <Badge variant="default"><PencilLine className="h-3 w-3 mr-1" />{ta('nlAdm.editingDraft')}</Badge>}
                 </h2>
                 <select
-                  aria-label="Start from a template"
+                  aria-label={ta('nlAdm.startFromATemplate')}
                   className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onChange={e => {
                     const tpl = TEMPLATES.find(t => t.id === e.target.value)
@@ -399,18 +401,18 @@ export default function NewsletterPage() {
               </div>
               <div className="space-y-4">
                 <div>
-                  <Label>Subject *</Label>
-                  <Input aria-label="Subject" value={subject} onChange={e => setSubject(e.target.value)} className="mt-1.5" placeholder="What's new on CodeSpectra" maxLength={120} />
+                  <Label>{ta('nlAdm.subject')}</Label>
+                  <Input aria-label={ta('nlAdm.subject2')} value={subject} onChange={e => setSubject(e.target.value)} className="mt-1.5" placeholder={ta('nlAdm.whatSNewOnCodespectra')} maxLength={120} />
                 </div>
 
                 {/* Hero Image Upload */}
                 <div>
-                  <Label>Hero image <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Label>{ta('nlAdm.heroImage')} <span className="text-muted-foreground text-xs">{ta('nlAdm.optional')}</span></Label>
                   <input ref={heroFileRef} type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
                   {heroImagePreview ? (
                     <div className="relative mt-1.5 rounded-lg overflow-hidden border">
-                      <img src={heroImagePreview} alt="Hero" className="w-full h-40 object-cover" />
-                      <Button size="sm" variant="destructive" className="absolute top-2 right-2 h-7 w-7 p-0" onClick={removeHeroImage} aria-label="Remove hero image"><X className="h-4 w-4" /></Button>
+                      <img src={heroImagePreview} alt={ta('nlAdm.hero')} className="w-full h-40 object-cover" />
+                      <Button size="sm" variant="destructive" className="absolute top-2 right-2 h-7 w-7 p-0" onClick={removeHeroImage} aria-label={ta('nlAdm.removeHeroImage')}><X className="h-4 w-4" /></Button>
                     </div>
                   ) : (
                     <button
@@ -421,52 +423,52 @@ export default function NewsletterPage() {
                     >
                       {uploadingImage ? <Loader2 className="h-6 w-6 animate-spin mb-2 mx-auto" /> : <Upload className="h-6 w-6 mb-2 mx-auto" />}
                       <p className="text-sm">{uploadingImage ? 'Uploading...' : 'Click to upload a hero image'}</p>
-                      <p className="text-xs mt-1">JPEG, PNG, GIF or WebP, up to 5 MB</p>
+                      <p className="text-xs mt-1">{ta('nlAdm.jpegPngGifOrWebpUp')}</p>
                     </button>
                   )}
                 </div>
 
                 <div>
-                  <Label>Intro text <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input aria-label="Intro text (optional)" value={intro} onChange={e => setIntro(e.target.value)} className="mt-1.5" placeholder="A brief introduction..." />
+                  <Label>{ta('nlAdm.introText')} <span className="text-muted-foreground text-xs">{ta('nlAdm.optional')}</span></Label>
+                  <Input aria-label={ta('nlAdm.introTextOptional')} value={intro} onChange={e => setIntro(e.target.value)} className="mt-1.5" placeholder={ta('nlAdm.aBriefIntroduction')} />
                 </div>
 
                 {/* Rich Text Body */}
                 <div>
-                  <Label>Body</Label>
+                  <Label>{ta('nlAdm.body')}</Label>
                   <div className="mt-1.5">
-                    <RichTextEditor value={body} onChange={setBody} placeholder="Write your newsletter content here..." minHeight={250} />
+                    <RichTextEditor value={body} onChange={setBody} placeholder={ta('nlAdm.writeYourNewsletterContentHere')} minHeight={250} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Button text</Label><Input aria-label="Button text" value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder="Read more" /></div>
-                  <div><Label>Button link</Label><Input aria-label="Button link" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} className="mt-1.5" placeholder="https://example.com" /></div>
+                  <div><Label>{ta('nlAdm.buttonText')}</Label><Input aria-label={ta('nlAdm.buttonText')} value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder={ta('nlAdm.readMore')} /></div>
+                  <div><Label>{ta('nlAdm.buttonLink')}</Label><Input aria-label={ta('nlAdm.buttonLink')} value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} className="mt-1.5" placeholder="https://example.com" /></div>
                 </div>
               </div>
             </Panel>
 
             {/* Channels */}
             <Panel>
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Delivery channels</h2>
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> {ta('nlAdm.deliveryChannels')}</h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Email</span><Badge variant="outline" className="text-[10px]">{recipientCount} recipients</Badge></div><Switch aria-label="Email" checked={sendEmail} onCheckedChange={setSendEmail} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Push notification</span></div><Switch aria-label="Push notification" checked={sendPush} onCheckedChange={setSendPush} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">In-app notification</span></div><Switch aria-label="In-app notification" checked={sendInApp} onCheckedChange={setSendInApp} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('nlAdm.email')}</span><Badge variant="outline" className="text-[10px]">{ta('nlAdm.recipients', { recipientCount: recipientCount })}</Badge></div><Switch aria-label={ta('nlAdm.email')} checked={sendEmail} onCheckedChange={setSendEmail} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('nlAdm.pushNotification')}</span></div><Switch aria-label={ta('nlAdm.pushNotification')} checked={sendPush} onCheckedChange={setSendPush} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('nlAdm.inAppNotification')}</span></div><Switch aria-label={ta('nlAdm.inAppNotification')} checked={sendInApp} onCheckedChange={setSendInApp} /></div>
                 <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span><Badge variant="outline" className="text-[10px]">OpenWA</Badge></div><Switch aria-label="WhatsApp" checked={sendWhatsapp} onCheckedChange={setSendWhatsapp} /></div>
               </div>
             </Panel>
 
             {/* Schedule */}
             <Panel>
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> Schedule</h2>
-              <Label>Schedule for later <span className="text-muted-foreground text-xs">(leave empty to send now)</span></Label>
-              <Input aria-label="Schedule for later (leave empty to send now)" type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="mt-1.5" />
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> {ta('nlAdm.schedule')}</h2>
+              <Label>{ta('nlAdm.scheduleForLater')} <span className="text-muted-foreground text-xs">{ta('nlAdm.leaveEmptyToSendNow')}</span></Label>
+              <Input aria-label={ta('nlAdm.scheduleForLaterLeaveEmptyTo')} type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="mt-1.5" />
             </Panel>
 
             {/* Actions */}
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => handleSend(true)} disabled={savingDraft || !subject.trim()}>{savingDraft && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save draft</Button>
+              <Button variant="outline" onClick={() => handleSend(true)} disabled={savingDraft || !subject.trim()}>{savingDraft && <Loader2 className="h-4 w-4 animate-spin mr-1" />}{ta('nlAdm.saveDraft')}</Button>
               <Button onClick={() => handleSend(false)} disabled={sending || !subject.trim() || recipientCount === 0} className="gap-2">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {scheduleAt ? 'Schedule' : `Send to ${recipientCount}`}
@@ -478,7 +480,7 @@ export default function NewsletterPage() {
           <div className="xl:col-span-2 space-y-6">
             <Panel>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /> Preview</h2>
+                <h2 className="font-semibold flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /> {ta('nlAdm.preview')}</h2>
                 {previewSizeKb !== null && (
                   <Badge className={previewSizeKb > 95 ? 'bg-red-500/15 text-red-700 dark:text-red-300 border-0' : previewSizeKb > 75 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-0' : 'bg-green-500/15 text-green-700 dark:text-green-300 border-0'}>
                     <span className="tabular-nums">{previewSizeKb} KB</span> HTML {previewSizeKb > 95 ? '(Gmail clips near 102KB)' : ''}
@@ -486,25 +488,25 @@ export default function NewsletterPage() {
                 )}
               </div>
               <Button variant="outline" onClick={handlePreview} disabled={previewLoading} className="w-full mb-4 gap-2">
-                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Generate preview
+                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} {ta('nlAdm.generatePreview')}
               </Button>
               {previewHtml ? (
                 <div className="border border-border rounded-2xl overflow-hidden"><EmailPreviewFrame html={previewHtml} /></div>
               ) : (
-                <div className="border border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">Select Generate preview to see how your newsletter will look in an inbox.</div>
+                <div className="border border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">{ta('nlAdm.selectGeneratePreviewToSeeHow')}</div>
               )}
             </Panel>
 
             <Panel>
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><Send className="h-4 w-4 text-primary" /> Test send</h2>
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Send className="h-4 w-4 text-primary" /> {ta('nlAdm.testSend')}</h2>
               <div className="space-y-3">
-                <div><Label className="text-xs text-muted-foreground">Email</Label><Input aria-label="Email" type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="mt-1" /></div>
+                <div><Label className="text-xs text-muted-foreground">{ta('nlAdm.email')}</Label><Input aria-label={ta('nlAdm.email')} type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="mt-1" /></div>
                 <Button variant="outline" onClick={handleTestSend} disabled={testSending || !testEmail.trim()} className="w-full gap-2">
-                  {testSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send test email
+                  {testSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {ta('nlAdm.sendTestEmail')}
                 </Button>
                 <div className="border-t pt-3"><Label className="text-xs text-muted-foreground">WhatsApp</Label><Input aria-label="WhatsApp" type="tel" value={testWhatsappPhone} onChange={e => setTestWhatsappPhone(e.target.value)} placeholder="+919876543210" className="mt-1" /></div>
                 <Button variant="outline" onClick={handleTestWhatsapp} disabled={testWhatsappSending || !testWhatsappPhone.trim()} className="w-full gap-2">
-                  {testWhatsappSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} Send test WhatsApp
+                  {testWhatsappSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} {ta('nlAdm.sendTestWhatsapp')}
                 </Button>
               </div>
             </Panel>
@@ -513,13 +515,13 @@ export default function NewsletterPage() {
       ) : (
         /* Campaign History */
         <Panel>
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> Campaign history</h2>
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> {ta('nlAdm.campaignHistory')}</h2>
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : loadError && campaigns.length === 0 ? (
-            <EmptyState illustration="error" title="Couldn't load campaigns" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState illustration="error" title={ta('nlAdm.couldnTLoadCampaigns')} description={ta('nlAdm.checkYourConnectionAndTryAgain')} actionLabel={ta('nlAdm.tryAgain')} onAction={() => void load()} className="border-0 bg-transparent py-6 md:py-8" />
           ) : campaigns.length === 0 ? (
-            <EmptyState variant="notifications" title="No campaigns yet" description="Switch to Compose to write and send your first newsletter." className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState variant="notifications" title={ta('nlAdm.noCampaignsYet')} description={ta('nlAdm.switchToComposeToWriteAnd')} className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {campaigns.map(c => {
@@ -534,7 +536,7 @@ export default function NewsletterPage() {
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span>{formatDate(c.created_at)}</span>
-                          <span className="tabular-nums">{c.recipients_count} recipients</span>
+                          <span className="tabular-nums">{ta('nlAdm.recipients2', { recipients_count: c.recipients_count })}</span>
                         </div>
                         <div className="flex items-center gap-4 mt-2 text-xs tabular-nums">
                           {c.channels.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /><span className="text-green-700 dark:text-green-400">{c.email_ok}</span>{c.email_fail > 0 && <span className="text-red-600 dark:text-red-400">/{c.email_fail}</span>}</span>}
@@ -548,8 +550,8 @@ export default function NewsletterPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            title="Publish to newsroom"
-                            aria-label="Publish to newsroom"
+                            title={ta('nlAdm.publishToNewsroom')}
+                            aria-label={ta('nlAdm.publishToNewsroom')}
                             onClick={() => void publishToBlog(c.id)}
                             className="text-primary hover:bg-primary/10"
                           >
@@ -557,9 +559,9 @@ export default function NewsletterPage() {
                           </Button>
                         )}
                         {(c.status === 'draft' || c.status === 'scheduled') && (
-                          <Button size="sm" variant="ghost" title="Resume editing" aria-label="Resume editing" onClick={() => resumeDraft(c)} className="text-primary hover:bg-primary/10"><PencilLine className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" title={ta('nlAdm.resumeEditing')} aria-label={ta('nlAdm.resumeEditing')} onClick={() => resumeDraft(c)} className="text-primary hover:bg-primary/10"><PencilLine className="h-3.5 w-3.5" /></Button>
                         )}
-                        {c.status !== 'sending' && <Button size="sm" variant="ghost" onClick={() => handleDeleteCampaign(c.id)} aria-label="Delete campaign" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></Button>}
+                        {c.status !== 'sending' && <Button size="sm" variant="ghost" onClick={() => handleDeleteCampaign(c.id)} aria-label={ta('nlAdm.deleteCampaign')} className="text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></Button>}
                       </div>
                     </div>
                   </div>

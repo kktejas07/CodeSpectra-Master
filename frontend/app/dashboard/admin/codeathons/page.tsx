@@ -28,6 +28,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { TenantFilter, tenantQuery } from '@/components/hackathons/tenant-filter'
 import { ReleaseResultsDialog } from '@/components/codeathons/release-results-dialog'
 import { isSubmitEnter } from '@/lib/keyboard'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface TestCase {
   input: string
@@ -178,6 +179,7 @@ function CodeathonFormFields({
   formData: CodeathonFormData
   setFormData: React.Dispatch<React.SetStateAction<CodeathonFormData>>
 }) {
+  const { t: ta } = useAdminT()
   const toggleTopic = (topic: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -192,8 +194,8 @@ function CodeathonFormFields({
       {/* Left Column: Basic Information & Topics */}
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground">Title *</Label>
-          <Input aria-label="Title"
+          <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.title')}</Label>
+          <Input aria-label={ta('cdAdm.title2')}
             value={formData.title}
             onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
             placeholder="e.g. Hackwave 3.0 X StudentAlumni"
@@ -202,29 +204,29 @@ function CodeathonFormFields({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground">Description</Label>
-          <Textarea aria-label="Description"
+          <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.description')}</Label>
+          <Textarea aria-label={ta('cdAdm.description')}
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
             rows={3}
-            placeholder="Describe the codeathon objectives, audience, and scope..."
+            placeholder={ta('cdAdm.describeTheCodeathonObjectivesAudienceAn')}
             className="text-sm resize-none"
           />
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground">Rules & guidelines</Label>
-          <Textarea aria-label="Rules & guidelines"
+          <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.rulesGuidelines')}</Label>
+          <Textarea aria-label={ta('cdAdm.rulesGuidelines')}
             value={formData.rules}
             onChange={(e) => setFormData((prev) => ({ ...prev, rules: e.target.value }))}
             rows={3}
-            placeholder="Code of conduct, allowed tools/languages, submission criteria..."
+            placeholder={ta('cdAdm.codeOfConductAllowedToolsLanguages')}
             className="text-sm resize-none"
           />
         </div>
 
         <div className="space-y-2 pt-1">
-          <Label className="text-xs font-semibold text-foreground">Topics and focus areas</Label>
+          <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.topicsAndFocusAreas')}</Label>
           <div className="flex flex-wrap gap-1.5 p-3 rounded-lg border border-border/60 bg-muted/20">
             {TOPIC_OPTIONS.map((t) => {
               const active = formData.topics.includes(t)
@@ -252,12 +254,12 @@ function CodeathonFormFields({
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Difficulty</Label>
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.difficulty')}</Label>
             <Select
               value={formData.difficulty}
               onValueChange={(v) => setFormData((prev) => ({ ...prev, difficulty: v }))}
             >
-              <SelectTrigger aria-label="Difficulty" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label={ta('cdAdm.difficulty')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {DIFFICULTIES.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
@@ -267,13 +269,13 @@ function CodeathonFormFields({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Max participants</Label>
-            <Input aria-label="Max participants"
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.maxParticipants')}</Label>
+            <Input aria-label={ta('cdAdm.maxParticipants')}
               type="number"
               min={0}
               value={formData.maxParticipants || ''}
               onChange={(e) => setFormData((prev) => ({ ...prev, maxParticipants: Number(e.target.value) || 0 }))}
-              placeholder="0 = unlimited"
+              placeholder={ta('cdAdm.n0Unlimited')}
               className="h-9 text-sm"
             />
           </div>
@@ -281,8 +283,8 @@ function CodeathonFormFields({
 
         <div className="grid grid-cols-1 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Start date and time</Label>
-            <Input aria-label="Start date and time"
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.startDateAndTime')}</Label>
+            <Input aria-label={ta('cdAdm.startDateAndTime')}
               type="datetime-local"
               value={formData.startDate}
               onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
@@ -291,8 +293,8 @@ function CodeathonFormFields({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">End date and time</Label>
-            <Input aria-label="End date and time"
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.endDateAndTime')}</Label>
+            <Input aria-label={ta('cdAdm.endDateAndTime')}
               type="datetime-local"
               value={formData.endDate}
               onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
@@ -303,8 +305,8 @@ function CodeathonFormFields({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Prize pool</Label>
-            <Input aria-label="Prize pool"
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.prizePool')}</Label>
+            <Input aria-label={ta('cdAdm.prizePool')}
               value={formData.prizePool}
               onChange={(e) => setFormData((prev) => ({ ...prev, prizePool: e.target.value }))}
               placeholder="e.g. ₹50,000 / $1,000"
@@ -313,16 +315,16 @@ function CodeathonFormFields({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Certificate template</Label>
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.certificateTemplate')}</Label>
             <Select
               value={formData.cert_template}
               onValueChange={(v) => setFormData((prev) => ({ ...prev, cert_template: v }))}
             >
-              <SelectTrigger aria-label="Certificate template" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label={ta('cdAdm.certificateTemplate')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="classic">Classic (gold / serif)</SelectItem>
-                <SelectItem value="modern">Modern (dark gradient)</SelectItem>
-                <SelectItem value="minimal">Minimal (Monochrome)</SelectItem>
+                <SelectItem value="classic">{ta('cdAdm.classicGoldSerif')}</SelectItem>
+                <SelectItem value="modern">{ta('cdAdm.modernDarkGradient')}</SelectItem>
+                <SelectItem value="minimal">{ta('cdAdm.minimalMonochrome')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -330,24 +332,24 @@ function CodeathonFormFields({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Publishing</Label>
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.publishing')}</Label>
             <Select value={formData.status} onValueChange={(v) => setFormData((prev) => ({ ...prev, status: v }))}>
-              <SelectTrigger aria-label="Publishing" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label={ta('cdAdm.publishing')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">Draft — only admins see it</SelectItem>
-                <SelectItem value="upcoming">Published — upcoming</SelectItem>
-                <SelectItem value="active">Published — active</SelectItem>
-                <SelectItem value="ended">Ended</SelectItem>
+                <SelectItem value="draft">{ta('cdAdm.draftOnlyAdminsSeeIt')}</SelectItem>
+                <SelectItem value="upcoming">{ta('cdAdm.publishedUpcoming')}</SelectItem>
+                <SelectItem value="active">{ta('cdAdm.publishedActive')}</SelectItem>
+                <SelectItem value="ended">{ta('cdAdm.ended')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Who can see it</Label>
+            <Label className="text-xs font-semibold text-foreground">{ta('cdAdm.whoCanSeeIt')}</Label>
             <Select value={formData.visibility} onValueChange={(v) => setFormData((prev) => ({ ...prev, visibility: v }))}>
-              <SelectTrigger aria-label="Who can see it" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label={ta('cdAdm.whoCanSeeIt')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="public">Everyone on CodeSpectra</SelectItem>
-                <SelectItem value="organization">Only my organisation</SelectItem>
+                <SelectItem value="public">{ta('cdAdm.everyoneOnCodespectra')}</SelectItem>
+                <SelectItem value="organization">{ta('cdAdm.onlyMyOrganisation')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -357,34 +359,34 @@ function CodeathonFormFields({
         <div className="rounded-xl border border-border/80 bg-muted/15 p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Terminal className="h-4 w-4 text-primary" />
-            <span>Event format and visibility</span>
+            <span>{ta('cdAdm.eventFormatAndVisibility')}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Event type</Label>
+              <Label className="text-xs font-medium">{ta('cdAdm.eventType')}</Label>
               <Select
                 value={formData.event_type}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, event_type: v }))}
               >
-                <SelectTrigger aria-label="Event type" className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={ta('cdAdm.eventType')} className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="individual">Individual</SelectItem>
-                  <SelectItem value="team">Team competition</SelectItem>
+                  <SelectItem value="individual">{ta('cdAdm.individual')}</SelectItem>
+                  <SelectItem value="team">{ta('cdAdm.teamCompetition')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Problem visibility</Label>
+              <Label className="text-xs font-medium">{ta('cdAdm.problemVisibility')}</Label>
               <Select
                 value={formData.problem_visibility}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, problem_visibility: v }))}
               >
-                <SelectTrigger aria-label="Problem visibility" className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={ta('cdAdm.problemVisibility')} className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="during_contest">When contest starts</SelectItem>
-                  <SelectItem value="immediate">Immediate on publish</SelectItem>
+                  <SelectItem value="during_contest">{ta('cdAdm.whenContestStarts')}</SelectItem>
+                  <SelectItem value="immediate">{ta('cdAdm.immediateOnPublish')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -393,8 +395,8 @@ function CodeathonFormFields({
           {formData.event_type === 'team' && (
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
               <div className="space-y-1">
-                <Label className="text-xs">Min team size</Label>
-                <Input aria-label="Min team size"
+                <Label className="text-xs">{ta('cdAdm.minTeamSize')}</Label>
+                <Input aria-label={ta('cdAdm.minTeamSize')}
                   type="number"
                   min={1}
                   max={formData.team_size_max}
@@ -404,8 +406,8 @@ function CodeathonFormFields({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Max team size</Label>
-                <Input aria-label="Max team size"
+                <Label className="text-xs">{ta('cdAdm.maxTeamSize')}</Label>
+                <Input aria-label={ta('cdAdm.maxTeamSize')}
                   type="number"
                   min={formData.team_size_min}
                   value={formData.team_size_max}
@@ -422,6 +424,7 @@ function CodeathonFormFields({
 }
 
 export default function AdminCodeathonsPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
@@ -827,11 +830,9 @@ export default function AdminCodeathonsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-primary" />
-              <h4 className="text-sm font-bold text-foreground">Current problem set ({problemsList.length})</h4>
+              <h4 className="text-sm font-bold text-foreground">{ta('cdAdm.currentProblemSet', { length: problemsList.length })}</h4>
             </div>
-            <span className="text-xs font-semibold tabular-nums text-primary">
-              Total: {problemsList.reduce((sum, p) => sum + (p.points || 0), 0)} pts
-            </span>
+            <span className="text-xs font-semibold tabular-nums text-primary">{ta('cdAdm.totalPts', { reduce: problemsList.reduce((sum, p) => sum + (p.points || 0), 0) })}</span>
           </div>
 
           {problemsList.length > 0 ? (
@@ -857,16 +858,16 @@ export default function AdminCodeathonsPage() {
                         >
                           {p.difficulty}
                         </Badge>
-                        <span className="text-[11px] font-mono text-muted-foreground">{p.points} pts</span>
+                        <span className="text-[11px] font-mono text-muted-foreground">{ta('cdAdm.pts', { points: p.points })}</span>
                       </div>
                     </div>
                   </div>
-                  <Button aria-label="Remove problem"
+                  <Button aria-label={ta('cdAdm.removeProblem')}
                     size="sm"
                     variant="ghost"
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     onClick={() => removeProblem(p.id)}
-                    title="Remove problem"
+                    title={ta('cdAdm.removeProblem')}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -875,7 +876,7 @@ export default function AdminCodeathonsPage() {
             </div>
           ) : (
             <div className="text-center py-6 text-xs text-muted-foreground border border-dashed border-border/80 rounded-lg">
-              No problems linked to this competition yet. Add or import problems below.
+              {ta('cdAdm.noProblemsLinkedToThisCompetition')}
             </div>
           )}
         </div>
@@ -885,13 +886,13 @@ export default function AdminCodeathonsPage() {
           <Tabs value={problemTab} onValueChange={(v) => setProblemTab(v as 'create' | 'bank' | 'ai')}>
             <TabsList className="grid grid-cols-3 w-full bg-muted/40 p-1">
               <TabsTrigger value="create" className="text-xs gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Create problem
+                <Plus className="h-3.5 w-3.5" /> {ta('cdAdm.createProblem')}
               </TabsTrigger>
               <TabsTrigger value="bank" className="text-xs gap-1.5">
-                <Search className="h-3.5 w-3.5" /> Import from Bank
+                <Search className="h-3.5 w-3.5" /> {ta('cdAdm.importFromBank')}
               </TabsTrigger>
               <TabsTrigger value="ai" className="text-xs gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary" /> AI generator
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> {ta('cdAdm.aiGenerator')}
               </TabsTrigger>
             </TabsList>
 
@@ -899,8 +900,8 @@ export default function AdminCodeathonsPage() {
             <TabsContent value="create" className="space-y-3 pt-3">
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_100px] gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Problem title *</Label>
-                  <Input aria-label="Problem title"
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.problemTitle')}</Label>
+                  <Input aria-label={ta('cdAdm.problemTitle2')}
                     value={problemForm.title}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="e.g. Dynamic Path Sum Optimization"
@@ -908,22 +909,22 @@ export default function AdminCodeathonsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Difficulty</Label>
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.difficulty')}</Label>
                   <Select
                     value={problemForm.difficulty}
                     onValueChange={(v) => setProblemForm((prev) => ({ ...prev, difficulty: v as 'Easy' | 'Medium' | 'Hard' }))}
                   >
-                    <SelectTrigger aria-label="Difficulty" className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label={ta('cdAdm.difficulty')} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Easy">Easy (50 pts)</SelectItem>
-                      <SelectItem value="Medium">Medium (100 pts)</SelectItem>
-                      <SelectItem value="Hard">Hard (200 pts)</SelectItem>
+                      <SelectItem value="Easy">{ta('cdAdm.easy50Pts')}</SelectItem>
+                      <SelectItem value="Medium">{ta('cdAdm.medium100Pts')}</SelectItem>
+                      <SelectItem value="Hard">{ta('cdAdm.hard200Pts')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Points</Label>
-                  <Input aria-label="Points"
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.points')}</Label>
+                  <Input aria-label={ta('cdAdm.points')}
                     type="number"
                     min={10}
                     value={problemForm.points}
@@ -934,20 +935,20 @@ export default function AdminCodeathonsPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium">Problem statement</Label>
-                <Textarea aria-label="Problem statement"
+                <Label className="text-[11px] font-medium">{ta('cdAdm.problemStatement')}</Label>
+                <Textarea aria-label={ta('cdAdm.problemStatement')}
                   value={problemForm.description}
                   onChange={(e) => setProblemForm((prev) => ({ ...prev, description: e.target.value }))}
                   rows={3}
-                  placeholder="Describe the task, edge cases, input parameters, and expected output format..."
+                  placeholder={ta('cdAdm.describeTheTaskEdgeCasesInput')}
                   className="text-xs resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Sample input</Label>
-                  <Textarea aria-label="Sample input"
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.sampleInput')}</Label>
+                  <Textarea aria-label={ta('cdAdm.sampleInput')}
                     value={problemForm.sample_input}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, sample_input: e.target.value }))}
                     rows={2}
@@ -956,8 +957,8 @@ export default function AdminCodeathonsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Sample output</Label>
-                  <Textarea aria-label="Sample output"
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.sampleOutput')}</Label>
+                  <Textarea aria-label={ta('cdAdm.sampleOutput')}
                     value={problemForm.sample_output}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, sample_output: e.target.value }))}
                     rows={2}
@@ -975,7 +976,7 @@ export default function AdminCodeathonsPage() {
                   className="h-8 px-4 text-xs gap-1.5 font-semibold"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Add problem
+                  {ta('cdAdm.addProblem')}
                 </Button>
               </div>
             </TabsContent>
@@ -986,7 +987,7 @@ export default function AdminCodeathonsPage() {
                 <Input
                   value={bankSearch}
                   onChange={(e) => setBankSearch(e.target.value)}
-                  placeholder="Search problem bank by title or algorithm (e.g. Dynamic Programming, Trees, Arrays)..."
+                  placeholder={ta('cdAdm.searchProblemBankByTitleOr')}
                   className="h-8 text-xs flex-1"
                   onKeyDown={(e) => { if (isSubmitEnter(e)) void searchBankProblems(bankSearch) }}
                 />
@@ -998,13 +999,13 @@ export default function AdminCodeathonsPage() {
                   className="h-8 text-xs gap-1.5"
                 >
                   {loadingBank ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                  Search
+                  {ta('cdAdm.search')}
                 </Button>
               </div>
 
               {loadingBank ? (
                 <div className="text-center py-6 text-xs text-muted-foreground flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" /> Searching problem bank...
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" /> {ta('cdAdm.searchingProblemBank')}
                 </div>
               ) : bankResults.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
@@ -1023,14 +1024,14 @@ export default function AdminCodeathonsPage() {
                         className="h-7 px-2.5 text-[11px] font-semibold gap-1 hover:bg-primary/10 hover:text-primary"
                         onClick={() => importFromBank(bp)}
                       >
-                        <Plus className="h-3 w-3" /> Import
+                        <Plus className="h-3 w-3" /> {ta('cdAdm.import')}
                       </Button>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-6 text-xs text-muted-foreground border border-dashed border-border rounded-lg">
-                  Search problem bank to import curated algorithmic and domain problems.
+                  {ta('cdAdm.searchProblemBankToImportCurated')}
                 </div>
               )}
             </TabsContent>
@@ -1039,37 +1040,37 @@ export default function AdminCodeathonsPage() {
             <TabsContent value="ai" className="space-y-3 pt-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Domain / role</Label>
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.domainRole')}</Label>
                   <Select value={aiRole} onValueChange={setAiRole}>
-                    <SelectTrigger aria-label="Domain / role" className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label={ta('cdAdm.domainRole')} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Software Engineer">Software engineer</SelectItem>
-                      <SelectItem value="Full Stack Developer">Full stack developer</SelectItem>
-                      <SelectItem value="Data Structures & Algo">Data structures & algo</SelectItem>
-                      <SelectItem value="AI / ML Engineer">AI / ML engineer</SelectItem>
-                      <SelectItem value="Security Researcher">Security researcher</SelectItem>
+                      <SelectItem value="Software Engineer">{ta('cdAdm.softwareEngineer')}</SelectItem>
+                      <SelectItem value="Full Stack Developer">{ta('cdAdm.fullStackDeveloper')}</SelectItem>
+                      <SelectItem value="Data Structures & Algo">{ta('cdAdm.dataStructuresAlgo')}</SelectItem>
+                      <SelectItem value="AI / ML Engineer">{ta('cdAdm.aiMlEngineer')}</SelectItem>
+                      <SelectItem value="Security Researcher">{ta('cdAdm.securityResearcher')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Difficulty</Label>
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.difficulty')}</Label>
                   <Select value={aiDifficulty} onValueChange={(v) => setAiDifficulty(v as 'Easy' | 'Medium' | 'Hard')}>
-                    <SelectTrigger aria-label="Difficulty" className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label={ta('cdAdm.difficulty')} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Easy">Easy (50 pts)</SelectItem>
-                      <SelectItem value="Medium">Medium (100 pts)</SelectItem>
-                      <SelectItem value="Hard">Hard (200 pts)</SelectItem>
+                      <SelectItem value="Easy">{ta('cdAdm.easy50Pts')}</SelectItem>
+                      <SelectItem value="Medium">{ta('cdAdm.medium100Pts')}</SelectItem>
+                      <SelectItem value="Hard">{ta('cdAdm.hard200Pts')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Focus topic</Label>
-                  <Input aria-label="Focus topic"
+                  <Label className="text-[11px] font-medium">{ta('cdAdm.focusTopic')}</Label>
+                  <Input aria-label={ta('cdAdm.focusTopic')}
                     value={aiTopic}
                     onChange={(e) => setAiTopic(e.target.value)}
-                    placeholder="e.g. Graph Algorithms"
+                    placeholder={ta('cdAdm.eGGraphAlgorithms')}
                     className="h-8 text-xs"
                   />
                 </div>
@@ -1083,7 +1084,7 @@ export default function AdminCodeathonsPage() {
                   className="h-8 px-4 text-xs gap-1.5 font-semibold"
                 >
                   {generatingAi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  Generate problem with AI
+                  {ta('cdAdm.generateProblemWithAi')}
                 </Button>
               </div>
             </TabsContent>
@@ -1128,8 +1129,8 @@ export default function AdminCodeathonsPage() {
         >
           {r.status === 'draft' ? 'Draft' : r.status}
         </Badge>
-        {r.visibility === 'organization' && <Badge variant="outline">Organisation only</Badge>}
-        {r.results_released && <Badge variant="success">Results released</Badge>}
+        {r.visibility === 'organization' && <Badge variant="outline">{ta('cdAdm.organisationOnly')}</Badge>}
+        {r.results_released && <Badge variant="success">{ta('cdAdm.resultsReleased')}</Badge>}
         </div>
       ),
     },
@@ -1173,12 +1174,12 @@ export default function AdminCodeathonsPage() {
       key: 'problems',
       header: 'Problems',
       cell: (r) => (
-        <Button aria-label="Click to view and manage problems"
+        <Button aria-label={ta('cdAdm.clickToViewAndManageProblems')}
           size="sm"
           variant="outline"
           onClick={() => openProblemManager(r)}
           className="h-7 px-2 text-xs font-semibold gap-1 hover:border-primary/40 hover:text-primary"
-          title="Click to view and manage problems"
+          title={ta('cdAdm.clickToViewAndManageProblems')}
         >
           <BookOpen className="h-3.5 w-3.5 text-primary" />
           <span>{r.problems?.length || 0}</span>
@@ -1196,7 +1197,7 @@ export default function AdminCodeathonsPage() {
       cell: (r) => (
         <div className="flex items-center gap-1">
           {/* Share & Copy Link Button */}
-          <Button aria-label="Share competition & copy direct link"
+          <Button aria-label={ta('cdAdm.shareCompetitionCopyDirectLink')}
             size="sm"
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
@@ -1204,18 +1205,18 @@ export default function AdminCodeathonsPage() {
               setShareTarget(r)
               copyShareLink(r)
             }}
-            title="Share competition & copy direct link"
+            title={ta('cdAdm.shareCompetitionCopyDirectLink')}
           >
             <Share2 className="h-3.5 w-3.5" />
           </Button>
 
           {/* Submissions & Reviews / Judging Button */}
-          <Button aria-label="Submissions & code reviews / judge scores"
+          <Button aria-label={ta('cdAdm.submissionsCodeReviewsJudgeScores')}
             size="sm"
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
             onClick={() => void loadSubmissions(r)}
-            title="Submissions & code reviews / judge scores"
+            title={ta('cdAdm.submissionsCodeReviewsJudgeScores')}
           >
             <Award className="h-3.5 w-3.5" />
           </Button>
@@ -1237,8 +1238,8 @@ export default function AdminCodeathonsPage() {
             variant="ghost"
             asChild
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            title="Open participant arena"
-            aria-label="Open participant arena in a new tab"
+            title={ta('cdAdm.openParticipantArena')}
+            aria-label={ta('cdAdm.openParticipantArenaInANew')}
           >
             <Link href={`/dashboard/codeathons/${r.id}`} target="_blank" rel="noopener">
               <ExternalLink className="h-3.5 w-3.5" />
@@ -1246,12 +1247,12 @@ export default function AdminCodeathonsPage() {
           </Button>
 
           {/* Edit Codeathon */}
-          <Button aria-label="Edit settings"
+          <Button aria-label={ta('cdAdm.editSettings')}
             size="sm"
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
             onClick={() => openEdit(r)}
-            title="Edit settings"
+            title={ta('cdAdm.editSettings')}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -1272,8 +1273,8 @@ export default function AdminCodeathonsPage() {
       <PageHeader
         illustration="hackathon"
         className="mb-0"
-        title="Codeathons"
-        description="Write problem sets, share invite links, review submitted code and publish judge scores."
+        title={ta('cdAdm.codeathons')}
+        description={ta('cdAdm.writeProblemSetsShareInviteLinks')}
         icon={<Trophy />}
         actions={
         <Button
@@ -1285,7 +1286,7 @@ export default function AdminCodeathonsPage() {
           }}
         >
           <Plus className="w-4 h-4" />
-          Create codeathon
+          {ta('cdAdm.createCodeathon')}
         </Button>
         }
       />
@@ -1307,9 +1308,9 @@ export default function AdminCodeathonsPage() {
       ) : loadError && codeathons.length === 0 ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load codeathons"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={ta('cdAdm.couldnTLoadCodeathons')}
+          description={ta('cdAdm.checkYourConnectionAndTryAgain')}
+          actionLabel={ta('cdAdm.tryAgain')}
           onAction={() => void fetchData()}
         />
       ) : (
@@ -1345,9 +1346,9 @@ export default function AdminCodeathonsPage() {
                 <Trophy className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Create codeathon</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">{ta('cdAdm.createCodeathon')}</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Configure competition parameters, topics, timeline, and curate the problem set before launch.
+                  {ta('cdAdm.configureCompetitionParametersTopicsTime')}
                 </DialogDescription>
               </div>
             </div>
@@ -1360,7 +1361,7 @@ export default function AdminCodeathonsPage() {
             <div className="px-6 pb-6 border-t border-border/60 pt-4">
               <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-primary" />
-                Problem set
+                {ta('cdAdm.problemSet')}
               </h3>
               {renderProblemManagerContent(createProblems, setCreateProblems)}
             </div>
@@ -1368,7 +1369,7 @@ export default function AdminCodeathonsPage() {
 
           <DialogFooter className="px-6 py-3 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
             <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
-              Cancel
+              {ta('cdAdm.cancel')}
             </Button>
             <Button
               onClick={handleCreate}
@@ -1376,7 +1377,7 @@ export default function AdminCodeathonsPage() {
               className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-              Publish codeathon
+              {ta('cdAdm.publishCodeathon')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1391,9 +1392,9 @@ export default function AdminCodeathonsPage() {
                 <Pencil className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Edit codeathon: {editing?.title}</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">{ta('cdAdm.editCodeathon', { title: editing?.title })}</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Update competition details, event parameters, and curate the problem set.
+                  {ta('cdAdm.updateCompetitionDetailsEventParametersA')}
                 </DialogDescription>
               </div>
             </div>
@@ -1406,7 +1407,7 @@ export default function AdminCodeathonsPage() {
             <div className="px-6 pb-6 border-t border-border/60 pt-4">
               <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-primary" />
-                Problem set
+                {ta('cdAdm.problemSet')}
               </h3>
               {renderProblemManagerContent(editingProblems, setEditingProblems)}
             </div>
@@ -1414,7 +1415,7 @@ export default function AdminCodeathonsPage() {
 
           <DialogFooter className="px-6 py-3 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
             <Button variant="outline" onClick={() => setEditing(null)} disabled={saving}>
-              Cancel
+              {ta('cdAdm.cancel')}
             </Button>
             <Button
               onClick={saveEdit}
@@ -1422,7 +1423,7 @@ export default function AdminCodeathonsPage() {
               className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Save changes
+              {ta('cdAdm.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1437,11 +1438,9 @@ export default function AdminCodeathonsPage() {
                 <BookOpen className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">
-                  Problem Set: {problemManagerTarget?.title}
-                </DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">{ta('cdAdm.problemSet2', { title: problemManagerTarget?.title })}</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Create custom problems, import from the problem bank, or generate algorithmic tasks via AI.
+                  {ta('cdAdm.createCustomProblemsImportFromThe')}
                 </DialogDescription>
               </div>
             </div>
@@ -1453,7 +1452,7 @@ export default function AdminCodeathonsPage() {
 
           <DialogFooter className="px-6 py-3 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between">
             <Button variant="outline" onClick={() => setProblemManagerTarget(null)} disabled={saving}>
-              Cancel
+              {ta('cdAdm.cancel')}
             </Button>
             <Button
               onClick={saveStandaloneProblems}
@@ -1461,7 +1460,7 @@ export default function AdminCodeathonsPage() {
               className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-1.5" />}
-              Save problem set
+              {ta('cdAdm.saveProblemSet')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1477,17 +1476,13 @@ export default function AdminCodeathonsPage() {
                   <Award className="h-5 w-5" />
                 </div>
                 <div>
-                  <DialogTitle className="text-lg font-bold text-foreground">
-                    Submissions and code review: {submissionsTarget?.title}
-                  </DialogTitle>
+                  <DialogTitle className="text-lg font-bold text-foreground">{ta('cdAdm.submissionsAndCodeReview', { title: submissionsTarget?.title })}</DialogTitle>
                   <DialogDescription className="text-xs text-muted-foreground">
-                    Inspect participant code submissions, test execution diagnostics, and publish judge feedback.
+                    {ta('cdAdm.inspectParticipantCodeSubmissionsTestExe')}
                   </DialogDescription>
                 </div>
               </div>
-              <Badge variant="outline" className="tabular-nums text-xs border-primary/30 text-primary">
-                {submissionsList.length} submissions
-              </Badge>
+              <Badge variant="outline" className="tabular-nums text-xs border-primary/30 text-primary">{ta('cdAdm.submissions', { length: submissionsList.length })}</Badge>
             </div>
           </DialogHeader>
 
@@ -1495,13 +1490,13 @@ export default function AdminCodeathonsPage() {
             {loadingSubmissions ? (
               <div className="flex items-center justify-center py-20 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin mr-2 text-primary" />
-                Loading submissions...
+                {ta('cdAdm.loadingSubmissions')}
               </div>
             ) : submissionsList.length === 0 ? (
               <EmptyState
                 illustration="coding"
-                title="No submissions yet"
-                description="When participants write code and select Submit, their solutions appear here for review."
+                title={ta('cdAdm.noSubmissionsYet')}
+                description={ta('cdAdm.whenParticipantsWriteCodeAndSelect')}
               />
             ) : selectedSubmission ? (
               /* Single Submission Code Inspector & Review Panel */
@@ -1513,7 +1508,7 @@ export default function AdminCodeathonsPage() {
                     className="text-xs gap-1.5"
                     onClick={() => setSelectedSubmission(null)}
                   >
-                    ← Back to submissions
+                    {ta('cdAdm.backToSubmissions')}
                   </Button>
 
                   <div className="flex items-center gap-2">
@@ -1535,19 +1530,17 @@ export default function AdminCodeathonsPage() {
                 {/* Candidate & Problem Details Card */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-xl border border-border bg-muted/20 text-xs">
                   <div>
-                    <span className="text-muted-foreground block text-[11px]">Participant</span>
+                    <span className="text-muted-foreground block text-[11px]">{ta('cdAdm.participant')}</span>
                     <span className="font-bold text-foreground">{selectedSubmission.userName}</span>
                     <span className="text-muted-foreground block truncate">{selectedSubmission.userEmail}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-[11px]">Problem</span>
+                    <span className="text-muted-foreground block text-[11px]">{ta('cdAdm.problem')}</span>
                     <span className="font-bold text-foreground">{selectedSubmission.problemTitle}</span>
-                    <span className="text-muted-foreground block">
-                      Passed: {selectedSubmission.test_cases_passed} / {selectedSubmission.test_cases_total} test cases
-                    </span>
+                    <span className="text-muted-foreground block">{ta('cdAdm.passedTestCases', { test_cases_passed: selectedSubmission.test_cases_passed, test_cases_total: selectedSubmission.test_cases_total })}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-[11px]">Submission time</span>
+                    <span className="text-muted-foreground block text-[11px]">{ta('cdAdm.submissionTime')}</span>
                     <span className="font-mono font-medium text-foreground">
                       {selectedSubmission.created_at ? formatDateTime(selectedSubmission.created_at) : 'N/A'}
                     </span>
@@ -1559,7 +1552,7 @@ export default function AdminCodeathonsPage() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-foreground flex items-center gap-1.5">
                       <FileCode className="h-3.5 w-3.5 text-primary" />
-                      Submitted source code
+                      {ta('cdAdm.submittedSourceCode')}
                     </span>
                     <Button
                       size="sm"
@@ -1570,7 +1563,7 @@ export default function AdminCodeathonsPage() {
                         addToast({ type: 'success', title: 'Code copied to clipboard!' })
                       }}
                     >
-                      <Copy className="h-3 w-3" /> Copy code
+                      <Copy className="h-3 w-3" /> {ta('cdAdm.copyCode')}
                     </Button>
                   </div>
                   <pre className="p-4 rounded-xl border border-border/80 bg-slate-950 font-mono text-xs text-slate-100 overflow-x-auto max-h-64 select-text">
@@ -1581,7 +1574,7 @@ export default function AdminCodeathonsPage() {
                 {/* Output / Diagnostics */}
                 {(selectedSubmission.output || selectedSubmission.error) && (
                   <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground">Output and errors</span>
+                    <span className="text-xs font-semibold text-muted-foreground">{ta('cdAdm.outputAndErrors')}</span>
                     <pre className="p-3 rounded-lg border border-border/60 bg-muted/40 font-mono text-[11px] text-foreground overflow-x-auto max-h-28">
                       {selectedSubmission.output || selectedSubmission.error}
                     </pre>
@@ -1592,13 +1585,13 @@ export default function AdminCodeathonsPage() {
                 <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-4">
                   <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                     <Award className="h-4 w-4 text-primary" />
-                    <span>Judge review and score</span>
+                    <span>{ta('cdAdm.judgeReviewAndScore')}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Score (points)</Label>
-                      <Input aria-label="Score (points)"
+                      <Label className="text-xs font-semibold">{ta('cdAdm.scorePoints')}</Label>
+                      <Input aria-label={ta('cdAdm.scorePoints')}
                         type="number"
                         value={reviewScore}
                         onChange={(e) => setReviewScore(Number(e.target.value) || 0)}
@@ -1607,21 +1600,21 @@ export default function AdminCodeathonsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Status</Label>
+                      <Label className="text-xs font-semibold">{ta('cdAdm.status')}</Label>
                       <Select value={reviewStatus} onValueChange={setReviewStatus}>
-                        <SelectTrigger aria-label="Status" className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label={ta('cdAdm.status')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="accepted">Accepted (full credit)</SelectItem>
-                          <SelectItem value="needs_improvement">Needs improvement (partial credit)</SelectItem>
-                          <SelectItem value="wrong_answer">Wrong answer</SelectItem>
+                          <SelectItem value="accepted">{ta('cdAdm.acceptedFullCredit')}</SelectItem>
+                          <SelectItem value="needs_improvement">{ta('cdAdm.needsImprovementPartialCredit')}</SelectItem>
+                          <SelectItem value="wrong_answer">{ta('cdAdm.wrongAnswer')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Judge feedback</Label>
-                    <Textarea aria-label="Judge feedback"
+                    <Label className="text-xs font-semibold">{ta('cdAdm.judgeFeedback')}</Label>
+                    <Textarea aria-label={ta('cdAdm.judgeFeedback')}
                       value={reviewNotes}
                       onChange={(e) => setReviewNotes(e.target.value)}
                       rows={3}
@@ -1637,7 +1630,7 @@ export default function AdminCodeathonsPage() {
                       className="font-semibold text-xs gap-1.5"
                     >
                       {savingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckSquare className="h-3.5 w-3.5" />}
-                      Publish review & update score
+                      {ta('cdAdm.publishReviewUpdateScore')}
                     </Button>
                   </div>
                 </div>
@@ -1649,13 +1642,13 @@ export default function AdminCodeathonsPage() {
                   <table className="w-full min-w-[640px] text-xs text-left">
                     <thead className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
                       <tr>
-                        <th className="p-3">Participant</th>
-                        <th className="p-3">Problem</th>
-                        <th className="p-3">Language</th>
-                        <th className="p-3">Result</th>
-                        <th className="p-3">Score</th>
-                        <th className="p-3">Review status</th>
-                        <th className="p-3 text-right">Action</th>
+                        <th className="p-3">{ta('cdAdm.participant')}</th>
+                        <th className="p-3">{ta('cdAdm.problem')}</th>
+                        <th className="p-3">{ta('cdAdm.language')}</th>
+                        <th className="p-3">{ta('cdAdm.result')}</th>
+                        <th className="p-3">{ta('cdAdm.score')}</th>
+                        <th className="p-3">{ta('cdAdm.reviewStatus')}</th>
+                        <th className="p-3 text-right">{ta('cdAdm.action')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
@@ -1685,16 +1678,14 @@ export default function AdminCodeathonsPage() {
                               {s.status === 'accepted' ? 'Accepted' : 'Wrong answer'} ({s.test_cases_passed}/{s.test_cases_total})
                             </Badge>
                           </td>
-                          <td className="p-3 font-mono font-bold tabular-nums text-primary">
-                            {s.score} pts
-                          </td>
+                          <td className="p-3 font-mono font-bold tabular-nums text-primary">{ta('cdAdm.pts2', { score: s.score })}</td>
                           <td className="p-3">
                             {s.is_reviewed ? (
                               <Badge variant="info" className="text-[10px] gap-1">
-                                <Check className="h-2.5 w-2.5" /> Reviewed
+                                <Check className="h-2.5 w-2.5" /> {ta('cdAdm.reviewed')}
                               </Badge>
                             ) : (
-                              <span className="text-[11px] text-muted-foreground">Pending review</span>
+                              <span className="text-[11px] text-muted-foreground">{ta('cdAdm.pendingReview')}</span>
                             )}
                           </td>
                           <td className="p-3 text-right">
@@ -1704,7 +1695,7 @@ export default function AdminCodeathonsPage() {
                               className="h-7 px-2.5 text-xs gap-1 hover:border-primary/40 hover:text-primary"
                               onClick={() => openReviewDrawer(s)}
                             >
-                              <Code2 className="h-3.5 w-3.5" /> Review code
+                              <Code2 className="h-3.5 w-3.5" /> {ta('cdAdm.reviewCode')}
                             </Button>
                           </td>
                         </tr>
@@ -1718,7 +1709,7 @@ export default function AdminCodeathonsPage() {
 
           <DialogFooter className="px-6 py-3 border-t border-border bg-muted/20 shrink-0">
             <Button variant="outline" onClick={() => setSubmissionsTarget(null)}>
-              Close
+              {ta('cdAdm.close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1733,9 +1724,9 @@ export default function AdminCodeathonsPage() {
                 <Share2 className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Share codeathon</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">{ta('cdAdm.shareCodeathon')}</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Distribute the tournament access link to candidates, participants, and judges.
+                  {ta('cdAdm.distributeTheTournamentAccessLinkTo')}
                 </DialogDescription>
               </div>
             </div>
@@ -1743,7 +1734,7 @@ export default function AdminCodeathonsPage() {
 
           <div className="space-y-4 pt-4">
             <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2">
-              <span className="text-xs font-semibold text-foreground block">Direct link</span>
+              <span className="text-xs font-semibold text-foreground block">{ta('cdAdm.directLink')}</span>
               <div className="flex items-center gap-2">
                 <Input
                   readOnly
@@ -1762,16 +1753,16 @@ export default function AdminCodeathonsPage() {
             </div>
 
             <div className="p-3 rounded-lg border border-border/60 bg-muted/10 text-xs text-muted-foreground space-y-1">
-              <p className="font-semibold text-foreground">How contestants participate:</p>
-              <p>1. Participants open the link, review tournament rules, and click <strong>Register</strong>.</p>
-              <p>2. Once the contest starts, problems unlock in their live coding workspace.</p>
-              <p>3. As submissions come in, you can view live code and add reviews from the <strong>Submissions</strong> tab.</p>
+              <p className="font-semibold text-foreground">{ta('cdAdm.howContestantsParticipate')}</p>
+              <p>{ta('cdAdm.n1ParticipantsOpenTheLinkReview')} <strong>{ta('cdAdm.register')}</strong>.</p>
+              <p>{ta('cdAdm.n2OnceTheContestStartsProblems')}</p>
+              <p>{ta('cdAdm.n3AsSubmissionsComeInYou')} <strong>{ta('cdAdm.submissions2')}</strong> tab.</p>
             </div>
           </div>
 
           <DialogFooter className="pt-2">
             <Button variant="outline" onClick={() => setShareTarget(null)}>
-              Done
+              {ta('cdAdm.done')}
             </Button>
           </DialogFooter>
         </DialogContent>

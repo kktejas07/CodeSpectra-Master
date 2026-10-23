@@ -721,5 +721,17 @@
   "sub.manage.heading": "You’re already on our list",
   "sub.manage.preheader": "Use this link to change what you get.",
   "sub.manage.reason": "You got this email because someone entered this address on CodeSpectra. If it wasn’t you, ignore it — nothing changed.",
-  "sub.manage.body": "Someone asked to subscribe this address, and it already has a subscription. To change your topics, channels or time zone, use the {link} link below."
+  "sub.manage.body": "Someone asked to subscribe this address, and it already has a subscription. To change your topics, channels or time zone, use the {link} link below.",
+  "auto.integrity.yourTest": "your test",
+  "auto.integrity.subject": "Integrity check for {title}",
+  "auto.integrity.heading": "Automatic integrity check finished",
+  "auto.integrity.summary": "{pairs} similar answer pair(s), {ai} likely AI-written answer(s), {leaks} leaked-question match(es), {flagged} candidate(s) to review.",
+  "auto.integrity.body": "Open the results page to see each flagged candidate before you release scores.",
+  "auto.integrity.cta": "Review results",
+  "auto.integrity.reason": "You get this because you organise this test.",
+  "auto.weeklyResults.subject": "Your weekly test results summary",
+  "auto.weeklyResults.heading": "This week in your tests",
+  "auto.weeklyResults.body": "New submissions: {subs}\nWaiting for review: {pending}\nResults released: {released}",
+  "auto.weeklyResults.cta": "Open assessments",
+  "auto.weeklyResults.reason": "You get this weekly summary because you administer tests for your organisation."
 }

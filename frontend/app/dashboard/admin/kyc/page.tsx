@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Trash2, Mail } from 'lucide-react'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface KycRecord {
   id: string
@@ -62,6 +63,7 @@ interface KycStats {
 }
 
 export default function AdminKycPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const confirmDialog = useConfirm()
@@ -111,10 +113,10 @@ export default function AdminKycPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved': return <Badge variant="success"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>
-      case 'rejected': return <Badge variant="danger"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>
-      case 'manual_review': return <Badge variant="warning"><Eye className="h-3 w-3 mr-1" />Review</Badge>
-      case 'pending': return <Badge variant="info"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+      case 'approved': return <Badge variant="success"><CheckCircle2 className="h-3 w-3 mr-1" />{ta('kycAdm.approved')}</Badge>
+      case 'rejected': return <Badge variant="danger"><XCircle className="h-3 w-3 mr-1" />{ta('kycAdm.rejected')}</Badge>
+      case 'manual_review': return <Badge variant="warning"><Eye className="h-3 w-3 mr-1" />{ta('kycAdm.review')}</Badge>
+      case 'pending': return <Badge variant="info"><Clock className="h-3 w-3 mr-1" />{ta('kycAdm.pending')}</Badge>
       default: return <Badge variant="outline">{status}</Badge>
     }
   }
@@ -183,26 +185,26 @@ export default function AdminKycPage() {
     { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? formatDate(r.created_at) : '—' },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center justify-end gap-1">
-        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View details" aria-label="View details">
+        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title={ta('kycAdm.viewDetails')} aria-label={ta('kycAdm.viewDetails')}>
           <Eye className="h-4 w-4" />
         </Button>
         {r.status === 'manual_review' ? (
           <>
-            <Button size="sm" variant="ghost" onClick={() => void handleReview(r, 'approved')} title="Approve" aria-label="Approve identity check">
+            <Button size="sm" variant="ghost" onClick={() => void handleReview(r, 'approved')} title={ta('kycAdm.approve')} aria-label={ta('kycAdm.approveIdentityCheck')}>
               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => void handleReview(r, 'rejected')} title="Reject" aria-label="Reject identity check">
+            <Button size="sm" variant="ghost" onClick={() => void handleReview(r, 'rejected')} title={ta('kycAdm.reject')} aria-label={ta('kycAdm.rejectIdentityCheck')}>
               <XCircle className="h-4 w-4 text-destructive" />
             </Button>
           </>
         ) : null}
-        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reminder')} title="Send reminder" aria-label="Send reminder email">
+        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reminder')} title={ta('kycAdm.sendReminder')} aria-label={ta('kycAdm.sendReminderEmail')}>
           <Mail className="h-4 w-4 text-primary" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reverify')} title="Ask to verify again" aria-label="Ask to verify again">
+        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reverify')} title={ta('kycAdm.askToVerifyAgain')} aria-label={ta('kycAdm.askToVerifyAgain')}>
           <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} title="Delete record" aria-label="Delete record">
+        <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} title={ta('kycAdm.deleteRecord')} aria-label={ta('kycAdm.deleteRecord')}>
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
@@ -215,18 +217,18 @@ export default function AdminKycPage() {
     <div className="space-y-6">
       <PageHeader
         illustration="security"
-        title="Identity checks (KYC)"
-        description="ID document, liveness and face-match results for people who verified their identity."
+        title={ta('kycAdm.identityChecksKyc')}
+        description={ta('kycAdm.idDocumentLivenessAndFaceMatch')}
         icon={<ShieldCheck />}
       />
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="All checks" value={stats.total} icon={<Users />} />
-        <StatCard label="Approved" value={<span className="text-green-600 dark:text-green-400">{stats.approved}</span>} icon={<CheckCircle2 />} />
-        <StatCard label="Rejected" value={<span className="text-destructive">{stats.rejected}</span>} icon={<XCircle />} />
-        <StatCard label="Pending" value={stats.pending} icon={<Clock />} />
-        <StatCard label="Needs review" value={<span className="text-amber-600 dark:text-amber-400">{stats.manual_review}</span>} icon={<Eye />} />
+        <StatCard label={ta('kycAdm.allChecks')} value={stats.total} icon={<Users />} />
+        <StatCard label={ta('kycAdm.approved')} value={<span className="text-green-600 dark:text-green-400">{stats.approved}</span>} icon={<CheckCircle2 />} />
+        <StatCard label={ta('kycAdm.rejected')} value={<span className="text-destructive">{stats.rejected}</span>} icon={<XCircle />} />
+        <StatCard label={ta('kycAdm.pending')} value={stats.pending} icon={<Clock />} />
+        <StatCard label={ta('kycAdm.needsReview')} value={<span className="text-amber-600 dark:text-amber-400">{stats.manual_review}</span>} icon={<Eye />} />
       </div>
 
       {loading ? (
@@ -235,7 +237,7 @@ export default function AdminKycPage() {
           <SkeletonTable />
         </div>
       ) : loadError ? (
-        <EmptyState illustration="error" title="Couldn't load identity checks" description={loadError} actionLabel="Try again" onAction={() => { setLoading(true); void fetchData() }} />
+        <EmptyState illustration="error" title={ta('kycAdm.couldnTLoadIdentityChecks')} description={loadError} actionLabel={ta('kycAdm.tryAgain')} onAction={() => { setLoading(true); void fetchData() }} />
       ) : (
         <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyState={{ illustration: 'security' }} emptyMessage="No identity checks yet. They appear here when candidates verify their ID." />
       )}
@@ -256,13 +258,13 @@ export default function AdminKycPage() {
               {/* Document Information */}
               <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
                 <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <FileCheck className="h-4 w-4 text-primary" /> Document
+                  <FileCheck className="h-4 w-4 text-primary" /> {ta('kycAdm.document')}
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div><p className="text-xs text-muted-foreground">Full name</p><p className="font-medium">{selectedRecord.full_name || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Document type</p><p className="font-medium">{selectedRecord.document_type || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Document number</p><p className="font-medium font-mono text-xs">{selectedRecord.document_number || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Issuing country</p><p className="font-medium">{selectedRecord.issuing_state || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.fullName')}</p><p className="font-medium">{selectedRecord.full_name || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.documentType')}</p><p className="font-medium">{selectedRecord.document_type || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.documentNumber')}</p><p className="font-medium font-mono text-xs">{selectedRecord.document_number || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.issuingCountry')}</p><p className="font-medium">{selectedRecord.issuing_state || '—'}</p></div>
                 </div>
               </div>
 
@@ -270,26 +272,26 @@ export default function AdminKycPage() {
               {(selectedRecord.front_image || selectedRecord.back_image || selectedRecord.portrait_image) && (
                 <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
                   <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <CreditCard className="h-4 w-4 text-primary" /> Submitted images
+                    <CreditCard className="h-4 w-4 text-primary" /> {ta('kycAdm.submittedImages')}
                   </h4>
-                  <p className="text-xs text-muted-foreground mb-2">Images are deleted 4 hours after verification.</p>
+                  <p className="text-xs text-muted-foreground mb-2">{ta('kycAdm.imagesAreDeleted4HoursAfter')}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.front_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID front</p>
-                        <img src={selectedRecord.front_image} alt="ID front" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{ta('kycAdm.idFront')}</p>
+                        <img src={selectedRecord.front_image} alt={ta('kycAdm.idFront')} className="w-full h-40 object-contain rounded-lg border border-border" />
                       </div>
                     )}
                     {selectedRecord.back_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID back</p>
-                        <img src={selectedRecord.back_image} alt="ID back" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{ta('kycAdm.idBack')}</p>
+                        <img src={selectedRecord.back_image} alt={ta('kycAdm.idBack')} className="w-full h-40 object-contain rounded-lg border border-border" />
                       </div>
                     )}
                     {selectedRecord.portrait_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Portrait</p>
-                        <img src={selectedRecord.portrait_image} alt="Portrait" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{ta('kycAdm.portrait')}</p>
+                        <img src={selectedRecord.portrait_image} alt={ta('kycAdm.portrait')} className="w-full h-40 object-contain rounded-lg border border-border" />
                       </div>
                     )}
                   </div>
@@ -299,25 +301,25 @@ export default function AdminKycPage() {
               {/* Biometric Verification */}
               <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
                 <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <ShieldCheck className="h-4 w-4 text-primary" /> Liveness and face match
+                  <ShieldCheck className="h-4 w-4 text-primary" /> {ta('kycAdm.livenessAndFaceMatch')}
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div><p className="text-xs text-muted-foreground">Liveness score</p><p className="font-medium tabular-nums">{selectedRecord.liveness_score ?? '—'}/100</p></div>
-                  <div><p className="text-xs text-muted-foreground">Face match</p><p className="font-medium tabular-nums">{selectedRecord.face_match_similarity ?? '—'}%</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.livenessScore')}</p><p className="font-medium tabular-nums">{selectedRecord.liveness_score ?? '—'}/100</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.faceMatch')}</p><p className="font-medium tabular-nums">{selectedRecord.face_match_similarity ?? '—'}%</p></div>
                 </div>
                 {/* Face match images */}
                 {(selectedRecord.face_match_source || selectedRecord.face_match_target) && (
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {selectedRecord.face_match_source && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID photo</p>
-                        <img src={selectedRecord.face_match_source} alt="ID photo" className="w-full h-28 object-cover rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{ta('kycAdm.idPhoto')}</p>
+                        <img src={selectedRecord.face_match_source} alt={ta('kycAdm.idPhoto')} className="w-full h-28 object-cover rounded-lg border border-border" />
                       </div>
                     )}
                     {selectedRecord.face_match_target && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Selfie</p>
-                        <img src={selectedRecord.face_match_target} alt="Selfie" className="w-full h-28 object-cover rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{ta('kycAdm.selfie')}</p>
+                        <img src={selectedRecord.face_match_target} alt={ta('kycAdm.selfie')} className="w-full h-28 object-cover rounded-lg border border-border" />
                       </div>
                     )}
                   </div>
@@ -327,14 +329,14 @@ export default function AdminKycPage() {
               {/* Device & Location */}
               <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
                 <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Globe className="h-4 w-4 text-primary" /> Device and location
+                  <Globe className="h-4 w-4 text-primary" /> {ta('kycAdm.deviceAndLocation')}
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div><p className="text-xs text-muted-foreground">IP address</p><p className="font-medium font-mono text-xs">{selectedRecord.ip_address || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Location</p><p className="font-medium">{selectedRecord.ip_city || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Device</p><p className="font-medium">{selectedRecord.device || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Browser</p><p className="font-medium">{selectedRecord.browser || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">VPN detected</p><p className="font-medium">{selectedRecord.vpn_detected ? 'Yes' : 'No'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.ipAddress')}</p><p className="font-medium font-mono text-xs">{selectedRecord.ip_address || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.location')}</p><p className="font-medium">{selectedRecord.ip_city || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.device')}</p><p className="font-medium">{selectedRecord.device || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.browser')}</p><p className="font-medium">{selectedRecord.browser || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">{ta('kycAdm.vpnDetected')}</p><p className="font-medium">{selectedRecord.vpn_detected ? 'Yes' : 'No'}</p></div>
                 </div>
               </div>
 
@@ -342,37 +344,37 @@ export default function AdminKycPage() {
               {loadingDetails && (
                 <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
-                  <span className="text-sm text-muted-foreground">Loading full details from Didit...</span>
+                  <span className="text-sm text-muted-foreground">{ta('kycAdm.loadingFullDetailsFromDidit')}</span>
                 </div>
               )}
               {diditDetails && (
                 <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 space-y-3">
                   <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <ShieldCheck className="h-4 w-4 text-primary" /> Full verification details
+                    <ShieldCheck className="h-4 w-4 text-primary" /> {ta('kycAdm.fullVerificationDetails')}
                   </h4>
                   {/* User Info */}
                   {diditDetails.vendor_data && (
                     <div className="text-xs">
-                      <p className="text-muted-foreground">User ID sent to provider</p>
+                      <p className="text-muted-foreground">{ta('kycAdm.userIdSentToProvider')}</p>
                       <p className="font-mono">{diditDetails.vendor_data}</p>
                     </div>
                   )}
                   {/* Session Info */}
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     {diditDetails.session_id && (
-                      <div><p className="text-muted-foreground">Session ID</p><p className="font-mono">{diditDetails.session_id}</p></div>
+                      <div><p className="text-muted-foreground">{ta('kycAdm.sessionId')}</p><p className="font-mono">{diditDetails.session_id}</p></div>
                     )}
                     {diditDetails.workflow_id && (
-                      <div><p className="text-muted-foreground">Workflow</p><p className="font-medium">{diditDetails.workflow_id}</p></div>
+                      <div><p className="text-muted-foreground">{ta('kycAdm.workflow')}</p><p className="font-medium">{diditDetails.workflow_id}</p></div>
                     )}
                     {diditDetails.status && (
-                      <div><p className="text-muted-foreground">Status</p><p className="font-medium">{diditDetails.status}</p></div>
+                      <div><p className="text-muted-foreground">{ta('kycAdm.status')}</p><p className="font-medium">{diditDetails.status}</p></div>
                     )}
                   </div>
                   {/* Raw Decision Summary */}
                   {diditDetails.decision && (
                     <details className="text-xs">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">View raw decision data</summary>
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{ta('kycAdm.viewRawDecisionData')}</summary>
                       <pre className="mt-2 max-h-40 overflow-x-auto rounded-lg bg-muted p-2 font-mono text-[11px]">
                         {JSON.stringify(diditDetails.decision, null, 2)}
                       </pre>

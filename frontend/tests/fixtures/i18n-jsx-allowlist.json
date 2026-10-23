@@ -295,15 +295,6 @@
    "Microsoft Teams"
   ]
  },
- "components/mentors/offering-booker.tsx": {
-  "why": "public /mentors",
-  "text": [
-   "Session type",
-   "Times are shown in your time zone. You pay at checkout; the meeting link and a calendar invite arrive by e-mail. Free cancellation up to",
-   "hours before the session.",
-   "min · online"
-  ]
- },
  "components/passport/skill-list.tsx": {
   "why": "shared with public /p and /verify",
   "text": [

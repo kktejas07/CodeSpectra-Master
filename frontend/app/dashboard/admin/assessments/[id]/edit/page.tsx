@@ -26,6 +26,7 @@ import { AccommodationsCard } from '@/components/assessment/AccommodationsCard'
 import { ExtendedQuestionEditor } from '@/components/assessment/ExtendedQuestionEditor'
 import { EXTENDED_FIELD_RESET, extendedDefaultsForType, extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
 import type { ExamSection } from '@/lib/exam-sections'
+import { useAdminT } from '@/lib/i18n/admin'
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   mcq: <List className="h-3 w-3 mr-1" />,
@@ -307,6 +308,7 @@ const emptyQuestion = (): Question => ({
 })
 
 export default function ExamReviewPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('tenant_admin')
   // Platform timezone (Settings → General). All exam window times are displayed
   // and entered in this tz; they are stored as UTC ISO.
@@ -720,7 +722,7 @@ export default function ExamReviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <button type="button" className="mb-2 flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push('/dashboard/admin/assessments')}>
-            <ArrowLeft className="h-4 w-4" /> Back to assessments
+            <ArrowLeft className="h-4 w-4" /> {ta('assessForm.backToAssessments')}
           </button>
           {editingMeta ? (
             <div className="space-y-3">
@@ -729,43 +731,43 @@ export default function ExamReviewPage() {
                   value={metaTitle}
                   onChange={(e) => setMetaTitle(e.target.value)}
                   className="text-2xl font-bold h-auto py-1 min-w-50 max-w-[400px]"
-                  placeholder="Assessment title"
+                  placeholder={ta('assessForm.assessmentTitle')}
                 />
                 <Button size="sm" onClick={saveExamMeta} disabled={savingMeta}>
                   {savingMeta ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                  Save
+                  {ta('assessForm.save')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditingMeta(false)}>
-                  <X className="h-4 w-4 mr-1" /> Cancel
+                  <X className="h-4 w-4 mr-1" /> {ta('assessForm.cancel')}
                 </Button>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Role:</Label>
-                  <Input aria-label="Role"
+                  <Input aria-label={ta('assessForm.role')}
                     value={metaSubject}
                     onChange={(e) => setMetaSubject(e.target.value)}
                     className="h-8 w-32 text-sm"
-                    placeholder="e.g. Frontend"
+                    placeholder={ta('assessForm.eGFrontend')}
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Level:</Label>
                   <Select value={metaLevel} onValueChange={setMetaLevel}>
-                    <SelectTrigger aria-label="Level" className="h-8 w-32 text-sm">
-                      <SelectValue placeholder="Select" />
+                    <SelectTrigger aria-label={ta('assessForm.level')} className="h-8 w-32 text-sm">
+                      <SelectValue placeholder={ta('assessForm.select')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                      <SelectItem value="Expert">Expert</SelectItem>
+                      <SelectItem value="Beginner">{ta('assessForm.beginner')}</SelectItem>
+                      <SelectItem value="Intermediate">{ta('assessForm.intermediate')}</SelectItem>
+                      <SelectItem value="Advanced">{ta('assessForm.advanced')}</SelectItem>
+                      <SelectItem value="Expert">{ta('assessForm.expert')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Duration (mins):</Label>
-                  <Input aria-label="Duration (mins)"
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.durationMins')}</Label>
+                  <Input aria-label={ta('assessForm.durationMins2')}
                     type="number"
                     value={metaDuration}
                     onChange={(e) => setMetaDuration(parseInt(e.target.value) || 30)}
@@ -774,68 +776,68 @@ export default function ExamReviewPage() {
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Available from:</Label>
-                  <Input aria-label="Available from"
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.availableFrom')}</Label>
+                  <Input aria-label={ta('assessForm.availableFrom2')}
                     type="datetime-local"
                     value={metaStartsAt}
                     onChange={(e) => setMetaStartsAt(e.target.value)}
                     className="h-8 w-44 text-sm"
-                    title="Candidates can start from this UTC time (empty = open)"
+                    title={ta('assessForm.candidatesCanStartFromThisUtc')}
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Submit by:</Label>
-                  <Input aria-label="Submit by"
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.submitBy')}</Label>
+                  <Input aria-label={ta('assessForm.submitBy2')}
                     type="datetime-local"
                     value={metaEndsAt}
                     onChange={(e) => setMetaEndsAt(e.target.value)}
                     className="h-8 w-44 text-sm"
-                    title="Candidates must submit by this UTC time (empty = no deadline)"
+                    title={ta('assessForm.candidatesMustSubmitByThisUtc')}
                   />
                 </div>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Disable legacy ?share=true URLs — entry requires token links or invites">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.disableLegacyShareTrueUrlsEntry')}>
                   <input
                     type="checkbox"
                     checked={metaRequireTokenLinks}
                     onChange={(e) => setMetaRequireTokenLinks(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Require personal links</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.requirePersonalLinks')}</span>
                 </label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the Government-ID capture/OCR step">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.offCandidatesSkipTheGovernmentId')}>
                   <input
                     type="checkbox"
                     checked={metaRequireId}
                     onChange={(e) => setMetaRequireId(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Require ID</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.requireId')}</span>
                 </label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the live-face capture/verify step">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.offCandidatesSkipTheLiveFace')}>
                   <input
                     type="checkbox"
                     checked={metaRequireFace}
                     onChange={(e) => setMetaRequireFace(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Require face</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.requireFace')}</span>
                 </label>
                 {(metaRequireId || metaRequireFace) && (
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="meta-no-camera" className="text-xs text-muted-foreground whitespace-nowrap">If the candidate has no camera:</Label>
+                    <Label htmlFor="meta-no-camera" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.ifTheCandidateHasNoCamera')}</Label>
                     <select
                       id="meta-no-camera"
                       value={metaNoCamera}
                       onChange={(e) => setMetaNoCamera(e.target.value === 'block' ? 'block' : 'allow_flag')}
                       className="h-8 rounded-md border border-border/60 bg-background px-2 py-1 text-xs"
-                      title="Allow: the candidate uploads an ID photo and the result is flagged for manual identity review"
+                      title={ta('assessForm.allowTheCandidateUploadsAnId')}
                     >
-                      <option value="allow_flag">Allow and flag for review</option>
-                      <option value="block">Block the test</option>
+                      <option value="allow_flag">{ta('assessForm.allowAndFlagForReview')}</option>
+                      <option value="block">{ta('assessForm.blockTheTest')}</option>
                     </select>
                   </div>
                 )}
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Candidates can submit again; results keep their latest and best attempt">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.candidatesCanSubmitAgainResultsKeep')}>
                   <input
                     type="checkbox"
                     checked={metaAllowRetake}
@@ -845,29 +847,29 @@ export default function ExamReviewPage() {
                     }}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Allow retakes</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.allowRetakes')}</span>
                 </label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Strict = candidates must install the Device Audit Chrome extension before starting (blocks mobile, Safari and Firefox). Off = recommended only; integrity events are logged either way.">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.strictCandidatesMustInstallTheDevice')}>
                   <input
                     type="checkbox"
                     checked={metaProctoringMode === 'strict'}
                     onChange={(e) => setMetaProctoringMode(e.target.checked ? 'strict' : 'standard')}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Strict proctoring (extension required)</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.strictProctoringExtensionRequired')}</span>
                 </label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="CAD task: candidates upload a native CAD file and a STEP export with a design rationale instead of answering questions">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.cadTaskCandidatesUploadANative')}>
                   <input
                     type="checkbox"
                     checked={metaKind === 'cad'}
                     onChange={(e) => setMetaKind(e.target.checked ? 'cad' : 'standard')}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">CAD task</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.cadTask')}</span>
                 </label>
                 {metaKind === 'cad' && (
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="meta-cad-points" className="text-xs text-muted-foreground whitespace-nowrap">CAD points:</Label>
+                    <Label htmlFor="meta-cad-points" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.cadPoints')}</Label>
                     <Input
                       id="meta-cad-points"
                       type="number"
@@ -881,7 +883,7 @@ export default function ExamReviewPage() {
                 )}
                 {metaAllowRetake && (
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="meta-max-attempts" className="text-xs text-muted-foreground whitespace-nowrap">Max attempts:</Label>
+                    <Label htmlFor="meta-max-attempts" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.maxAttempts')}</Label>
                     <Input
                       id="meta-max-attempts"
                       type="number"
@@ -890,12 +892,12 @@ export default function ExamReviewPage() {
                       value={metaMaxAttempts}
                       onChange={(e) => setMetaMaxAttempts(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
                       className="h-8 w-16 text-sm"
-                      title="Total attempts per candidate, including the first (up to 20)"
+                      title={ta('assessForm.totalAttemptsPerCandidateIncludingThe')}
                     />
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="meta-passing-score" className="text-xs text-muted-foreground whitespace-nowrap">Pass mark (%):</Label>
+                  <Label htmlFor="meta-passing-score" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.passMark')}</Label>
                   <Input
                     id="meta-passing-score"
                     type="number"
@@ -904,47 +906,47 @@ export default function ExamReviewPage() {
                     value={metaPassingScore}
                     onChange={(e) => setMetaPassingScore(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
                     className="h-8 w-16 text-sm"
-                    title="Released scores at or above this count as a pass and earn a certificate"
+                    title={ta('assessForm.releasedScoresAtOrAboveThis')}
                   />
                 </div>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Candidates who pass get a verifiable certificate when scores are released (one per candidate, even with retakes)">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.candidatesWhoPassGetAVerifiable')}>
                   <input
                     type="checkbox"
                     checked={metaIssueCertificates}
                     onChange={(e) => setMetaIssueCertificates(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Issue certificates</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.issueCertificates')}</span>
                 </label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Each candidate sees their score as soon as auto-grading finishes; attempts that need a manual review wait for you">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.eachCandidateSeesTheirScoreAs')}>
                   <input
                     type="checkbox"
                     checked={metaAutoRelease}
                     onChange={(e) => setMetaAutoRelease(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Release scores automatically when grading finishes</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.releaseScoresAutomaticallyWhenGradingFin')}</span>
                 </label>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Certificate template:</Label>
-                  <select aria-label="Certificate template"
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.certificateTemplate')}</Label>
+                  <select aria-label={ta('assessForm.certificateTemplate2')}
                     value={metaCertTemplate}
                     onChange={(e) => setMetaCertTemplate(e.target.value)}
                     className="h-8 rounded-md border border-border/60 bg-background px-2 py-1 text-xs"
                   >
-                    <option value="classic">Classic</option>
-                    <option value="modern">Modern</option>
-                    <option value="minimal">Minimal</option>
+                    <option value="classic">{ta('assessForm.classic')}</option>
+                    <option value="modern">{ta('assessForm.modern')}</option>
+                    <option value="minimal">{ta('assessForm.minimal')}</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Degree:</Label>
                   <Select value={metaDegreeType || 'any'} onValueChange={v => setMetaDegreeType(v === 'any' ? '' : v)}>
-                    <SelectTrigger aria-label="Degree" className="h-8 w-32 text-sm">
-                      <SelectValue placeholder="Any degree" />
+                    <SelectTrigger aria-label={ta('assessForm.degree')} className="h-8 w-32 text-sm">
+                      <SelectValue placeholder={ta('assessForm.anyDegree')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any degree</SelectItem>
+                      <SelectItem value="any">{ta('assessForm.anyDegree')}</SelectItem>
                       {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -952,11 +954,11 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Branch:</Label>
                   <Select value={metaBranch || 'any'} onValueChange={v => setMetaBranch(v === 'any' ? '' : v)}>
-                    <SelectTrigger aria-label="Branch" className="h-8 w-36 text-sm">
-                      <SelectValue placeholder="General" />
+                    <SelectTrigger aria-label={ta('assessForm.branch')} className="h-8 w-36 text-sm">
+                      <SelectValue placeholder={ta('assessForm.general')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">General / all</SelectItem>
+                      <SelectItem value="any">{ta('assessForm.generalAll')}</SelectItem>
                       {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -964,7 +966,7 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Screening:</Label>
                   <Select value={metaScreeningType} onValueChange={setMetaScreeningType}>
-                    <SelectTrigger aria-label="Screening" className="h-8 w-36 text-sm">
+                    <SelectTrigger aria-label={ta('assessForm.screening')} className="h-8 w-36 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -978,7 +980,7 @@ export default function ExamReviewPage() {
             <>
               <h1 className="text-2xl font-bold tracking-tight text-balance text-foreground sm:text-[1.75rem]">
                 {exam.title}
-                <Button variant="ghost" size="sm" className="ml-2 h-7 w-7 p-0" onClick={() => setEditingMeta(true)} title="Edit exam details" aria-label="Edit assessment details">
+                <Button variant="ghost" size="sm" className="ml-2 h-7 w-7 p-0" onClick={() => setEditingMeta(true)} title={ta('assessForm.editExamDetails')} aria-label={ta('assessForm.editAssessmentDetails')}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </h1>
@@ -988,8 +990,8 @@ export default function ExamReviewPage() {
                 {exam.branch && <Badge variant="outline">{BRANCHES.find(b => b.id === exam.branch)?.short || exam.branch}</Badge>}
                 {exam.screening_type && <Badge variant="outline">{SCREENING_TYPES.find(s => s.id === exam.screening_type)?.short || exam.screening_type}</Badge>}
                 <Badge variant="outline">{exam.level || 'N/A'}</Badge>
-                <Badge variant="outline">{exam.duration} mins</Badge>
-                {exam.allow_retake && <Badge variant="outline">Up to {Number(exam.max_attempts) || 2} attempts</Badge>}
+                <Badge variant="outline">{ta('assessForm.mins', { duration: exam.duration })}</Badge>
+                {exam.allow_retake && <Badge variant="outline">{ta('assessForm.upTo')} {Number(exam.max_attempts) || 2} {ta('assessForm.attempts')}</Badge>}
                 <Badge variant={exam.published ? 'default' : 'secondary'}>
                   {exam.published ? 'Published' : 'Draft'}
                 </Badge>
@@ -998,10 +1000,10 @@ export default function ExamReviewPage() {
           )}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as draft</Button>
+          <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>{ta('assessForm.saveAsDraft')}</Button>
           <Button onClick={handlePublish} disabled={publishing}>
             {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-            Publish assessment
+            {ta('assessForm.publishAssessment')}
           </Button>
         </div>
       </div>
@@ -1024,9 +1026,9 @@ export default function ExamReviewPage() {
       <Panel className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-lg font-semibold mb-1">Questions <span className="tabular-nums text-muted-foreground">({exam.questionList.length})</span></h2>
+            <h2 className="text-lg font-semibold mb-1">{ta('assessForm.questions')} <span className="tabular-nums text-muted-foreground">({exam.questionList.length})</span></h2>
             <p className="text-muted-foreground text-sm">
-              Review the questions for this assessment. You can add, edit, or remove questions.
+              {ta('assessForm.reviewTheQuestionsForThisAssessment')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1041,7 +1043,7 @@ export default function ExamReviewPage() {
                 addToast({ type: 'success', title: `${selectedIds.size} questions removed` })
               }} className="gap-2">
                 {deletingSelected ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                Delete {selectedIds.size}
+                {ta('assessForm.delete')} {selectedIds.size}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => {
@@ -1055,13 +1057,13 @@ export default function ExamReviewPage() {
               {selectedIds.size === exam.questionList.length ? 'Deselect all' : 'Select all'}
             </Button>
             <Button variant="outline" onClick={() => { setImportText(''); setImportedPreview(null); setImportModal(true) }} className="gap-2">
-              <Upload className="h-4 w-4" /> Import
+              <Upload className="h-4 w-4" /> {ta('assessForm.import')}
             </Button>
             <Button variant="outline" onClick={openBankModal} className="gap-2">
-              <Database className="h-4 w-4" /> Pull from bank
+              <Database className="h-4 w-4" /> {ta('assessForm.pullFromBank')}
             </Button>
             <Button onClick={openAddQuestion} className="gap-2">
-              <Plus className="h-4 w-4" /> Add question
+              <Plus className="h-4 w-4" /> {ta('assessForm.addQuestion')}
             </Button>
           </div>
         </div>
@@ -1084,16 +1086,16 @@ export default function ExamReviewPage() {
                     {typeLabel(q.type)}
                   </Badge>
                   <span className="text-sm font-medium text-muted-foreground">Q{idx + 1}</span>
-                  <span className="text-xs tabular-nums text-muted-foreground">({q.score} pts)</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">{ta('assessForm.pts', { score: q.score })}</span>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-                  <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)} className="h-8" aria-label="Edit question">
+                  <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)} className="h-8" aria-label={ta('assessForm.editQuestion')}>
                     <Edit3 className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleRegenerateQuestion(q.id)} disabled={regeneratingId === q.id} className="h-8" aria-label="Regenerate question">
+                  <Button size="sm" variant="ghost" onClick={() => handleRegenerateQuestion(q.id)} disabled={regeneratingId === q.id} className="h-8" aria-label={ta('assessForm.regenerateQuestion')}>
                     {regeneratingId === q.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteQuestion(q.id)} className="h-8 text-destructive hover:bg-destructive/10" aria-label="Delete question">
+                  <Button size="sm" variant="ghost" onClick={() => handleDeleteQuestion(q.id)} className="h-8 text-destructive hover:bg-destructive/10" aria-label={ta('assessForm.deleteQuestion')}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -1130,18 +1132,18 @@ export default function ExamReviewPage() {
                   {q.type === 'numeric' && <p>Answer: {q.answer || '—'}{q.tolerance ? ` (±${q.tolerance})` : ''}</p>}
                   {q.type === 'short_answer' && <p>Answer: {q.answer || '—'}</p>}
                   {q.pairs && q.pairs.length > 0 && <p>{q.pairs.length} pair(s): {q.pairs.map(p => `${p.left}→${p.right}`).join(', ')}</p>}
-                  {q.matrix && <p>Matrix: {q.matrix.rows.length} row(s) × {q.matrix.columns.length} column(s)</p>}
-                  {q.table && <p>Table: {q.table.rows.length} row(s)</p>}
-                  {q.image_url && <p>Hotspot image: {q.image_url}</p>}
+                  {q.matrix && <p>{ta('assessForm.matrixRowSColumnS', { length: q.matrix.rows.length, length2: q.matrix.columns.length })}</p>}
+                  {q.table && <p>{ta('assessForm.tableRowS', { length: q.table.rows.length })}</p>}
+                  {q.image_url && <p>{ta('assessForm.hotspotImage', { image_url: q.image_url })}</p>}
                   {q.scale && <p>Scale: {q.scale.min}–{q.scale.max}{q.scale.minLabel || q.scale.maxLabel ? ` (${q.scale.minLabel || ''}…${q.scale.maxLabel || ''})` : ''}</p>}
-                  {q.answer && metaFor(q.type).group !== 'objective' && <p className="line-clamp-2">Model answer: {q.answer}</p>}
+                  {q.answer && metaFor(q.type).group !== 'objective' && <p className="line-clamp-2">{ta('assessForm.modelAnswer', { answer: q.answer })}</p>}
                 </div>
               )}
             </div>
           ))}
           {exam.questionList.length === 0 && (
             <div className="text-center py-12 border border-dashed rounded-2xl text-sm text-muted-foreground">
-              No questions yet. Click "Add question" to write one, or pull some from the question bank.
+              {ta('assessForm.noQuestionsYetClickAddQuestion')}
             </div>
           )}
           {/* ponytail: the API strips questionList for non-admin sessions, so
@@ -1149,19 +1151,16 @@ export default function ExamReviewPage() {
               session — not an empty exam. Say so instead of misleading. */}
           {exam.questionList.length === 0 && (exam.questions || 0) > 0 && (
             <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-              <p className="font-medium text-amber-700 dark:text-amber-400">
-                Expected {exam.questions} questions, but the server sent none.
-              </p>
+              <p className="font-medium text-amber-700 dark:text-amber-400">{ta('assessForm.expectedQuestionsButTheServerSent', { questions: exam.questions })}</p>
               <p className="mt-1 text-muted-foreground">
-                This usually means your session lost admin rights. Try reloading — if it
-                persists, sign out and sign back in, then reopen this page.
+                {ta('assessForm.thisUsuallyMeansYourSessionLost')}
               </p>
               <div className="mt-3 flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => void fetchExam()}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Retry
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> {ta('assessForm.retry')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => router.push('/auth/login')}>
-                  Sign in again
+                  {ta('assessForm.signInAgain')}
                 </Button>
               </div>
             </div>
@@ -1172,15 +1171,15 @@ export default function ExamReviewPage() {
       <Dialog open={importModal} onOpenChange={setImportModal}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import questions</DialogTitle>
+            <DialogTitle>{ta('assessForm.importQuestions')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Paste JSON, CSV, or plain text</Label>
+              <Label>{ta('assessForm.pasteJsonCsvOrPlainText')}</Label>
               <p className="text-xs text-muted-foreground">
                 <strong>JSON:</strong> [{'{type, title, prompt, options[], answer, score}'}]<br />
-                <strong>CSV:</strong> type,title,prompt,options,answer,score (options pipe-delimited, header required)<br />
-                <strong>Plain text:</strong> blank-line separated blocks become descriptive questions
+                <strong>CSV:</strong> {ta('assessForm.typeTitlePromptOptionsAnswerScore')}<br />
+                <strong>{ta('assessForm.plainText')}</strong> {ta('assessForm.blankLineSeparatedBlocksBecomeDescriptiv')}
               </p>
               <div className="max-h-[400px] overflow-y-auto border rounded-md">
                 <Textarea
@@ -1190,7 +1189,7 @@ export default function ExamReviewPage() {
                     setImportedPreview(null)
                   }}
                   rows={20}
-                  placeholder='Paste JSON, CSV, or text here...'
+                  placeholder={ta('assessForm.pasteJsonCsvOrTextHere')}
                   className="font-mono text-sm min-h-[300px] border-0 focus-visible:ring-0 rounded-none"
                 />
               </div>
@@ -1215,13 +1214,13 @@ export default function ExamReviewPage() {
                 a.href = url; a.download = 'sample-questions.json'; a.click()
                 URL.revokeObjectURL(url)
               }} className="gap-2">
-                <Download className="h-4 w-4" /> Sample
+                <Download className="h-4 w-4" /> {ta('assessForm.sample')}
               </Button>
               <Button variant="outline" onClick={() => {
                 const fileInput = document.getElementById('import-file-input')
                 if (fileInput) fileInput.click()
               }} className="gap-2">
-                <Upload className="h-4 w-4" /> Upload file (.csv, .json, .txt)
+                <Upload className="h-4 w-4" /> {ta('assessForm.uploadFileCsvJsonTxt')}
               </Button>
               <input
                 id="import-file-input"
@@ -1243,12 +1242,12 @@ export default function ExamReviewPage() {
                   addToast({ type: 'error', title: result.errors[0] || 'No questions found' })
                 }
               }} disabled={!importText.trim()}>
-                Preview
+                {ta('assessForm.preview')}
               </Button>
             </div>
             {importedPreview && (
               <div className="border rounded-md p-3 bg-muted/20 space-y-2">
-                <p className="text-sm font-medium">{importedPreview.length} question{importedPreview.length !== 1 ? 's' : ''} parsed</p>
+                <p className="text-sm font-medium">{importedPreview.length} {ta('assessForm.question')}{importedPreview.length !== 1 ? 's' : ''} {ta('assessForm.parsed')}</p>
                 <div className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">
                   {importedPreview.map((q, i) => (
                     <div key={q.id} className="flex gap-2">
@@ -1262,7 +1261,7 @@ export default function ExamReviewPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportModal(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setImportModal(false)}>{ta('assessForm.cancel')}</Button>
             <Button disabled={!importedPreview || importedPreview.length === 0} onClick={async () => {
               if (!importedPreview || !exam) return
               const newQuestions = [...exam.questionList, ...importedPreview]
@@ -1273,7 +1272,7 @@ export default function ExamReviewPage() {
               setImportText('')
               addToast({ type: 'success', title: `${importedPreview.length} questions imported` })
             }}>
-              <Upload className="h-4 w-4 mr-2" /> Import {importedPreview?.length || 0} Questions
+              <Upload className="h-4 w-4 mr-2" /> {ta('assessForm.import')} {importedPreview?.length || 0} {ta('assessForm.questions')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1284,42 +1283,42 @@ export default function ExamReviewPage() {
         <DialogContent className="sm:max-w-200 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-primary" /> Pull from question bank
+              <Database className="h-4 w-4 text-primary" /> {ta('assessForm.pullFromQuestionBank')}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Input aria-label="Search bank questions"
-                placeholder="Search bank questions..."
+              <Input aria-label={ta('assessForm.searchBankQuestions')}
+                placeholder={ta('assessForm.searchBankQuestions2')}
                 value={bankQ}
                 onChange={(e) => setBankQ(e.target.value)}
                 className="h-9 flex-1 min-w-[180px] text-sm"
               />
               <Select value={bankBranch || 'all'} onValueChange={v => { setBankBranch(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger aria-label="Filter by branch" className="h-9 w-[150px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByBranch')} className="h-9 w-[150px] text-sm"><SelectValue placeholder={ta('assessForm.allBranches')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All branches</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allBranches')}</SelectItem>
                   {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.short}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankLevel || 'all'} onValueChange={v => { setBankLevel(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger aria-label="Filter by level" className="h-9 w-[110px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByLevel')} className="h-9 w-[110px] text-sm"><SelectValue placeholder={ta('assessForm.allLevels')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All levels</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allLevels')}</SelectItem>
                   {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankType || 'all'} onValueChange={v => { setBankType(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger aria-label="Filter by type" className="h-9 w-[120px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByType')} className="h-9 w-[120px] text-sm"><SelectValue placeholder={ta('assessForm.allTypes')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allTypes')}</SelectItem>
                   {BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankIndustry || 'all'} onValueChange={v => { setBankIndustry(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger aria-label="Filter by industry" className="h-9 w-[130px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByIndustry')} className="h-9 w-[130px] text-sm"><SelectValue placeholder={ta('assessForm.allIndustries')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All industries</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allIndustries')}</SelectItem>
                   {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -1327,11 +1326,11 @@ export default function ExamReviewPage() {
 
             {bankLoading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading bank questions...
+                <Loader2 className="h-4 w-4 animate-spin" /> {ta('assessForm.loadingBankQuestions')}
               </div>
             ) : bankRows.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm border border-dashed rounded-lg">
-                No bank questions match. Try clearing filters.
+                {ta('assessForm.noBankQuestionsMatchTryClearing')}
               </div>
             ) : (
               <div className="max-h-[400px] overflow-y-auto border rounded-md">
@@ -1351,9 +1350,9 @@ export default function ExamReviewPage() {
                           className="h-4 w-4"
                         />
                       </th>
-                      <th className="text-left py-2 px-3 font-semibold text-xs">Question</th>
-                      <th className="text-left py-2 px-3 font-semibold text-xs">Type</th>
-                      <th className="text-left py-2 px-3 font-semibold text-xs">Difficulty</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">{ta('assessForm.question2')}</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">{ta('assessForm.type')}</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">{ta('assessForm.difficulty')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1386,17 +1385,17 @@ export default function ExamReviewPage() {
             )}
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{bankTotal} question{bankTotal !== 1 ? 's' : ''} · {bankSelected.size} selected</span>
+              <span>{bankTotal} {ta('assessForm.question')}{bankTotal !== 1 ? 's' : ''} · {bankSelected.size} {ta('assessForm.selected')}</span>
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage <= 1} onClick={() => setBankPage(p => p - 1)}>Prev</Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage * 20 >= bankTotal} onClick={() => setBankPage(p => p + 1)}>Next</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage <= 1} onClick={() => setBankPage(p => p - 1)}>{ta('assessForm.prev')}</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage * 20 >= bankTotal} onClick={() => setBankPage(p => p + 1)}>{ta('assessForm.next')}</Button>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBankModal(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setBankModal(false)}>{ta('assessForm.cancel')}</Button>
             <Button disabled={bankSelected.size === 0} onClick={addSelectedFromBank} className="gap-2">
-              <Database className="h-4 w-4" /> Add {bankSelected.size || 0} Selected
+              <Database className="h-4 w-4" /> {ta('assessForm.add')} {bankSelected.size || 0} {ta('assessForm.selected2')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1416,9 +1415,9 @@ export default function ExamReviewPage() {
             return (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Question type</Label>
+                <Label>{ta('assessForm.questionType')}</Label>
                 <Select value={t} onValueChange={(v) => setQ({ ...defaultsForType(v as QuestionType), type: v as QuestionType })}>
-                  <SelectTrigger aria-label="Question type">
+                  <SelectTrigger aria-label={ta('assessForm.questionType')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1429,12 +1428,12 @@ export default function ExamReviewPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="q-title">Title</Label>
-                <Input id="q-title" value={editingQuestion.title} onChange={(e) => setQ({ title: e.target.value })} placeholder="e.g. Java Exception Handling" />
+                <Label htmlFor="q-title">{ta('assessForm.title')}</Label>
+                <Input id="q-title" value={editingQuestion.title} onChange={(e) => setQ({ title: e.target.value })} placeholder={ta('assessForm.eGJavaExceptionHandling')} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="q-prompt">Prompt / Description</Label>
-                <Textarea id="q-prompt" value={editingQuestion.prompt} onChange={(e) => setQ({ prompt: e.target.value })} rows={4} placeholder="Describe the question or coding task..." />
+                <Label htmlFor="q-prompt">{ta('assessForm.promptDescription')}</Label>
+                <Textarea id="q-prompt" value={editingQuestion.prompt} onChange={(e) => setQ({ prompt: e.target.value })} rows={4} placeholder={ta('assessForm.describeTheQuestionOrCodingTask')} />
               </div>
 
               {meta.hasOptions && (
@@ -1481,8 +1480,8 @@ export default function ExamReviewPage() {
                           }}
                           placeholder={isSeq ? `Item ${i + 1}` : `Option ${i + 1}`}
                         />
-                        <Button aria-label="Remove"
-                          variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove"
+                        <Button aria-label={ta('assessForm.remove')}
+                          variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.remove')}
                           onClick={() => {
                             const newOpts = (editingQuestion.options || []).filter((_, j) => j !== i)
                             setQ({ options: newOpts, answer: isSeq ? newOpts.map(s => s.trim()).filter(Boolean).join(', ') : editingQuestion.answer })
@@ -1497,7 +1496,7 @@ export default function ExamReviewPage() {
                     variant="outline" size="sm" className="w-fit gap-1"
                     onClick={() => setQ({ options: [...(editingQuestion.options || []), ''] })}
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add {isSeq ? 'item' : 'option'}
+                    <Plus className="h-3.5 w-3.5" /> {ta('assessForm.add')} {isSeq ? 'item' : 'option'}
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     {isSeq
@@ -1511,17 +1510,17 @@ export default function ExamReviewPage() {
 
               {t === 'numeric' && (
                 <div className="grid gap-2">
-                  <Label>Correct numeric answer</Label>
-                  <Input aria-label="Correct numeric answer" value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. 42" />
-                  <Label htmlFor="q-tolerance">Accepted tolerance (±, 0 = exact)</Label>
+                  <Label>{ta('assessForm.correctNumericAnswer')}</Label>
+                  <Input aria-label={ta('assessForm.correctNumericAnswer')} value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. 42" />
+                  <Label htmlFor="q-tolerance">{ta('assessForm.acceptedTolerance0Exact')}</Label>
                   <Input id="q-tolerance" type="number" min="0" step="any" value={editingQuestion.tolerance ?? 0} onChange={(e) => setQ({ tolerance: parseFloat(e.target.value) || 0 })} />
                 </div>
               )}
 
               {t === 'short_answer' && (
                 <div className="grid gap-2">
-                  <Label>Correct answer <span className="text-muted-foreground font-normal">(matched case/space-insensitive)</span></Label>
-                  <Input aria-label="Correct answer (matched case/space-insensitive)" value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. Binary Search" />
+                  <Label>{ta('assessForm.correctAnswer')} <span className="text-muted-foreground font-normal">{ta('assessForm.matchedCaseSpaceInsensitive')}</span></Label>
+                  <Input aria-label={ta('assessForm.correctAnswerMatchedCaseSpaceInsensitive')} value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder={ta('assessForm.eGBinarySearch')} />
                 </div>
               )}
 
@@ -1533,13 +1532,13 @@ export default function ExamReviewPage() {
                       <Input value={p.left} placeholder={`Item ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], left: e.target.value }; setQ({ pairs: next }) }} />
                       <span className="text-muted-foreground">→</span>
                       <Input value={p.right} placeholder={`Match ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], right: e.target.value }; setQ({ pairs: next }) }} />
-                      <Button aria-label="Remove" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove" onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
+                      <Button aria-label={ta('assessForm.remove')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.remove')} onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                   <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ pairs: [...(editingQuestion.pairs || []), { left: '', right: '' }] })}>
-                    <Plus className="h-3.5 w-3.5" /> Add pair
+                    <Plus className="h-3.5 w-3.5" /> {ta('assessForm.addPair')}
                   </Button>
                 </div>
               )}
@@ -1549,37 +1548,37 @@ export default function ExamReviewPage() {
                 const ans = (editingQuestion.answer || '').split(',').map(s => s.trim())
                 return (
                   <div className="grid gap-3">
-                    <Label>Columns</Label>
+                    <Label>{ta('assessForm.columns')}</Label>
                     <div className="flex flex-wrap gap-2">
                       {m.columns.map((c, i) => (
                         <div key={i} className="flex items-center gap-1">
                           <Input className="w-32" value={c} onChange={(e) => { const cols = [...m.columns]; cols[i] = e.target.value; setQ({ matrix: { ...m, columns: cols } }) }} />
-                          <Button aria-label="Remove column" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove column" onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
+                          <Button aria-label={ta('assessForm.removeColumn')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeColumn')} onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
                       <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ matrix: { ...m, columns: [...m.columns, ''] } })}>
-                        <Plus className="h-3.5 w-3.5" /> Column
+                        <Plus className="h-3.5 w-3.5" /> {ta('assessForm.column')}
                       </Button>
                     </div>
-                    <Label>Rows (choose the correct column per row)</Label>
+                    <Label>{ta('assessForm.rowsChooseTheCorrectColumnPer')}</Label>
                     {m.rows.map((r, ri) => (
                       <div key={ri} className="flex items-center gap-2">
                         <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...m.rows]; rows[ri] = e.target.value; setQ({ matrix: { ...m, rows } }) }} />
                         <Select value={ans[ri] || ''} onValueChange={(v) => { const next = [...ans]; next[ri] = v; setQ({ answer: next.map(s => s || '').join(', ') }) }}>
-                          <SelectTrigger className="w-40"><SelectValue placeholder="Correct" /></SelectTrigger>
+                          <SelectTrigger className="w-40"><SelectValue placeholder={ta('assessForm.correct')} /></SelectTrigger>
                           <SelectContent>
                             {m.columns.filter(Boolean).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        <Button aria-label="Remove row" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ matrix: { ...m, rows: m.rows.filter((_, j) => j !== ri) } })}>
+                        <Button aria-label={ta('assessForm.removeRow')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeRow')} onClick={() => setQ({ matrix: { ...m, rows: m.rows.filter((_, j) => j !== ri) } })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                     <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ matrix: { ...m, rows: [...m.rows, ''] } })}>
-                      <Plus className="h-3.5 w-3.5" /> Row
+                      <Plus className="h-3.5 w-3.5" /> {ta('assessForm.row')}
                     </Button>
                   </div>
                 )
@@ -1590,18 +1589,18 @@ export default function ExamReviewPage() {
                 const ans = (editingQuestion.answer || '').split(',').map(s => s.trim())
                 return (
                   <div className="grid gap-3">
-                    <Label>Rows (label + correct value)</Label>
+                    <Label>{ta('assessForm.rowsLabelCorrectValue')}</Label>
                     {tb.rows.map((r, ri) => (
                       <div key={ri} className="flex items-center gap-2">
                         <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...tb.rows]; rows[ri] = e.target.value; setQ({ table: { ...tb, rows } }) }} />
-                        <Input value={ans[ri] || ''} placeholder="Correct value" onChange={(e) => { const next = [...ans]; next[ri] = e.target.value; setQ({ answer: next.map(s => s || '').join(', ') }) }} />
-                        <Button aria-label="Remove row" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
+                        <Input value={ans[ri] || ''} placeholder={ta('assessForm.correctValue')} onChange={(e) => { const next = [...ans]; next[ri] = e.target.value; setQ({ answer: next.map(s => s || '').join(', ') }) }} />
+                        <Button aria-label={ta('assessForm.removeRow')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeRow')} onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                     <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ table: { ...tb, rows: [...tb.rows, ''] } })}>
-                      <Plus className="h-3.5 w-3.5" /> Row
+                      <Plus className="h-3.5 w-3.5" /> {ta('assessForm.row')}
                     </Button>
                   </div>
                 )
@@ -1609,71 +1608,71 @@ export default function ExamReviewPage() {
 
               {t === 'hotspot' && (
                 <div className="grid gap-3">
-                  <Label>Image URL</Label>
-                  <Input aria-label="Image URL" value={editingQuestion.image_url || ''} onChange={(e) => setQ({ image_url: e.target.value })} placeholder="https://..." />
-                  <Label>Regions <span className="text-muted-foreground font-normal">(percentages 0-100; radio = correct region)</span></Label>
+                  <Label>{ta('assessForm.imageUrl')}</Label>
+                  <Input aria-label={ta('assessForm.imageUrl')} value={editingQuestion.image_url || ''} onChange={(e) => setQ({ image_url: e.target.value })} placeholder="https://..." />
+                  <Label>{ta('assessForm.regions')} <span className="text-muted-foreground font-normal">{ta('assessForm.percentages0100RadioCorrectRegion')}</span></Label>
                   {(editingQuestion.regions || []).map((r, i) => (
                     <div key={r.id} className="flex items-center gap-2">
                       <input type="radio" name="hotspot-correct" checked={editingQuestion.answer === r.id} onChange={() => setQ({ answer: r.id })} className="h-4 w-4" />
-                      <Input className="w-32" value={r.label || ''} placeholder="Label" onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], label: e.target.value }; setQ({ regions: next }) }} />
+                      <Input className="w-32" value={r.label || ''} placeholder={ta('assessForm.label')} onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], label: e.target.value }; setQ({ regions: next }) }} />
                       {(['x', 'y', 'w', 'h'] as const).map((k) => (
                         <Input key={k} type="number" className="w-20" value={r[k]} title={k} onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], [k]: parseFloat(e.target.value) || 0 }; setQ({ regions: next }) }} />
                       ))}
-                      <Button aria-label="Remove region" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove region" onClick={() => setQ({ regions: (editingQuestion.regions || []).filter((_, j) => j !== i) })}>
+                      <Button aria-label={ta('assessForm.removeRegion')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeRegion')} onClick={() => setQ({ regions: (editingQuestion.regions || []).filter((_, j) => j !== i) })}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                   <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ regions: [...(editingQuestion.regions || []), { id: `r${(editingQuestion.regions || []).length + 1}`, x: 10, y: 10, w: 15, h: 15, label: '' }] })}>
-                    <Plus className="h-3.5 w-3.5" /> Region
+                    <Plus className="h-3.5 w-3.5" /> {ta('assessForm.region')}
                   </Button>
                 </div>
               )}
 
               {(t === 'likert' || t === 'rating') && (
                 <div className="grid gap-2">
-                  <Label>Scale bounds</Label>
+                  <Label>{ta('assessForm.scaleBounds')}</Label>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Min</span>
+                    <span className="text-xs text-muted-foreground">{ta('assessForm.min')}</span>
                     <Input type="number" className="w-20" value={editingQuestion.scale?.min ?? 1} onChange={(e) => setQ({ scale: { min: parseInt(e.target.value) || 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: editingQuestion.scale?.maxLabel } })} />
-                    <span className="text-xs text-muted-foreground">Max</span>
+                    <span className="text-xs text-muted-foreground">{ta('assessForm.max')}</span>
                     <Input type="number" className="w-20" value={editingQuestion.scale?.max ?? 5} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: parseInt(e.target.value) || 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: editingQuestion.scale?.maxLabel } })} />
-                    <Input className="w-40" placeholder="Min label" value={editingQuestion.scale?.minLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: e.target.value, maxLabel: editingQuestion.scale?.maxLabel } })} />
-                    <Input className="w-40" placeholder="Max label" value={editingQuestion.scale?.maxLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: e.target.value } })} />
+                    <Input className="w-40" placeholder={ta('assessForm.minLabel')} value={editingQuestion.scale?.minLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: e.target.value, maxLabel: editingQuestion.scale?.maxLabel } })} />
+                    <Input className="w-40" placeholder={ta('assessForm.maxLabel')} value={editingQuestion.scale?.maxLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: e.target.value } })} />
                   </div>
-                  <p className="text-xs text-muted-foreground">Not scored — for surveys / attitudinal questions.</p>
+                  <p className="text-xs text-muted-foreground">{ta('assessForm.notScoredForSurveysAttitudinalQuestions')}</p>
                 </div>
               )}
 
               {meta.group === 'coding' && (
                 <>
                   <div className="grid gap-2">
-                    <Label>Language</Label>
+                    <Label>{ta('assessForm.language')}</Label>
                     <Select value={editingQuestion.language || 'python'} onValueChange={(v) => setQ({ language: v })}>
-                      <SelectTrigger aria-label="Language"><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label={ta('assessForm.language')}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {CODE_LANGUAGES.map((l) => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="q-starter">Starter code <span className="text-muted-foreground font-normal">(optional — shown in the editor)</span></Label>
-                    <Textarea id="q-starter" value={editingQuestion.starter_code || ''} onChange={(e) => setQ({ starter_code: e.target.value })} rows={4} className="font-mono text-xs" placeholder="Function signature / scaffolding the candidate starts from..." />
+                    <Label htmlFor="q-starter">{ta('assessForm.starterCode')} <span className="text-muted-foreground font-normal">{ta('assessForm.optionalShownInTheEditor')}</span></Label>
+                    <Textarea id="q-starter" value={editingQuestion.starter_code || ''} onChange={(e) => setQ({ starter_code: e.target.value })} rows={4} className="font-mono text-xs" placeholder={ta('assessForm.functionSignatureScaffoldingTheCandidate')} />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="q-model-answer">Model answer / rubric</Label>
+                    <Label htmlFor="q-model-answer">{ta('assessForm.modelAnswerRubric')}</Label>
                     <Textarea
                       id="q-model-answer"
                       value={editingQuestion.answer || ''}
                       onChange={(e) => setQ({ answer: e.target.value })}
                       rows={5}
-                      placeholder="Expected solution or key patterns to look for..."
+                      placeholder={ta('assessForm.expectedSolutionOrKeyPatternsTo')}
                       className="font-mono text-xs"
                     />
-                    <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
+                    <p className="text-xs text-muted-foreground">{ta('assessForm.shownToTheReviewerSideBy')}</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Test cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, all run for scoring)</span></Label>
+                    <Label>{ta('assessForm.testCases')} <span className="text-muted-foreground font-normal">{ta('assessForm.stdinExpectedStdoutAllRunFor')}</span></Label>
                     {(editingQuestion.test_cases || []).map((tc, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <Input
@@ -1688,47 +1687,47 @@ export default function ExamReviewPage() {
                           placeholder={`expected stdout ${i + 1}`}
                           className="font-mono text-xs"
                         />
-                        <label className="flex h-9 shrink-0 items-center gap-1.5 text-xs text-muted-foreground cursor-pointer" title="Hidden cases are graded but never shown to candidates. Visible ones appear as examples.">
+                        <label className="flex h-9 shrink-0 items-center gap-1.5 text-xs text-muted-foreground cursor-pointer" title={ta('assessForm.hiddenCasesAreGradedButNever')}>
                           <input
                             type="checkbox"
                             checked={tc.hidden === true}
                             onChange={(e) => { const next = [...(editingQuestion.test_cases || [])]; next[i] = { ...next[i], hidden: e.target.checked || undefined }; setQ({ test_cases: next }) }}
                             className="h-4 w-4 rounded border-input accent-primary"
                           />
-                          Hidden
+                          {ta('assessForm.hidden')}
                         </label>
-                        <Button aria-label="Remove test case" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove test case" onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
+                        <Button aria-label={ta('assessForm.removeTestCase')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeTestCase')} onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                     {(editingQuestion.test_cases || []).length < 10 && (
                       <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '', hidden: true }] })}>
-                        <Plus className="h-3.5 w-3.5" /> Add test case
+                        <Plus className="h-3.5 w-3.5" /> {ta('assessForm.addTestCase')}
                       </Button>
                     )}
-                    <p className="text-xs text-muted-foreground">Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total, hidden cases included). Candidates only see the cases that aren&apos;t hidden.</p>
+                    <p className="text-xs text-muted-foreground">{ta('assessForm.withoutTestCasesTheCodeIs')}</p>
                   </div>
                 </>
               )}
 
               {t === 'descriptive' && (
                 <div className="grid gap-2">
-                  <Label htmlFor="q-model-answer">Model answer / rubric</Label>
+                  <Label htmlFor="q-model-answer">{ta('assessForm.modelAnswerRubric')}</Label>
                   <Textarea
                     id="q-model-answer"
                     value={editingQuestion.answer || ''}
                     onChange={(e) => setQ({ answer: e.target.value })}
                     rows={5}
-                    placeholder="Write the ideal answer or grading rubric / key points..."
+                    placeholder={ta('assessForm.writeTheIdealAnswerOrGrading')}
                     className="font-mono text-xs"
                   />
-                  <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
+                  <p className="text-xs text-muted-foreground">{ta('assessForm.shownToTheReviewerSideBy')}</p>
                 </div>
               )}
               <ExtendedQuestionEditor question={editingQuestion} onChange={(patch) => setQ(patch as Partial<Question>)} />
               <div className="grid gap-2">
-                <Label htmlFor="q-score">Score (points)</Label>
+                <Label htmlFor="q-score">{ta('assessForm.scorePoints')}</Label>
                 <Input id="q-score" type="number" min="0" value={editingQuestion.score} onChange={(e) => setQ({ score: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
@@ -1736,9 +1735,9 @@ export default function ExamReviewPage() {
           })()}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setQuestionModal(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setQuestionModal(false)}>{ta('assessForm.cancel')}</Button>
             <Button onClick={saveQuestion}>
-              <Save className="h-4 w-4 mr-2" /> Save question
+              <Save className="h-4 w-4 mr-2" /> {ta('assessForm.saveQuestion')}
             </Button>
           </DialogFooter>
         </DialogContent>

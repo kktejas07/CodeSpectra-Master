@@ -270,6 +270,7 @@ const humanize = (k: string): string =>
 
 /** Friendly, human-readable rendering of a proctoring event's metadata. */
 function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Record<string, unknown> }) {
+  const { t: ta } = useAdminT()
   // Hardware port audit gets a purpose-built summary.
   if (event_type === 'hardware_port_audit') {
     const devices = Array.isArray(meta.devices) ? (meta.devices as Array<Record<string, unknown>>) : []
@@ -278,16 +279,16 @@ function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Re
     return (
       <div className="px-4 pb-3 border-t border-muted/50 space-y-2">
         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 text-xs">
-          <span className="text-muted-foreground">Devices <b className="text-foreground">{Number(meta.total ?? 0)}</b></span>
+          <span className="text-muted-foreground">{ta('assessForm.devices')} <b className="text-foreground">{Number(meta.total ?? 0)}</b></span>
           {devices.length > 0 && (
             <>
-              <span className="text-green-600 dark:text-green-400">{Number(meta.safe ?? 0)} safe</span>
-              <span className="text-amber-600 dark:text-amber-400">{Number(meta.warn ?? 0)} review</span>
-              <span className="text-red-600 dark:text-red-400">{Number(meta.blocked ?? 0)} blocked</span>
+              <span className="text-green-600 dark:text-green-400">{ta('assessForm.safe', { Number: Number(meta.safe ?? 0) })}</span>
+              <span className="text-amber-600 dark:text-amber-400">{ta('assessForm.review', { Number: Number(meta.warn ?? 0) })}</span>
+              <span className="text-red-600 dark:text-red-400">{ta('assessForm.blocked', { Number: Number(meta.blocked ?? 0) })}</span>
             </>
           )}
-          <span className="text-muted-foreground">Monitors <b className="text-foreground">{Number(meta.screen_count ?? 1)}</b></span>
-          {meta.multi_monitor === true && <span className="text-red-600 dark:text-red-400 font-semibold">Multi-monitor detected</span>}
+          <span className="text-muted-foreground">{ta('assessForm.monitors')} <b className="text-foreground">{Number(meta.screen_count ?? 1)}</b></span>
+          {meta.multi_monitor === true && <span className="text-red-600 dark:text-red-400 font-semibold">{ta('assessForm.multiMonitorDetected')}</span>}
           {meta.browser ? <span className="text-muted-foreground">{String(meta.browser)}</span> : null}
           {meta.os ? <span className="text-muted-foreground">{String(meta.os)}</span> : null}
           {meta.ip ? <span className="text-muted-foreground">IP {String(meta.ip)}</span> : null}
@@ -1363,9 +1364,9 @@ export default function ExamResultsPage() {
       header: 'Source',
       cell: (row: CandidateResult) => (
         row.source === 'invite' ? (
-          <Badge variant="outline" className="text-xs"><Mail className="w-3 h-3 mr-1" />Invite</Badge>
+          <Badge variant="outline" className="text-xs"><Mail className="w-3 h-3 mr-1" />{tx('assessForm.invite')}</Badge>
         ) : (
-          <Badge variant="outline" className="text-xs bg-blue-500/10 text-primary border-blue-500/20"><Link className="w-3 h-3 mr-1" />Public</Badge>
+          <Badge variant="outline" className="text-xs bg-blue-500/10 text-primary border-blue-500/20"><Link className="w-3 h-3 mr-1" />{tx('assessForm.public')}</Badge>
         )
       ),
     },
@@ -1374,10 +1375,10 @@ export default function ExamResultsPage() {
       header: 'Status',
       cell: (row: CandidateResult) => {
         const badges: Record<string, React.ReactNode> = {
-          pending: <Badge variant="outline" className="text-muted-foreground">Invited</Badge>,
-          in_progress: <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-500/20">In progress</Badge>,
-          completed: <Badge variant="success">Completed</Badge>,
-          expired: <Badge variant="secondary" className="text-amber-700 dark:text-amber-400">Expired</Badge>,
+          pending: <Badge variant="outline" className="text-muted-foreground">{tx('assessForm.invited')}</Badge>,
+          in_progress: <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-500/20">{tx('assessForm.inProgress')}</Badge>,
+          completed: <Badge variant="success">{tx('assessForm.completed')}</Badge>,
+          expired: <Badge variant="secondary" className="text-amber-700 dark:text-amber-400">{tx('assessForm.expired')}</Badge>,
         }
         return badges[row.status] || <Badge variant="outline">{row.status}</Badge>
       },
@@ -1387,9 +1388,9 @@ export default function ExamResultsPage() {
       header: 'Graded',
       cell: (row: CandidateResult) => {
         if (row.status !== 'completed') return <span className="text-xs text-muted-foreground">--</span>
-        if (row.graded) return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Graded</span>
-        if (row.needsReview) return <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1" title="AI graded, but a question is flagged for human review — open the candidate to finish"><Clock className="w-3 h-3"/> Needs review</span>
-        return <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1"><Clock className="w-3 h-3"/> Not graded</span>
+        if (row.graded) return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.graded')}</span>
+        if (row.needsReview) return <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1" title={tx('assessForm.aiGradedButAQuestionIs')}><Clock className="w-3 h-3"/> {tx('assessForm.needsReview')}</span>
+        return <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1"><Clock className="w-3 h-3"/> {tx('assessForm.notGraded')}</span>
       },
     },
     {
@@ -1397,22 +1398,22 @@ export default function ExamResultsPage() {
       header: 'Email',
       cell: (row: CandidateResult) => {
         if (row.deliveryStatus === 'sending') {
-          return <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> Sending</span>
+          return <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> {tx('assessForm.sending')}</span>
         }
         if (row.deliveryStatus === 'sent') {
-          return <span className="text-xs text-primary flex items-center gap-1"><Send className="w-3 h-3"/> Sent</span>
+          return <span className="text-xs text-primary flex items-center gap-1"><Send className="w-3 h-3"/> {tx('assessForm.sent')}</span>
         }
         if (row.deliveryStatus === 'opened') {
-          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><Eye className="w-3 h-3"/> Opened</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><Eye className="w-3 h-3"/> {tx('assessForm.opened')}</span>
         }
         if (row.deliveryStatus === 'delivered') {
-          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.delivered')}</span>
         }
         if (row.deliveryStatus === 'failed' || row.deliveryStatus === 'bounced') {
           return <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3"/> {row.deliveryStatus === 'bounced' ? 'Bounced' : 'Failed'}</span>
         }
         if (row.status === 'completed') {
-          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.delivered')}</span>
         }
         return <span className="text-xs text-muted-foreground">--</span>
       },
@@ -1424,15 +1425,15 @@ export default function ExamResultsPage() {
         <div>
         <div className="flex items-center gap-2">
           {row.proctoringFlags === 0 ? (
-            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Clean</span>
+            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.clean')}</span>
           ) : (
             <span className="text-red-600 dark:text-red-400 text-xs flex items-center gap-1 font-bold">
-              <ShieldAlert className="w-3 h-3"/> {row.proctoringFlags} Flags
+              <ShieldAlert className="w-3 h-3"/> {row.proctoringFlags} {tx('assessForm.flags')}
             </span>
           )}
         </div>
         {row.identityReview && (
-          <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1" title="The candidate had no working camera and uploaded an ID photo. Open the review to compare it.">
+          <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1" title={tx('assessForm.theCandidateHadNoWorkingCamera')}>
             <Camera className="w-3 h-3 shrink-0" /> {NO_CAMERA_REVIEW_LABEL}
           </div>
         )}
@@ -1450,7 +1451,7 @@ export default function ExamResultsPage() {
           </div>
           {row.maxAttempts !== undefined && row.maxAttempts > 1 && (
             <div className="text-[11px] text-muted-foreground tabular-nums">
-              Attempt {row.attemptNo ?? 1} of {row.maxAttempts}
+              {tx('assessForm.attempt')} {row.attemptNo ?? 1} {tx('assessForm.of')} {row.maxAttempts}
               {row.bestScore !== null && row.bestScore !== undefined && (row.attemptNo ?? 1) > 1 ? ` · best ${row.bestScore}%` : ''}
             </div>
           )}
@@ -1484,15 +1485,15 @@ export default function ExamResultsPage() {
       cell: (row: CandidateResult) => (
         row.released ? (
           <div>
-            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Released</span>
+            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> {tx('assessForm.released')}</span>
             {row.certificate && (
               row.certificate.revokedAt
-                ? <span className="text-[11px] text-destructive">Certificate revoked</span>
-                : <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3" /> Certificate issued</span>
+                ? <span className="text-[11px] text-destructive">{tx('assessForm.certificateRevoked')}</span>
+                : <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3" /> {tx('assessForm.certificateIssued')}</span>
             )}
           </div>
         ) : row.status === 'completed' ? (
-          <span className="text-muted-foreground text-xs">Pending</span>
+          <span className="text-muted-foreground text-xs">{tx('assessForm.pending')}</span>
         ) : null
       ),
     },
@@ -1503,7 +1504,7 @@ export default function ExamResultsPage() {
         <div className="flex items-center gap-1 justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Invite actions"
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={tx('assessForm.inviteActions')}
                 disabled={resendingId === row.inviteId || deletingId === row.inviteId}
               >
                 {resendingId === row.inviteId || deletingId === row.inviteId
@@ -1515,31 +1516,31 @@ export default function ExamResultsPage() {
             <DropdownMenuContent align="end" className="w-48">
               {row.status === 'completed' && (
                 <DropdownMenuItem onClick={() => openReview(row)} className="gap-2">
-                  <Eye className="h-4 w-4" /> Review
+                  <Eye className="h-4 w-4" /> {tx('assessForm.review2')}
                 </DropdownMenuItem>
               )}
               {(row.userId || row.status === 'completed') && (
                 <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/recordings?user=${encodeURIComponent(row.userId || row.id)}`)} className="gap-2">
-                  <Film className="h-4 w-4" /> Recordings
+                  <Film className="h-4 w-4" /> {tx('assessForm.recordings')}
                 </DropdownMenuItem>
               )}
               {row.status === 'completed' && row.graded === false && (
                 <DropdownMenuItem disabled className="gap-2 text-amber-700 dark:text-amber-400">
-                  <Clock className="h-4 w-4" /> Grading Pending
+                  <Clock className="h-4 w-4" /> {tx('assessForm.gradingPending')}
                 </DropdownMenuItem>
               )}
               {row.status === 'completed' && row.graded && !row.released && (
                 <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-green-600 dark:text-green-400 focus:text-green-600">
-                  <Send className="h-4 w-4" /> Release score
+                  <Send className="h-4 w-4" /> {tx('assessForm.releaseScore')}
                 </DropdownMenuItem>
               )}
               {row.status !== 'completed' && (
                 <>
                   <DropdownMenuItem onClick={() => resendInvite(row.inviteId, row.name)} className="gap-2">
-                    <Mail className="h-4 w-4" /> Resend invite
+                    <Mail className="h-4 w-4" /> {tx('assessForm.resendInvite')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => sendReminder(row.inviteId, row.name)} className="gap-2">
-                    <Bell className="h-4 w-4" /> Send reminder
+                    <Bell className="h-4 w-4" /> {tx('assessForm.sendReminder')}
                   </DropdownMenuItem>
                 </>
               )}
@@ -1548,16 +1549,16 @@ export default function ExamResultsPage() {
                   onClick={() => { setRevokeReason(''); setRevokeTarget({ certId: row.certificate!.id, userId: row.userId!, name: row.name }) }}
                   className="gap-2 text-destructive focus:text-destructive"
                 >
-                  <Award className="h-4 w-4" /> Revoke certificate
+                  <Award className="h-4 w-4" /> {tx('assessForm.revokeCertificate')}
                 </DropdownMenuItem>
               )}
               {row.inviteToken && (
                 <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
-                  <Link className="h-4 w-4" /> Copy invite link
+                  <Link className="h-4 w-4" /> {tx('assessForm.copyInviteLink')}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => setConfirmDeleteInvite({ id: row.inviteId, name: row.name })} className="gap-2 text-destructive focus:text-destructive">
-                <Trash2 className="h-4 w-4" /> Delete
+                <Trash2 className="h-4 w-4" /> {tx('assessForm.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1606,42 +1607,38 @@ export default function ExamResultsPage() {
     <div className="space-y-6 pb-12">
       <div className="space-y-3">
         <button type="button" className="flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push('/dashboard/admin/assessments')}>
-          <ArrowLeft className="h-4 w-4" /> Back to assessments
+          <ArrowLeft className="h-4 w-4" /> {tx('assessForm.backToAssessments')}
         </button>
         <PageHeader
           className="mb-0"
           title={<>Results: {exam.title}</>}
-          description="Review submissions, grade open answers, check proctoring and release scores to candidates."
+          description={tx('assessForm.reviewSubmissionsGradeOpenAnswersCheck')}
           icon={<CheckCheck />}
           actions={
             <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/recordings`)}>
-              <Film className="h-4 w-4" /> Recordings
+              <Film className="h-4 w-4" /> {tx('assessForm.recordings')}
             </Button>
             <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/integrity`)}>
-              <ShieldAlert className="h-4 w-4" /> Integrity
+              <ShieldAlert className="h-4 w-4" /> {tx('assessForm.integrity')}
             </Button>
             </div>
           }
         />
         <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{exam.level}</Badge>
-            <Badge variant="outline">{exam.duration} mins</Badge>
-            <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {completedCount} submitted
-            </Badge>
-            <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
-              {results.length} invited
-            </Badge>
+            <Badge variant="outline">{tx('assessForm.mins', { duration: exam.duration })}</Badge>
+            <Badge variant="secondary" className="bg-primary/10 text-primary">{tx('assessForm.submitted', { completedCount: completedCount })}</Badge>
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">{tx('assessForm.invited2', { length: results.length })}</Badge>
             {(exam.publicLinkViews ?? 0) > 0 && (
               <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400">
                 <Link className="w-3 h-3 mr-1" />
-                {exam.publicLinkViews} public link views
+                {exam.publicLinkViews} {tx('assessForm.publicLinkViews')}
               </Badge>
             )}
           {pendingGradingCount > 0 && (
             <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20">
-              <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
+              <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} {tx('assessForm.awaitingGrading')}
             </Badge>
           )}
           {jevConfigured !== null && (
@@ -1664,7 +1661,7 @@ export default function ExamResultsPage() {
               title={`Checked ${fmtDateTime(exam.plagiarismReport.checked_at)} · ${exam.plagiarismReport.pairs} pair(s), ${exam.plagiarismReport.aiFlags} AI flag(s), ${exam.plagiarismReport.bankMatches} bank match(es)`}
               className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' : 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20'}
             >
-              <ShieldAlert className="w-3.5 h-3.5" /> Plagiarism {exam.plagiarismReport.score}/100
+              <ShieldAlert className="w-3.5 h-3.5" /> {tx('assessForm.plagiarism')} {exam.plagiarismReport.score}/100
             </Badge>
           )}
         </div>
@@ -1688,7 +1685,7 @@ export default function ExamResultsPage() {
               disabled={bulkReleasing}
             >
               {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Release all ({unreleasedCount})
+              {tx('assessForm.releaseAll')}{unreleasedCount})
             </Button>
           )}
           {exam?.issue_certificates !== false && results.some((r) => r.released) && (
@@ -1697,10 +1694,10 @@ export default function ExamResultsPage() {
               className="gap-2"
               onClick={issueMissingCertificates}
               disabled={issuingCerts}
-              title="Issue certificates to released candidates at or above the pass mark who don't have one yet"
+              title={tx('assessForm.issueCertificatesToReleasedCandidatesAt')}
             >
               {issuingCerts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
-              Issue missing certificates
+              {tx('assessForm.issueMissingCertificates')}
             </Button>
           )}
           <Button
@@ -1710,24 +1707,24 @@ export default function ExamResultsPage() {
             disabled={exportingReport}
           >
             {exportingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Export report
+            {tx('assessForm.exportReport')}
           </Button>
           <Button
             variant="outline"
             className="gap-2"
             onClick={runPlagiarismCheck}
             disabled={plagRunning}
-            title="Cross-submission copy detection + AI-authorship flags (runs on demand, up to ~2 min)"
+            title={tx('assessForm.crossSubmissionCopyDetectionAiAuthorship')}
           >
             {plagRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldAlert className="w-4 h-4" />}
-            Check plagiarism
+            {tx('assessForm.checkPlagiarism')}
           </Button>
           <Button variant="outline" className="gap-2" onClick={remindAllPending} disabled={bulkReminding}>
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
-            Remind all pending
+            {tx('assessForm.remindAllPending')}
           </Button>
           <Button variant="outline" className="gap-2" onClick={exportCSV}>
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /> {tx('assessForm.exportCsv')}
           </Button>
         </div>
       </div>
@@ -1764,8 +1761,8 @@ export default function ExamResultsPage() {
 
       {resultFilter !== 'all' && (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Showing {filteredResults.length} of {results.length} candidates.</span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setResultFilter('all')}>Show all</Button>
+          <span className="text-muted-foreground">{tx('assessForm.showingOfCandidates', { length: filteredResults.length, length2: results.length })}</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setResultFilter('all')}>{tx('assessForm.showAll')}</Button>
         </div>
       )}
 
@@ -1775,7 +1772,7 @@ export default function ExamResultsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <h2 className="text-sm font-semibold">Invite recovery — {stuckInvites.length} stuck</h2>
+              <h2 className="text-sm font-semibold">{tx('assessForm.inviteRecoveryStuck', { length: stuckInvites.length })}</h2>
             </div>
             <Button
               size="sm"
@@ -1785,12 +1782,11 @@ export default function ExamResultsPage() {
               disabled={!!recovering}
             >
               {recovering === 'all' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              Reset all to pending
+              {tx('assessForm.resetAllToPending')}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            These invites show as used but have no submission — the candidate was locked out mid-exam.
-            Resetting flips them back to pending; the candidate resubmits from the same browser (answers restore from draft).
+            {tx('assessForm.theseInvitesShowAsUsedBut')}
           </p>
           <div className="border rounded-md divide-y divide-border/40 max-h-56 overflow-y-auto bg-card">
             {stuckInvites.map((s) => (
@@ -1800,10 +1796,10 @@ export default function ExamResultsPage() {
                   <p className="text-muted-foreground truncate">{s.email}</p>
                 </div>
                 {s.has_draft === true && (
-                  <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 shrink-0">draft saved</Badge>
+                  <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 shrink-0">{tx('assessForm.draftSaved')}</Badge>
                 )}
                 {s.has_draft === false && (
-                  <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0">no draft</Badge>
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0">{tx('assessForm.noDraft')}</Badge>
                 )}
                 <Button
                   size="sm"
@@ -1924,13 +1920,13 @@ export default function ExamResultsPage() {
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{reviewCandidate.email}</p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setReviewCandidate(null); setReviewData(null) }} className="gap-1.5 shrink-0">
-              <X className="h-4 w-4" /> <span className="hidden sm:inline">Close</span>
+              <X className="h-4 w-4" /> <span className="hidden sm:inline">{tx('assessForm.close')}</span>
             </Button>
           </div>
 
           {reviewLoading ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading review data...
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> {tx('assessForm.loadingReviewData')}
             </div>
           ) : reviewData ? (
             <>
@@ -1939,14 +1935,14 @@ export default function ExamResultsPage() {
                   {/* Candidate Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
-                      <span className="text-muted-foreground block text-xs">Score</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.score')}</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
                       {reviewData.submission.has_pending_review && (
-                        <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">⚠ Partial — pending review</span>
+                        <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">{tx('assessForm.partialPendingReview')}</span>
                       )}
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-xs">Percentage</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.percentage')}</span>
                       <span className="text-xl font-bold">
                         {reviewData.submission.max_score > 0
                           ? `${Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)}%`
@@ -1954,7 +1950,7 @@ export default function ExamResultsPage() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-xs">Submitted</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.submitted2')}</span>
                       <span className="text-sm font-medium">
                         {reviewData.submission.submitted_at
                           ? fmtDateTime(reviewData.submission.submitted_at)
@@ -1962,7 +1958,7 @@ export default function ExamResultsPage() {
                       </span>
                       {reviewData.attempts && reviewData.attempts.max_attempts > 1 && (
                         <span className="block text-xs text-muted-foreground mt-0.5 tabular-nums">
-                          Attempt {reviewData.attempts.attempt_no} of {reviewData.attempts.max_attempts}
+                          {tx('assessForm.attempt')} {reviewData.attempts.attempt_no} {tx('assessForm.of')} {reviewData.attempts.max_attempts}
                           {reviewData.attempts.best && reviewData.attempts.best.max_score > 0 && reviewData.attempts.attempt_no > 1
                             ? ` · best ${Math.round((reviewData.attempts.best.score / reviewData.attempts.best.max_score) * 100)}% (attempt ${reviewData.attempts.best.attempt_no})`
                             : ''}
@@ -1970,27 +1966,27 @@ export default function ExamResultsPage() {
                       )}
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-xs">Time used</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.timeUsed')}</span>
                       <span className="text-xl font-bold">
                         {reviewData.submission.total_time_ms
                           ? `${Math.floor(reviewData.submission.total_time_ms / 60000)}m ${Math.floor((reviewData.submission.total_time_ms % 60000) / 1000)}s`
                           : '--'}
                       </span>
                       {reviewData.submission.total_time_ms && reviewData.submission.total_time_ms < 60000 && (
-                        <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">⚠ Very fast submission</span>
+                        <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">{tx('assessForm.veryFastSubmission')}</span>
                       )}
                     </div>
                   </div>
 
                   {reviewData.submission.section_scores && reviewData.submission.section_scores.length > 0 && (
                     <div className="rounded-lg border p-4">
-                      <h4 className="mb-2 text-sm font-semibold">Score by section</h4>
+                      <h4 className="mb-2 text-sm font-semibold">{tx('assessForm.scoreBySection')}</h4>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {reviewData.submission.section_scores.map((sc) => (
                           <div key={sc.id} className="rounded-lg border bg-muted/30 p-3">
                             <p className="truncate text-xs text-muted-foreground" title={sc.title}>{sc.title}</p>
                             <p className="text-lg font-bold tabular-nums">{sc.percent !== null ? `${sc.percent}%` : '--'}</p>
-                            <p className="text-xs text-muted-foreground tabular-nums">{sc.score}/{sc.max} points</p>
+                            <p className="text-xs text-muted-foreground tabular-nums">{tx('assessForm.points', { score: sc.score, max: sc.max })}</p>
                           </div>
                         ))}
                       </div>
@@ -2016,10 +2012,10 @@ export default function ExamResultsPage() {
                   {/* Answer Review */}
                   <div className="space-y-3">
                     <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" /> Answer review
+                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" /> {tx('assessForm.answerReview')}
                       {reviewData.submission.has_pending_review && (
                         <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10">
-                          <Clock className="w-3 h-3 mr-1" /> Pending Manual Grading
+                          <Clock className="w-3 h-3 mr-1" /> {tx('assessForm.pendingManualGrading')}
                         </Badge>
                       )}
                     </h4>
@@ -2031,21 +2027,20 @@ export default function ExamResultsPage() {
                       return (
                         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-1">
                           <p className="font-semibold">
-                            {pendingIdx.length} question{pendingIdx.length === 1 ? '' : 's'} need review before this score can be released:
+                            {pendingIdx.length} {tx('assessForm.question')}{pendingIdx.length === 1 ? '' : 's'} {tx('assessForm.needReviewBeforeThisScoreCan')}
                           </p>
                           <p className="break-words">
                             {pendingIdx.map((n) => `Q${n}`).join(', ')}
                           </p>
                           <p className="text-amber-700/80 dark:text-amber-300/80">
-                            Scroll to the highlighted rows, set the points (the AI&apos;s value is pre-filled), then
-                            click <strong>Save manual grades</strong> — that clears them.
+                            {tx('assessForm.scrollToTheHighlightedRowsSet')} <strong>{tx('assessForm.saveManualGrades')}</strong> {tx('assessForm.thatClearsThem')}
                           </p>
                         </div>
                       )
                     })()}
                     <TraitScoresPanel questions={reviewData.questions as Array<Record<string, unknown>>} answers={reviewData.submission.answers} />
                     {reviewData.questions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
+                      <p className="text-xs text-muted-foreground py-4 text-center">{tx('assessForm.noQuestionsFound')}</p>
                     ) : (
                       reviewData.questions.map((q, i) => {
                         const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
@@ -2086,10 +2081,10 @@ export default function ExamResultsPage() {
                                     {timeSpent < 1000 ? `${timeSpent}ms` : `${(timeSpent / 1000).toFixed(1)}s`}
                                   </span>
                                   {isSuspiciouslyFast && (
-                                    <Badge variant="outline" className="text-[10px] text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10 ml-1">Fast</Badge>
+                                    <Badge variant="outline" className="text-[10px] text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10 ml-1">{tx('assessForm.fast')}</Badge>
                                   )}
                                   {isSuspiciouslySlow && (
-                                    <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 ml-1">Slow</Badge>
+                                    <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 ml-1">{tx('assessForm.slow')}</Badge>
                                   )}
                                 </div>
                               )}
@@ -2097,18 +2092,18 @@ export default function ExamResultsPage() {
                                 <div className="flex items-center gap-2 shrink-0">
                                   {detail?.requires_human_review && (
                                     <Badge variant="outline" className="text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 shrink-0">
-                                      <AlertTriangle className="w-3 h-3 mr-1" /> AI Uncertain
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> {tx('assessForm.aiUncertain')}
                                     </Badge>
                                   )}
                                   <Badge variant="outline" className="text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 shrink-0">
-                                    <Clock className="w-3 h-3 mr-1" /> Pending
+                                    <Clock className="w-3 h-3 mr-1" /> {tx('assessForm.pending')}
                                   </Badge>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
                                   {detail?.requires_human_review && (
-                                    <Badge variant="outline" className="text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 shrink-0" title="The AI was not confident about this grade. A person should review it.">
-                                      <AlertTriangle className="w-3 h-3 mr-1" /> Review recommended
+                                    <Badge variant="outline" className="text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 shrink-0" title={tx('assessForm.theAiWasNotConfidentAbout')}>
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> {tx('assessForm.reviewRecommended')}
                                     </Badge>
                                   )}
                                   {detail?.jev_agree !== undefined && detail?.jev_agree !== null && (
@@ -2121,7 +2116,7 @@ export default function ExamResultsPage() {
                                         variant="outline"
                                         className={detail.jev_agree ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/30 shrink-0' : 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 shrink-0'}
                                       >
-                                        <ShieldAlert className="w-3 h-3 mr-1" aria-hidden /> Second opinion {detail.jev_agree ? 'agrees' : 'disagrees'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` (${Math.round(detail.jev_confidence * 100)}% sure)` : ''}
+                                        <ShieldAlert className="w-3 h-3 mr-1" aria-hidden /> {tx('assessForm.secondOpinion')} {detail.jev_agree ? 'agrees' : 'disagrees'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` (${Math.round(detail.jev_confidence * 100)}% sure)` : ''}
                                       </Badge>
                                     </SecondOpinionHint>
                                   )}
@@ -2172,7 +2167,7 @@ export default function ExamResultsPage() {
                             {!isMcq && (
                               <div className="mt-2 space-y-2">
                                 <div>
-                                  <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
+                                  <span className="text-xs font-medium text-muted-foreground block mb-1">{tx('assessForm.candidateSAnswer')}</span>
                                   {userAnswer ? (
                                     hasExtendedView(q.type) ? (
                                       <ExtendedAnswerView question={q as never} answer={userAnswer} examId={String(params.id)} files={answerFiles} />
@@ -2185,14 +2180,14 @@ export default function ExamResultsPage() {
                                       <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border wrap-break-word">{userAnswer}</pre>
                                     )
                                   ) : (
-                                    <span className="text-xs text-muted-foreground italic">No answer provided</span>
+                                    <span className="text-xs text-muted-foreground italic">{tx('assessForm.noAnswerProvided')}</span>
                                   )}
                                 </div>
                                 {q.type === 'cad' && reviewData.cad && (
                                   <div className="space-y-1.5">
-                                    <span className="text-xs font-medium text-muted-foreground block">Uploaded files:</span>
+                                    <span className="text-xs font-medium text-muted-foreground block">{tx('assessForm.uploadedFiles')}</span>
                                     {reviewData.cad.files.length === 0 ? (
-                                      <span className="text-xs text-muted-foreground italic">No files were uploaded (time ran out).</span>
+                                      <span className="text-xs text-muted-foreground italic">{tx('assessForm.noFilesWereUploadedTimeRan')}</span>
                                     ) : (
                                       <ul className="space-y-1">
                                         {reviewData.cad.files.map((f) => (
@@ -2208,7 +2203,7 @@ export default function ExamResultsPage() {
                                               {f.kind === 'step' ? 'STEP export' : 'Native file'} · {f.size >= 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
                                             </span>
                                             {f.scan_status === 'unscanned' && (
-                                              <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10">Not virus-scanned</Badge>
+                                              <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10">{tx('assessForm.notVirusScanned')}</Badge>
                                             )}
                                           </li>
                                         ))}
@@ -2218,7 +2213,7 @@ export default function ExamResultsPage() {
                                 )}
                                 {modelAnswer && (
                                   <div>
-                                    <span className="text-xs font-medium text-green-600 dark:text-green-400 block mb-1">Model answer / rubric:</span>
+                                    <span className="text-xs font-medium text-green-600 dark:text-green-400 block mb-1">{tx('assessForm.modelAnswerRubric2')}</span>
                                     <pre className="text-xs font-mono bg-green-500/5 border border-green-500/20 text-green-700 dark:text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
                                   </div>
                                 )}
@@ -2227,8 +2222,8 @@ export default function ExamResultsPage() {
                                 {(isPendingReview || isManuallyGraded) && (
                                   <div className="pt-3 border-t border-dashed space-y-3">
                                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                      <label className="text-xs font-medium text-muted-foreground shrink-0">Award points:</label>
-                                      <input aria-label="Award points"
+                                      <label className="text-xs font-medium text-muted-foreground shrink-0">{tx('assessForm.awardPoints')}</label>
+                                      <input aria-label={tx('assessForm.awardPoints2')}
                                         type="text"
                                         inputMode="numeric"
                                         pattern="[0-9]*"
@@ -2257,14 +2252,14 @@ export default function ExamResultsPage() {
                                     {aiFeedback[q.id] && (
                                       <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
                                         <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                                          <Sparkles className="w-3.5 h-3.5" /> AI Feedback — review & edit before saving
+                                          <Sparkles className="w-3.5 h-3.5" /> {tx('assessForm.aiFeedbackReviewEditBeforeSaving')}
                                           {detail?.confidence !== undefined && (
                                             <span className="ml-2 font-normal opacity-80">
                                               (Confidence: {Math.round(detail.confidence * 100)}%)
                                             </span>
                                           )}
                                           {detail?.graded_by && (
-                                            <span className="ml-2 font-normal opacity-80" title="LLM that produced this grade">
+                                            <span className="ml-2 font-normal opacity-80" title={tx('assessForm.llmThatProducedThisGrade')}>
                                               · {detail.graded_by}
                                             </span>
                                           )}
@@ -2273,7 +2268,7 @@ export default function ExamResultsPage() {
                                           value={aiFeedback[q.id]}
                                           onChange={(e) => setAiFeedback(prev => ({ ...prev, [q.id]: e.target.value }))}
                                           className="w-full min-h-20 px-3 py-2 text-xs border rounded-md bg-background"
-                                          placeholder="Feedback shown to the candidate on release…"
+                                          placeholder={tx('assessForm.feedbackShownToTheCandidateOn')}
                                         />
                                       </div>
                                     )}
@@ -2281,13 +2276,13 @@ export default function ExamResultsPage() {
                                     {/* Persisted remarks shown to candidate on release */}
                                     <div className="space-y-1">
                                       <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                        <MessageSquare className="w-3.5 h-3.5" /> Remarks / Feedback for Candidate
+                                        <MessageSquare className="w-3.5 h-3.5" /> {tx('assessForm.remarksFeedbackForCandidate')}
                                       </label>
-                                      <textarea aria-label="Remarks / Feedback for Candidate"
+                                      <textarea aria-label={tx('assessForm.remarksFeedbackForCandidate')}
                                         value={remarks[q.id] ?? detail?.remarks ?? (detail?.awarded !== undefined ? aiFeedback[q.id] ?? '' : '')}
                                         onChange={(e) => setRemarks(prev => ({ ...prev, [q.id]: e.target.value }))}
                                         className="w-full min-h-16 px-3 py-2 text-xs border rounded-md bg-background"
-                                        placeholder="Where they went wrong, what's missing, how to improve…"
+                                        placeholder={tx('assessForm.whereTheyWentWrongWhatS')}
                                       />
                                     </div>
                                   </div>
@@ -2327,7 +2322,7 @@ export default function ExamResultsPage() {
                           disabled={savingGrades}
                         >
                           {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                          Save manual grades
+                          {tx('assessForm.saveManualGrades')}
                         </Button>
                       )}
                     </div>
@@ -2341,16 +2336,16 @@ export default function ExamResultsPage() {
                         onClick={() => setShowProctorLog(v => !v)}
                         className="flex items-center gap-2 font-semibold text-sm text-left flex-1 min-w-0"
                       >
-                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">Proctoring log</span>
-                        <Badge variant="outline" className="text-xs shrink-0">{reviewData.proctorEvents.length} events</Badge>
+                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">{tx('assessForm.proctoringLog')}</span>
+                        <Badge variant="outline" className="text-xs shrink-0">{tx('assessForm.events', { length: reviewData.proctorEvents.length })}</Badge>
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowRawProctorMeta(v => !v)}
-                        title="Toggle raw JSON details"
+                        title={tx('assessForm.toggleRawJsonDetails')}
                         className={`text-[11px] px-2 py-0.5 rounded-md border font-medium shrink-0 transition-colors ${showRawProctorMeta ? 'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10' : 'border-border text-muted-foreground hover:text-foreground'}`}
                       >
-                        Raw JSON
+                        {tx('assessForm.rawJson')}
                       </button>
                       <ChevronDown
                         onClick={() => setShowProctorLog(v => !v)}
@@ -2388,7 +2383,7 @@ export default function ExamResultsPage() {
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'all' ? 'bg-muted border-foreground/30' : 'bg-card hover:bg-muted/50'}`}
                                   >
                                     <span className="block text-lg font-bold tabular-nums">{allEvents.length}</span>
-                                    <span className="block text-[11px] text-muted-foreground font-medium">Total</span>
+                                    <span className="block text-[11px] text-muted-foreground font-medium">{tx('assessForm.total')}</span>
                                   </button>
                                   <button
                                     type="button"
@@ -2397,7 +2392,7 @@ export default function ExamResultsPage() {
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'high' ? 'bg-red-500/10 border-red-500/40' : 'bg-card hover:bg-red-500/5'}`}
                                   >
                                     <span className="block text-lg font-bold tabular-nums text-red-600 dark:text-red-400">{highRisk.length}</span>
-                                    <span className="block text-[11px] text-red-600/80 dark:text-red-400/80 font-medium">High risk</span>
+                                    <span className="block text-[11px] text-red-600/80 dark:text-red-400/80 font-medium">{tx('assessForm.highRisk')}</span>
                                   </button>
                                   <button
                                     type="button"
@@ -2406,7 +2401,7 @@ export default function ExamResultsPage() {
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'warn' ? 'bg-amber-500/10 border-amber-500/40' : 'bg-card hover:bg-amber-500/5'}`}
                                   >
                                     <span className="block text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400">{warnRisk.length}</span>
-                                    <span className="block text-[11px] text-amber-700/80 dark:text-amber-400/80 font-medium">Warnings</span>
+                                    <span className="block text-[11px] text-amber-700/80 dark:text-amber-400/80 font-medium">{tx('assessForm.warnings')}</span>
                                   </button>
                                   <button
                                     type="button"
@@ -2415,7 +2410,7 @@ export default function ExamResultsPage() {
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'info' ? 'bg-primary/10 border-primary/40' : 'bg-card hover:bg-primary/5'}`}
                                   >
                                     <span className="block text-lg font-bold tabular-nums text-primary">{infoRisk.length}</span>
-                                    <span className="block text-[11px] text-primary/80 font-medium">Info</span>
+                                    <span className="block text-[11px] text-primary/80 font-medium">{tx('assessForm.info')}</span>
                                   </button>
                                 </div>
                               )}
@@ -2424,7 +2419,7 @@ export default function ExamResultsPage() {
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/50 mt-2">
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{tabSwitches}</div>
-                                    <div className="text-[10px] text-muted-foreground font-medium">Tab switches</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">{tx('assessForm.tabSwitches')}</div>
                                   </div>
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{copyPaste}</div>
@@ -2432,11 +2427,11 @@ export default function ExamResultsPage() {
                                   </div>
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{aiProxy}</div>
-                                    <div className="text-[10px] text-muted-foreground font-medium">AI & Proxies</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">{tx('assessForm.aiProxies')}</div>
                                   </div>
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{hwAnomalies}</div>
-                                    <div className="text-[10px] text-muted-foreground font-medium">Anomalies</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">{tx('assessForm.anomalies')}</div>
                                   </div>
                                 </div>
                               )}
@@ -2444,10 +2439,10 @@ export default function ExamResultsPage() {
                               {allEvents.length === 0 ? (
                                 <div className="border rounded-lg p-6 text-center">
                                   <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400 mb-2" />
-                                  <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
+                                  <p className="text-sm text-muted-foreground">{tx('assessForm.noProctoringViolationsDetected')}</p>
                                 </div>
                               ) : filteredEvents.length === 0 ? (
-                                <EmptyState variant="search" title="No events match the selected filter" description="Choose another event type to see more." className="py-6 md:py-8" />
+                                <EmptyState variant="search" title={tx('assessForm.noEventsMatchTheSelectedFilter')} description={tx('assessForm.chooseAnotherEventTypeToSee')} className="py-6 md:py-8" />
                               ) : (
                                 <div className="border rounded-lg max-h-96 overflow-y-auto overflow-x-hidden bg-card">
                                   {filteredEvents.map((evt, i) => (
@@ -2491,7 +2486,7 @@ export default function ExamResultsPage() {
                             : reviewData.submission.identity_check.no_camera_reason === 'error'
                               ? 'The candidate said their camera wasn’t working.'
                               : 'No camera was found on the candidate’s device.'}
-                          {' '}They uploaded a photo of their ID instead; no live face photo was taken. Check the ID against the candidate before relying on this result.
+                          {' '}{tx('assessForm.theyUploadedAPhotoOfTheir')}
                           {reviewData.submission.identity_check.upload_scan_status === 'unscanned' ? ' The virus scanner was unavailable when it was uploaded.' : ''}
                         </p>
                       </div>
@@ -2500,7 +2495,7 @@ export default function ExamResultsPage() {
                   {reviewData.submission.identity_check?.face_match && (
                     <p className="text-xs text-muted-foreground">
                       {reviewData.submission.identity_check.face_match.status === 'compared' && typeof reviewData.submission.identity_check.face_match.similarity === 'number'
-                        ? <>Face match (advisory, computed in the candidate&apos;s browser): <span className="font-medium tabular-nums text-foreground">{Math.round(reviewData.submission.identity_check.face_match.similarity * 100)}%</span> — {reviewData.submission.identity_check.face_match.likely_match ? 'likely the same person' : 'may be a different person, compare the photos'}. Never used to accept or reject.</>
+                        ? <>{tx('assessForm.faceMatchAdvisoryComputedInThe')} <span className="font-medium tabular-nums text-foreground">{Math.round(reviewData.submission.identity_check.face_match.similarity * 100)}%</span> — {reviewData.submission.identity_check.face_match.likely_match ? 'likely the same person' : 'may be a different person, compare the photos'}{tx('assessForm.neverUsedToAcceptOrReject')}</>
                         : reviewData.submission.identity_check.face_match.status === 'no_face_in_id'
                           ? 'Face match: no face found on the ID photo. Compare the photos by eye.'
                           : reviewData.submission.identity_check.face_match.status === 'no_face_in_selfie'
@@ -2512,22 +2507,22 @@ export default function ExamResultsPage() {
                   {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <span className="text-xs font-semibold text-muted-foreground block">ID Photo</span>
+                        <span className="text-xs font-semibold text-muted-foreground block">{tx('assessForm.idPhoto')}</span>
                         <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
                           {reviewData.submission.id_photo ? (
                             <img src={reviewData.submission.id_photo} alt="ID" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-xs text-muted-foreground">Not captured</span>
+                            <span className="text-xs text-muted-foreground">{tx('assessForm.notCaptured')}</span>
                           )}
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-xs font-semibold text-muted-foreground block">Face photo</span>
+                        <span className="text-xs font-semibold text-muted-foreground block">{tx('assessForm.facePhoto')}</span>
                         <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
                           {reviewData.submission.face_photo ? (
-                            <img src={reviewData.submission.face_photo} alt="Face" className="w-full h-full object-cover" />
+                            <img src={reviewData.submission.face_photo} alt={tx('assessForm.face')} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-xs text-muted-foreground">Not captured</span>
+                            <span className="text-xs text-muted-foreground">{tx('assessForm.notCaptured')}</span>
                           )}
                         </div>
                       </div>
@@ -2540,7 +2535,7 @@ export default function ExamResultsPage() {
                   <div className="text-xs text-muted-foreground min-w-0">
                     {reviewData.submission.released_at ? (
                       <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
-                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Score released on {fmtDateTime(reviewData.submission.released_at)}</span>
+                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{tx('assessForm.scoreReleasedOn', { fmtDateTime: fmtDateTime(reviewData.submission.released_at) })}</span>
                       </span>
                     ) : (
                       'Score not yet released to candidate'
@@ -2548,10 +2543,10 @@ export default function ExamResultsPage() {
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
                     <Button variant="outline" onClick={downloadReviewPdf} className="gap-2">
-                      <Download className="w-4 h-4" /> Download report
+                      <Download className="w-4 h-4" /> {tx('assessForm.downloadReport')}
                     </Button>
                     <Button variant="outline" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
-                      Close
+                      {tx('assessForm.close')}
                     </Button>
                     {!reviewData.submission.released_at && (
                       <Button
@@ -2564,7 +2559,7 @@ export default function ExamResultsPage() {
                         ) : (
                           <Send className="w-4 h-4" />
                         )}
-                        Release score
+                        {tx('assessForm.releaseScore')}
                       </Button>
                     )}
                   </div>
@@ -2572,7 +2567,7 @@ export default function ExamResultsPage() {
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                No submission data found for this candidate.
+                {tx('assessForm.noSubmissionDataFoundForThis')}
               </div>
             )}
         </div>
@@ -2581,13 +2576,11 @@ export default function ExamResultsPage() {
       <AlertDialog open={!!confirmDeleteInvite} onOpenChange={(open) => !open && setConfirmDeleteInvite(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Withdraw invite?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDeleteInvite?.name}&apos;s invite link will stop working. If they haven&apos;t started, the invite is deleted. If they already submitted, their results are kept.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{tx('assessForm.withdrawInvite')}</AlertDialogTitle>
+            <AlertDialogDescription>{tx('assessForm.sInviteLinkWillStopWorking', { name: confirmDeleteInvite?.name })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tx('assessForm.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={async () => {
@@ -2598,7 +2591,7 @@ export default function ExamResultsPage() {
                 }
               }}
             >
-              Withdraw
+              {tx('assessForm.withdraw')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -2607,28 +2600,26 @@ export default function ExamResultsPage() {
       <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open && !revoking) setRevokeTarget(null) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Revoke certificate?</DialogTitle>
-            <DialogDescription>
-              {revokeTarget?.name}&apos;s certificate will show as revoked on its public verify page. This can&apos;t be undone.
-            </DialogDescription>
+            <DialogTitle>{tx('assessForm.revokeCertificate2')}</DialogTitle>
+            <DialogDescription>{tx('assessForm.sCertificateWillShowAsRevoked', { name: revokeTarget?.name })}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-1.5">
-            <label htmlFor="revoke-reason" className="text-sm font-medium">Reason</label>
+            <label htmlFor="revoke-reason" className="text-sm font-medium">{tx('assessForm.reason')}</label>
             <textarea
               id="revoke-reason"
               value={revokeReason}
               onChange={(e) => setRevokeReason(e.target.value)}
               maxLength={500}
               rows={3}
-              placeholder="For example: identity could not be confirmed"
+              placeholder={tx('assessForm.forExampleIdentityCouldNotBe')}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-            <p className="text-xs text-muted-foreground">Kept in the audit log. Not shown on the public page.</p>
+            <p className="text-xs text-muted-foreground">{tx('assessForm.keptInTheAuditLogNot')}</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRevokeTarget(null)} disabled={revoking}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRevokeTarget(null)} disabled={revoking}>{tx('assessForm.cancel')}</Button>
             <Button variant="destructive" onClick={() => void revokeCertificate()} disabled={revoking || revokeReason.trim().length < 5} className="gap-2">
-              {revoking && <Loader2 className="h-4 w-4 animate-spin" />} Revoke certificate
+              {revoking && <Loader2 className="h-4 w-4 animate-spin" />} {tx('assessForm.revokeCertificate')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2649,8 +2640,8 @@ export default function ExamResultsPage() {
           <div className="space-y-2 py-2">
             <Progress value={gradeProg && gradeProg.total > 0 ? Math.round((gradeProg.done / gradeProg.total) * 100) : 0} />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{gradeProg?.done} / {gradeProg?.total} candidates</span>
-              <span>{gradeProg?.graded} graded{gradeProg && gradeProg.failed > 0 ? ` · ${gradeProg.failed} failed` : ''}</span>
+              <span>{tx('assessForm.candidates', { done: gradeProg?.done, total: gradeProg?.total })}</span>
+              <span>{gradeProg?.graded} {tx('assessForm.graded2')}{gradeProg && gradeProg.failed > 0 ? ` · ${gradeProg.failed} failed` : ''}</span>
             </div>
           </div>
           {gradeProg && gradeProg.items.length > 0 && (
@@ -2672,10 +2663,10 @@ export default function ExamResultsPage() {
           <DialogFooter>
             {gradeProg?.running ? (
               <Button variant="outline" onClick={() => { gradeCancelRef.current = true }}>
-                Stop after this batch
+                {tx('assessForm.stopAfterThisBatch')}
               </Button>
             ) : (
-              <Button onClick={() => setGradeProg(null)}>Close</Button>
+              <Button onClick={() => setGradeProg(null)}>{tx('assessForm.close')}</Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -2685,7 +2676,7 @@ export default function ExamResultsPage() {
       <Dialog open={plagOpen} onOpenChange={setPlagOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Plagiarism check</DialogTitle>
+            <DialogTitle>{tx('assessForm.plagiarismCheck')}</DialogTitle>
             <DialogDescription>
               {plagRunning
                 ? 'Comparing answers across submissions (exact matches instantly, AI semantic checks take longer)…'
@@ -2697,14 +2688,14 @@ export default function ExamResultsPage() {
           {plagRunning && (
             <div className="space-y-2 py-4">
               <Progress value={undefined} />
-              <p className="text-xs text-muted-foreground text-center">Running — safe to wait; closing keeps the server run going but discards the view.</p>
+              <p className="text-xs text-muted-foreground text-center">{tx('assessForm.runningSafeToWaitClosingKeeps')}</p>
             </div>
           )}
           {plagResult && !plagRunning && (
             <div className="space-y-4 py-2">
               {plagResult.suspiciousPairs.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold">Suspicious pairs</p>
+                  <p className="text-sm font-semibold">{tx('assessForm.suspiciousPairs')}</p>
                   <div className="max-h-56 overflow-y-auto rounded-md border divide-y divide-border/40">
                     {plagResult.suspiciousPairs.map((p, i) => (
                       <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs">
@@ -2718,7 +2709,7 @@ export default function ExamResultsPage() {
               )}
               {plagResult.aiGeneratedFlags.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold">Possible AI-written answers</p>
+                  <p className="text-sm font-semibold">{tx('assessForm.possibleAiWrittenAnswers')}</p>
                   <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
                     {plagResult.aiGeneratedFlags.map((f, i) => (
                       <div key={i} className="px-3 py-1.5 text-xs">
@@ -2731,12 +2722,12 @@ export default function ExamResultsPage() {
               )}
               {plagResult.questionBankMatches.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold">Matches against question-bank answers</p>
+                  <p className="text-sm font-semibold">{tx('assessForm.matchesAgainstQuestionBankAnswers')}</p>
                   <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
                     {plagResult.questionBankMatches.map((m, i) => (
                       <div key={i} className="px-3 py-1.5 text-xs">
                         <span className="font-medium">{m.name}</span>
-                        <span className="text-muted-foreground"> · {m.matchType} match</span>
+                        <span className="text-muted-foreground">{' '}{tx('assessForm.match', { matchType: m.matchType })}</span>
                       </div>
                     ))}
                   </div>
@@ -2744,13 +2735,13 @@ export default function ExamResultsPage() {
               )}
               {plagResult.suspiciousPairs.length === 0 && plagResult.aiGeneratedFlags.length === 0 && plagResult.questionBankMatches.length === 0 && (
                 <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" /> No copy or AI-authorship signals found.
+                  <CheckCircle2 className="h-4 w-4" /> {tx('assessForm.noCopyOrAiAuthorshipSignals')}
                 </p>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPlagOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setPlagOpen(false)}>{tx('assessForm.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2758,15 +2749,15 @@ export default function ExamResultsPage() {
       <AlertDialog open={showReleaseAllConfirm} onOpenChange={setShowReleaseAllConfirm}>
         <AlertDialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Release scores with cutoff</AlertDialogTitle>
+            <AlertDialogTitle>{tx('assessForm.releaseScoresWithCutoff')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Everyone graded gets their score; candidates at or above the cutoff are marked passed.
-              {blockedPreviewCount > 0 ? ` ${blockedPreviewCount} ungraded submission(s) stay locked.` : ''} This cannot be undone.
+              {tx('assessForm.everyoneGradedGetsTheirScoreCandidates')}
+              {blockedPreviewCount > 0 ? ` ${blockedPreviewCount} ungraded submission(s) stay locked.` : ''} {tx('assessForm.thisCannotBeUndone')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 py-2">
             <div className="flex items-center gap-3">
-              <label htmlFor="release-cutoff" className="text-sm font-medium whitespace-nowrap">Cutoff %</label>
+              <label htmlFor="release-cutoff" className="text-sm font-medium whitespace-nowrap">{tx('assessForm.cutoff')}</label>
               <input
                 id="release-cutoff"
                 type="number"
@@ -2778,9 +2769,9 @@ export default function ExamResultsPage() {
                 className="h-9 w-24 rounded-md border border-border bg-background px-2 text-sm"
               />
               <div className="flex gap-2 text-xs">
-                <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{passPreview.length} pass</Badge>
-                <Badge variant="secondary" className="bg-red-500/10 text-red-600 dark:text-red-400">{failPreview.length} below</Badge>
-                <Badge variant="secondary">{releasablePreview.length} releasing</Badge>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{tx('assessForm.pass', { length: passPreview.length })}</Badge>
+                <Badge variant="secondary" className="bg-red-500/10 text-red-600 dark:text-red-400">{tx('assessForm.below', { length: failPreview.length })}</Badge>
+                <Badge variant="secondary">{tx('assessForm.releasing', { length: releasablePreview.length })}</Badge>
               </div>
             </div>
             {passPreview.length > 0 && (
@@ -2798,13 +2789,13 @@ export default function ExamResultsPage() {
             {releaseResult && (
               <div className="space-y-3 rounded-lg border border-green-500/30 bg-green-500/5 p-3">
                 <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                  Released {releaseResult.released} at {releaseResult.cutoff}% — {releaseResult.passed} passed, {releaseResult.failed} below cutoff
+                  {tx('assessForm.released')} {releaseResult.released} {tx('assessForm.at')} {releaseResult.cutoff}% — {releaseResult.passed} {tx('assessForm.passed')} {releaseResult.failed} {tx('assessForm.belowCutoff')}
                   {releaseResult.skipped_pending > 0 ? `, ${releaseResult.skipped_pending} still locked (ungraded)` : ''}.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" className="gap-2" onClick={exportPassPdf} disabled={exportingPdf}>
                     {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                    Export pass list (PDF)
+                    {tx('assessForm.exportPassListPdf')}
                   </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -2813,28 +2804,28 @@ export default function ExamResultsPage() {
                     onChange={(e) => setAdvanceTarget(e.target.value)}
                     className="h-9 flex-1 min-w-40 rounded-md border border-border bg-background px-2 text-xs"
                   >
-                    <option value="">Advance passers to…</option>
+                    <option value="">{tx('assessForm.advancePassersTo')}</option>
                     {examsList.map((e) => (
                       <option key={e.id} value={e.id}>{e.title}</option>
                     ))}
                   </select>
                   <Button size="sm" className="gap-2" onClick={advancePassers} disabled={advancing || !advanceTarget}>
                     {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Advance
+                    {tx('assessForm.advance')}
                   </Button>
                 </div>
               </div>
             )}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkReleasing}>Close</AlertDialogCancel>
+            <AlertDialogCancel disabled={bulkReleasing}>{tx('assessForm.close')}</AlertDialogCancel>
             {!releaseResult && (
               <AlertDialogAction
                 onClick={(e) => { e.preventDefault(); void releaseAllWithAudit() }}
                 disabled={bulkReleasing || releasablePreview.length === 0}
               >
                 {bulkReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Release {releasablePreview.length}
+                {tx('assessForm.release')} {releasablePreview.length}
               </AlertDialogAction>
             )}
           </AlertDialogFooter>

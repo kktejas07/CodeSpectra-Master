@@ -46,6 +46,7 @@ import {
   type CertificateData,
   type TemplateKey,
 } from '@/components/cert/CertificateTemplates'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface IssuedCert {
   id: string
@@ -89,6 +90,7 @@ interface UserSearchResult {
 }
 
 export default function CertificatesPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
 
@@ -304,21 +306,21 @@ export default function CertificatesPage() {
       <PageHeader
         illustration="certificate"
         icon={<Award />}
-        title="Certificates"
-        description="Issue certificates, preview them and check every certificate issued so far."
+        title={ta('certAdm.certificates')}
+        description={ta('certAdm.issueCertificatesPreviewThemAndCheck')}
         actions={
           <Button size="sm" onClick={() => setIssueDialogOpen(true)}>
             <Plus className="mr-1.5 h-4 w-4" />
-            Issue certificate
+            {ta('certAdm.issueCertificate')}
           </Button>
         }
         className="mb-0"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Total issued" value={issued.length} icon={<CheckCircle2 />} />
-        <StatCard label="This month" value={thisMonthCount} icon={<Trophy />} />
-        <StatCard label="Templates" value={TEMPLATE_KEYS.length} icon={<FileText />} />
+        <StatCard label={ta('certAdm.totalIssued')} value={issued.length} icon={<CheckCircle2 />} />
+        <StatCard label={ta('certAdm.thisMonth')} value={thisMonthCount} icon={<Trophy />} />
+        <StatCard label={ta('certAdm.templates')} value={TEMPLATE_KEYS.length} icon={<FileText />} />
       </div>
 
       <Panel className="overflow-hidden p-0">
@@ -326,8 +328,8 @@ export default function CertificatesPage() {
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, email, title or certificate ID..."
-              aria-label="Search issued certificates"
+              placeholder={ta('certAdm.searchByNameEmailTitleOr')}
+              aria-label={ta('certAdm.searchIssuedCertificates')}
               value={auditSearch}
               onChange={(e) => setAuditSearch(e.target.value)}
               className="h-8 text-xs"
@@ -338,13 +340,13 @@ export default function CertificatesPage() {
           <table className="w-full text-xs min-w-[760px]">
             <thead className="bg-muted/50">
               <tr className="border-b border-border/60 text-left text-muted-foreground">
-                <th className="py-2.5 px-4 font-medium">Recipient</th>
-                <th className="py-2.5 px-4 font-medium">Certificate</th>
-                <th className="py-2.5 px-4 font-medium">Template</th>
-                <th className="py-2.5 px-4 font-medium">Score</th>
-                <th className="py-2.5 px-4 font-medium">Issued</th>
-                <th className="py-2.5 px-4 font-medium">Issued by</th>
-                <th className="py-2.5 px-4 font-medium">Actions</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.recipient')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.certificate')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.template')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.score')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.issued')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.issuedBy')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -358,9 +360,9 @@ export default function CertificatesPage() {
                 <tr>
                   <td colSpan={7} className="p-0">
                     {auditSearch ? (
-                      <EmptyState variant="search" title="No certificates match your search" description="Try a different name, email or certificate ID." className="border-0 bg-transparent py-6 md:py-8" />
+                      <EmptyState variant="search" title={ta('certAdm.noCertificatesMatchYourSearch')} description={ta('certAdm.tryADifferentNameEmailOr')} className="border-0 bg-transparent py-6 md:py-8" />
                     ) : (
-                      <EmptyState illustration="certificate" title="No certificates issued yet" description="Use Issue certificate to create the first one." className="border-0 bg-transparent py-6 md:py-8" />
+                      <EmptyState illustration="certificate" title={ta('certAdm.noCertificatesIssuedYet')} description={ta('certAdm.useIssueCertificateToCreateThe')} className="border-0 bg-transparent py-6 md:py-8" />
                     )}
                   </td>
                 </tr>
@@ -375,9 +377,7 @@ export default function CertificatesPage() {
                       <p className="font-medium">{cert.title}</p>
                       <p className="text-[11px] text-muted-foreground">{cert.level}</p>
                       {cert.revokedAt && (
-                        <Badge variant="destructive" className="mt-1 text-[10px]" title={cert.revokeReason || undefined}>
-                          Revoked {formatDate(cert.revokedAt)}
-                        </Badge>
+                        <Badge variant="destructive" className="mt-1 text-[10px]" title={cert.revokeReason || undefined}>{ta('certAdm.revoked', { formatDate: formatDate(cert.revokedAt) })}</Badge>
                       )}
                     </td>
                     <td className="py-2.5 px-4">
@@ -403,7 +403,7 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          aria-label="Preview certificate"
+                          aria-label={ta('certAdm.previewCertificate')}
                           onClick={() => openPreview(cert)}
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -412,7 +412,7 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          aria-label="Open verification page"
+                          aria-label={ta('certAdm.openVerificationPage')}
                           onClick={() => window.open(`/cert/verify/${cert.verifyToken}`, '_blank')}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -422,8 +422,8 @@ export default function CertificatesPage() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-destructive hover:text-destructive"
-                            aria-label="Revoke certificate"
-                            title="Revoke certificate"
+                            aria-label={ta('certAdm.revokeCertificate')}
+                            title={ta('certAdm.revokeCertificate')}
                             onClick={() => openRevoke(cert)}
                           >
                             <Ban className="h-3.5 w-3.5" />
@@ -442,14 +442,14 @@ export default function CertificatesPage() {
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Issue certificate</DialogTitle>
+            <DialogTitle>{ta('certAdm.issueCertificate')}</DialogTitle>
             <DialogDescription>
-              Search for a user and fill in the certificate details to issue a new certificate.
+              {ta('certAdm.searchForAUserAndFill')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-xs">Recipient</Label>
+              <Label className="text-xs">{ta('certAdm.recipient')}</Label>
               {formSelectedUser ? (
                 <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
                   <div>
@@ -465,13 +465,13 @@ export default function CertificatesPage() {
                       setFormUserSearch('')
                     }}
                   >
-                    Change
+                    {ta('certAdm.change')}
                   </Button>
                 </div>
               ) : (
                 <div className="relative">
-                  <Input aria-label="Search by name or email"
-                    placeholder="Search by name or email..."
+                  <Input aria-label={ta('certAdm.searchByNameOrEmail')}
+                    placeholder={ta('certAdm.searchByNameOrEmail2')}
                     value={formUserSearch}
                     onChange={(e) => setFormUserSearch(e.target.value)}
                     className="h-8 text-xs"
@@ -503,9 +503,9 @@ export default function CertificatesPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Template</Label>
+              <Label className="text-xs">{ta('certAdm.template')}</Label>
               <Select value={formTemplate} onValueChange={(v) => setFormTemplate(v as TemplateKey)}>
-                <SelectTrigger aria-label="Template" className="h-8 text-xs">
+                <SelectTrigger aria-label={ta('certAdm.template')} className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -518,9 +518,9 @@ export default function CertificatesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Title</Label>
-              <Input aria-label="Title"
-                placeholder="e.g. Full-Stack Web Development"
+              <Label className="text-xs">{ta('certAdm.title')}</Label>
+              <Input aria-label={ta('certAdm.title')}
+                placeholder={ta('certAdm.eGFullStackWebDevelopment')}
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
                 className="h-8 text-xs"
@@ -528,16 +528,16 @@ export default function CertificatesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs">Level</Label>
-                <Input aria-label="Level"
+                <Label className="text-xs">{ta('certAdm.level')}</Label>
+                <Input aria-label={ta('certAdm.level')}
                   value={formLevel}
                   onChange={(e) => setFormLevel(e.target.value)}
                   className="h-8 text-xs"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">Score</Label>
-                <Input aria-label="Score"
+                <Label className="text-xs">{ta('certAdm.score')}</Label>
+                <Input aria-label={ta('certAdm.score')}
                   type="number"
                   value={formScore}
                   onChange={(e) => setFormScore(e.target.value)}
@@ -546,26 +546,26 @@ export default function CertificatesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Source</Label>
-              <Input aria-label="Source"
+              <Label className="text-xs">{ta('certAdm.source')}</Label>
+              <Input aria-label={ta('certAdm.source')}
                 value={formSource}
                 onChange={(e) => setFormSource(e.target.value)}
                 className="h-8 text-xs"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Score label (optional)</Label>
-              <Input aria-label="Score label (optional)"
-                placeholder="e.g. +420 XP earned"
+              <Label className="text-xs">{ta('certAdm.scoreLabelOptional')}</Label>
+              <Input aria-label={ta('certAdm.scoreLabelOptional')}
+                placeholder={ta('certAdm.eG420XpEarned')}
                 value={formScoreLabel}
                 onChange={(e) => setFormScoreLabel(e.target.value)}
                 className="h-8 text-xs"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Event title (optional)</Label>
-              <Input aria-label="Event title (optional)"
-                placeholder="e.g. Spring 2026 Codeathon"
+              <Label className="text-xs">{ta('certAdm.eventTitleOptional')}</Label>
+              <Input aria-label={ta('certAdm.eventTitleOptional')}
+                placeholder={ta('certAdm.eGSpring2026Codeathon')}
                 value={formEventTitle}
                 onChange={(e) => setFormEventTitle(e.target.value)}
                 className="h-8 text-xs"
@@ -574,7 +574,7 @@ export default function CertificatesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setIssueDialogOpen(false)}>
-              Cancel
+              {ta('certAdm.cancel')}
             </Button>
             <Button
               size="sm"
@@ -582,7 +582,7 @@ export default function CertificatesPage() {
               disabled={issuing || !formSelectedUser || !formTitle.trim()}
             >
               {issuing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Issue certificate
+              {ta('certAdm.issueCertificate')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -591,7 +591,7 @@ export default function CertificatesPage() {
       <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open && !revoking) setRevokeTarget(null) }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Revoke certificate</DialogTitle>
+            <DialogTitle>{ta('certAdm.revokeCertificate')}</DialogTitle>
             <DialogDescription>
               {revokeTarget
                 ? `"${revokeTarget.title}" issued to ${revokeTarget.user.name} will show as revoked on its public verification page. This can't be undone.`
@@ -599,24 +599,24 @@ export default function CertificatesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
-            <Label htmlFor="revoke-reason" className="text-xs">Reason</Label>
+            <Label htmlFor="revoke-reason" className="text-xs">{ta('certAdm.reason')}</Label>
             <Textarea
               id="revoke-reason"
               value={revokeReason}
               onChange={(e) => setRevokeReason(e.target.value.slice(0, REVOKE_REASON_MAX))}
-              placeholder="e.g. Issued to the wrong person"
+              placeholder={ta('certAdm.eGIssuedToTheWrong')}
               rows={3}
               aria-describedby="revoke-reason-hint"
               className="text-xs"
             />
             <p id="revoke-reason-hint" className="text-[11px] text-muted-foreground">
-              Required. Kept in the audit log; not shown publicly.
+              {ta('certAdm.requiredKeptInTheAuditLog')}
             </p>
             {revokeError && <p role="alert" className="text-xs text-destructive">{revokeError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setRevokeTarget(null)} disabled={revoking}>
-              Cancel
+              {ta('certAdm.cancel')}
             </Button>
             <Button
               variant="destructive"
@@ -625,7 +625,7 @@ export default function CertificatesPage() {
               disabled={revoking || revokeReason.trim().length < REVOKE_REASON_MIN}
             >
               {revoking && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Revoke certificate
+              {ta('certAdm.revokeCertificate')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -634,15 +634,15 @@ export default function CertificatesPage() {
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
         <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>Certificate preview</DialogTitle>
-            <DialogDescription>Preview of the selected certificate template.</DialogDescription>
+            <DialogTitle>{ta('certAdm.certificatePreview')}</DialogTitle>
+            <DialogDescription>{ta('certAdm.previewOfTheSelectedCertificateTemplate')}</DialogDescription>
           </DialogHeader>
           <div className="w-full overflow-hidden rounded-lg border shadow-sm my-4 bg-muted/20">
             <CertificateRenderer template={previewTemplate} data={previewData} />
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setPreviewDialogOpen(false)}>
-              Close
+              {ta('certAdm.close')}
             </Button>
           </DialogFooter>
         </DialogContent>

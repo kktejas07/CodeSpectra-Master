@@ -22,6 +22,7 @@ import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface JobPosting {
   id: string
@@ -67,6 +68,7 @@ const emptyForm: JobForm = {
 }
 
 export default function AdminJobsPage() {
+  const { t: ta } = useAdminT()
   const confirmDialog = useConfirm()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
@@ -239,15 +241,15 @@ export default function AdminJobsPage() {
           <Button variant="ghost" size="sm" title={r.is_active ? 'Close this job' : 'Reopen this job'} aria-label={r.is_active ? 'Close this job' : 'Reopen this job'} onClick={() => toggleActive(r)}>
             {r.is_active ? <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" /> : <AlertCircle className="w-4 h-4 text-muted-foreground" />}
           </Button>
-          <Button variant="ghost" size="sm" asChild title="View">
-            <a href={`/jobs/${r.id}`} target="_blank" rel="noopener" aria-label="View public job page">
+          <Button variant="ghost" size="sm" asChild title={ta('jobsAdm.view')}>
+            <a href={`/jobs/${r.id}`} target="_blank" rel="noopener" aria-label={ta('jobsAdm.viewPublicJobPage')}>
               <Eye className="w-4 h-4" />
             </a>
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => openEdit(r)} title="Edit" aria-label="Edit job">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(r)} title={ta('jobsAdm.edit')} aria-label={ta('jobsAdm.editJob')}>
             <Edit className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} title="Delete" aria-label="Delete job">
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} title={ta('jobsAdm.delete')} aria-label={ta('jobsAdm.deleteJob')}>
             {deletingId === r.id
               ? <Loader2 className="w-4 h-4 animate-spin text-destructive" />
               : <Trash2 className="w-4 h-4 text-destructive" />}
@@ -274,37 +276,37 @@ export default function AdminJobsPage() {
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
           illustration="jobs"
-          title="Job postings"
-          description="Jobs listed on the public jobs board, and how many people applied."
+          title={ta('jobsAdm.jobPostings')}
+          description={ta('jobsAdm.jobsListedOnThePublicJobs')}
           icon={<Briefcase />}
           actions={
             <Button onClick={openCreate} className="gap-2">
-              <Plus className="w-4 h-4" /> Post a job
+              <Plus className="w-4 h-4" /> {ta('jobsAdm.postAJob')}
             </Button>
           }
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard label="Jobs" value={jobs.length} icon={<Briefcase />} />
-        <StatCard label="Open" value={jobs.filter(j => j.is_active).length} icon={<CheckCircle />} />
-        <StatCard label="Applicants" value={jobs.reduce((s, j) => s + (j.applicants || 0), 0)} icon={<Users />} />
+        <StatCard label={ta('jobsAdm.jobs')} value={jobs.length} icon={<Briefcase />} />
+        <StatCard label={ta('jobsAdm.open')} value={jobs.filter(j => j.is_active).length} icon={<CheckCircle />} />
+        <StatCard label={ta('jobsAdm.applicants')} value={jobs.reduce((s, j) => s + (j.applicants || 0), 0)} icon={<Users />} />
       </div>
 
       {loadError && jobs.length === 0 && !loading ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load job postings"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={ta('jobsAdm.couldnTLoadJobPostings')}
+          description={ta('jobsAdm.checkYourConnectionAndTryAgain')}
+          actionLabel={ta('jobsAdm.tryAgain')}
           onAction={() => void fetchJobs()}
         />
       ) : jobs.length === 0 && !loading ? (
         <EmptyState
           illustration="jobs"
-          title="No job postings yet"
-          description="Post your first one and it will show on the public jobs page."
-          actionLabel="Post a job"
+          title={ta('jobsAdm.noJobPostingsYet')}
+          description={ta('jobsAdm.postYourFirstOneAndIt')}
+          actionLabel={ta('jobsAdm.postAJob')}
           onAction={openCreate}
         />
       ) : (
@@ -327,7 +329,7 @@ export default function AdminJobsPage() {
               <DialogTitle className="text-lg font-semibold text-foreground">
                 {editingId ? 'Edit job posting' : 'Post a new job'}
               </DialogTitle>
-              <Button variant="ghost" size="sm" onClick={() => setShowModal(false)} aria-label="Close">
+              <Button variant="ghost" size="sm" onClick={() => setShowModal(false)} aria-label={ta('jobsAdm.close')}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -335,19 +337,19 @@ export default function AdminJobsPage() {
             <form onSubmit={handleSave} className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-title">Job title *</Label>
+                  <Label htmlFor="job-title">{ta('jobsAdm.jobTitle')}</Label>
                   <Input id="job-title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Senior Full-Stack Developer" required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-company">Company *</Label>
+                  <Label htmlFor="job-company">{ta('jobsAdm.company')}</Label>
                   <Input id="job-company" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} placeholder="Acme Corp" required />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-location">Location</Label>
-                  <Input id="job-location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="Remote / Bangalore, India" />
+                  <Label htmlFor="job-location">{ta('jobsAdm.location')}</Label>
+                  <Input id="job-location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder={ta('jobsAdm.remoteBangaloreIndia')} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-type">Job type</Label>
+                  <Label htmlFor="job-type">{ta('jobsAdm.jobType')}</Label>
                   <select
                     id="job-type" value={form.job_type}
                     onChange={e => setForm(f => ({ ...f, job_type: e.target.value }))}
@@ -357,7 +359,7 @@ export default function AdminJobsPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-level">Experience level</Label>
+                  <Label htmlFor="job-level">{ta('jobsAdm.experienceLevel')}</Label>
                   <select
                     id="job-level" value={form.experience_level}
                     onChange={e => setForm(f => ({ ...f, experience_level: e.target.value }))}
@@ -367,7 +369,7 @@ export default function AdminJobsPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-currency">Currency</Label>
+                  <Label htmlFor="job-currency">{ta('jobsAdm.currency')}</Label>
                   <select
                     id="job-currency" value={form.salary_currency}
                     onChange={e => setForm(f => ({ ...f, salary_currency: e.target.value }))}
@@ -377,30 +379,30 @@ export default function AdminJobsPage() {
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-salary-min">Salary min ({form.salary_currency})</Label>
+                  <Label htmlFor="job-salary-min">{ta('jobsAdm.salaryMin', { salary_currency: form.salary_currency })}</Label>
                   <Input type="number" id="job-salary-min" value={form.salary_min} onChange={e => setForm(f => ({ ...f, salary_min: e.target.value }))} placeholder="80000" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="job-salary-max">Salary max ({form.salary_currency})</Label>
+                  <Label htmlFor="job-salary-max">{ta('jobsAdm.salaryMax', { salary_currency: form.salary_currency })}</Label>
                   <Input type="number" id="job-salary-max" value={form.salary_max} onChange={e => setForm(f => ({ ...f, salary_max: e.target.value }))} placeholder="120000" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="job-skills">Skills (comma-separated)</Label>
+                <Label htmlFor="job-skills">{ta('jobsAdm.skillsCommaSeparated')}</Label>
                 <Input id="job-skills" value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))} placeholder="React, TypeScript, Node.js, PostgreSQL" />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="job-description">Job description</Label>
-                <Textarea rows={4} id="job-description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Describe the role, responsibilities, and what makes it exciting…" />
+                <Label htmlFor="job-description">{ta('jobsAdm.jobDescription')}</Label>
+                <Textarea rows={4} id="job-description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={ta('jobsAdm.describeTheRoleResponsibilitiesAndWhat')} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="job-requirements">Requirements</Label>
-                <Textarea rows={3} id="job-requirements" value={form.requirements} onChange={e => setForm(f => ({ ...f, requirements: e.target.value }))} placeholder="List the qualifications, skills, and experience needed…" />
+                <Label htmlFor="job-requirements">{ta('jobsAdm.requirements')}</Label>
+                <Textarea rows={3} id="job-requirements" value={form.requirements} onChange={e => setForm(f => ({ ...f, requirements: e.target.value }))} placeholder={ta('jobsAdm.listTheQualificationsSkillsAndExperience')} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="job-benefits">Benefits</Label>
-                <Textarea rows={3} id="job-benefits" value={form.benefits} onChange={e => setForm(f => ({ ...f, benefits: e.target.value }))} placeholder="Health insurance, remote work, learning budget, equity…" />
+                <Label htmlFor="job-benefits">{ta('jobsAdm.benefits')}</Label>
+                <Textarea rows={3} id="job-benefits" value={form.benefits} onChange={e => setForm(f => ({ ...f, benefits: e.target.value }))} placeholder={ta('jobsAdm.healthInsuranceRemoteWorkLearningBudget')} />
               </div>
 
               <div className="flex items-center gap-2">
@@ -411,7 +413,7 @@ export default function AdminJobsPage() {
                   onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
                   className="h-4 w-4 rounded border-border accent-primary"
                 />
-                <Label htmlFor="is_active" className="text-sm font-normal">Active — visible to candidates</Label>
+                <Label htmlFor="is_active" className="text-sm font-normal">{ta('jobsAdm.activeVisibleToCandidates')}</Label>
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -420,7 +422,7 @@ export default function AdminJobsPage() {
                   {saving ? 'Saving…' : editingId ? 'Update job' : 'Publish job'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">
-                  Cancel
+                  {ta('jobsAdm.cancel')}
                 </Button>
               </div>
             </form>
