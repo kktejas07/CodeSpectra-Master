@@ -63,6 +63,8 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'referral-rewards', label: 'Referral rewards', group: 'Platform', everyMinutes: 1440 },
   { id: 'licence-expiry', label: 'Organisation licence expiry', group: 'Platform', everyMinutes: 1440 },
   { id: 'ai-usage-rollup', label: 'AI spend daily rollup', group: 'Platform', everyMinutes: 1440 },
+  // One-time (SEC-037 follow-up): stops heartbeating once its done flag is set, so it is optional.
+  { id: 'learner-problems-review', label: 'One-time: learner-published problems back to review', group: 'Platform', everyMinutes: 1440, optional: true },
   { id: 'pro-cert-sweep', label: 'Proctored certifications (finalise, payments, expiry reminders)', group: 'Platform', everyMinutes: 5 },
   { id: 'lti-grade-retry', label: 'LMS grade passback retries', group: 'Platform', everyMinutes: 5 },
   { id: 'company-tests-refresh', label: 'Company test weekly refresh', group: 'Content', everyMinutes: 10080, optional: true },

@@ -167,7 +167,10 @@ export async function PATCH(
     // SEC-037: only an admin publishes to the public library / knowledge index.
     // A learner who created a problem earlier keeps it as a private draft: any
     // edit by a non-admin takes it out of the library until an admin publishes it.
-    if (!isAdminCaller(gate.user) && Object.keys(patch).length > 0) patch.is_published = false
+    if (!isAdminCaller(gate.user) && Object.keys(patch).length > 0) {
+      patch.is_published = false
+      patch.review_status = 'pending_review' // shows up under Admin → Problems review
+    }
     if ('test_cases' in body) {
       patch.test_cases = (Array.isArray(body.test_cases) ? body.test_cases : ([] as unknown[])).map((tc, i) => {
         const t = tc as Record<string, unknown>
