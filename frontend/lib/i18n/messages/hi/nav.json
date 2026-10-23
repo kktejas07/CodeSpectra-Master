@@ -219,5 +219,15 @@
   "label:Live drives": "लाइव ड्राइव",
   "label:Live drive control room": "लाइव ड्राइव कंट्रोल रूम",
   "label:Jobs for you": "आपके लिए नौकरियाँ",
-  "label:Best matches": "सबसे अच्छे मैच"
+  "label:Best matches": "सबसे अच्छे मैच",
+  "label:Cohorts": "कोहोर्ट",
+  "label:Cohort": "कोहोर्ट",
+  "label:New cohort": "नया कोहोर्ट",
+  "label:Grading queue": "ग्रेडिंग कतार",
+  "label:Community": "कम्युनिटी",
+  "label:New thread": "नया थ्रेड",
+  "label:Thread": "थ्रेड",
+  "label:Study group": "स्टडी ग्रुप",
+  "label:Community moderation": "कम्युनिटी मॉडरेशन",
+  "label:Connected apps": "कनेक्टेड ऐप्स"
 }

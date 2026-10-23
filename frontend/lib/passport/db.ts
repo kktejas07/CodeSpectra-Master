@@ -21,7 +21,7 @@ import {
   computePassport, handleBase, parseSelfReported, publicSkills, skillIndex, validHandle,
   type Evidence, type PassportShareSettings, type PassportSummary, type PassportVisibility, type PublicSkill,
 } from './core'
-import { certificateEvidence, companyTestEvidence, examEvidence, hackathonEvidence, interviewEvidence } from './evidence-map'
+import { certificateEvidence, companyTestEvidence, examEvidence, hackathonEvidence, interviewEvidence, cohortEvidence } from './evidence-map'
 import { linkKeyMatches, newLinkKey, newNonce, signCredential, verifyCredential, type CredentialPayload } from './credential'
 
 export const PASSPORTS = 'skill_passports'
@@ -125,7 +125,7 @@ export async function getOrCreatePassport(userId: string): Promise<PassportDoc> 
 /** All verified evidence for one learner, newest first. Throws on DB errors (never cache an outage). */
 export async function loadEvidence(userId: string, site = ''): Promise<Evidence[]> {
   const db = await getMongoDb()
-  const [subs, practice, certs, teams, interviews] = await Promise.all([
+  const [subs, practice, certs, teams, interviews, cohortCerts] = await Promise.all([
     db.collection('exam_submissions').find(
       { user_id: userId, score_released: true },
       { projection: { _id: 0, id: 1, exam_id: 1, score: 1, max_score: 1, submitted_at: 1, score_released: 1, adaptive: 1, identity_check: 1, extension_detected: 1, trust_score: 1, integrity_score: 1, 'sections.name': 1, 'sections.title': 1 } },
@@ -146,6 +146,10 @@ export async function loadEvidence(userId: string, site = ''): Promise<Evidence[
       { userId, status: 'completed', 'report.overallScore': { $type: 'number' } },
       { projection: { _id: 0, id: 1, role: 1, status: 1, startedAt: 1, completedAt: 1, 'report.overallScore': 1 } },
     ).sort({ completedAt: -1 }).limit(50).toArray(),
+    db.collection('cohort_certificates').find(
+      { user_id: userId },
+      { projection: { _id: 0, id: 1, cohort_id: 1, title: 1, skills: 1, score: 1, issued_at: 1 } },
+    ).sort({ issued_at: -1 }).limit(PER_SOURCE_LIMIT).toArray(),
   ])
   const examIds = [...new Set(subs.map((s) => String(s.exam_id)).filter(Boolean))]
   const hkIds = [...new Set(teams.map((t) => String(t.hackathon_id)).filter(Boolean))]
@@ -173,6 +177,10 @@ export async function loadEvidence(userId: string, site = ''): Promise<Evidence[
   }
   for (const s of interviews) {
     const e = interviewEvidence(s as Doc)
+    if (e) out.push(e)
+  }
+  for (const c of cohortCerts) {
+    const e = cohortEvidence(c as Doc)
     if (e) out.push(e)
   }
   return out.sort((a, b) => b.at.localeCompare(a.at))

@@ -49,6 +49,13 @@ export const CSRF_EXEMPT: readonly string[] = [
   // signed one-click unsubscribe links in automated emails (HMAC token in the URL).
   '/api/workflows/hooks',
   '/api/automation/unsubscribe',
+  // Guardian report one-click unsubscribe (HMAC token per link in the URL; mail clients POST without cookies).
+  '/api/guardian/unsubscribe',
+  // LTI 1.3 OIDC login + launch: cross-site form posts from the LMS, authenticated by the single-use state, nonce and the platform-signed id_token.
+  '/api/lti/login',
+  '/api/lti/launch',
+  // Deep-link picker form (plain HTML form inside the LMS dialog); authorised by the single-use, unguessable launch token in the path.
+  '/api/lti/deep-link',
 ]
 
 export function isCsrfExempt(pathname: string, exempt: readonly string[] = CSRF_EXEMPT): boolean {

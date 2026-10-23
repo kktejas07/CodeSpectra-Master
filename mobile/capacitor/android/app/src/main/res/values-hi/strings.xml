@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="notification_channel_general">सामान्य</string>
+    <string name="notification_channel_general_desc">टेस्ट रिमाइंडर, नतीजे, इवेंट और खाते से जुड़े संदेश</string>
+
+    <string name="biometric_enroll_title">फ़िंगरप्रिंट या चेहरे से साइन इन करें?</string>
+    <string name="biometric_enroll_body">अगली बार पासवर्ड डालने के बजाय अपने फ़ोन के फ़िंगरप्रिंट या चेहरे से CodeSpectra खोलें। आपका पासवर्ड इस डिवाइस पर कभी सेव नहीं होता। साइन आउट करके इसे बंद कर सकते हैं।</string>
+    <string name="biometric_enroll_yes">चालू करें</string>
+    <string name="biometric_enroll_no">अभी नहीं</string>
+    <string name="biometric_prompt_title">CodeSpectra खोलें</string>
+    <string name="biometric_prompt_reason">आगे बढ़ने के लिए पुष्टि करें कि यह आप ही हैं</string>
+    <string name="biometric_prompt_cancel">पासवर्ड से साइन इन करें</string>
+
+    <string name="lockdown_started">टेस्ट मोड चालू है। टेस्ट सबमिट करने तक दूसरे ऐप, स्क्रीनशॉट और स्क्रीन रिकॉर्डिंग बंद रहेंगे।</string>
+    <string name="lockdown_blocked_back">टेस्ट के दौरान बैक बटन काम नहीं करता। बाहर निकलने के लिए टेस्ट सबमिट करें।</string>
+
+    <string name="download_started">डाउनलोड हो रहा है…</string>
+    <string name="download_failed">डाउनलोड पूरा नहीं हुआ। फिर कोशिश करें।</string>
+    <string name="download_share_title">सेव या शेयर करें</string>
+</resources>

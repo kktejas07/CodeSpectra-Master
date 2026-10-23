@@ -11,7 +11,9 @@
  *   - missing / duplicate <title>,
  *   - <img> without an alt attribute and images over 300 KB on the wire,
  *   - focus order sanity (first 30 Tab stops: positive tabindex, invisible
- *     focus, focus landing on hidden elements, first stop = skip link).
+ *     focus, focus landing on hidden elements, first stop = skip link),
+ *   - with --axe: axe-core (WCAG 2.1 A/AA) violations of impact serious /
+ *     critical per page (@axe-core/playwright). Reported, never gating (yet).
  *
  * Usage (app already running). Against `next dev` use http://localhost:<port>,
  * not 127.0.0.1: Next blocks dev assets for other origins and the page never hydrates.
@@ -39,6 +41,9 @@ const OUT = arg('out', null)
 const MAX_PAGES = Number(arg('max-pages', 120))
 const PER_PATTERN = Number(arg('per-pattern', 2))
 const STRICT = Boolean(arg('strict', false))
+/** Run axe-core on every page (report only). */
+const AXE = Boolean(arg('axe', false))
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 const NAV_TIMEOUT = Number(arg('timeout', 90_000))
 /** --paths /a,/b crawls only these (plus --discover to follow their links). */
 const ONLY = arg('paths', null)
@@ -161,6 +166,7 @@ async function main() {
   const browser = await launch()
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, ignoreHTTPSErrors: true })
   const report = { base: BASE, startedAt: new Date().toISOString(), pages: {}, brokenLinks: [], unverifiedLinks: [], summary: {} }
+  const AxeBuilder = AXE ? (await import('@axe-core/playwright')).default : null
   const queue = ONLY ? String(ONLY).split(',').map((x) => x.trim()).filter(Boolean) : [...SEEDS]
   let serverDown = false
   const seen = new Set()
@@ -240,6 +246,16 @@ async function main() {
         invisible: stops.filter((s) => !s.visibleFocus && !s.hidden).map((s) => `${s.tag}:${s.label}`).slice(0, 8),
         hidden: stops.filter((s) => s.hidden).map((s) => `${s.tag}:${s.label}`).slice(0, 8),
       }
+      if (AxeBuilder) {
+        try {
+          const r = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+          entry.axe = r.violations
+            .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+            .map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.length, targets: v.nodes.slice(0, 3).map((n) => String(n.target?.[0] ?? '').slice(0, 120)) }))
+        } catch (err) {
+          entry.axeError = String(err?.message || err).split('\n')[0].slice(0, 200)
+        }
+      }
       for (const w of WIDTHS) {
         await page.setViewportSize({ width: w, height: 900 })
         await page.waitForTimeout(250)
@@ -318,6 +334,12 @@ async function main() {
     positiveTabindexPages: pages.filter(([, e]) => e.positiveTabindex?.length).length,
     invisibleFocusPages: pages.filter(([, e]) => e.focus?.invisible?.length).length,
     skipLinkMissing: pages.filter(([, e]) => !e.error && e.focus && e.focus.firstStop && !e.focus.skipLinkFirst).map(([p]) => p),
+    ...(AXE ? {
+      axePages: pages.filter(([, e]) => e.axe?.length).length,
+      axeCritical: pages.reduce((n, [, e]) => n + (e.axe || []).filter((v) => v.impact === 'critical').length, 0),
+      axeSerious: pages.reduce((n, [, e]) => n + (e.axe || []).filter((v) => v.impact === 'serious').length, 0),
+      axeByRule: pages.reduce((m, [, e]) => { for (const v of e.axe || []) m[v.id] = (m[v.id] || 0) + 1; return m }, {}),
+    } : {}),
     seconds: Math.round((Date.now() - t0) / 1000),
     serverDown,
   }
@@ -338,6 +360,13 @@ async function main() {
   for (const t of titleIssues) console.log(`  ${t.issue}: ${t.title ?? t.page}${t.pages ? ' → ' + t.pages.join(', ') : ''}`)
   console.log(`Images without alt: ${s.imagesWithoutAlt}  images >300KB: ${s.bigImages}`)
   console.log(`Positive tabindex pages: ${s.positiveTabindexPages}  pages with invisible focus stops: ${s.invisibleFocusPages}  skip link not first: ${s.skipLinkMissing.length}`)
+
+  if (AXE) {
+    console.log(`axe-core (serious/critical, not gating): ${s.axeCritical} critical + ${s.axeSerious} serious on ${s.axePages} pages`)
+    for (const [rule, n] of Object.entries(s.axeByRule).sort((a, b) => b[1] - a[1])) console.log(`  ${rule}: ${n} page(s)`)
+    for (const [p, e] of pages) for (const v of (e.axe || []).slice(0, 3)) console.log(`  ${p} [${v.impact}] ${v.id} × ${v.nodes} ${v.targets[0] ?? ''}`)
+    if (process.env.GITHUB_ACTIONS && s.axePages) console.log(`::warning title=axe-core::${s.axeCritical} critical + ${s.axeSerious} serious accessibility violations on ${s.axePages} pages (see qa-crawl-report.json)`)
+  }
 
   if (OUT) writeFileSync(OUT, JSON.stringify(report, null, 2))
 

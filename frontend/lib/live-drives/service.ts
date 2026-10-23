@@ -189,6 +189,8 @@ export async function updateDrive(user: APIUser, id: string, raw: unknown): Prom
   const col = await drivesCol()
   await col.updateOne({ id }, { $set: set })
   await logAction(drive.id, null, user.id, 'drive_update', null, { fields: Object.keys(set).filter((k) => k !== 'updated_at') })
+  // Slack / Teams alert for the organisation (lib/integrations; no-op when not connected).
+  if (set.status) void import('@/lib/integrations/chat-send').then(({ notifyHiringChat }) => notifyHiringChat(drive.owner.tenant_id, 'drive_status', { drive_id: id, title: drive.title, status: set.status, starts_at: drive.schedule.start_at, candidates: drive.candidate_count }, `drive:${id}:${String(set.status)}:${set.updated_at}`)).catch(() => {})
   return (await col.findOne({ id }, { projection: { _id: 0 } }))!
 }
 
@@ -544,6 +546,7 @@ export async function results(user: APIUser, id: string, raw: unknown) {
   await col.updateMany({ drive_id: id, state: { $in: ['submitted', 'terminated'] } }, { $set: { published: true } })
   await (await drivesCol()).updateOne({ id }, { $set: { 'results.published_at': nowIso(), 'results.published_count': passIds.length, status: 'ended' } })
   await logAction(id, null, user.id, 'results_publish', null, { passed: passIds.length, moved })
+  void import('@/lib/integrations/chat-send').then(({ notifyHiringChat }) => notifyHiringChat(drive.owner.tenant_id, 'drive_status', { drive_id: id, title: drive.title, status: 'ended', candidates: drive.candidate_count }, `drive:${id}:results`)).catch(() => {})
   void notifyResults(drive).catch((e) => logger.error('[live-drives] results notify failed', (e as Error).message))
   return { passed: passIds.length, moved, summary: await resultSummary(id) }
 }

@@ -163,6 +163,10 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/workflows',
   // College / company licences: /api/licences* scopes tenant admins to their own organisation.
   '/dashboard/admin/licences',
+  // Connected apps (Slack, Teams, Google Classroom, LTI): /api/integrations/tenant* scope to the admin's organisation.
+  '/dashboard/admin/connected-apps',
+  // New cohort: POST /api/cohorts requires an organisation admin.
+  '/dashboard/cohorts/new',
 ]
 
 /**
@@ -201,12 +205,22 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/courses',
   '/dashboard/courses/my',
   '/dashboard/courses/wishlist',
+  // Cohort courses (APIs check membership / staff / organisation admin per cohort)
+  '/dashboard/cohorts',
+  '/dashboard/cohorts/[id]',
+  '/dashboard/cohorts/grading',
   '/dashboard/interview-prep',
 
   // Discover (Unstop-style hubs). /dashboard/quizzes redirects to company tests (not in the nav).
   '/dashboard/quizzes',
   '/dashboard/articles',
   '/dashboard/resources',
+  // Community (APIs scope reads to readable categories; moderation is checked server-side)
+  '/dashboard/community',
+  '/dashboard/community/new',
+  '/dashboard/community/t/[id]',
+  '/dashboard/community/groups/[id]',
+  '/dashboard/community/moderation',
 
   // My Activity
   '/dashboard/activity/recent',
@@ -283,6 +297,9 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/checkout',
   '/dashboard/settings',
   '/dashboard/settings/ai',
+  '/dashboard/settings/accessibility',
+  '/dashboard/settings/whatsapp-practice',
+  '/dashboard/settings/guardians',
 
   // Referrals
   '/dashboard/referrals',
@@ -395,6 +412,16 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/courses': 'Courses',
   '/dashboard/courses/my': 'My Courses',
   '/dashboard/courses/wishlist': 'Watchlist',
+  '/dashboard/cohorts': 'Cohorts',
+  '/dashboard/cohorts/[id]': 'Cohort',
+  '/dashboard/cohorts/new': 'New cohort',
+  '/dashboard/cohorts/grading': 'Grading queue',
+  '/dashboard/community': 'Community',
+  '/dashboard/community/new': 'New thread',
+  '/dashboard/community/t/[id]': 'Thread',
+  '/dashboard/community/groups/[id]': 'Study group',
+  '/dashboard/community/moderation': 'Community moderation',
+  '/dashboard/admin/connected-apps': 'Connected apps',
   '/dashboard/quizzes': 'Quizzes',
   '/dashboard/articles': 'Articles',
   '/dashboard/resources': 'Resources',
@@ -437,6 +464,9 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/profile': 'Profile',
   '/dashboard/settings': 'Settings',
   '/dashboard/settings/ai': 'AI Settings',
+  '/dashboard/settings/accessibility': 'Accessibility',
+  '/dashboard/settings/whatsapp-practice': 'WhatsApp practice',
+  '/dashboard/settings/guardians': 'Parent reports',
   '/dashboard/billing': 'Billing',
   '/dashboard/orders': 'My orders',
   '/dashboard/orders/[id]': 'Order',

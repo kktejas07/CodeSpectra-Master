@@ -33,6 +33,8 @@
   "description:/leagues": "Quarterly league tables for colleges and teams, built from released results of contests, codeathons, hackathons and the arena on CodeSpectra.",
   "title:/mentors": "Mentors: mock interviews, code reviews and career guidance",
   "description:/mentors": "Book paid 1:1 sessions with verified engineers: mock interviews, code reviews, resume reviews and career guidance.",
+  "title:/community": "Community forum: questions, solutions and study groups",
+  "description:/community": "Ask questions about courses, cohorts and company exams, share solution write-ups after you solve a problem, and join small study groups.",
   "title:/marketplace": "Marketplace: books, courses and mock interviews",
   "description:/marketplace": "Buy books, courses, e-books and templates, or book mentoring and mock interviews with CodeSpectra and approved sellers.",
   "title:/certifications": "Proctored certifications",

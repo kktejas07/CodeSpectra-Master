@@ -116,7 +116,7 @@ async function releaseSubmission(db: Db, exam: Doc, sub: Doc): Promise<void> {
 
 export async function finalizeAbandonedAttempts(now = new Date(), limit = 100): Promise<{ finalized: number; checked: number }> {
   const db = await getMongoDb()
-  const { attemptDeadlineMs, EXAM_SUBMIT_GRACE_MS, recordExamAttempt, getIdentityCheck, identitySummary } = await import('@/lib/exam-access')
+  const { attemptDeadlineMs, draftAccommodation, EXAM_SUBMIT_GRACE_MS, recordExamAttempt, getIdentityCheck, identitySummary } = await import('@/lib/exam-access')
   const { compareObjectiveAnswer } = await import('@/lib/grading')
   const { isScoredType, isDeterministicType } = await import('@/lib/question-types')
   const gradeExt = await import('@/lib/grading-extended')
@@ -136,7 +136,7 @@ export async function finalizeAbandonedAttempts(now = new Date(), limit = 100): 
     if (!exams.has(examId)) exams.set(examId, (await db.collection('exams').findOne({ id: examId })) as Doc | null)
     const exam = exams.get(examId)
     if (!exam) continue
-    const deadline = attemptDeadlineMs(exam, String(draft.attempt_started_at))
+    const deadline = attemptDeadlineMs(exam, String(draft.attempt_started_at), draftAccommodation(draft))
     const current = (await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })) as Doc | null
     const submittedForAttempt = !!current && (Number(current.attempt_no) || 1) >= attemptNo
     const answers = (draft.answers && typeof draft.answers === 'object' ? draft.answers : {}) as Record<string, unknown>

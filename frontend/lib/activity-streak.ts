@@ -21,7 +21,13 @@ export async function getAcceptedDays(userId: string): Promise<string[]> {
       { $group: { _id: '$day' } },
     ])
     .toArray()
-  return rows.map((r) => r._id).filter(Boolean)
+  // Practice outside the editor counts too (WhatsApp practice answers — lib/wa-practice): same UTC day keys.
+  const practice = await db
+    .collection('practice_activity_days')
+    .find({ user_id: userId, day: { $gte: since.slice(0, 10) } }, { projection: { _id: 0, day: 1 } })
+    .toArray()
+    .catch(() => [] as { day?: string }[])
+  return [...new Set([...rows.map((r) => r._id), ...practice.map((p) => String(p.day || ''))])].filter(Boolean)
 }
 
 export async function getUserStreak(userId: string): Promise<StreakResult & { days: string[] }> {

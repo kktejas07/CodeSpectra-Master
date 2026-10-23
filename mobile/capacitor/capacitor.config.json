@@ -1,0 +1,38 @@
+{
+  "appId": "ai.codespectra.app",
+  "appName": "CodeSpectra",
+  "webDir": "www",
+  "server": {
+    "url": "https://codespectra.ai",
+    "androidScheme": "https",
+    "errorPath": "offline.html",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": false,
+    "webContentsDebuggingEnabled": false,
+    "appendUserAgent": "CodeSpectraAndroid/1",
+    "backgroundColor": "#080D17"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": true,
+      "backgroundColor": "#080D17",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    },
+    "SystemBars": {
+      "insetsHandling": "native",
+      "style": "DARK"
+    }
+  }
+}

@@ -50,6 +50,8 @@ export type XpReason =
   | 'referral_earned'
   | 'arena_solved'
   | 'codeathon_result'
+  | 'cohort_completed'
+  | 'community_reputation'
 
 export interface XpEventDoc {
   id: string

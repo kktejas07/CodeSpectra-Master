@@ -1126,3 +1126,61 @@
 .cs-illo .arm { stroke-width: 9; stroke-linecap: round; fill: none; }
 .cs-illo .arm.a { stroke: var(--i-accent); fill: none; } .cs-illo .arm.m { stroke: var(--i-mid); fill: none; }
 .cs-illo .arm.ink { stroke: var(--i-ink); fill: none; } .cs-illo .arm.p { stroke: var(--i-soft); fill: none; }
+
+/* ── Accessibility mode (lib/accessibility.ts, components/a11y/accessibility-mount.tsx) ── */
+/* Larger text: everything is rem-based, so the root size scales the whole UI. */
+html[data-a11y-text='large'] { font-size: 112.5%; }
+html[data-a11y-text='xlarge'] { font-size: 125%; }
+/* High contrast: darker text, stronger borders, underlined links, thick focus rings (light + dark). */
+html[data-a11y-contrast='high'] {
+  --foreground: 0 0% 0%;
+  --card-foreground: 0 0% 0%;
+  --popover-foreground: 0 0% 0%;
+  --muted-foreground: 220 20% 18%;
+  --secondary-foreground: 226 70% 20%;
+  --accent-foreground: 226 70% 18%;
+  --border: 220 15% 35%;
+  --input: 220 15% 35%;
+  --primary: 226 85% 38%;
+  --ring: 226 85% 30%;
+  --background: 0 0% 100%;
+  --card: 0 0% 100%;
+}
+html.dark[data-a11y-contrast='high'] {
+  --foreground: 0 0% 100%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
+  --muted-foreground: 220 20% 85%;
+  --secondary-foreground: 226 100% 90%;
+  --accent-foreground: 226 100% 90%;
+  --border: 220 15% 70%;
+  --input: 220 15% 70%;
+  --primary: 225 100% 78%;
+  --primary-foreground: 220 40% 5%;
+  --ring: 225 100% 85%;
+  --background: 0 0% 0%;
+  --card: 220 30% 6%;
+}
+html[data-a11y-contrast='high'] a:not([class*='bg-']) { text-decoration: underline; text-underline-offset: 2px; }
+html[data-a11y-contrast='high'] :focus-visible { outline: 3px solid hsl(var(--ring)) !important; outline-offset: 2px !important; }
+/* Reduced motion regardless of the OS setting. */
+html[data-a11y-motion='reduce'] *,
+html[data-a11y-motion='reduce'] *::before,
+html[data-a11y-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+/* Dyslexia-friendly font (loaded on demand); code keeps the monospace font. */
+html[data-a11y-font='dyslexic'] body,
+html[data-a11y-font='dyslexic'] .font-sans,
+html[data-a11y-font='dyslexic'] .font-archivo {
+  font-family: 'OpenDyslexic', var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.01em;
+  word-spacing: 0.06em;
+  line-height: 1.6;
+}
+html[data-a11y-font='dyslexic'] code,
+html[data-a11y-font='dyslexic'] pre,
+html[data-a11y-font='dyslexic'] .font-mono { font-family: var(--font-mono), ui-monospace, monospace; }

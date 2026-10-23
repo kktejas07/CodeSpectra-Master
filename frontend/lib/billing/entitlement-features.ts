@@ -23,6 +23,8 @@ export const LEARNER_FEATURES = {
   cert_discount_pct: { type: 'count', free: 0, pro: 20, enterprise: 25 },
   /** Download practice packs for offline use. */
   offline_packs: { type: 'boolean', free: false, pro: true, enterprise: true },
+  /** Join cohort courses marked "included with the plan" without paying. */
+  cohort_courses: { type: 'boolean', free: false, pro: false, enterprise: true },
 } as const
 
 export type LearnerFeature = keyof typeof LEARNER_FEATURES
@@ -64,6 +66,7 @@ export function learnerFeatureRows(planKey: 'free' | 'pro' | 'enterprise') {
     mentor_discount_pct: ['Mentor discount %', 'Percent off mentor and mock-interview sessions'],
     cert_discount_pct: ['Certification discount %', 'Percent off certification items'],
     offline_packs: ['Offline packs', 'Download practice packs for offline use'],
+    cohort_courses: ['Cohort courses included', 'Join cohort courses that are included with the plan'],
   }
   return (Object.keys(LEARNER_FEATURES) as LearnerFeature[]).map((key) => {
     const def = LEARNER_FEATURES[key]

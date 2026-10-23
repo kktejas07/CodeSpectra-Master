@@ -14,7 +14,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
-import { attemptDeadlineMs, checkExamEntry, checkIdentityForAttempt, identitySummary, isCadExam, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
+import { attemptDeadlineMs, draftAccommodation, checkExamEntry, checkIdentityForAttempt, identitySummary, isCadExam, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import {
   CAD_DEFAULT_POINTS,
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     // deadline (start + duration, capped at ends_at) is enforced here.
     const draft = await db.collection('exam_drafts').findOne(
       { exam_id: examId, user_id: userId },
-      { projection: { _id: 0, cad_started_at: 1, cad_started_attempt: 1 } },
+      { projection: { _id: 0, cad_started_at: 1, cad_started_attempt: 1, time_accommodation: 1 } },
     )
     const serverStartedAt = draft?.cad_started_attempt === access.attemptNo && typeof draft.cad_started_at === 'string'
       ? draft.cad_started_at : null
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ error: identity.error, identity_required: true }, { status: identity.status })
     }
     const identityRecord = identity.record
-    const deadline = attemptDeadlineMs(exam as Record<string, unknown>, serverStartedAt)
+    const deadline = attemptDeadlineMs(exam as Record<string, unknown>, serverStartedAt, draftAccommodation(draft))
     const late = deadline !== null && Date.now() > deadline + EXAM_SUBMIT_GRACE_MS
 
     const allFiles = (await db.collection('exam_submission_files')

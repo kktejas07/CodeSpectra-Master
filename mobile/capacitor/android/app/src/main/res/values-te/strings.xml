@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="notification_channel_general">సాధారణం</string>
+    <string name="notification_channel_general_desc">టెస్ట్ రిమైండర్లు, ఫలితాలు, ఈవెంట్లు, ఖాతా సందేశాలు</string>
+
+    <string name="biometric_enroll_title">వేలిముద్ర లేదా ముఖంతో సైన్ ఇన్ చేయాలా?</string>
+    <string name="biometric_enroll_body">ఇకపై పాస్‌వర్డ్ టైప్ చేయకుండా మీ ఫోన్ వేలిముద్ర లేదా ముఖంతో CodeSpectra తెరవండి. మీ పాస్‌వర్డ్ ఈ పరికరంలో ఎప్పుడూ సేవ్ కాదు. సైన్ అవుట్ చేసి దీన్ని ఆపవచ్చు.</string>
+    <string name="biometric_enroll_yes">ఆన్ చేయండి</string>
+    <string name="biometric_enroll_no">ఇప్పుడు వద్దు</string>
+    <string name="biometric_prompt_title">CodeSpectra తెరవండి</string>
+    <string name="biometric_prompt_reason">కొనసాగడానికి ఇది మీరేనని నిర్ధారించండి</string>
+    <string name="biometric_prompt_cancel">పాస్‌వర్డ్ వాడండి</string>
+
+    <string name="lockdown_started">టెస్ట్ మోడ్ ఆన్‌లో ఉంది. టెస్ట్ సమర్పించే వరకు ఇతర యాప్‌లు, స్క్రీన్‌షాట్‌లు, స్క్రీన్ రికార్డింగ్ బ్లాక్ అవుతాయి.</string>
+    <string name="lockdown_blocked_back">టెస్ట్ సమయంలో బ్యాక్ బటన్ పని చేయదు. బయటకు వెళ్లడానికి టెస్ట్ సమర్పించండి.</string>
+
+    <string name="download_started">డౌన్‌లోడ్ అవుతోంది…</string>
+    <string name="download_failed">డౌన్‌లోడ్ పూర్తి కాలేదు. మళ్లీ ప్రయత్నించండి.</string>
+    <string name="download_share_title">సేవ్ లేదా షేర్ చేయండి</string>
+</resources>

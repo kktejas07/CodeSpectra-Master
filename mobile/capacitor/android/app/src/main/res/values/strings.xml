@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- app_name / title_activity_main come from the build flavour (resValue in app/build.gradle). -->
+    <string name="package_name">ai.codespectra.app</string>
+    <string name="custom_url_scheme">ai.codespectra.app</string>
+
+    <string name="notification_channel_general">General</string>
+    <string name="notification_channel_general_desc">Test reminders, results, events and account messages</string>
+
+    <string name="biometric_enroll_title">Sign in with your fingerprint or face?</string>
+    <string name="biometric_enroll_body">Next time, unlock CodeSpectra with your device\'s fingerprint or face instead of typing your password. Your password is never stored on this device. You can turn this off by signing out.</string>
+    <string name="biometric_enroll_yes">Turn on</string>
+    <string name="biometric_enroll_no">Not now</string>
+    <string name="biometric_prompt_title">Unlock CodeSpectra</string>
+    <string name="biometric_prompt_reason">Confirm it\'s you to continue</string>
+    <string name="biometric_prompt_cancel">Use password</string>
+
+    <string name="lockdown_started">Test mode is on. Other apps, screenshots and screen recording are blocked until you submit.</string>
+    <string name="lockdown_blocked_back">Back is disabled during the test. Submit the test to leave.</string>
+
+    <string name="download_started">Downloading…</string>
+    <string name="download_failed">The download didn\'t finish. Try again.</string>
+    <string name="download_share_title">Save or share</string>
+</resources>
