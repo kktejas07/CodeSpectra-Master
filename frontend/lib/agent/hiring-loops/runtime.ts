@@ -26,6 +26,7 @@ import { withUsageMeter } from '@/lib/ai/usage-meter'
 import { loopBudget, LOOP_FEATURE, loopWindow, STEP_TOOL, type LoopBudget, type LoopId, type LoopSettings, type RunItem, type RunStatus } from './types'
 import { getLoopSettings, disableLoop, startRun, saveRun, usageSoFar, claimManual, releaseManual, type RunDoc } from './store'
 import { hlLocale, hlt, type HlLocale } from './i18n'
+import { autoSentNote, orgSenderName, type AutoSendGrant } from './auto-send'
 
 export interface LoopRunContext<L extends LoopId = LoopId> {
   loop: L
@@ -67,6 +68,29 @@ async function ownerCaller(ownerId: string | null, tenantId: string): Promise<Ag
   } catch (e) {
     logger.warn(`[hiring-agents] owner check failed: ${(e as Error)?.message}`)
     return null
+  }
+}
+
+/**
+ * SEC-036: the admin who turned an auto-send step on may still do so — an
+ * active superadmin, or still the owner (and an admin) of this organisation.
+ */
+async function autoSendEnablerValid(userId: string, tenantId: string): Promise<boolean> {
+  try {
+    const { loadAuthProfile, isTenantActive } = await import('@/lib/session')
+    const { resolveAccount, profileTenantId } = await import('@/lib/auth-account')
+    const profile = await loadAuthProfile(userId)
+    if (!profile) return false
+    const tenantActive = await isTenantActive(profileTenantId(profile)).catch(() => false)
+    const acc = resolveAccount(profile, { tenantActive })
+    if (!acc.ok) return false
+    if (acc.role === 'superadmin') return true
+    if (acc.role !== 'tenant_admin' || acc.tenantId !== tenantId) return false
+    const { orgOwnerId } = await import('@/lib/tenant-owner')
+    return (await orgOwnerId(tenantId)) === userId
+  } catch (e) {
+    logger.warn(`[hiring-agents] auto-send enabler check failed: ${(e as Error)?.message}`)
+    return false
   }
 }
 
@@ -142,6 +166,24 @@ export async function runLoop<L extends LoopId>(
       return conv.id
     }
 
+    // SEC-036 helpers: the enabling admin per step (re-checked once per run) and the org's name.
+    const grantCache = new Map<string, AutoSendGrant | null>()
+    const autoSendGrant = async (step: string): Promise<AutoSendGrant | null> => {
+      if (!grantCache.has(step)) {
+        const g = loaded.auto_send_by[step]
+        grantCache.set(step, g && (await autoSendEnablerValid(g.user_id, tenantId)) ? g : null)
+      }
+      return grantCache.get(step) ?? null
+    }
+    let orgNameCache: string | null | undefined
+    const orgDisplayName = async (): Promise<string | null> => {
+      if (orgNameCache === undefined) {
+        const { orgName } = await import('@/lib/tenant-owner')
+        orgNameCache = await orgName(tenantId).catch(() => null)
+      }
+      return orgNameCache
+    }
+
     const ctx: LoopRunContext<L> = {
       loop, tenantId, now, trigger: opts.trigger, settings, budget, caller, locale, run,
       aiAllowed: () => budget.ai && usage.spentMonth + costMicros / 1e6 < settings.monthly_cost_cap_usd,
@@ -183,12 +225,27 @@ export async function runLoop<L extends LoopId>(
         used++
         let auto_sent = false
         let result: string | undefined
-        if (settings.auto_send[step] === true) {
-          const [{ confirmAction }, { ledgerEntryForAction }] = await Promise.all([import('@/lib/agent/actions'), import('@/lib/agent/tools/ledger')])
-          const r = await confirmAction(caller, action.id, { getTool, audit: auditAgentAction, ledgerFor: ledgerEntryForAction })
+        // SEC-036: auto-send only while the admin who turned this step on is still
+        // the organisation owner or a superadmin; the item then goes out in the
+        // organisation's name and the action, ledger and audit name that admin.
+        const grant = settings.auto_send[step] === true ? await autoSendGrant(step) : null
+        if (grant) {
+          const [{ confirmAction }, { ledgerEntryForAction, LEDGER_COLLECTION }] = await Promise.all([import('@/lib/agent/actions'), import('@/lib/agent/tools/ledger')])
+          const sender: AgentCaller = { ...caller, name: orgSenderName(await orgDisplayName()) }
+          const note = autoSentNote(grant)
+          const audit = (actor: { id: string }, act: string, res: string, detail: string, sev: 'info' | 'warning' | 'critical') => auditAgentAction(actor, act, res, `${detail} — ${note}`.slice(0, 1000), sev)
+          const r = await confirmAction(sender, action.id, { getTool, audit, ledgerFor: ledgerEntryForAction })
           auto_sent = r.ok
           result = r.ok ? r.action.result?.message : r.error
+          const stamp = { sent_as: 'organisation', auto_sent: true, auto_send_enabled_by: grant }
+          const { getMongoDb } = await import('@/lib/mongodb')
+          const mdb = await getMongoDb()
+          await Promise.all([
+            mdb.collection('agent_actions').updateOne({ id: action.id, tenant_id: tenantId }, { $set: stamp }),
+            mdb.collection(LEDGER_COLLECTION).updateOne({ key: `action:${action.id}` }, { $set: stamp }),
+          ]).catch((e) => logger.warn(`[hiring-agents] auto-send stamp failed: ${(e as Error)?.message?.slice(0, 200)}`))
         } else {
+          if (settings.auto_send[step] === true) run.items.push({ kind: item.kind, ref: item.ref, title: toolName, note: 'auto_send_not_authorised' })
           proposals.push(action)
         }
         run.items.push({ kind: item.kind, ref: item.ref, title: action.title, action_id: action.id, auto_sent, result: result?.slice(0, 300) ?? null })

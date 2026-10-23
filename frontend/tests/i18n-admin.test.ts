@@ -60,7 +60,7 @@ describe('admin catalog', () => {
   })
 
   it('every key used in the admin console exists', () => {
-    const files = [...walk(path.join(ROOT, 'app/dashboard/admin')), ...walk(path.join(ROOT, 'components/admin'))]
+    const files = [...walk(path.join(ROOT, 'app/dashboard/admin')), ...walk(path.join(ROOT, 'components/admin')), ...walk(path.join(ROOT, 'components/agent'))]
     const missing: string[] = []
     for (const f of files) {
       const s = fs.readFileSync(f, 'utf8')

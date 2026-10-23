@@ -18,7 +18,8 @@ export function checkCouponBody(body: Record<string, unknown>) {
   return { ok: true as const, value: parsed.value, extra: extra.value }
 }
 
-export async function createCoupon(actorId: string, body: Record<string, unknown>): Promise<CouponCreateResult> {
+/** `opts.userId` binds the coupon to one person (system-issued personal codes; never from the admin form). */
+export async function createCoupon(actorId: string, body: Record<string, unknown>, opts: { userId?: string } = {}): Promise<CouponCreateResult> {
   const checked = checkCouponBody(body)
   if (!checked.ok) return { ok: false, status: 400, error: checked.error }
   const v = checked.value
@@ -43,6 +44,7 @@ export async function createCoupon(actorId: string, body: Record<string, unknown
     plan_ids: extra.plan_ids ?? [],
     first_purchase_only: extra.first_purchase_only ?? false,
     starts_at: extra.starts_at ?? null,
+    ...(opts.userId ? { user_id: opts.userId } : {}),
     created_by: actorId,
     created_at: nowIso(),
   }

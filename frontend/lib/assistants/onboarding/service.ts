@@ -100,14 +100,16 @@ export async function runOnboardingLoop(now = new Date(), trigger: 'cron' | 'man
       if (!(await markOnce('org_onboarding', `nudge:${o.id}:${step}`, s.cooldown_days, now))) continue
       const admins = await db.collection('user').find({ role: 'tenant_admin', $or: [{ tenantId: o.id }, { organizationId: o.id }] }, { projection: { id: 1, _id: 1 } }).limit(5).toArray()
       for (const a of admins) {
-        await notify({
+        // A setup nudge to the org's admins: through the shared per-person cap (CORE-046).
+        const n = await notify({
+          budget: { class: 'engagement', topic: 'org-onboarding-step', object: `${String(o.id)}:${step}:${now.toISOString().slice(0, 10)}`, source: 'onboarding-assistant' },
           user_id: String(a.id ?? a._id), type: 'assistant.onboarding_step',
           title: 'Next setup step', message: `${view.checklist.done} of ${view.checklist.total} setup steps done.`,
           title_i18n: { key: 'assistantOnboardingTitle' },
           message_i18n: [{ key: 'assistantOnboardingBody', params: { done: view.checklist.done, total: view.checklist.total } }, { key: `assistantOnboardingStep_${step}` }],
           link: '/dashboard/admin/onboarding', send_email: true,
         })
-        nudged++
+        if (n) nudged++
       }
     } catch (e) {
       failed++

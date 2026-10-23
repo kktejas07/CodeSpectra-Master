@@ -14,6 +14,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useAdminT } from '@/lib/i18n/admin'
+import { useApiError } from '@/lib/i18n/use-api-error'
 import { PageHeader, Panel, Section } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
@@ -32,12 +33,13 @@ interface RunRow {
 }
 interface AgentRow {
   loop: LoopId; settings: LoopSettings; steps: string[]; default_enabled: boolean; owner_name: string | null; owner_is_you: boolean; has_owner: boolean
+  auto_send_by?: Record<string, { name: string | null; at: string; is_you: boolean }>
   usage: { items_today: number; spent_month_usd: number }; last_run: RunRow | null
 }
 interface PendingRow { id: string; tool: string; title: string; preview: Record<string, unknown>; created_at: string; expires_at: string; conversationId: string }
 interface CaseRow { id: string; target_kind: string; target_id: string; target_title: string; name: string; priority: number; recommendation: 'hold' | 'release_hold' | 'none'; summary: string; held: boolean; action_id?: string | null }
 interface RequestRow { id: string; status: string; title: string | null; job_id: string | null; message?: string | null; created_at: string }
-interface Overview { tenant_id: string; agents: AgentRow[]; pending: PendingRow[]; runs: RunRow[]; cases: CaseRow[]; requests: RequestRow[] }
+interface Overview { tenant_id: string; can_enable_auto_send?: boolean; agents: AgentRow[]; pending: PendingRow[]; runs: RunRow[]; cases: CaseRow[]; requests: RequestRow[]; jobs?: Array<{ id: string; title: string }> }
 
 const ICON: Record<LoopId, React.ReactNode> = { sourcer: <UserSearch />, scheduler: <CalendarClock />, author: <ClipboardList />, integrity: <ShieldAlert /> }
 const PARAM_KEYS: Record<LoopId, string[]> = {
@@ -58,17 +60,24 @@ const STATUS_TONE: Record<string, string> = {
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await csrfFetch(url, { headers: { 'Content-Type': 'application/json' }, credentials: 'include', ...init })
   const d = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error((d as { error?: string }).error || 'Request failed')
+  // SEO-044: keep the body so the toast can show the error in the admin's language (useApiError).
+  if (!r.ok) throw Object.assign(new Error((d as { error?: string }).error || 'Request failed'), { body: d })
   return d as T
 }
 
 function useL() {
-  const { locale, fmt } = useAdminT()
-  return useMemo(() => ({ L: (k: HlKey | string, p?: Record<string, string | number | null | undefined>) => hlt(locale, k, p), fmt }), [locale, fmt])
+  const { locale, fmt, t } = useAdminT()
+  const apiError = useApiError()
+  return useMemo(() => ({
+    L: (k: HlKey | string, p?: Record<string, string | number | null | undefined>) => hlt(locale, k, p),
+    fmt,
+    E: (e: unknown) => apiError((e as { body?: unknown })?.body ?? null, t('copilot.requestFailed')),
+  }), [locale, fmt, t, apiError])
 }
 
-function AgentCard({ a, q, onChanged }: { a: AgentRow; q: string; onChanged: () => void }) {
-  const { L, fmt } = useL()
+function AgentCard({ a, q, onChanged, canEnableAutoSend }: { a: AgentRow; q: string; onChanged: () => void; canEnableAutoSend: boolean }) {
+  const { L, fmt, E } = useL()
+  const { t } = useAdminT()
   const addToast = useToast()
   const [form, setForm] = useState(a.settings)
   const [busy, setBusy] = useState<'save' | 'run' | null>(null)
@@ -80,7 +89,7 @@ function AgentCard({ a, q, onChanged }: { a: AgentRow; q: string; onChanged: () 
       addToast({ type: 'success', title: L('saved') })
       onChanged()
     } catch (e) {
-      addToast({ type: 'error', title: (e as Error).message })
+      addToast({ type: 'error', title: E(e) })
     } finally {
       setBusy(null)
     }
@@ -91,7 +100,7 @@ function AgentCard({ a, q, onChanged }: { a: AgentRow; q: string; onChanged: () 
       const r = await api<{ message: string; items: number }>(`/api/admin/hiring-agents/run${q}`, { method: 'POST', body: JSON.stringify({ loop: a.loop }) })
       addToast({ type: r.items > 0 ? 'success' : 'info', title: L('runDone', { message: r.message }) })
     } catch (e) {
-      addToast({ type: 'error', title: (e as Error).message })
+      addToast({ type: 'error', title: E(e) })
     } finally {
       setBusy(null)
       onChanged()
@@ -114,8 +123,9 @@ function AgentCard({ a, q, onChanged }: { a: AgentRow; q: string; onChanged: () 
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Switch id={id('on')} checked={form.enabled} disabled={busy !== null} onCheckedChange={(v) => { setForm((f) => ({ ...f, enabled: v })); void save({ enabled: v }) }} />
-          <Label htmlFor={id('on')}>{form.enabled ? L('on') : L('off')}</Label>
+          {/* SEO-049: the switch is named after the agent; On/Off is visible state only. */}
+          <Switch id={id('on')} aria-label={t('agentLoops.enableAgent', { name: L(`loop.${a.loop}.name`) })} checked={form.enabled} disabled={busy !== null} onCheckedChange={(v) => { setForm((f) => ({ ...f, enabled: v })); void save({ enabled: v }) }} />
+          <span aria-hidden className="text-sm font-medium">{form.enabled ? L('on') : L('off')}</span>
         </div>
       </div>
 
@@ -129,11 +139,15 @@ function AgentCard({ a, q, onChanged }: { a: AgentRow; q: string; onChanged: () 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-foreground">{L('autoSend')}</legend>
         <p className="text-xs text-muted-foreground">{L('autoSendHint')}</p>
+        {!canEnableAutoSend && <p className="text-xs text-muted-foreground">{L('autoSendOwnerOnly')}</p>}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {a.steps.map((st) => (
             <div key={st} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
-              <Label htmlFor={id(`auto-${st}`)} className="text-sm font-normal">{L(`step.${st}`)}</Label>
-              <Switch id={id(`auto-${st}`)} checked={form.auto_send[st] === true} disabled={busy !== null} onCheckedChange={(v) => { setForm((f) => ({ ...f, auto_send: { ...f.auto_send, [st]: v } })); void save({ auto_send: { [st]: v } }) }} />
+              <div className="min-w-0">
+                <Label htmlFor={id(`auto-${st}`)} className="text-sm font-normal">{L(`step.${st}`)}</Label>
+                {form.auto_send[st] === true && a.auto_send_by?.[st]?.name && <p className="text-xs text-muted-foreground">{L('autoSendBy', { name: a.auto_send_by[st].name })}</p>}
+              </div>
+              <Switch id={id(`auto-${st}`)} checked={form.auto_send[st] === true} disabled={busy !== null || (!canEnableAutoSend && form.auto_send[st] !== true)} onCheckedChange={(v) => { setForm((f) => ({ ...f, auto_send: { ...f.auto_send, [st]: v } })); void save({ auto_send: { [st]: v } }) }} />
             </div>
           ))}
         </div>
@@ -184,7 +198,7 @@ function AgentCard({ a, q, onChanged }: { a: AgentRow; q: string; onChanged: () 
 }
 
 function PendingList({ rows, onChanged }: { rows: PendingRow[]; onChanged: () => void }) {
-  const { L, fmt } = useL()
+  const { L, fmt, E } = useL()
   const addToast = useToast()
   const [busy, setBusy] = useState<string | null>(null)
   const act = async (id: string, what: 'confirm' | 'cancel') => {
@@ -193,7 +207,7 @@ function PendingList({ rows, onChanged }: { rows: PendingRow[]; onChanged: () =>
       const r = await api<{ result?: { ok: boolean; message: string } }>(`/api/admin/agent/actions/${encodeURIComponent(id)}/${what}`, { method: 'POST', body: '{}' })
       addToast({ type: what === 'cancel' || r.result?.ok ? 'success' : 'error', title: what === 'cancel' ? L('cancelled') : r.result?.message || L('confirmed') })
     } catch (e) {
-      addToast({ type: 'error', title: (e as Error).message })
+      addToast({ type: 'error', title: E(e) })
     } finally {
       setBusy(null)
       onChanged()
@@ -224,7 +238,7 @@ function PendingList({ rows, onChanged }: { rows: PendingRow[]; onChanged: () =>
 }
 
 function CasesList({ rows, q, onChanged }: { rows: CaseRow[]; q: string; onChanged: () => void }) {
-  const { L } = useL()
+  const { L, E } = useL()
   const addToast = useToast()
   const [busy, setBusy] = useState<string | null>(null)
   const draft = async (id: string) => {
@@ -233,7 +247,7 @@ function CasesList({ rows, q, onChanged }: { rows: CaseRow[]; q: string; onChang
       await api(`/api/admin/hiring-agents/cases${q}`, { method: 'POST', body: JSON.stringify({ id }) })
       addToast({ type: 'success', title: L('integrity.drafted') })
     } catch (e) {
-      addToast({ type: 'error', title: (e as Error).message })
+      addToast({ type: 'error', title: E(e) })
     } finally {
       setBusy(null)
       onChanged()
@@ -266,19 +280,39 @@ function CasesList({ rows, q, onChanged }: { rows: CaseRow[]; q: string; onChang
   )
 }
 
-function AuthorForm({ q, requests, onChanged }: { q: string; requests: RequestRow[]; onChanged: () => void }) {
-  const { L, fmt } = useL()
+function AuthorForm({ q, requests, jobs, agentOn, onChanged }: { q: string; requests: RequestRow[]; jobs: Array<{ id: string; title: string }>; agentOn: boolean; onChanged: () => void }) {
+  const { L, fmt, E } = useL()
   const addToast = useToast()
   const [jobId, setJobId] = useState('')
   const [jd, setJd] = useState('')
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
+  const [starting, setStarting] = useState<'on' | 'run' | null>(null)
+  const waiting = requests.some((r) => r.status === 'queued')
+  // The author agent is off by default and the scheduler skips it then (AGT-036 / CORE-044).
+  const start = async (how: 'on' | 'run') => {
+    setStarting(how)
+    try {
+      if (how === 'on') {
+        await api(`/api/admin/hiring-agents${q}`, { method: 'PATCH', body: JSON.stringify({ loop: 'author', patch: { enabled: true } }) })
+        addToast({ type: 'success', title: L('saved') })
+      } else {
+        const r = await api<{ message: string; items: number }>(`/api/admin/hiring-agents/run${q}`, { method: 'POST', body: JSON.stringify({ loop: 'author' }) })
+        addToast({ type: r.items > 0 ? 'success' : 'info', title: L('runDone', { message: r.message }) })
+      }
+    } catch (e) {
+      addToast({ type: 'error', title: E(e) })
+    } finally {
+      setStarting(null)
+      onChanged()
+    }
+  }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
     try {
-      await api(`/api/admin/hiring-agents/author${q}`, { method: 'POST', body: JSON.stringify({ ...(jobId.trim() ? { job_id: jobId.trim() } : { job_description: jd.trim() }), ...(title.trim() ? { title: title.trim() } : {}) }) })
-      addToast({ type: 'success', title: L('author.queued') })
+      const r = await api<{ agent_on?: boolean }>(`/api/admin/hiring-agents/author${q}`, { method: 'POST', body: JSON.stringify({ ...(jobId.trim() ? { job_id: jobId.trim() } : { job_description: jd.trim() }), ...(title.trim() ? { title: title.trim() } : {}) }) })
+      addToast(r.agent_on === false ? { type: 'info', title: L('author.queuedOff') } : { type: 'success', title: L('author.queued') })
       setJobId(''); setJd(''); setTitle('')
       onChanged()
     } catch (err) {
@@ -292,9 +326,25 @@ function AuthorForm({ q, requests, onChanged }: { q: string; requests: RequestRo
       <Panel className="p-5">
         <form onSubmit={submit} className="space-y-3">
           <p className="text-sm text-muted-foreground">{L('author.hint')}</p>
+          {!agentOn && (
+            <div role="status" className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+              <p>{waiting ? L('author.offWaiting') : L('author.off')}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="outline" disabled={starting !== null} onClick={() => void start('on')}>{starting === 'on' && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />}{L('author.switchOn')}</Button>
+                {waiting && <Button type="button" size="sm" disabled={starting !== null} onClick={() => void start('run')} className="gap-1">{starting === 'run' ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{L('author.runOnce')}</Button>}
+              </div>
+            </div>
+          )}
           <div>
             <Label htmlFor="ha-jobid" className="text-xs">{L('author.jobId')}</Label>
-            <Input id="ha-jobid" value={jobId} onChange={(e) => setJobId(e.target.value)} disabled={!!jd.trim()} className="mt-1" autoComplete="off" />
+            {jobs.length > 0 ? (
+              <select id="ha-jobid" value={jobId} onChange={(e) => setJobId(e.target.value)} disabled={!!jd.trim()} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50">
+                <option value="">{L('author.jobPick')}</option>
+                {jobs.map((j) => <option key={j.id} value={j.id}>{j.title}</option>)}
+              </select>
+            ) : (
+              <Input id="ha-jobid" value={jobId} onChange={(e) => setJobId(e.target.value)} disabled={!!jd.trim()} className="mt-1" autoComplete="off" />
+            )}
           </div>
           <div>
             <Label htmlFor="ha-jd" className="text-xs">{L('author.jd')}</Label>
@@ -419,13 +469,13 @@ export default function HiringAgentsPage() {
             <PendingList rows={data.pending} onChanged={() => void load()} />
           </Section>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {data.agents.map((a) => <AgentCard key={a.loop} a={a} q={q} onChanged={() => void load()} />)}
+            {data.agents.map((a) => <AgentCard key={a.loop} a={a} q={q} canEnableAutoSend={data.can_enable_auto_send === true} onChanged={() => void load()} />)}
           </div>
           <Section title={L('integrity.title')}>
             <CasesList rows={data.cases} q={q} onChanged={() => void load()} />
           </Section>
           <Section title={L('author.title')}>
-            <AuthorForm q={q} requests={data.requests} onChanged={() => void load()} />
+            <AuthorForm q={q} requests={data.requests} jobs={data.jobs ?? []} agentOn={data.agents.find((a) => a.loop === 'author')?.settings.enabled ?? false} onChanged={() => void load()} />
           </Section>
           <Section title={L('runs.title')}>
             <RunsLog runs={data.runs} />

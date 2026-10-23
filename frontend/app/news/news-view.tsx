@@ -85,7 +85,7 @@ function NewsItem({ n, t }: { n: NewsCard; t: PublicTranslator }) {
       <div className="flex flex-1 flex-col gap-2 p-5">
         <p className="text-xs font-semibold text-primary">{topicName(t, n.topic)}</p>
         <h2 className="text-base font-semibold leading-snug text-foreground">
-          <Link href={`/news/${n.slug}`} className="rounded hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{n.title}</Link>
+          <Link href={localizedPath(`/news/${n.slug}`, t.locale)} className="rounded hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{n.title}</Link>
         </h2>
         <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">{n.excerpt}</p>
         <p className="mt-auto flex items-center gap-2 pt-2 text-xs text-muted-foreground">

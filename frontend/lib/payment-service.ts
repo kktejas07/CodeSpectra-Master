@@ -190,6 +190,7 @@ export class PaymentService {
       if (!c) throw new CheckoutError('coupon_unavailable', 'That coupon is no longer available.')
       const verdict = couponEligibility(c, {
         planId: plan.id,
+        userId,
         userRedemptions: await userCouponRedemptions(couponId, userId),
         hasPaidBefore: await hasPaidBefore(userId),
       })

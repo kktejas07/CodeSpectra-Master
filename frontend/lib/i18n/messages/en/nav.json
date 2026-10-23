@@ -232,5 +232,10 @@
   "label:Connected apps": "Connected apps",
   "label:AI spend": "AI spend",
   "label:Daily digest": "Daily digest",
-  "label:Agent loops": "Agent loops"
+  "label:Agent loops": "Agent loops",
+  "impersonating": "You are viewing the app as this user (impersonation). Actions count as their account.",
+  "exitImpersonation": "Exit impersonation",
+  "exitingImpersonation": "Exiting…",
+  "exitImpersonationFailed": "Couldn't exit. Try again or sign out.",
+  "exitImpersonationOffline": "Couldn't exit. Check your connection and try again."
 }

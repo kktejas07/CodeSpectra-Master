@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller, requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { findBusyJob, clearCourseVideos } from '@/lib/courses/process-job'
 import { normalizeTargetMinutes } from '@/lib/courses/lesson-video'
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   const courseId = request.nextUrl.searchParams.get('courseId') || ''
-  if (!courseId && user.role !== 'superadmin') {
+  if (!courseId && !isSuperAdminCaller(user)) { // SEC-029
     return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
@@ -68,10 +68,8 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new generation job
 export async function POST(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const { courseId, courseTitle, type, totalItems, force, targetMinutes } = await request.json()
@@ -125,10 +123,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const jobId = request.nextUrl.searchParams.get('jobId')
@@ -162,10 +158,8 @@ export async function DELETE(request: NextRequest) {
 
 // PATCH - Update job status/progress
 export async function PATCH(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const { jobId, updates } = await request.json()

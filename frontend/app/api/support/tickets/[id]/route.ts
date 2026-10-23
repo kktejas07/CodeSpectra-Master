@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller, gateErrorBody, requireSuperAdmin } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 
@@ -11,7 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const db = await getMongoDb()
   const filter: any = { id }
-  if (user.role !== 'superadmin') filter.user_id = user.id
+  if (!isSuperAdminCaller(user)) filter.user_id = user.id // SEC-029
   const ticket = await db.collection('support_tickets').findOne(filter)
   if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
 
@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const db = await getMongoDb()
   const filter: any = { id }
-  if (user.role !== 'superadmin') filter.user_id = user.id
+  if (!isSuperAdminCaller(user)) filter.user_id = user.id // SEC-029
   const ticket = await db.collection('support_tickets').findOne(filter)
   if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
   if (ticket.status === 'closed') return NextResponse.json({ error: 'Ticket is closed' }, { status: 400 })
@@ -50,8 +50,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   const { id } = await params
 
   let status = ''

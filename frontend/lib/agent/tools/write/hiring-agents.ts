@@ -164,12 +164,8 @@ export const offerInterviewSlotsTool = writeTool<OfferSlotsArgs>({
     if (!free.length) return { ok: false, message: 'None of the offered times is free any more. Ask the scheduler for new times.' }
     const key = `agent_offer:${ctx.actionId || (a as Doc)._nonce || a.slots.join(',')}`
     if (!(await svc.claimSend(iv0.id, key))) return { ok: true, message: 'These times were already sent.' }
-    // Re-open a no-show / cancelled round for booking; the candidate picks on their signed page.
-    const col = await atsInterviews()
-    await col.updateOne({ id: iv0.id, tenant_id: actor.tenantId }, {
-      $set: { self_schedule: true, updated_at: new Date().toISOString(), ...(iv0.status !== 'awaiting_schedule' ? { status: 'awaiting_schedule', scheduled_at: null } : {}) },
-    })
-    const iv = (await svc.getInterview(actor.tenantId, iv0.id))!
+    // The interview is re-opened (and the offer counted) only after a channel delivered (AGT-044).
+    const iv = { ...iv0, self_schedule: true, ...(iv0.status !== 'awaiting_schedule' ? { status: 'awaiting_schedule' as const, scheduled_at: null } : {}) }
     const { candidate, job } = await svc.loadContext(iv)
     const db = await getMongoDb()
     const tenant = await db.collection('tenants').findOne({ id: actor.tenantId }, { projection: { _id: 0, name: 1 } })
@@ -182,6 +178,10 @@ export const offerInterviewSlotsTool = writeTool<OfferSlotsArgs>({
     const link = await svc.candidateLink(iv, 'sched')
     const times = free.map((s) => fmtSlot(s.start, timezone, locale))
     const channels: string[] = []
+    // Through the shared per-person messaging budget (AUTO-094): interview scheduling is a service
+    // message (not capped) but sent once per offer whichever agent or person sends it.
+    const { withBudget } = await import('@/lib/messaging/budget')
+    await withBudget({ userId: (candidate as { user_id?: string } | null)?.user_id ?? null, email }, { class: 'transactional', topic: 'interview-times', object: `${iv.id}:${key}`, source: 'hiring-agent' }, async () => {
     if (email) {
       const { isUnsubscribed, unsubscribeUrl, listUnsubscribeHeaders } = await import('@/lib/automation/mailer')
       if (!(await isUnsubscribed(email, 'hiring'))) {
@@ -191,7 +191,7 @@ export const offerInterviewSlotsTool = writeTool<OfferSlotsArgs>({
         const body = `<p style="margin:0 0 12px">${escapeHtml(intro)}</p><ul style="margin:0 0 12px;padding-left:20px">${times.map((t) => `<li>${escapeHtml(`${t} (${timezone})`)}</li>`).join('')}</ul>`
           + `<p style="margin:0 0 12px;font-size:13px;color:#4b5563">${escapeHtml(hlt(locale, 'mail.more'))}</p>`
           + `<p style="margin:16px 0 0;font-size:12px;color:#6b7280">${escapeHtml(hlt(locale, 'mail.footer', { company }))}${unsub ? ` · <a href="${escapeHtml(unsub)}" style="color:#6b7280">${escapeHtml(hlt(locale, 'mail.unsubscribe'))}</a>` : ''}</p>`
-        const msg = wrapEmail(hlt(locale, 'mail.subject', { role, company }), body, { url: link, label: hlt(locale, 'mail.pick') })
+        const msg = wrapEmail(hlt(locale, 'mail.subject', { role, company }), body, { url: link, label: hlt(locale, 'mail.pick') }, locale)
         try {
           const { sendEmail } = await import('@/lib/send-email')
           const headers = listUnsubscribeHeaders(email, 'hiring')
@@ -207,11 +207,24 @@ export const offerInterviewSlotsTool = writeTool<OfferSlotsArgs>({
       const wa = await sendWhatsAppToCandidate(candidate, { kind: 'hiring', title: 'Interview times', text: hlt(locale, 'wa.text', { name, role, company, times: times.join('; '), link }).slice(0, 1000), urgent: true }).catch(() => null)
       if (wa && (wa as { sent?: boolean }).sent) channels.push('whatsapp')
     }
-    const { getStates, setState } = await import('@/lib/agent/hiring-loops/store')
-    const prev = (await getStates(actor.tenantId, 'scheduler', [iv.id])).get(iv.id) as { offers?: number } | undefined
-    await setState(actor.tenantId, 'scheduler', iv.id, { offers: (prev?.offers ?? 0) + 1, last_offer_at: new Date().toISOString(), last_slots: free.map((s) => s.start) })
+    return channels.length > 0
+    })
     const { auditAts } = await import('@/lib/ats/access')
-    await auditAts(actor, 'ats.interview.offer_slots', 'ats_interview', iv.id, `${free.length} times via ${channels.join('+') || 'none'}`).catch(() => {})
+    if (!channels.length) {
+      // Nothing delivered: leave the interview as it was, don't count an offer, and free the send claim for a retry.
+      await (await atsInterviews()).updateOne({ id: iv0.id }, { $pull: { sent: key } } as never).catch(() => undefined)
+      await auditAts(actor, 'ats.interview.offer_slots', 'ats_interview', iv.id, `${free.length} times via none`).catch(() => {})
+    }
+    if (channels.length) {
+      // Re-open a no-show / cancelled round for booking; the candidate picks on their signed page.
+      await (await atsInterviews()).updateOne({ id: iv0.id, tenant_id: actor.tenantId }, {
+        $set: { self_schedule: true, updated_at: new Date().toISOString(), ...(iv0.status !== 'awaiting_schedule' ? { status: 'awaiting_schedule', scheduled_at: null } : {}) },
+      })
+      const { getStates, setState } = await import('@/lib/agent/hiring-loops/store')
+      const prev = (await getStates(actor.tenantId, 'scheduler', [iv.id])).get(iv.id) as Record<string, unknown> & { offers?: number } | undefined
+      await setState(actor.tenantId, 'scheduler', iv.id, { ...(prev ?? {}), offers: (prev?.offers ?? 0) + 1, last_offer_at: new Date().toISOString(), last_slots: free.map((s) => s.start) })
+      await auditAts(actor, 'ats.interview.offer_slots', 'ats_interview', iv.id, `${free.length} times via ${channels.join('+')}`).catch(() => {})
+    }
     if (!channels.length) return { ok: false, message: 'The times could not be delivered (no email address, unsubscribed, or email failed). Share the self-schedule link another way.', link: `/dashboard/hiring/interviews/${iv.id}` }
     return { ok: true, message: `Sent ${free.length} times to ${name} by ${channels.join(' and ')}.`, link: `/dashboard/hiring/interviews/${iv.id}`, data: { channels } }
   },

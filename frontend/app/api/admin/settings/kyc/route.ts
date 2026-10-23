@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { auditAdmin } from '@/lib/admin-audit'
 
@@ -18,9 +18,8 @@ const ENUM_KEYS: Record<string, string[]> = {
 
 // GET: Get KYC settings
 export async function GET(): Promise<NextResponse> {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const db = await getMongoDb()
@@ -34,9 +33,9 @@ export async function GET(): Promise<NextResponse> {
 
 // POST: Save KYC settings
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
+  const user = gate.user
 
   try {
     const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>

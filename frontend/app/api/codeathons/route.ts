@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { knowledgeOnEventChange } from '@/lib/rag/hooks'
 import { createCodeathon } from '@/lib/services/codeathons'
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+  if (!isAdminCaller(gate.user)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   // A company admin without an organization would create an unowned (platform) event.

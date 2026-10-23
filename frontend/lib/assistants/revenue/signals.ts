@@ -112,3 +112,19 @@ export function winbackCode(subscriptionId: string): string {
   const h = [...subscriptionId].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7).toString(36).toUpperCase()
   return `BACK${h.slice(0, 8)}`
 }
+
+/**
+ * Shared-budget topic for a renewal / payment / licence reminder (AUTO-098): the
+ * same topic and object the automatic reminders use (plan-expiry, dunning,
+ * renewal-nudges), so a confirmed proposal never repeats what one of them sent
+ * that day. `objectPrefix` finds an earlier send for the "already reminded" hint. Pure.
+ */
+export function reminderTopic(signalKey: string, now: Date): { class: 'deadline' | 'payment'; topic: string; object: string; objectPrefix: string } | null {
+  const [kind, id, ends] = String(signalKey || '').split(':')
+  if (!id) return null
+  const day = now.toISOString().slice(0, 10)
+  if (kind === 'payment') return { class: 'payment', topic: 'payment-failed', object: `${id}:${day}`, objectPrefix: `${id}:` }
+  if (kind === 'renewal' && ends) return { class: 'deadline', topic: 'plan-renewal', object: `${id}:${ends}:${day}`, objectPrefix: `${id}:${ends}:` }
+  if (kind === 'licence' && ends) return { class: 'payment', topic: 'licence-renewal', object: `${id}:${ends}:${day}`, objectPrefix: `${id}:${ends}:` }
+  return null
+}

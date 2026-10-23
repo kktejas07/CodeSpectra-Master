@@ -16,7 +16,18 @@ export interface SchedIv {
   app_in_stage: boolean
 }
 
-export interface OfferState { offers: number; last_offer_at?: string | null; last_slots?: string[] }
+export interface OfferState {
+  offers: number
+  last_offer_at?: string | null
+  last_slots?: string[]
+  /** The candidate-picked slot a "book this time" proposal was drafted for (AGT-035). */
+  book_slot?: string | null
+  book_proposed_at?: string | null
+  book_action_id?: string | null
+}
+
+/** A drafted "book this time" proposal waits this long (the proposal TTL) before the agent drafts it again. */
+export const BOOK_REPROPOSE_MS = 24 * 3_600_000
 
 export type SchedAction =
   | { action: 'book_requested'; slot: string }
@@ -29,6 +40,8 @@ export function classifyInterview(iv: SchedIv, st: OfferState | null, now: Date,
   if (!iv.app_in_stage || iv.panel_count === 0) return null
   const t = now.getTime()
   if (iv.status === 'awaiting_schedule' && iv.requested_slot && Date.parse(iv.requested_slot) > t + HOUR) {
+    // Already drafted for this exact slot and the proposal is still live: don't draft (and notify) again every hour.
+    if (st?.book_slot === iv.requested_slot && st.book_proposed_at && t - Date.parse(st.book_proposed_at) < BOOK_REPROPOSE_MS) return null
     return { action: 'book_requested', slot: iv.requested_slot }
   }
   const offers = st?.offers ?? 0

@@ -33,7 +33,8 @@ export async function runFeedSourceHealth(now = new Date()): Promise<Record<stri
   const events = (await db.collection('events_feed_sources').find({ enabled: true }, { projection: { _id: 0, id: 1, last_run_at: 1, last_error: 1, last_count: 1, config: 1 } }).limit(500).toArray()) as Doc[]
   const signals = (await db.collection('signal_feed_state').find({ enabled: { $ne: false } }, { projection: { _id: 0, id: 1, last_run_at: 1, last_error: 1 } }).limit(500).toArray()) as Doc[]
   const pulls = [
-    ...events.map((s) => ({ kind: 'events' as const, id: String(s.id), name: String(s.config?.name || s.id), last_run_at: s.last_run_at ?? null, ok: !s.last_error && Number(s.last_count) > 0, error: s.last_error ? String(s.last_error) : Number(s.last_count) > 0 ? null : 'No items fetched' })),
+    // A small calendar can legitimately return nothing: 0 items only counts after a few days of it (AUTO-103).
+    ...events.map((s) => ({ kind: 'events' as const, id: String(s.id), name: String(s.config?.name || s.id), last_run_at: s.last_run_at ?? null, ok: !s.last_error, empty: !s.last_error && !(Number(s.last_count) > 0), error: s.last_error ? String(s.last_error) : Number(s.last_count) > 0 ? null : 'No items fetched' })),
     // A news feed with nothing new is normal: only errors count.
     ...signals.map((s) => ({ kind: 'signals' as const, id: String(s.id), name: names.get(String(s.id)) || String(s.id), last_run_at: s.last_run_at ?? null, ok: !s.last_error, error: s.last_error ? String(s.last_error) : null })),
   ]
@@ -42,7 +43,7 @@ export async function runFeedSourceHealth(now = new Date()): Promise<Record<stri
   for (const p of pulls) {
     const key = `${p.kind}:${p.id}`
     const prev = (await health.findOne({ key }, { projection: { _id: 0 } })) as (SourceHealth & { key: string }) | null
-    const next = nextSourceHealth(prev, { id: p.id, last_run_at: p.last_run_at, ok: p.ok, error: p.error })
+    const next = nextSourceHealth(prev, { id: p.id, last_run_at: p.last_run_at, ok: p.ok, error: p.error, empty: 'empty' in p ? p.empty : false })
     const action = sourceHealthAction(next, now)
     const where = p.kind === 'events' ? 'Admin → Events feed' : 'Admin → Tech news'
     const link = p.kind === 'events' ? '/dashboard/admin/events-feed' : '/dashboard/admin/signals'

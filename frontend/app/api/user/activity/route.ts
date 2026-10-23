@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 interface ActivityEvent {
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
   const userId = gate.user.id
-  const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
+  const isAdmin = isAdminCaller(gate.user)
 
   try {
     const db = await getMongoDb()

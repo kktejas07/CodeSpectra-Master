@@ -8,6 +8,7 @@
  * (lib/exam-access isTenantStaff — deny by default).
  */
 import 'server-only'
+import { isAdminCaller, isSuperAdminCaller } from '@/lib/route-auth'
 import { randomBytes } from 'node:crypto'
 import { isTenantStaff } from '@/lib/exam-access'
 import { checkNewJudges } from '@/lib/hackathons/admin-checks'
@@ -42,9 +43,7 @@ export function isContestJudge(user: Who, c: Pick<ContestDoc, 'judging'> | null 
 }
 
 function canCreate(user: Who): boolean {
-  if (!user) return false
-  if (user.role === 'superadmin') return true
-  return user.role === 'tenant_admin' && !!user.tenantId
+  return isAdminCaller(user) // SEC-029: admin 2FA owed → no admin rights
 }
 
 export async function findContest(idOrSlug: string): Promise<ContestDoc | null> {
@@ -381,7 +380,7 @@ export async function getContestSettings(): Promise<ContestSettings> {
 }
 
 export async function saveContestSettings(user: ServiceUser, raw: unknown): Promise<ServiceResult<ContestSettings>> {
-  if (user.role !== 'superadmin') return fail(403, 'Forbidden')
+  if (!isSuperAdminCaller(user)) return fail(403, 'Forbidden') // SEC-029
   const s = sanitizeSettings(raw)
   await (await settingsCol()).updateOne({ id: 'global' }, { $set: { ...s, id: 'global', updated_at: nowIso(), updated_by: user.id } }, { upsert: true })
   return ok(s)

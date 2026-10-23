@@ -470,5 +470,7 @@
   "accommodation_reason_required": "ऑडिट रिकॉर्ड के लिए एक छोटा कारण लिखें।",
   "accommodation_candidate_not_found": "उस उम्मीदवार का कोई खाता नहीं मिला।",
   "assistant_off": "मदद सहायक बंद है।",
-  "assistant_daily_limit": "आपने आज {n} सवाल पूछ लिए हैं। कल फिर कोशिश करें या टिकट खोलें।"
+  "assistant_daily_limit": "आपने आज {n} सवाल पूछ लिए हैं। कल फिर कोशिश करें या टिकट खोलें।",
+  "hiring_auto_send_owner_only": "ऑटो-भेजना केवल संगठन के मालिक या प्लेटफ़ॉर्म एडमिन चालू कर सकते हैं।",
+  "coupon_not_yours": "यह कूपन किसी और के लिए जारी किया गया था।"
 }

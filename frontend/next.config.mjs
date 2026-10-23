@@ -39,6 +39,15 @@ const nextConfig = {
   ...sharedCacheConfig(),
   async headers() {
     return [
+      // SEO-042: /hi and /te pages share the root layout (cached, renders <html lang="en">);
+      // the [lang] segment marks its subtree lang=hi|te and switches <html lang> before paint.
+      // The response header gives crawlers that don't run scripts the page language too.
+      // (A second root layout for app/[lang] would mean moving every other route into a
+      // route group and full reloads between the two roots.)
+      ...['hi', 'te'].flatMap((lang) => [
+        { source: `/${lang}`, headers: [{ key: 'Content-Language', value: lang }] },
+        { source: `/${lang}/:path*`, headers: [{ key: 'Content-Language', value: lang }] },
+      ]),
       {
         // iOS Universal Links: Apple fetches this extension-less file and
         // requires application/json (mobile/capacitor/docs/APP_STORE.md).

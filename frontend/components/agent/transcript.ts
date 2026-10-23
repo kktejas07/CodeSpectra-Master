@@ -216,33 +216,48 @@ function argText(args: unknown): string {
   return ''
 }
 
+/** Step-label templates (English). The admin catalog has the same keys under `copilot.step.*` (SEO-044). */
+export const STEP_LABEL_EN: Record<string, string> = {
+  askRunning: 'Asking the {agent}', askDone: 'Asked the {agent}',
+  bundleRunning: 'Drafting a bundle{quoted}', bundleDone: 'Drafted a bundle{quoted}',
+  knowledgeRunning: 'Searching knowledge', knowledgeDone: 'Searched knowledge',
+  knowledgeRunningQ: 'Searching knowledge for “{q}”', knowledgeDoneQ: 'Searched knowledge for “{q}”',
+  runRunning: 'Running {tool}{quoted}', runDone: 'Ran {tool}{quoted}',
+  lookupRunning: 'Looking up {object}{quoted}', lookupDone: 'Looked up {object}{quoted}',
+  findRunning: 'Finding {object}{quoted}', findDone: 'Found {object}{quoted}',
+  searchRunning: 'Searching {object}{quoted}', searchDone: 'Searched {object}{quoted}',
+  listRunning: 'Listing {object}{quoted}', listDone: 'Listed {object}{quoted}',
+  countRunning: 'Counting {object}{quoted}', countDone: 'Counted {object}{quoted}',
+  summariseRunning: 'Summarising {object}{quoted}', summariseDone: 'Summarised {object}{quoted}',
+  draftRunning: 'Drafting: {action}{quoted}', draftDone: 'Drafted: {action}{quoted}',
+}
+
+/** Translator for step labels: (template key, values) → text. `agent` is the specialist's display name. */
+export type StepLabelT = { step: (key: string, params: Record<string, string>) => string; agent: (id: string, fallback: string) => string }
+
+const fill = (tpl: string, p: Record<string, string>) => tpl.replace(/\{(\w+)\}/g, (m, k: string) => (k in p ? p[k] : m))
+const EN_T: StepLabelT = { step: (k, p) => fill(STEP_LABEL_EN[k] ?? k, p), agent: (_id, fb) => fb }
+
 /** "Searched knowledge for “java”", "Looked up test", "Drafted create test". */
-export function stepLabel(tool: string, args: unknown, running: boolean): string {
+export function stepLabel(tool: string, args: unknown, running: boolean, tr: StepLabelT = EN_T): string {
   const q = argText(args)
   const quoted = q ? ` “${q}”` : ''
+  const st = running ? 'Running' : 'Done'
   if (tool === 'delegate_to_specialist') {
     const a = agentOf(args)
-    return `${running ? 'Asking' : 'Asked'} the ${a?.label.toLowerCase() ?? 'specialist'}`
+    const name = tr.agent(a?.id ?? 'specialist', a?.label ?? 'Specialist')
+    return tr.step(`ask${st}`, { agent: tr === EN_T ? name.toLowerCase() : name })
   }
-  if (tool === 'propose_bundle') return `${running ? 'Drafting' : 'Drafted'} a bundle${quoted}`
+  if (tool === 'propose_bundle') return tr.step(`bundle${st}`, { quoted })
   if (/^search_knowledge$|^search_docs$|knowledge/.test(tool)) {
-    return `${running ? 'Searching' : 'Searched'} knowledge${q ? ` for “${q}”` : ''}`
+    return q ? tr.step(`knowledge${st}Q`, { q }) : tr.step(`knowledge${st}`, {})
   }
   const m = tool.match(/^(get|lookup|find|search|list|count|summari[sz]e|draft|create|update|send|publish|release|delete|invite|schedule|remind|shortlist|record|revoke|assign|move|reject|start|set|moderate|decide|generate|rerun)_(.+)$/)
-  if (!m) return `${running ? 'Running' : 'Ran'} ${humanize(tool)}${quoted}`
+  if (!m) return tr.step(`run${st}`, { tool: humanize(tool), quoted })
   const [, verb, rest] = m
   const object = humanize(rest)
-  const map: Record<string, [string, string]> = {
-    get: ['Looking up', 'Looked up'],
-    lookup: ['Looking up', 'Looked up'],
-    find: ['Finding', 'Found'],
-    search: ['Searching', 'Searched'],
-    list: ['Listing', 'Listed'],
-    count: ['Counting', 'Counted'],
-    summarise: ['Summarising', 'Summarised'],
-    summarize: ['Summarising', 'Summarised'],
-  }
-  if (map[verb]) return `${map[verb][running ? 0 : 1]} ${object}${quoted}`
+  const map: Record<string, string> = { get: 'lookup', lookup: 'lookup', find: 'find', search: 'search', list: 'list', count: 'count', summarise: 'summarise', summarize: 'summarise' }
+  if (map[verb]) return tr.step(`${map[verb]}${st}`, { object, quoted })
   // Write tools only ever draft.
-  return `${running ? 'Drafting' : 'Drafted'}: ${humanize(verb)} ${object}${quoted}`
+  return tr.step(`draft${st}`, { action: `${humanize(verb)} ${object}`, quoted })
 }

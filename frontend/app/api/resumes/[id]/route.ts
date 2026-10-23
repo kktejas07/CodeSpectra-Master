@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isSuperAdminCaller } from '@/lib/route-auth'
 import { resumes } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 
@@ -47,7 +47,7 @@ export async function PATCH(request: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const col = await resumes()
-    const isSuperadmin = gate.user.role === 'superadmin'
+    const isSuperadmin = isSuperAdminCaller(gate.user)
     const doc = await col.findOne(
       isSuperadmin ? { id } : { id, user_id: gate.user.id },
     )

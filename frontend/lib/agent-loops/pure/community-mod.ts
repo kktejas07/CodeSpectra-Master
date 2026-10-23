@@ -56,3 +56,31 @@ export function unansweredQuestions<T extends { kind: string; status: string; re
     return t.kind === 'question' && t.status === 'visible' && t.reply_count === 0 && !t.accepted_reply_id && age >= minHours * 3_600_000 && age <= maxDays * 86_400_000
   }).sort((a, b) => a.created_at.localeCompare(b.created_at))
 }
+
+/**
+ * One scan list from new threads and replies (AGT-037): merged oldest first
+ * (ties by id). Both queries fetch `limit` rows each, so the first `limit`
+ * entries of this list hold every fetched post older than the last of them;
+ * the caller scans at most `limit` and moves its cursor only to the last post
+ * it actually scanned (nextScanCursor), never past posts it did not look at.
+ */
+export function mergeScanList<T extends { at: string; id: string }>(threads: readonly T[], replies: readonly T[]): T[] {
+  return [...threads, ...replies].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
+/**
+ * Cursor after scanning the first `scanned` posts of the merged list (pure):
+ * the newest scanned timestamp, unless an unscanned post shares it (the next
+ * run's `created_at > cursor` query would skip that one) — then the last
+ * strictly older scanned timestamp. Never moves back before `since`.
+ */
+export function nextScanCursor(list: readonly { at: string }[], scanned: number, since: string): string {
+  if (scanned <= 0) return since
+  const last = list[scanned - 1].at
+  let at = last
+  if (list.slice(scanned).some((p) => p.at === last)) {
+    at = since
+    for (let i = scanned - 1; i >= 0; i--) if (list[i].at < last) { at = list[i].at; break }
+  }
+  return at > since ? at : since
+}

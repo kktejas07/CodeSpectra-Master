@@ -34,6 +34,8 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'identity-media-purge', label: 'Identity photo retention', group: 'Platform', everyMinutes: 1440 },
   { id: 'interview-sim-retention', label: 'Mock-interview recording retention', group: 'Platform', everyMinutes: 1440 },
   { id: 'learn', label: 'Learn hub (publish + drafts)', group: 'Content', everyMinutes: 1 },
+  // Its own heartbeat (lib/learn/generate.ts): the daily AI draft, ok or error (AUTO-104).
+  { id: 'learn-daily', label: 'Learn daily AI draft', group: 'Content', everyMinutes: 1440, optional: true },
   { id: 'learn-digest', label: 'Learn weekly digest', group: 'Content', everyMinutes: 10080, optional: true },
   { id: 'events-feed', label: 'Events feed', group: 'Content', everyMinutes: 1 },
   { id: 'analytics', label: 'Analytics rollups', group: 'Content', everyMinutes: 15 },
@@ -64,11 +66,12 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'lti-grade-retry', label: 'LMS grade passback retries', group: 'Platform', everyMinutes: 5 },
   { id: 'company-tests-refresh', label: 'Company test weekly refresh', group: 'Content', everyMinutes: 10080, optional: true },
   { id: 'hiring-analytics-digest', label: 'Hiring analytics weekly digest', group: 'Hiring', everyMinutes: 10080 },
-  // Wave 15 agent loops (lib/agent-loops/registry.ts): switchable in Admin → Agent loops.
-  { id: 'agent-loop:content-qa', label: 'Agent loop: content QA', group: 'Content', everyMinutes: 10080, optional: true },
-  { id: 'agent-loop:seo-gap', label: 'Agent loop: SEO / content gaps', group: 'Content', everyMinutes: 10080, optional: true },
+  // Wave 15 agent loops (lib/agent-loops/registry.ts): switchable in Admin → Agent loops. The loops that are
+  // on by default are watched (AUTO-104); the ops alert drops any loop an admin switched off.
+  { id: 'agent-loop:content-qa', label: 'Agent loop: content QA', group: 'Content', everyMinutes: 10080 },
+  { id: 'agent-loop:seo-gap', label: 'Agent loop: SEO / content gaps', group: 'Content', everyMinutes: 10080 },
   { id: 'agent-loop:community-mod', label: 'Agent loop: community moderator', group: 'Content', everyMinutes: 30, optional: true },
-  { id: 'agent-loop:analytics-insight', label: 'Agent loop: analytics insights', group: 'Platform', everyMinutes: 10080, optional: true },
+  { id: 'agent-loop:analytics-insight', label: 'Agent loop: analytics insights', group: 'Platform', everyMinutes: 10080 },
   { id: 'agent-loop:social-pack', label: 'Agent loop: daily social pack', group: 'Content', everyMinutes: 1440, optional: true },
   // Wave 15 assistants (lib/assistants/tick.ts): each switched on / off in Admin → Assistants.
   { id: 'assistant-revenue', label: 'Revenue and renewal agent (daily proposals)', group: 'Platform', everyMinutes: 1440, optional: true },

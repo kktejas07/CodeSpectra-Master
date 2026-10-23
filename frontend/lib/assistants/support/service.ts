@@ -4,13 +4,14 @@
  * short AI answer in the user's language, or — when AI is off, capped, over
  * budget, the text is flagged by the prompt guard, or the model fails — a
  * deterministic answer: the matching help articles and the user's own facts.
- * Every turn is logged without PII (assistant_runs, user_ref hash).
+ * Every turn is logged without PII (assistant_turns, user_ref hash).
  */
 import 'server-only'
 import type { KnowledgeHit } from '@/lib/agent/contract'
 import { publicCitations, publicHits } from '@/lib/public-ask/policy'
-import { recordRun, takeAiSlot, userRef } from '../store'
+import { loadAnswer, recordRun, saveAnswer, takeAiSlot, userRef } from '../store'
 import { loadFacts, type SupportUser } from './context'
+import { renderFact } from './facts'
 import {
   SUPPORT_SYSTEM, cleanSupportAnswer, pickContexts, shouldOfferEscalation, supportUserMessage, trimHistory, wantsHuman,
   type SupportAsk, type SupportFallback,
@@ -27,6 +28,8 @@ export interface SupportAnswer {
   cited: number[]
   results: ReturnType<typeof publicCitations>
   escalate: boolean
+  /** Server-side copy of the AI answer, quoted on escalation (AGT-040). */
+  answer_id: string | null
 }
 
 export async function askSupport(user: SupportUser, body: SupportAsk, now = new Date()): Promise<SupportAnswer> {
@@ -39,9 +42,12 @@ export async function askSupport(user: SupportUser, body: SupportAsk, now = new 
     loadFacts(user, contexts),
   ])
   const results = publicCitations(hits)
+  // SEO-045: English lines for the model; the fallback card shows the user's language.
+  const factsEn = loaded.facts.map((f) => renderFact(f, 'en'))
   const history = trimHistory(body.history)
   const { scanUntrusted } = await import('@/lib/ai/untrusted-input')
-  const flagged = scanUntrusted([body.q, ...history.filter((m) => m.role === 'user').map((m) => m.text)].join('\n')).flagged
+  // Every history turn comes from the browser, "assistant" ones included: scan them all (AGT-040).
+  const flagged = scanUntrusted([body.q, ...history.map((m) => m.text)].join('\n')).flagged
   const human = wantsHuman(body.q)
 
   let fallback: SupportFallback | null = null
@@ -56,7 +62,7 @@ export async function askSupport(user: SupportUser, body: SupportAsk, now = new 
         const [{ backendComplete }, { platformModelOverrides, extractJson }] = await Promise.all([import('@/lib/ai/backend'), import('@/lib/interviews/ai-mock-engine')])
         const res = await backendComplete({
           systemMessage: SUPPORT_SYSTEM,
-          userMessage: supportUserMessage({ q: body.q, locale: body.locale, hits, facts: loaded.facts, history }),
+          userMessage: supportUserMessage({ q: body.q, locale: body.locale, hits, facts: factsEn, history }),
           modelRole: 'fast', responseFormat: 'json', feature: SUPPORT_FEATURE, userId: user.id,
           // Answers carry the user's own records: never share them through the semantic cache.
           cache: false,
@@ -78,14 +84,17 @@ export async function askSupport(user: SupportUser, body: SupportAsk, now = new 
     counts: { sources: results.length, facts: loaded.facts.length, escalate: escalate ? 1 : 0 },
     user_ref: userRef(user.id), ai: { used: !!answer, fallback },
   })
+  const answerId = answer ? await saveAnswer(user.id, body.q, answer.text) : null
   return {
     mode: answer ? 'ai' : 'fallback', fallback, answer: answer?.text ?? null,
-    facts: answer ? [] : loaded.facts.slice(0, 8), cited: answer?.cited ?? [], results, escalate,
+    facts: answer ? [] : loaded.facts.slice(0, 8).map((f) => renderFact(f, body.locale)), cited: answer?.cited ?? [], results, escalate, answer_id: answerId,
   }
 }
 
 /** Escalate: a support ticket in the user's own name with the question (and the assistant's answer). */
-export async function escalateToTicket(user: SupportUser, input: { q: string; answer?: string; category: string }): Promise<{ id: string }> {
+export async function escalateToTicket(user: SupportUser, input: { q: string; answer_id?: string; category: string }): Promise<{ id: string }> {
+  // The quoted answer is the one this user was actually given (stored server-side), never text from the browser.
+  const stored = input.answer_id ? await loadAnswer(user.id, input.answer_id) : null
   const { getMongoDb } = await import('@/lib/mongodb')
   const { newId, nowIso } = await import('@/lib/db/ids')
   const { ticketSubject } = await import('./policy')
@@ -93,7 +102,7 @@ export async function escalateToTicket(user: SupportUser, input: { q: string; an
   const ticket = {
     id: newId(), user_id: user.id, user_email: user.email,
     subject: ticketSubject(input.q),
-    message: input.answer ? `${input.q}\n\n— Help assistant's answer —\n${input.answer.slice(0, 3000)}` : input.q,
+    message: stored ? `${input.q}\n\n— Help assistant's answer —\n${stored.answer.slice(0, 3000)}` : input.q,
     category: input.category, source: 'assistant', status: 'open', created_at: ts, updated_at: ts,
   }
   await (await getMongoDb()).collection('support_tickets').insertOne(ticket)

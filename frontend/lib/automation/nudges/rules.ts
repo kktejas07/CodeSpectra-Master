@@ -128,6 +128,16 @@ export function checkoutRecoveryStep(order: { status?: string; created_at?: stri
   return step
 }
 
+/** SEC-035: at most one checkout-recovery coupon per person in this many days. */
+export const RECOVERY_COUPON_COOLDOWN_DAYS = 90
+
+/** May this person get a new recovery coupon? `lastIssuedAt` = their newest live recovery coupon. */
+export function recoveryCouponAllowed(lastIssuedAt: string | null | undefined, now: Date): boolean {
+  if (!lastIssuedAt) return true
+  const t = Date.parse(lastIssuedAt)
+  return !Number.isFinite(t) || now.getTime() - t >= RECOVERY_COUPON_COOLDOWN_DAYS * 86_400_000
+}
+
 /** A short, unguessable single-use coupon code (A–Z, 2–9, no look-alikes). */
 export function recoveryCouponCode(rand: () => number = Math.random): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -141,10 +151,16 @@ export function recoveryCouponCode(rand: () => number = Math.random): string {
 export const LICENCE_RENEWAL_DAYS = [30, 7] as const
 export const AUTO_RENEW_NOTICE_DAYS = 3
 
-/** Is this subscription going to be charged automatically at period end? */
-export function autoRenews(sub: { status?: string; billing_mode?: string; cancel_at_period_end?: boolean; past_due?: boolean }): boolean {
+/**
+ * Is this subscription going to be charged automatically at period end? The
+ * one answer shared by plan-expiry ("renew now" — only when it won't renew)
+ * and renewal-nudges ("we'll charge you" — only when it will), AUTO-093.
+ * Stripe renews only while STRIPE_AUTO_RENEW is on (pass stripeAutoRenewEnabled()).
+ */
+export function autoRenews(sub: { status?: string; billing_mode?: string; cancel_at_period_end?: boolean; past_due?: boolean }, stripeAutoRenew = true): boolean {
   if (sub.status !== 'active' || sub.past_due || sub.cancel_at_period_end) return false
-  return sub.billing_mode === 'stripe_subscription' || sub.billing_mode === 'razorpay_subscription'
+  if (sub.billing_mode === 'stripe_subscription') return stripeAutoRenew
+  return sub.billing_mode === 'razorpay_subscription'
 }
 
 // ─── Certificate renewal ────────────────────────────────────────────────────
@@ -291,24 +307,43 @@ export interface SourceHealth {
   id: string
   /** last_run_at already counted (so one pull counts once). */
   seen_run_at: string | null
-  /** consecutive bad pulls (error or nothing fetched) */
+  /** consecutive bad pulls (error, or empty for too long) */
   bad_streak: number
   first_bad_at: string | null
   last_good_at: string | null
   last_error: string | null
   alerted_at: string | null
   disabled_at: string | null
+  /** First of the current run of empty (0 item) pulls — events sources only. */
+  empty_since?: string | null
 }
 
 export const FEED_BAD_STREAK_ALERT = 3
 export const FEED_DISABLE_AFTER_DAYS = 7
+/** An events source that used to return items counts as broken after this many days of 0 items. */
+export const FEED_EMPTY_BAD_AFTER_DAYS = 3
 
-/** Fold the source's latest pull into its health row (no change if that pull was already counted). */
-export function nextSourceHealth(prev: SourceHealth | null, pull: { id: string; last_run_at: string | null; ok: boolean; error: string | null }): SourceHealth {
-  const base: SourceHealth = prev || { id: pull.id, seen_run_at: null, bad_streak: 0, first_bad_at: null, last_good_at: null, last_error: null, alerted_at: null, disabled_at: null }
+/**
+ * Fold the source's latest pull into its health row (no change if that pull was already counted).
+ * `empty`: the pull worked but returned nothing — for a small calendar that's normal, so it only
+ * counts as bad after FEED_EMPTY_BAD_AFTER_DAYS of nothing from a source that returned items before.
+ * A source seen again after it was auto-switched off was switched back on: start fresh (AUTO-103).
+ */
+export function nextSourceHealth(prev: SourceHealth | null, pull: { id: string; last_run_at: string | null; ok: boolean; error: string | null; empty?: boolean }): SourceHealth {
+  const fresh: SourceHealth = { id: pull.id, seen_run_at: null, bad_streak: 0, first_bad_at: null, last_good_at: null, last_error: null, alerted_at: null, disabled_at: null, empty_since: null }
+  const base: SourceHealth = !prev ? fresh : prev.disabled_at ? { ...fresh, seen_run_at: prev.seen_run_at, last_good_at: prev.last_good_at } : prev
   if (!pull.last_run_at || pull.last_run_at === base.seen_run_at) return base
-  if (pull.ok) return { ...base, seen_run_at: pull.last_run_at, bad_streak: 0, first_bad_at: null, last_good_at: pull.last_run_at, last_error: null, alerted_at: null }
-  return { ...base, seen_run_at: pull.last_run_at, bad_streak: base.bad_streak + 1, first_bad_at: base.first_bad_at || pull.last_run_at, last_error: pull.error }
+  const good = (): SourceHealth => ({ ...base, seen_run_at: pull.last_run_at, bad_streak: 0, first_bad_at: null, last_good_at: pull.last_run_at, last_error: null, alerted_at: null, disabled_at: null, empty_since: null })
+  const bad = (error: string | null): SourceHealth => ({ ...base, seen_run_at: pull.last_run_at, bad_streak: base.bad_streak + 1, first_bad_at: base.first_bad_at || pull.last_run_at, last_error: error })
+  if (pull.error && !pull.empty) return bad(pull.error)
+  if (pull.empty) {
+    const since = base.empty_since || pull.last_run_at
+    const neutral: SourceHealth = { ...base, seen_run_at: pull.last_run_at, empty_since: since }
+    if (!base.last_good_at) return neutral
+    const days = (Date.parse(pull.last_run_at) - Date.parse(since)) / DAY
+    return days >= FEED_EMPTY_BAD_AFTER_DAYS ? { ...bad(pull.error || 'No items fetched'), empty_since: since } : neutral
+  }
+  return pull.ok ? good() : bad(pull.error)
 }
 
 export function sourceHealthAction(h: SourceHealth, now: Date, opts: { alertStreak?: number; disableDays?: number } = {}): 'alert' | 'disable' | null {
@@ -369,17 +404,38 @@ export interface AtRiskInput {
   submittedIds: ReadonlySet<string>
   lastActivityAt: string | null
   joinedAt: string
+  /** When the cohort started: someone who enrolled early isn't "quiet" before it began (AUTO-096). */
+  startsAt?: string | null
+  /** Did a live session or an assignment due date fall in the last 7 days? Without one there was nothing to do. */
+  hadRecentWork?: boolean
 }
 
-/** Missed 2+ assignments or no activity for 7 days (counted from joining if never active). */
+/**
+ * Missed 2+ assignments, or no activity for 7 days while there was something to
+ * do (a session or a due assignment in that week). Inactivity is counted from
+ * the last activity, else from the later of joining and the cohort's start.
+ */
 export function cohortRisk(i: AtRiskInput, now: Date): { at_risk: boolean; missed: number; days_inactive: number; reasons: ('missed_assignments' | 'inactive')[] } {
   const missed = i.pastDue.filter((a) => !i.submittedIds.has(a.id)).length
-  const last = Date.parse(i.lastActivityAt || i.joinedAt)
-  const daysInactive = Number.isFinite(last) ? Math.floor((now.getTime() - last) / DAY) : 0
+  const joined = Date.parse(i.joinedAt)
+  const start = Date.parse(String(i.startsAt || ''))
+  const from = Number.isFinite(start) && (!Number.isFinite(joined) || start > joined) ? start : joined
+  const last = i.lastActivityAt ? Date.parse(i.lastActivityAt) : from
+  const daysInactive = Number.isFinite(last) ? Math.max(0, Math.floor((now.getTime() - last) / DAY)) : 0
   const reasons: ('missed_assignments' | 'inactive')[] = []
   if (missed >= 2) reasons.push('missed_assignments')
-  if (daysInactive >= 7) reasons.push('inactive')
+  if (daysInactive >= 7 && i.hadRecentWork !== false) reasons.push('inactive')
   return { at_risk: reasons.length > 0, missed, days_inactive: daysInactive, reasons }
+}
+
+// ─── Queued follow-ups ──────────────────────────────────────────────────────
+
+/** A queued follow-up (e.g. referral reward email) older than this is dropped, not sent late (AUTO-092). */
+export const FOLLOW_UP_MAX_AGE_DAYS = 3
+
+export function followUpTooOld(createdAt: string | null | undefined, now: Date, maxDays = FOLLOW_UP_MAX_AGE_DAYS): boolean {
+  const t = Date.parse(String(createdAt || ''))
+  return Number.isFinite(t) && now.getTime() - t > maxDays * DAY
 }
 
 // ─── Talent invites ─────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@
  */
 import 'server-only'
 import { claimFinding, getFinding, settleFinding } from './store'
-import type { FindingDoc, Proposal } from './types'
+import { effectiveFindingStatus, type FindingDoc, type Proposal } from './types'
 
 export type DecideOutcome = { ok: true; finding: FindingDoc } | { ok: false; status: 404 | 409 | 422; error: string; finding?: FindingDoc }
 
@@ -50,8 +50,13 @@ export async function executeProposal(p: Proposal, actorId: string): Promise<str
       if (!d) throw new Error('News draft not found.')
       // Same as Admin → Signals → Unpublish: the article comes down, the draft returns to review.
       if (d.blog_slug) {
-        await (await blogPosts()).deleteOne({ slug: d.blog_slug })
+        const post = await (await blogPosts()).findOneAndDelete({ slug: d.blog_slug }, { projection: { _id: 0, id: 1 } })
         await revalidateContent('news', d.blog_slug)
+        // Drop it from the RAG index now, not at the nightly sweep (RAG-024).
+        if (post?.id) {
+          const { knowledgeOnNewsPost } = await import('@/lib/rag/hooks')
+          knowledgeOnNewsPost(String(post.id))
+        }
       }
       await col.updateOne({ id: d.id }, { $set: { status: 'pending', updated_at: new Date().toISOString() }, $unset: { blog_slug: '' } })
       return 'Unpublished; back in the news review queue.'
@@ -73,9 +78,11 @@ export async function executeProposal(p: Proposal, actorId: string): Promise<str
   }
 }
 
-export async function decideFinding(id: string, decision: 'apply' | 'dismiss', actor: { id: string }): Promise<DecideOutcome> {
-  const f = await getFinding(id)
-  if (!f) return { ok: false, status: 404, error: 'not_found' }
+export async function decideFinding(id: string, decision: 'apply' | 'dismiss', actor: { id: string }, now = new Date()): Promise<DecideOutcome> {
+  const found = await getFinding(id)
+  if (!found) return { ok: false, status: 404, error: 'not_found' }
+  // A crashed apply leaves "applying" behind; after a few minutes it is open again (AGT-042).
+  const f = { ...found, status: effectiveFindingStatus(found, now) } as FindingDoc
   const { auditAdmin } = await import('@/lib/admin-audit')
   // Applied findings with a reverse action (auto-hidden spam → restore) can still be applied once.
   const reversible = f.status === 'applied' && f.proposal?.action === 'forum_restore'
@@ -93,7 +100,7 @@ export async function decideFinding(id: string, decision: 'apply' | 'dismiss', a
     const { findingsCol } = await import('./store')
     await (await findingsCol()).updateOne({ id, status: 'failed' }, { $set: { status: 'open' } })
   }
-  const claimed = await claimFinding(id)
+  const claimed = await claimFinding(id, now)
   if (!claimed) return { ok: false, status: 409, error: 'already_decided', finding: f }
   try {
     const message = await executeProposal(f.proposal, actor.id)

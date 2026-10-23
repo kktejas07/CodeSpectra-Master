@@ -187,7 +187,7 @@ export function DataTable<T extends { id: string }>({
               value={filterValues[f.key] || 'all'}
               onValueChange={v => { setFilterValues(prev => ({ ...prev, [f.key]: v })); setPage(1) }}
             >
-              <SelectTrigger className="h-9 w-35 text-sm">
+              <SelectTrigger className="h-9 w-35 text-sm" aria-label={f.label}>
                 <SelectValue placeholder={f.label} />
               </SelectTrigger>
               <SelectContent>

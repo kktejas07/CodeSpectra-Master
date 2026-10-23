@@ -291,6 +291,8 @@ export async function executeAction(step: StepDef, cfg: Record<string, unknown>,
         category,
         onceKey: `wf:${env.runId}:${info.key}`,
         dedupe,
+        // Shared per-person budget (AUTO-094): engagement mail counts toward the cap, service mail doesn't.
+        budget: { class: category === 'engagement' ? 'engagement' : 'transactional', source: `workflow:${env.workflowId}` },
         ...(orgName ? { fromName: orgName } : {}),
         reason: T ? `You got this email from an automation set up by ${orgName?.replace(/ via CodeSpectra$/, '') || 'an organisation'} on CodeSpectra.` : 'You got this email from an automation set up by CodeSpectra.',
       })
@@ -311,7 +313,16 @@ export async function executeAction(step: StepDef, cfg: Record<string, unknown>,
       if (!rcpt) return { skipped: 'no WhatsApp consent' }
       await consumeQuotaOnce(T, 'whatsapp', `${env.runId}:${info.key}`)
       return sideEffectOnce(env, info, async () => {
-        const r = await sendWhatsAppTemplate(rcpt, { name: template, language: str('language') || undefined, params }, { userId: userId || null })
+        // Shared per-person budget (AUTO-094): a workflow WhatsApp to a member counts toward their cap.
+        let admit: { commit: () => Promise<void>; release: () => Promise<void> } | null = null
+        if (userId) {
+          const { admitMessage } = await import('@/lib/messaging/budget')
+          const a = await admitMessage({ userId }, { class: 'engagement', source: `workflow:${env.workflowId}` })
+          if (!a.ok) return { skipped: 'recipient reached the message limit' }
+          admit = a
+        }
+        const r = await sendWhatsAppTemplate(rcpt, { name: template, language: str('language') || undefined, params }, { userId: userId || null }).catch(async (e) => { await admit?.release(); throw e })
+        if (admit) await ('ok' in r && r.ok ? admit.commit() : admit.release())
         if ('skipped' in r && r.skipped === 'quiet_hours') return { skipped: 'recipient is in quiet hours' }
         if ('skipped' in r && r.skipped === 'not_configured') return { skipped: 'WhatsApp is not configured' }
         if (!r.ok) throw new Error('error' in r && r.error ? r.error : 'WhatsApp send failed')
@@ -327,8 +338,9 @@ export async function executeAction(step: StepDef, cfg: Record<string, unknown>,
       const safeLink = link.startsWith('/') && !link.startsWith('//') ? link.slice(0, 300) : ''
       if (dry) return { dry_run: true, user_id: u.id, title, message, link: safeLink || null }
       const { notify } = await import('@/lib/notifications')
-      const n = await notify({ user_id: u.id, type: 'automation.message', title, message, link: safeLink || undefined, icon: 'bell', metadata: { workflow_id: env.workflowId } })
-      return { notification_id: n?.id ?? null }
+      // automation.message counts toward the shared per-person cap (AUTO-094); null = held.
+      const n = await notify({ user_id: u.id, type: 'automation.message', budget: { class: 'engagement', source: `workflow:${env.workflowId}` }, title, message, link: safeLink || undefined, icon: 'bell', metadata: { workflow_id: env.workflowId } })
+      return n ? { notification_id: n.id } : { notification_id: null, skipped: 'recipient reached the message limit or the notification failed' }
     }
 
     case 'slack.post':

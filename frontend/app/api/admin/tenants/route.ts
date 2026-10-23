@@ -155,6 +155,8 @@ export async function POST(request: Request) {
       }
 
       admin = { id: adminId, email: adminEmail, role: 'tenant_admin', ...(emailSent ? {} : { email_failed: true }) }
+      // SEC-036: the first organisation admin is the organisation owner (lib/tenant-owner.ts).
+      await col.updateOne({ id: doc.id }, { $set: { owner_user_id: adminId } }).catch(() => undefined)
     }
 
     await auditAdmin(gate.user, 'admin.tenant.create', 'tenant', `tenant/${doc.id}`, `name=${name}${admin ? ` admin=${admin.email}` : ''}`, 'warning')

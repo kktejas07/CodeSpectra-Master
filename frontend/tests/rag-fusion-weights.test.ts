@@ -13,6 +13,16 @@ describe('weighted RRF (RAG-020)', () => {
   it('default weights behave like plain RRF', () => {
     expect(reciprocalRankFusion([['a', 'b'], ['b', 'a']]).map((f) => f.id)).toEqual(['a', 'b'])
   })
+  it('default (RAG-020 audit 6) is keyword-first: the top 3 keep the keyword order, vector-only hits are rescued further down', () => {
+    const { k, vector, keyword } = FUSION_DEFAULTS
+    const kw = Array.from({ length: 25 }, (_, i) => `k${i + 1}`)
+    // The vector list loves keyword #3 and #2 and a page the keyword list never saw.
+    const vec = ['k3', 'v-only', 'k2']
+    const ids = reciprocalRankFusion([vec, kw], k, [vector, keyword]).map((f) => f.id)
+    expect(ids.slice(0, 3)).toEqual(['k1', 'k2', 'k3'])
+    expect(ids.indexOf('v-only')).toBeGreaterThan(10)
+    expect(ids).toContain('v-only')
+  })
   it('env overrides are clamped and fall back to the defaults', () => {
     expect(fusionConfig({})).toEqual(FUSION_DEFAULTS)
     expect(fusionConfig({ RAG_RRF_K: '0', RAG_RRF_KEYWORD_WEIGHT: '99', RAG_RRF_VECTOR_WEIGHT: 'x' })).toEqual({ k: 1, keyword: 10, vector: FUSION_DEFAULTS.vector })

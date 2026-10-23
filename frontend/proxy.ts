@@ -135,6 +135,14 @@ export async function proxy(request: NextRequest) {
     if (impersonationBlocked(request.method, pathname, request.cookies.get(SESSION_COOKIE)?.value)) {
       return NextResponse.json({ error: 'Not available while viewing as another user. Stop impersonating first.' }, { status: 403 })
     }
+    // SEC-029: an admin who owes 2FA gets no /api/admin/** at all, whatever
+    // guard the route uses (lib/admin-api-2fa.ts; fails open to the route guard).
+    const { isAdminApiPath, adminApi2faBlocked, ADMIN_2FA_BODY } = await import('@/lib/admin-api-2fa')
+    if (isAdminApiPath(pathname)) {
+      if (await adminApi2faBlocked({ sessionCookie: request.cookies.get(SESSION_COOKIE)?.value ?? null, authorization: request.headers.get('authorization') })) {
+        return NextResponse.json(ADMIN_2FA_BODY, { status: 403 })
+      }
+    }
   }
 
   // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)

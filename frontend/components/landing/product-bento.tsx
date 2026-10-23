@@ -6,7 +6,8 @@
  *
  * Visuals are small HTML/CSS fragments of the real UI inside each card's well
  * (no images → no LCP or CLS cost). Sample content inside wells (a question,
- * an interview line) is decorative and stays in English, like ResultsSheet.
+ * an interview line) is decorative; its human sentences come from landing.json
+ * so /hi and /te tiles read in one language (SEO-048). Code stays English.
  */
 import { Bot, Building2, CalendarClock, GraduationCap, Languages, ListChecks, MessageCircle, ShieldCheck, Swords, BadgeCheck, Users } from 'lucide-react'
 import { BentoAction, BentoBody, BentoCard, BentoCta, BentoFeature, BentoGrid, BentoIcon, BentoProof, BentoText, BentoTitle, BentoWell, Meter } from '@/components/bento'
@@ -27,29 +28,31 @@ export const PLATFORM_COUNTS = {
 
 /* ── Well visuals ────────────────────────────────────────────────────── */
 
-function QuestionStack() {
+interface QuestionSample { progress: string; points: string; question: string; options: string[] }
+
+function QuestionStack({ sample }: { sample: QuestionSample }) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center p-5" lang="en">
+    <div className="absolute inset-0 flex items-center justify-center p-5">
       {/* back sheets: a code question and an SQL question peeking out */}
-      <div className="absolute left-1/2 top-1/2 w-[78%] max-w-[360px] -translate-x-[54%] -translate-y-[58%] -rotate-6 rounded-2xl border border-border bg-card/80 p-4 shadow-sm">
+      <div className="absolute left-1/2 top-1/2 w-[78%] max-w-[360px] -translate-x-[54%] -translate-y-[58%] -rotate-6 rounded-2xl border border-border bg-card/80 p-4 shadow-sm" lang="en">
         <div className="space-y-1.5 font-mono text-[11px] leading-relaxed text-muted-foreground">
           <p><span className="text-primary">def</span> two_sum(nums, target):</p>
           <p className="pl-4">seen = {'{}'}</p>
           <p className="pl-4"><span className="text-primary">for</span> i, n <span className="text-primary">in</span> enumerate(nums):</p>
         </div>
       </div>
-      <div className="absolute left-1/2 top-1/2 w-[78%] max-w-[360px] -translate-x-[46%] -translate-y-[52%] rotate-3 rounded-2xl border border-border bg-card/90 p-4 shadow-sm">
+      <div className="absolute left-1/2 top-1/2 w-[78%] max-w-[360px] -translate-x-[46%] -translate-y-[52%] rotate-3 rounded-2xl border border-border bg-card/90 p-4 shadow-sm" lang="en">
         <p className="font-mono text-[11px] text-muted-foreground"><span className="text-primary">SELECT</span> name, score <span className="text-primary">FROM</span> results</p>
       </div>
       {/* front sheet: a multiple-choice question mid-answer */}
       <div className="relative w-[82%] max-w-[380px] rounded-2xl border border-border bg-card p-4 shadow-[0_12px_30px_-16px_rgba(15,23,41,0.35)]">
         <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
-          <span>Question 4 of 20</span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">3 pts</span>
+          <span>{sample.progress}</span>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">{sample.points}</span>
         </div>
-        <p className="mt-2 text-sm font-semibold text-foreground">What does git rebase do?</p>
+        <p className="mt-2 text-sm font-semibold text-foreground">{sample.question}</p>
         <ul className="mt-3 space-y-1.5 text-xs">
-          {['Merges two branches with a merge commit', 'Replays your commits on top of another base', 'Deletes the remote branch'].map((o, i) => (
+          {sample.options.map((o, i) => (
             <li key={o} className={cn('flex items-center gap-2 rounded-lg border px-2.5 py-1.5', i === 1 ? 'border-primary bg-primary/8 text-foreground' : 'border-border text-muted-foreground')}>
               <span className={cn('h-3 w-3 shrink-0 rounded-full border', i === 1 ? 'border-[4px] border-primary' : 'border-muted-foreground/50')} />
               <span className="truncate">{o}</span>
@@ -61,11 +64,11 @@ function QuestionStack() {
   )
 }
 
-function InterviewVisual({ ready }: { ready: string }) {
+function InterviewVisual({ ready, question }: { ready: string; question: string }) {
   return (
     <div className="absolute inset-0 grid grid-cols-[1fr_auto] items-center gap-4 p-4 sm:p-5">
-      <div className="min-w-0 space-y-2" lang="en">
-        <p className="max-w-[260px] rounded-2xl rounded-tl-md border border-border bg-card px-3 py-2 text-xs text-foreground shadow-sm">How would you design a URL shortener that handles a million links a day?</p>
+      <div className="min-w-0 space-y-2">
+        <p className="max-w-[260px] rounded-2xl rounded-tl-md border border-border bg-card px-3 py-2 text-xs text-foreground shadow-sm">{question}</p>
         <div className="ml-auto flex w-fit items-center gap-[3px] rounded-2xl rounded-tr-md bg-primary px-3 py-2.5 text-primary-foreground">
           {[6, 12, 18, 10, 16, 8, 14, 20, 9, 13, 7].map((h, i) => (
             <span key={i} className="w-[3px] rounded-full bg-current" style={{ height: h }} />
@@ -167,14 +170,14 @@ function PassportVisual({ levels, verified }: { levels: string[]; verified: stri
   )
 }
 
-function CampusVisual({ drive, eligible }: { drive: string; eligible: string }) {
+function CampusVisual({ drive, eligible, role, backlogs }: { drive: string; eligible: string; role: string; backlogs: string }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center p-4">
       <div className="w-full max-w-[260px] rounded-2xl border border-border bg-card p-3.5 shadow-sm">
         <p className="text-[11px] font-medium text-muted-foreground">{drive}</p>
-        <p className="mt-0.5 text-sm font-semibold text-foreground" lang="en">Graduate engineer trainee</p>
-        <div className="mt-3 flex flex-wrap gap-1.5" lang="en">
-          {['CGPA ≥ 7.0', '0 backlogs', 'CSE · ECE'].map((c) => (
+        <p className="mt-0.5 text-sm font-semibold text-foreground">{role}</p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {['CGPA ≥ 7.0', backlogs, 'CSE · ECE'].map((c) => (
             <span key={c} className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-foreground">{c}</span>
           ))}
         </div>
@@ -187,7 +190,7 @@ function CampusVisual({ drive, eligible }: { drive: string; eligible: string }) 
   )
 }
 
-function MentorsVisual({ slot }: { slot: string }) {
+function MentorsVisual({ slot, minutes }: { slot: string; minutes: string }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4">
       <div className="flex -space-x-2" aria-hidden>
@@ -198,7 +201,7 @@ function MentorsVisual({ slot }: { slot: string }) {
       <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[11px] shadow-sm">
         <CalendarClock className="h-3.5 w-3.5 text-primary" />
         <span className="font-medium text-foreground">{slot}</span>
-        <span className="tabular-nums text-muted-foreground">45 min</span>
+        <span className="tabular-nums text-muted-foreground">{minutes}</span>
       </div>
       <div className="flex gap-1.5 text-[11px] tabular-nums" lang="en">
         {['10:00', '14:30', '18:00'].map((t, i) => (
@@ -209,12 +212,10 @@ function MentorsVisual({ slot }: { slot: string }) {
   )
 }
 
-function WhatsappVisual({ correct }: { correct: string }) {
+function WhatsappVisual({ correct, question }: { correct: string; question: string }) {
   return (
     <div className="absolute inset-0 flex flex-col justify-center gap-2 p-4">
-      <p className="max-w-[85%] rounded-2xl rounded-tl-md border border-border bg-card px-3 py-2 text-[11px] text-foreground shadow-sm" lang="en">
-        Q. Which data structure gives O(1) average lookup by key? A) Array B) Hash map C) Linked list
-      </p>
+      <p className="max-w-[85%] rounded-2xl rounded-tl-md border border-border bg-card px-3 py-2 text-[11px] text-foreground shadow-sm">{question}</p>
       <p className="ml-auto rounded-2xl rounded-tr-md bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground">B</p>
       <p className="max-w-[85%] rounded-2xl rounded-tl-md border border-border bg-card px-3 py-2 text-[11px] text-foreground shadow-sm">{correct}</p>
     </div>
@@ -240,13 +241,19 @@ export function ProductBento({ locale }: { locale: Locale }) {
   const chips = [t('landing.bentoChipMcq'), t('landing.bentoChipCoding'), 'SQL', t('landing.bentoChipMatching'), t('landing.bentoChipHotspot'), t('landing.bentoChipVideo'), t('landing.bentoChipEssay'), t('landing.bentoChipTyping')]
   const levels = [t('landing.bentoLevelBeginner'), t('landing.bentoLevelIntermediate'), t('landing.bentoLevelAdvanced'), t('landing.bentoLevelExpert')]
   const checks = [t('public.bentoCheckFace'), t('public.bentoCheckTabs'), t('public.bentoCheckPaste')]
+  const sample: QuestionSample = {
+    progress: t('landing.bentoSampleProgress', { n: 4, total: 20 }),
+    points: t('landing.bentoSamplePoints', { n: 3 }),
+    question: t('landing.bentoSampleQuestion'),
+    options: [t('landing.bentoSampleOptA'), t('landing.bentoSampleOptB'), t('landing.bentoSampleOptC')],
+  }
 
   return (
     <BentoGrid cols={6}>
       {/* The one big card: the assessment itself */}
       <BentoCard span={3} rows={2} smSpan={2} href={lp('/features')}>
         <BentoWell className="h-64 sm:h-72 lg:h-auto lg:flex-1 lg:min-h-80">
-          <QuestionStack />
+          <QuestionStack sample={sample} />
         </BentoWell>
         <BentoBody className="flex-none">
           <div className="flex items-center gap-3">
@@ -270,7 +277,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         icon={<Bot />}
         title={t('landing.bentoInterviewTitle')}
         text={t('landing.bentoInterviewBody')}
-        visual={<InterviewVisual ready={t('landing.bentoInterviewReady')} />}
+        visual={<InterviewVisual ready={t('landing.bentoInterviewReady')} question={t('landing.bentoSampleInterviewQ')} />}
         wellClassName="h-36 sm:h-40"
       />
 
@@ -320,7 +327,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         icon={<GraduationCap />}
         title={t('landing.bentoCampusTitle')}
         text={t('landing.bentoCampusBody')}
-        visual={<CampusVisual drive={t('landing.bentoCampusDrive')} eligible={t('landing.bentoCampusEligible')} />}
+        visual={<CampusVisual drive={t('landing.bentoCampusDrive')} eligible={t('landing.bentoCampusEligible')} role={t('landing.bentoSampleRole')} backlogs={t('landing.bentoSampleBacklogs')} />}
       />
 
       <BentoFeature
@@ -329,7 +336,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         icon={<Users />}
         title={t('landing.bentoMentorsTitle')}
         text={t('landing.bentoMentorsBody')}
-        visual={<MentorsVisual slot={t('landing.bentoMentorsSlot')} />}
+        visual={<MentorsVisual slot={t('landing.bentoMentorsSlot')} minutes={t('landing.bentoSampleMinutes', { n: 45 })} />}
       />
 
       <BentoFeature
@@ -339,7 +346,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         icon={<MessageCircle />}
         title={t('landing.bentoWhatsappTitle')}
         text={t('landing.bentoWhatsappBody')}
-        visual={<WhatsappVisual correct={t('landing.bentoWhatsappCorrect')} />}
+        visual={<WhatsappVisual correct={t('landing.bentoWhatsappCorrect')} question={t('landing.bentoSampleWhatsappQ')} />}
       />
 
       <BentoFeature

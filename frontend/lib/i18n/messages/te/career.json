@@ -870,5 +870,14 @@
   "rbTemplate:minimal": "మినిమల్",
   "rbTemplate:elegant": "ఎలిగెంట్",
   "rbTemplate:professional": "ప్రొఫెషనల్",
-  "rbTemplate:creative": "క్రియేటివ్"
+  "rbTemplate:creative": "క్రియేటివ్",
+  "assignments": "అసైన్‌మెంట్లు",
+  "assignmentsHint": "ప్లేస్‌మెంట్ కోపైలట్ నుండి ఇచ్చిన కంపెనీ ప్రాక్టీస్ టెస్టులు, ఎవరు పూర్తి చేశారు. అసైన్‌మెంట్ తర్వాత ఒక ప్రయత్నం పూర్తి చేస్తే విద్యార్థి పూర్తి చేసినట్లు.",
+  "noAssignments": "ఇంకా అసైన్‌మెంట్లు లేవు",
+  "noAssignmentsDesc": "విద్యార్థుల బృందానికి కంపెనీ ప్రాక్టీస్ టెస్ట్ ఇవ్వమని ప్లేస్‌మెంట్ కోపైలట్‌ను అడగండి.",
+  "couldntLoadAssignments": "అసైన్‌మెంట్లు లోడ్ కాలేదు",
+  "assignedOn": "{date}న ఇచ్చారు",
+  "completedOf": "{total}లో {done} పూర్తి చేశారు",
+  "startedCount": "{count} మొదలుపెట్టారు",
+  "inProgress": "జరుగుతోంది"
 }

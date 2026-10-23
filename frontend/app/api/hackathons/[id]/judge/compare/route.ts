@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
+import { isAdminCaller } from '@/lib/route-auth'
 import { hackathons, hackathonSubmissions } from '@/lib/db/qr-events'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
@@ -114,7 +115,7 @@ export async function POST(
   if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
-  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  const isAdmin = isAdminCaller(user) // SEC-029: admin 2FA owed → judge rights only
   const isJudge = (hk.judges || []).includes(user.id)
   if (!isAdmin && !isJudge) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })

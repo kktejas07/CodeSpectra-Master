@@ -5,6 +5,8 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import type { ProposalBundle, ProposedAction } from '@/lib/agent/contract'
 import type { AgentLoopEvent } from '@/lib/agent/run'
 import { applyEvent, itemsFromMessages } from './transcript'
+import { useAdminT } from '@/lib/i18n/admin'
+import { useApiError } from '@/lib/i18n/use-api-error'
 import type { ActionMap, AgentStatus, BundleMap, ConversationSummary, StoredMessage, UiItem } from './types'
 
 type StreamEvent =
@@ -12,12 +14,14 @@ type StreamEvent =
   | { type: 'conversation'; id: string; title: string; created: boolean; tenantId?: string | null }
   | { type: 'model'; provider: string; model: string }
 
-async function errorOf(res: Response): Promise<string> {
+type ApiErr = (body: unknown, fallback?: string) => string
+
+/** SEO-044: API errors go through useApiError (code + params → the admin's language). */
+async function errorOf(res: Response, apiError: ApiErr, fallback: string): Promise<string> {
   try {
-    const j = (await res.json()) as { error?: string }
-    return j.error || `Request failed (${res.status})`
+    return apiError(await res.json(), fallback)
   } catch {
-    return `Request failed (${res.status})`
+    return fallback
   }
 }
 
@@ -39,6 +43,11 @@ export function useAgentChat() {
   const activeRef = useRef<string | null>(null)
   activeRef.current = activeId
   const isSuper = status?.role === 'superadmin'
+  const { t } = useAdminT()
+  const apiError = useApiError()
+  // Refs so the callbacks below keep stable identities when the language catalog loads.
+  const i18n = useRef({ t, apiError })
+  i18n.current = { t, apiError }
 
   const refreshList = useCallback(async () => {
     try {
@@ -73,7 +82,7 @@ export function useAgentChat() {
     try {
       const r = await fetch(`/api/admin/agent/conversations/${encodeURIComponent(id)}`, { credentials: 'include', cache: 'no-store' })
       if (!r.ok) {
-        setError(await errorOf(r))
+        setError(await errorOf(r, i18n.current.apiError, i18n.current.t('copilot.requestFailed')))
         return
       }
       const d = (await r.json()) as { conversation?: { tenant_id?: string | null }; messages: StoredMessage[]; actions: ProposedAction[]; bundles?: ProposalBundle[] }
@@ -83,7 +92,7 @@ export function useAgentChat() {
       setActions(Object.fromEntries((d.actions ?? []).map((a) => [a.id, a])))
       setBundles(Object.fromEntries((d.bundles ?? []).map((b) => [b.id, b])))
     } catch {
-      setError('Could not load this conversation.')
+      setError(i18n.current.t('copilot.loadConvFailed'))
     } finally {
       setLoadingConv(false)
     }
@@ -111,7 +120,7 @@ export function useAgentChat() {
         signal: ac.signal,
       })
       if (!res.ok || !res.body) {
-        const msg = res.status === 402 ? 'You are out of AI credits. They refresh with your plan each month.' : await errorOf(res)
+        const msg = res.status === 402 ? i18n.current.t('copilot.outOfCredits') : await errorOf(res, i18n.current.apiError, i18n.current.t('copilot.requestFailed'))
         // 429 carries the budget / rate-limit reason from the server.
         update((it) => ({ ...it, streaming: false, error: msg }))
         return
@@ -153,7 +162,7 @@ export function useAgentChat() {
         }
       }
     } catch (e) {
-      if ((e as Error)?.name !== 'AbortError') update((it) => ({ ...it, error: 'The connection dropped. Try again.' }))
+      if ((e as Error)?.name !== 'AbortError') update((it) => ({ ...it, error: i18n.current.t('copilot.connectionDropped') }))
     } finally {
       update((it) => ({ ...it, streaming: false }))
       setStreaming(false)
@@ -169,7 +178,7 @@ export function useAgentChat() {
     const r = await csrfFetch(`/api/admin/agent/actions/${encodeURIComponent(id)}/${verb}`, { method: 'POST' })
     const d = (await r.json().catch(() => ({}))) as { action?: ProposedAction; error?: string }
     if (d.action) setActions((prev) => ({ ...prev, [id]: d.action! }))
-    return r.ok ? null : d.error || `Request failed (${r.status})`
+    return r.ok ? null : i18n.current.apiError(d, i18n.current.t('copilot.requestFailed'))
   }, [])
 
   /** Confirm / cancel a whole bundle: steps run in order and stop at the first failure. */
@@ -179,14 +188,14 @@ export function useAgentChat() {
     if (d.bundle) setBundles((prev) => ({ ...prev, [id]: d.bundle! }))
     if (d.actions?.length) setActions((prev) => ({ ...prev, ...Object.fromEntries(d.actions!.map((a) => [a.id, a])) }))
     if (verb === 'confirm') void refreshStatus()
-    return r.ok ? null : d.error || `Request failed (${r.status})`
+    return r.ok ? null : i18n.current.apiError(d, i18n.current.t('copilot.requestFailed'))
   }, [refreshStatus])
 
   /** The tool's parameter schema + editable args of a pending proposal (AGT-005 form editor). */
   const loadEditForm = useCallback(async (id: string): Promise<{ schema: Record<string, unknown> | null; args: Record<string, unknown> } | string> => {
     const r = await fetch(`/api/admin/agent/actions/${encodeURIComponent(id)}`, { credentials: 'include', cache: 'no-store' })
     const d = (await r.json().catch(() => ({}))) as { schema?: Record<string, unknown> | null; editable_args?: Record<string, unknown>; error?: string }
-    if (!r.ok) return d.error || `Request failed (${r.status})`
+    if (!r.ok) return i18n.current.apiError(d, i18n.current.t('copilot.requestFailed'))
     return { schema: d.schema ?? null, args: d.editable_args ?? {} }
   }, [])
 
@@ -199,7 +208,7 @@ export function useAgentChat() {
     const d = (await r.json().catch(() => ({}))) as { action?: ProposedAction; error?: string }
     if (d.action) setActions((prev) => ({ ...prev, [id]: d.action! }))
     void refreshStatus()
-    return r.ok ? null : d.error || `Request failed (${r.status})`
+    return r.ok ? null : i18n.current.apiError(d, i18n.current.t('copilot.requestFailed'))
   }, [refreshStatus])
 
   const rename = useCallback(async (id: string, title: string) => {

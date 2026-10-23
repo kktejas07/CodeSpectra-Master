@@ -15,15 +15,13 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
+import { gateErrorBody, isAdminCaller, requireAdmin } from '@/lib/route-auth'
 import { hackathons, nowIso, type HackathonDoc } from '@/lib/db/qr-events'
 import { eventListTenantFilter } from '@/lib/hackathons/tenant-scope'
 import { createHackathon, computeHackathonStatus as computeStatus } from '@/lib/services/hackathons'
 
 export const runtime = 'nodejs'
 
-function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'tenant_admin'].includes((role || '').toLowerCase())
-}
 
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
@@ -32,7 +30,7 @@ export async function GET(req: NextRequest) {
   // Company admins: own organization only. Superadmin: everything, or ?tenant=global|<id>.
   const tenantFilter = eventListTenantFilter(user, req.nextUrl.searchParams.get('tenant'))
   const filter: Record<string, unknown> = { ...tenantFilter }
-  if (!user || !isAdmin(user.role)) {
+  if (!isAdminCaller(user)) { // SEC-029
     filter.status = { $ne: 'draft' as const }
   }
   if (isJudgeFilter && user) {
@@ -62,15 +60,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
-  // A tenant admin without a tenant would create an unowned (global) event.
-  if (user.role === 'tenant_admin' && !user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  // SEC-029: shared guard (admin 2FA; a tenant admin without a tenant is refused,
+  // so no unowned global event can be created).
+  const gate = await requireAdmin()
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
+  const user = gate.user
 
   let body: Partial<HackathonDoc> = {}
   try {

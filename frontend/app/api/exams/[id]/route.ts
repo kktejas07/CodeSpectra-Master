@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller } from '@/lib/route-auth'
 import { exams } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { getMongoDb } from '@/lib/mongodb'
@@ -110,7 +110,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+  if (!isAdminCaller(user)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await params

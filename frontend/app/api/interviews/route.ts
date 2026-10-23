@@ -1,6 +1,6 @@
 import { formatDateTime } from '@/lib/format-datetime'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, type APIUser } from '@/lib/route-auth'
+import { requireAuth, type APIUser, isAdminCaller, isSuperAdminCaller } from '@/lib/route-auth'
 import { interviewSessions, createInterviewSession, newId, nowIso } from '@/lib/db/interviews'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 import { getMongoDb } from '@/lib/mongodb'
@@ -22,9 +22,9 @@ export async function GET(req: NextRequest) {
   const role = gate.user.role
   const userId = gate.user.id
   const col = await interviewSessions()
-  const filter: Record<string, unknown> = role === 'superadmin'
+  const filter: Record<string, unknown> = isSuperAdminCaller(gate.user) // SEC-029
     ? {}
-    : role === 'tenant_admin'
+    : role === 'tenant_admin' && isAdminCaller(gate.user)
       ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
       : { $or: [{ interviewer_id: userId }, { candidate_id: userId }] }
 
@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
  * not affected. Returns the tenant the session belongs to.
  */
 async function interviewCreatorTenant(user: APIUser): Promise<{ ok: true; tenantId: string | null } | { ok: false }> {
-  if (user.role === 'superadmin') return { ok: true, tenantId: user.tenantId || null }
-  if (user.role === 'tenant_admin' && user.tenantId) return { ok: true, tenantId: user.tenantId }
+  if (isSuperAdminCaller(user)) return { ok: true, tenantId: user.tenantId || null }
+  if (user.role === 'tenant_admin' && isAdminCaller(user) && user.tenantId) return { ok: true, tenantId: user.tenantId }
   try {
     const actor = await resolveActorFor(user)
     if (actor && actor.role !== 'client') return { ok: true, tenantId: actor.tenantId }

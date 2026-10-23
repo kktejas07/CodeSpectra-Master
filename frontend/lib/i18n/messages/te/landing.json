@@ -79,5 +79,16 @@
   "bentoProofFormats": "పోటీ ఫార్మాట్లు",
   "bentoProofLanguages": "భాషలు",
   "bentoCtaTitle": "ఒక టెస్ట్‌తో మొదలుపెట్టండి",
-  "bentoCtaBody": "లెర్నర్‌గా ప్రాక్టీస్ చేయండి, లేదా పైలట్ బుక్ చేసి మీ తదుపరి బ్యాచ్ అభ్యర్థులను స్క్రీన్ చేయండి."
+  "bentoCtaBody": "లెర్నర్‌గా ప్రాక్టీస్ చేయండి, లేదా పైలట్ బుక్ చేసి మీ తదుపరి బ్యాచ్ అభ్యర్థులను స్క్రీన్ చేయండి.",
+  "bentoSampleProgress": "ప్రశ్న {n} / {total}",
+  "bentoSamplePoints": "{n} మార్కులు",
+  "bentoSampleQuestion": "git rebase ఏమి చేస్తుంది?",
+  "bentoSampleOptA": "మెర్జ్ కమిట్‌తో రెండు బ్రాంచ్‌లను కలుపుతుంది",
+  "bentoSampleOptB": "మీ కమిట్‌లను మరో బేస్ పైన మళ్లీ వర్తింపజేస్తుంది",
+  "bentoSampleOptC": "రిమోట్ బ్రాంచ్‌ను తొలగిస్తుంది",
+  "bentoSampleInterviewQ": "రోజుకు పది లక్షల లింక్‌లను నిర్వహించే URL షార్ట్‌నర్‌ను మీరు ఎలా డిజైన్ చేస్తారు?",
+  "bentoSampleRole": "గ్రాడ్యుయేట్ ఇంజనీర్ ట్రైనీ",
+  "bentoSampleBacklogs": "0 బ్యాక్‌లాగ్‌లు",
+  "bentoSampleMinutes": "{n} నిమి",
+  "bentoSampleWhatsappQ": "ప్ర. key ద్వారా సగటున O(1) లుకప్ ఇచ్చే డేటా స్ట్రక్చర్ ఏది? A) అరే B) హ్యాష్ మ్యాప్ C) లింక్డ్ లిస్ట్"
 }

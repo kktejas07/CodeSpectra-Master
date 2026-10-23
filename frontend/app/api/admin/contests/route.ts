@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { contestPhase } from '@/lib/contests/config'
 import { getContestSettings, listAdminContests, saveContestSettings } from '@/lib/contests/service'
 import { guarded, readJson, respond, unauthorized, withUser } from '@/lib/contests/http'
+import { isSuperAdminCaller } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
       id: c.id, slug: c.slug, title: c.title, format: c.format, status: c.status, visibility: c.visibility, phase: contestPhase(c),
       starts_at: c.schedule.starts_at, ends_at: c.schedule.ends_at, ready: !c.config_errors?.length, results_released: c.results_released,
     }))
-    return NextResponse.json({ items, settings: user.role === 'superadmin' ? await getContestSettings() : null })
+    return NextResponse.json({ items, settings: isSuperAdminCaller(user) ? await getContestSettings() : null })
   })
 }
 

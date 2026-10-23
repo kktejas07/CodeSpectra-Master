@@ -11,7 +11,7 @@ import { getAppOrigin } from '@/lib/app-origin'
 import { emit } from '../events'
 import { cancelJobs, scheduleJob } from '../jobs'
 import { sendAutomationEmail } from '../mailer'
-import { claimOnce } from '../store'
+import { claimOnce, releaseClaim } from '../store'
 import { inactivityBucket, INACTIVE_STEPS, linkedInAddUrl, localHour } from './rules'
 import type { SystemAutomation } from './types'
 
@@ -205,8 +205,9 @@ export async function runStreakSaver(now = new Date()): Promise<{ nudged: number
     const lh = localHour(now, tz.get(uid) || 'UTC')
     if (!(lh >= 20 || utcHour >= 21)) continue
     if (!(await claimOnce(`streak:${uid}:${today}`))) continue
-    await notify({ user_id: uid, type: 'streak.saver', title: 'Keep your streak alive', message: 'Solve one problem before midnight UTC to keep your streak going.', title_i18n: { key: 'streak.title' }, message_i18n: { key: 'streak.message' }, link: '/dashboard/arena', icon: 'flame' })
-    nudged++
+    // Engagement nudge: counts toward the shared per-person cap (AUTO-094); notify returns null when held.
+    const n = await notify({ user_id: uid, type: 'streak.saver', budget: { class: 'engagement', topic: 'streak-saver', object: today, source: 'streak-saver' }, title: 'Keep your streak alive', message: 'Solve one problem before midnight UTC to keep your streak going.', title_i18n: { key: 'streak.title' }, message_i18n: { key: 'streak.message' }, link: '/dashboard/arena', icon: 'flame' })
+    if (n) nudged++
   }
   return { nudged }
 }
@@ -237,15 +238,22 @@ export async function runCertificateExpiry(now = new Date()): Promise<{ reminded
   const db = await getMongoDb()
   const rows = (await db.collection('certification_attempts').find({
     passed: true, revoked_at: { $in: [null, undefined] },
+    // Renewed (superseded) rows are not expiring; proctored pro-certs (issue_key pcert:…) have
+    // their own 60 / 14 / 1-day ladder in cert-renewal (AUTO-095).
+    superseded_by: { $in: [null, undefined] },
+    issue_key: { $not: /^pcert:/ },
     expires_at: { $gt: now.toISOString(), $lte: new Date(now.getTime() + 30 * 86_400_000).toISOString() },
   } as never, { projection: { id: 1, user_id: 1, expires_at: 1, cert_snapshot: 1 } }).limit(2000).toArray()) as Doc[]
   const { notify } = await import('@/lib/notifications')
   let reminded = 0
   for (const c of rows) {
-    if (!(await claimOnce(`cert-exp:${String(c.id)}:${String(c.expires_at)}`))) continue
+    const expKey = `cert-exp:${String(c.id)}:${String(c.expires_at)}`
+    if (!(await claimOnce(expKey))) continue
     const title = String((c.cert_snapshot as Doc | undefined)?.title || 'Your certificate')
-    await notify({ user_id: String(c.user_id), type: 'certification.expiring', title: `${title} expires soon`, message: `It expires on ${new Date(String(c.expires_at)).toUTCString().slice(0, 16)}. Retake it to keep it current.`, title_i18n: { key: 'certExpiring.title', params: { title } }, message_i18n: { key: 'certExpiring.message', params: { date: new Date(String(c.expires_at)).toUTCString().slice(0, 16) } }, link: '/dashboard/certifications', icon: 'clock' })
-    reminded++
+    // Deadline reminder through the shared budget (certification.expiring is a capped type).
+    const n = await notify({ budget: { class: 'deadline', topic: 'cert-expiry', object: `${String(c.id)}:${String(c.expires_at).slice(0, 10)}`, source: 'certificate-follow-up' }, user_id: String(c.user_id), type: 'certification.expiring', title: `${title} expires soon`, message: `It expires on ${new Date(String(c.expires_at)).toUTCString().slice(0, 16)}. Retake it to keep it current.`, title_i18n: { key: 'certExpiring.title', params: { title } }, message_i18n: { key: 'certExpiring.message', params: { date: new Date(String(c.expires_at)).toUTCString().slice(0, 16) } }, link: '/dashboard/certifications', icon: 'clock' })
+    if (n) reminded++
+    else await releaseClaim(expKey) // held by the cap (or failed): try again tomorrow
   }
   return { reminded }
 }

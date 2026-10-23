@@ -17,11 +17,12 @@ import { publicT, type PublicTranslator } from '@/lib/i18n/public-server'
 
 export type SP = Promise<Record<string, string | string[] | undefined>>
 const catName = (t: PublicTranslator, c: { id: string; label: string }) => t.dyn(`hubs.storeCat:${c.id}`, c.label)
-const cardLabels = (t: PublicTranslator): ProductCardLabels | undefined => t.locale === 'en' ? undefined : {
+export const cardLabels = (t: PublicTranslator): ProductCardLabels | undefined => t.locale === 'en' ? undefined : {
   kind: { physical: t('hubs.storeShips'), digital: t('hubs.storeInstant'), service: t('hubs.storeBook') },
   soldOut: t('hubs.storeSoldOut'),
   by: (name) => t('public.byName', { name }),
   stars: (value) => t('hubs.storeStars', { value }),
+  href: (slug) => localizedPath(`/marketplace/p/${slug}`, t.locale),
 }
 
 /**

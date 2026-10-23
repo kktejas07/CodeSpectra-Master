@@ -14,7 +14,7 @@
  * Admin-only (superadmin or tenant_admin).
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/api-auth'
+import { gateErrorBody, requireSuperAdmin } from '@/lib/route-auth'
 import {
   CATEGORY_ORDER,
   CATEGORY_LABEL,
@@ -31,20 +31,14 @@ const DEFAULT_PAGE_SIZE = 20
 
 // The AI inventory is platform-wide (no tenant scoping): superadmin only,
 // matching the page guard.
-function isAdmin(role?: string | null): boolean {
-  return role === 'superadmin'
-}
 
 function isValidCategory(s: string): s is InventoryCategory {
   return (CATEGORY_ORDER as string[]).includes(s)
 }
 
 export async function GET(req: NextRequest) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   const url = new URL(req.url)
   const category = url.searchParams.get('category')
@@ -86,11 +80,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const body = await req.json()

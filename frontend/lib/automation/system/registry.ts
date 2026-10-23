@@ -129,7 +129,12 @@ export interface AutomationTickReport {
   jobs: { done: number; retried: number; dead: number }
   ran: string[]
   failed: string[]
+  /** Sweeps left for the next minute because the time budget was spent. */
+  deferred?: number
 }
+
+/** How long one tick may spend starting cadenced sweeps before leaving the rest for the next minute. */
+export const SWEEP_BUDGET_MS = 20_000
 
 export async function runAutomationTick(now: Date = new Date()): Promise<AutomationTickReport> {
   const report: AutomationTickReport = { events: 0, runsResumed: 0, jobs: { done: 0, retried: 0, dead: 0 }, ran: [], failed: [] }
@@ -148,8 +153,13 @@ export async function runAutomationTick(now: Date = new Date()): Promise<Automat
   report.runsResumed = await safe('runs', () => resumeDueRuns(now, 15_000), 0)
   report.jobs = await safe('jobs', async () => runDueJobs(now, 25_000, await enabledJobTypes()), report.jobs)
 
+  // Time budget for the cadenced sweeps (AUTO-099): this runs inside the every-minute critical
+  // lane, so once it is spent the remaining sweeps wait for the next minute. Their window is
+  // still unclaimed then, and the ones that already ran are skipped, so every sweep gets its turn.
+  const sweepsStarted = Date.now()
   for (const a of SYSTEM_AUTOMATIONS) {
     if (!a.cadence || !a.run) continue
+    if (Date.now() - sweepsStarted > SWEEP_BUDGET_MS) { report.deferred = (report.deferred || 0) + 1; continue }
     const key = windowKeyFor(a.cadence, now)
     if (!key) continue
     if (!(await safe(`toggle:${a.id}`, () => automationOn(a), false))) continue

@@ -94,7 +94,7 @@ export async function MentorsView({ searchParams, locale }: { searchParams: SP; 
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((m) => (
               <li key={m.slug}>
-                <Link href={`/mentors/${m.slug}`} className="flex h-full flex-col rounded-3xl border border-cs-grid bg-cs-sheet p-5 transition-colors duration-200 hover:border-cs-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cs-accent/40 motion-reduce:transition-none">
+                <Link href={localizedPath(`/mentors/${m.slug}`, locale)} className="flex h-full flex-col rounded-3xl border border-cs-grid bg-cs-sheet p-5 transition-colors duration-200 hover:border-cs-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cs-accent/40 motion-reduce:transition-none">
                   <div className="flex items-center gap-3">
                     {m.avatar_url
                       // eslint-disable-next-line @next/next/no-img-element

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
+  const user = gate.user
 
   let paths: string[] = []
   try {

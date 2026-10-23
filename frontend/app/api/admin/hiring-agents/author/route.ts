@@ -3,6 +3,8 @@
  * Queue a JD → test request for the assessment author agent. The job must be
  * this organisation's; pasted text is kept as data (never instructions) and
  * capped. The agent drafts a create_test proposal for the requester's org owner.
+ * `agent_on` in the reply says whether the scheduler will pick it up; when the
+ * author agent is off the request waits for "Run now" (or switching it on).
  */
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -42,5 +44,9 @@ export async function POST(req: Request) {
     title: b.title ?? null, status: 'queued' as const, attempts: 0, created_at: ts, updated_at: ts,
   }
   await col.insertOne({ ...doc })
-  return NextResponse.json({ request: { id: doc.id, status: doc.status, title: doc.title, job_id: doc.job_id, created_at: ts } }, { status: 201 })
+  // The scheduler only works the queue for organisations that switched the author on (AGT-036 / CORE-044):
+  // tell the client so it can say so and offer "switch on" / "run once now" instead of promising 15 minutes.
+  const { getLoopSettings } = await import('@/lib/agent/hiring-loops/store')
+  const agentOn = (await getLoopSettings(gate.tenantId, 'author')).settings.enabled
+  return NextResponse.json({ request: { id: doc.id, status: doc.status, title: doc.title, job_id: doc.job_id, created_at: ts }, agent_on: agentOn }, { status: 201 })
 }

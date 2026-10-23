@@ -8,7 +8,9 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { emit } from '../events'
 import { sendAutomationEmail } from '../mailer'
-import { claimOnce, col, nowIso } from '../store'
+import { claimOnce, col, nowIso, releaseClaim } from '../store'
+import { withBudget } from '@/lib/messaging/budget'
+import { utcDay } from '@/lib/messaging/budget-rules'
 import { getSystemSettings, configValue } from '../settings'
 import { dueDunningStep, expiryReminderDay, needsExpiryReminder, reconcileAction, reconcileOutcome, type ProviderState } from './rules'
 import type { SystemAutomation } from './types'
@@ -69,8 +71,12 @@ export async function runDunning(now = new Date(), onlySub?: string): Promise<{ 
     const graceEnd = String(sub!.grace_ends_at || sub!.ends_at || '')
     const plan = String(sub!.plan_id || 'your plan')
     const subject = step.final ? 'Last notice: your CodeSpectra plan is about to end' : step.day === 0 ? 'Your CodeSpectra payment didn’t go through' : 'Reminder: please update your payment method'
+    // Payment notices bypass the shared cap but are sent once per subscription and day across
+    // senders (dunning, the revenue assistant's "update your payment method") — AUTO-094.
+    await withBudget({ userId: user.id, email: user.email }, { class: 'payment', topic: 'payment-failed', object: `${String(d.subscription_id)}:${utcDay(now)}`, source: 'dunning' }, async () => {
     if (user.email) {
       await sendAutomationEmail({
+        budget: false,
         to: user.email, userId: user.id, category: 'billing', urgent: true, onceKey: `dunning:${String(d.subscription_id)}:${String(d.episode)}:${step.key}`,
         // Same key as the "Payment dunning" template (AUTO-020).
         dedupe: { kind: 'dunning', ref: `${String(d.subscription_id)}:${String(d.grace_ref || d.episode)}:${step.key}` },
@@ -89,13 +95,15 @@ export async function runDunning(now = new Date(), onlySub?: string): Promise<{ 
       })
     }
     const { notify } = await import('@/lib/notifications')
-    await notify({ user_id: user.id, type: 'billing.payment_failed', title: step.final ? 'Last reminder: update your card' : 'Payment failed — update your card', message: `Access continues until ${fmtDate(graceEnd)}.`, title_i18n: { key: step.final ? 'billing.dunningFinal.title' : 'billing.dunning.title' }, message_i18n: { key: 'billing.dunning.message', params: { date: fmtDate(graceEnd) } }, link: '/dashboard/billing', icon: 'alert-circle', skip_push: !step.final })
+    await notify({ budget: false, user_id: user.id, type: 'billing.payment_failed', title: step.final ? 'Last reminder: update your card' : 'Payment failed — update your card', message: `Access continues until ${fmtDate(graceEnd)}.`, title_i18n: { key: step.final ? 'billing.dunningFinal.title' : 'billing.dunning.title' }, message_i18n: { key: 'billing.dunning.message', params: { date: fmtDate(graceEnd) } }, link: '/dashboard/billing', icon: 'alert-circle', skip_push: !step.final })
     if (step.channels.includes('whatsapp') && settings.config.wa_template_payment) {
       const { whatsappRecipientForUser, sendWhatsAppTemplate, templateLanguageForUser } = await import('../whatsapp')
       // Recipient's language when its translation is approved in Meta (lib/i18n/whatsapp-language), else the base.
       const lang = await templateLanguageForUser(user.id, { wa_template_language: configValue(settings.config, 'wa_template_language'), wa_template_locales: settings.config.wa_template_locales })
       await sendWhatsAppTemplate(await whatsappRecipientForUser(user.id), { name: settings.config.wa_template_payment, ...lang, params: [user.name || 'there', fmtDate(graceEnd)] }, { userId: user.id }).catch(() => null)
     }
+    return true
+    }, now)
     if (step.day === 0 && Number(d.amount_minor) >= HIGH_VALUE_MINOR) {
       const { sendAdminAlert } = await import('../alerts')
       await sendAdminAlert({ key: `dunning-high:${String(d.subscription_id)}`, title: 'High-value renewal failed', detail: `A renewal of ${(Number(d.amount_minor) / 100).toFixed(2)} ${String(d.currency || '').toUpperCase()} failed (plan ${plan}). Dunning emails have started.`, severity: 'warning', link: '/dashboard/admin/billing', windowMinutes: 24 * 60 })
@@ -132,7 +140,10 @@ export async function expiringSubscriptions(now = new Date()): Promise<{ sub: Do
 export async function endedSubscriptions(now = new Date()): Promise<Doc[]> {
   const db = await getMongoDb()
   const ended = (await db.collection('billing_subscriptions').find({ ends_at: { $lte: now.toISOString(), $gte: new Date(now.getTime() - 2 * 86_400_000).toISOString() } }, { projection: { id: 1, user_id: 1, plan_id: 1, ends_at: 1, status: 1, billing_mode: 1, cancel_at_period_end: 1 } }).limit(5000).toArray()) as Doc[]
-  return ended.filter((s) => !(s.billing_mode === 'stripe_subscription' && !s.cancel_at_period_end && s.status === 'active'))
+  const { stripeAutoRenewEnabled } = await import('@/lib/stripe-client')
+  const { autoRenews } = await import('../nudges/rules')
+  const flag = stripeAutoRenewEnabled()
+  return ended.filter((s) => !autoRenews(s as never, flag))
 }
 
 /** Event signals for plans (always on, see ./signals.ts — AUTO-003). */
@@ -156,12 +167,17 @@ export async function runExpiryReminders(now = new Date()): Promise<{ reminded: 
   const settings = await getSystemSettings()
   let reminded = 0
   for (const { sub: s, day } of await expiringSubscriptions(now)) {
-    if (!(await claimOnce(`expiry:${String(s.id)}:${String(s.ends_at)}:${day}`))) continue
+    const expKey = `expiry:${String(s.id)}:${String(s.ends_at)}:${day}`
+    if (!(await claimOnce(expKey))) continue
     const user = await userOf(String(s.user_id))
     if (!user) continue
     const renewUrl = '/dashboard/billing'
+    // A deadline reminder: counts toward the shared cap (with the extra deadline slot) and is sent
+    // once per plan period and day across senders (this, the template, the revenue assistant) — AUTO-094 / AUTO-098.
+    const outcome = await withBudget({ userId: user.id, email: user.email }, { class: 'deadline', topic: 'plan-renewal', object: `${String(s.id)}:${String(s.ends_at).slice(0, 10)}:${utcDay(now)}`, source: 'plan-expiry' }, async () => {
     if (user.email) {
       await sendAutomationEmail({
+        budget: false,
         to: user.email, userId: user.id, category: 'billing',
         // Same key as the "Plan expiry reminders" template: a customer never gets both (AUTO-020).
         dedupe: { kind: 'plan-expiry', ref: `${String(s.id)}:${String(s.ends_at)}:${day}` },
@@ -180,13 +196,16 @@ export async function runExpiryReminders(now = new Date()): Promise<{ reminded: 
       })
     }
     const { notify } = await import('@/lib/notifications')
-    await notify({ user_id: user.id, type: 'billing.plan_expiring', title: `Your plan ends in ${day} day${day === 1 ? '' : 's'}`, message: `Renew before ${fmtDate(String(s.ends_at))} to keep access.`, title_i18n: { key: 'billing.expiring.title', params: { count: day } }, message_i18n: { key: 'billing.expiring.message', params: { date: fmtDate(String(s.ends_at)) } }, link: renewUrl, icon: 'credit-card', skip_push: day !== 1 })
+    await notify({ budget: false, user_id: user.id, type: 'billing.plan_expiring', title: `Your plan ends in ${day} day${day === 1 ? '' : 's'}`, message: `Renew before ${fmtDate(String(s.ends_at))} to keep access.`, title_i18n: { key: 'billing.expiring.title', params: { count: day } }, message_i18n: { key: 'billing.expiring.message', params: { date: fmtDate(String(s.ends_at)) } }, link: renewUrl, icon: 'credit-card', skip_push: day !== 1 })
     if (day === 1 && settings.config.wa_template_payment) {
       const { whatsappRecipientForUser, sendWhatsAppTemplate, templateLanguageForUser } = await import('../whatsapp')
       const lang = await templateLanguageForUser(user.id, { wa_template_language: configValue(settings.config, 'wa_template_language'), wa_template_locales: settings.config.wa_template_locales })
       await sendWhatsAppTemplate(await whatsappRecipientForUser(user.id), { name: settings.config.wa_template_payment, ...lang, params: [user.name || 'there', fmtDate(String(s.ends_at))] }, { userId: user.id }).catch(() => null)
     }
-    reminded++
+    return true
+    }, now)
+    if (outcome === 'capped') { await releaseClaim(expKey); continue } // retried on the next daily run while the window lasts
+    if (outcome === 'sent') reminded++
   }
   return { reminded }
 }

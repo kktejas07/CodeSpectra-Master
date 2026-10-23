@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 export const runtime = 'nodejs'
 
 // GET: Test connection to a KYC provider
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   const { searchParams } = new URL(request.url)
   const provider = searchParams.get('provider')

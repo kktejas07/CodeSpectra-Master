@@ -6,7 +6,7 @@
  *   DELETE /api/ai-inventory/[id] -> delete override or custom component
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/api-auth'
+import { gateErrorBody, requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { CATEGORY_ORDER, fetchCategory, type InventoryCategory } from '@/lib/ai-inventory'
 
@@ -15,17 +15,13 @@ export const dynamic = 'force-dynamic'
 
 // The AI inventory is platform-wide (no tenant scoping): superadmin only,
 // matching the page guard.
-function isAdmin(role?: string | null): boolean {
-  return role === 'superadmin'
-}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   const { id } = await params
   for (const cat of CATEGORY_ORDER) {
@@ -42,9 +38,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const body = await req.json()
@@ -92,9 +87,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const db = await getMongoDb()

@@ -232,5 +232,10 @@
   "label:Connected apps": "कनेक्टेड ऐप्स",
   "label:AI spend": "AI खर्च",
   "label:Daily digest": "डेली डाइजेस्ट",
-  "label:Agent loops": "एजेंट लूप"
+  "label:Agent loops": "एजेंट लूप",
+  "impersonating": "आप इस उपयोगकर्ता के रूप में ऐप देख रहे हैं (इम्पर्सनेशन)। आपकी कार्रवाइयाँ उनके खाते में गिनी जाएँगी।",
+  "exitImpersonation": "इम्पर्सनेशन से बाहर निकलें",
+  "exitingImpersonation": "बाहर निकल रहे हैं…",
+  "exitImpersonationFailed": "बाहर नहीं निकल सके। फिर से कोशिश करें या साइन आउट करें।",
+  "exitImpersonationOffline": "बाहर नहीं निकल सके। अपना कनेक्शन जाँचें और फिर से कोशिश करें।"
 }

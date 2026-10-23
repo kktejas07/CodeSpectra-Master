@@ -12,6 +12,8 @@ export interface ProductCardLabels {
   soldOut: string
   by: (seller: string) => string
   stars: (value: string) => string
+  /** Product page URL in the page language (SEO-047); English URL when omitted. */
+  href?: (slug: string) => string
 }
 const ENGLISH: ProductCardLabels = { kind: KIND_TEXT, soldOut: 'Sold out', by: (s) => `by ${s}`, stars: (v) => `${v} out of 5` }
 
@@ -29,7 +31,7 @@ export function ProductCard({ p, labels = ENGLISH }: { p: Card; labels?: Product
   const Icon = KIND_ICON[p.kind]
   return (
     <Link
-      href={`/marketplace/p/${p.slug}`}
+      href={labels.href ? labels.href(p.slug) : `/marketplace/p/${p.slug}`}
       className="group flex min-w-0 flex-col overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 motion-reduce:hover:translate-y-0 dark:shadow-none"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-cs-paper">

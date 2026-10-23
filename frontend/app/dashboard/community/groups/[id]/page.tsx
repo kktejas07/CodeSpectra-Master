@@ -94,7 +94,7 @@ export default function GroupPage() {
               <form onSubmit={send} className="flex gap-2 border-t border-border p-3">
                 <label htmlFor="chat-input" className="sr-only">{t('community.message')}</label>
                 <textarea id="chat-input" rows={2} className="min-h-[44px] flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" value={text} onChange={(e) => setText(e.target.value)} maxLength={4000}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(e as unknown as React.FormEvent) } }} />
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(e as unknown as React.FormEvent) } }} />
                 <Button type="submit" size="icon-lg" aria-label={t('community.send')} disabled={!text.trim()}><Send className="h-4 w-4" aria-hidden /></Button>
               </form>
             </>

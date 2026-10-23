@@ -43,10 +43,18 @@ export async function runOpsAlerts(now = new Date()): Promise<{ alerts: number }
   const { isAutomationEnabled } = await import('../settings')
   const { SYSTEM_AUTOMATIONS } = await import('./registry')
   for (const a of SYSTEM_AUTOMATIONS) if (!(await isAutomationEnabled(a.id, a.defaultOn !== false))) delete expected[`auto:${a.id}`]
-  const rows = (await db.collection('cron_runs').find({ id: { $in: Object.keys(expected) } }, { projection: { _id: 0 } }).toArray()) as unknown as CronHeartbeat[]
+  // Agent loops switched off in Admin → Agent loops don't beat either (AUTO-104).
+  const [{ AGENT_LOOPS }, { getLoopSettings }] = await Promise.all([import('@/lib/agent-loops/registry'), import('@/lib/agent-loops/store')])
+  for (const l of AGENT_LOOPS) if (expected[l.heartbeat] !== undefined && !(await getLoopSettings(l.id).then((r) => r.settings.enabled).catch(() => true))) delete expected[l.heartbeat]
+  // Optional jobs (only run when a feature is on) aren't stale when silent, but a run that failed
+  // still alerts — e.g. the daily Learn AI draft (learn-daily, AUTO-104).
+  const { SCHEDULED_JOBS } = await import('../job-registry')
+  const watched = [...new Set([...Object.keys(expected), ...SCHEDULED_JOBS.map((j) => j.id)])]
+  const allRows = (await db.collection('cron_runs').find({ id: { $in: watched } }, { projection: { _id: 0 } }).toArray()) as unknown as CronHeartbeat[]
+  const rows = allRows.filter((r) => expected[r.id] !== undefined)
   const stale = staleCrons(rows, expected, now)
   if (stale.length) await fire({ key: `cron-stale:${stale.sort().join(',')}`, title: 'Scheduled jobs stopped running', detail: `No recent run for: ${stale.join(', ')}. Check the app server (or the /api/cron/tick schedule on serverless hosts).`, severity: 'critical', link: '/dashboard/admin/cron-jobs' })
-  const failing = rows.filter((r) => r.last_status === 'error' && Date.parse(r.last_run_at) > now.getTime() - HOUR)
+  const failing = allRows.filter((r) => r.last_status === 'error' && Date.parse(r.last_run_at) > now.getTime() - HOUR)
   if (failing.length) await fire({ key: `cron-failing:${failing.map((r) => r.id).sort().join(',')}`, title: 'Scheduled jobs are failing', detail: `Last run failed for: ${failing.map((r) => r.id).join(', ')}.`, severity: 'warning', link: '/dashboard/admin/cron-jobs' })
 
   // 2. Email failures (provider errors + bounces) and dead outbox messages.

@@ -5,7 +5,7 @@
  * not-yet-posted items (lib/agent-loops/pure/social-pack), makes sure each has
  * a caption for every network in each chosen language (the studio's own
  * caption drafter: fact-checked, prompt-guarded, template fallback, the
- * studio's AI caps plus this loop's daily cap; edited captions are never
+ * studio's AI caps plus this loop's daily and monthly caps; edited captions are never
  * overwritten), adds share cards and suggested posting times, and notifies
  * the owner. It NEVER posts to any social network: the owner approves the
  * pack and posts himself with the studio's share buttons.
@@ -23,8 +23,8 @@ export async function runSocialPack(ctx: LoopContext): Promise<LoopResult> {
   if (existing?.status === 'approved') return { summary: { items: existing.items.length }, findings: [], notes: ['already_approved'] }
   if (existing && ctx.trigger === 'schedule') return { summary: { items: existing.items.length }, findings: [], notes: ['already_built'] }
 
-  const [{ syncSocialQueue }, { queueCol, saveCaptions }, { draftCaptions }, { takeAiCall }] = await Promise.all([
-    import('@/lib/social/sync'), import('@/lib/social/store'), import('@/lib/social/ai'), import('../store'),
+  const [{ syncSocialQueue }, { queueCol, saveCaptions }, { draftCaptions }, { takeAiCall }, { loopAiPrecheck }] = await Promise.all([
+    import('@/lib/social/sync'), import('@/lib/social/store'), import('@/lib/social/ai'), import('../store'), import('../ai'),
   ])
   await syncSocialQueue(ctx.now).catch(() => undefined)
   const since = new Date(ctx.now.getTime() - 7 * 86_400_000).toISOString()
@@ -42,8 +42,10 @@ export async function runSocialPack(ctx: LoopContext): Promise<LoopResult> {
       const have = it.captions?.[lang] || {}
       const missing = SOCIAL_PLATFORMS.filter((p) => !have[p]?.text)
       if (missing.length) {
-        const useAi = ctx.settings.use_ai && (await takeAiCall('social-pack', ctx.settings.daily_ai_cap))
-        if (ctx.settings.use_ai && !useAi) fallback = 'daily_cap'
+        // The loop's own guards first (use AI, monthly cost cap, budget hard stop), then a daily slot (AGT-041).
+        const pre = ctx.settings.use_ai ? await loopAiPrecheck('social-pack', ctx.settings) : 'off'
+        const useAi = ctx.settings.use_ai && !pre && (await takeAiCall('social-pack', ctx.settings.daily_ai_cap))
+        if (ctx.settings.use_ai && !useAi) fallback = pre ?? 'daily_cap'
         const r = await draftCaptions(it, lang, 'system:agent-loop:social-pack', { useAi })
         if (useAi) ctx.ai.calls++
         if (r.fallback) fallback = r.fallback

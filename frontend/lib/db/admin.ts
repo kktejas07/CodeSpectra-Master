@@ -59,6 +59,8 @@ export interface TenantDoc {
   is_active: boolean
   created_at: string
   created_by: string
+  /** SEC-036: the organisation owner (first org admin); may change auto-send. Legacy orgs: oldest org admin. */
+  owner_user_id?: string | null
   member_count?: number
 }
 

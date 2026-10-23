@@ -79,5 +79,16 @@
   "bentoProofFormats": "contest formats",
   "bentoProofLanguages": "languages",
   "bentoCtaTitle": "Start with one test",
-  "bentoCtaBody": "Practise as a learner, or book a pilot and screen your next batch of candidates."
+  "bentoCtaBody": "Practise as a learner, or book a pilot and screen your next batch of candidates.",
+  "bentoSampleProgress": "Question {n} of {total}",
+  "bentoSamplePoints": "{n} pts",
+  "bentoSampleQuestion": "What does git rebase do?",
+  "bentoSampleOptA": "Merges two branches with a merge commit",
+  "bentoSampleOptB": "Replays your commits on top of another base",
+  "bentoSampleOptC": "Deletes the remote branch",
+  "bentoSampleInterviewQ": "How would you design a URL shortener that handles a million links a day?",
+  "bentoSampleRole": "Graduate engineer trainee",
+  "bentoSampleBacklogs": "0 backlogs",
+  "bentoSampleMinutes": "{n} min",
+  "bentoSampleWhatsappQ": "Q. Which data structure gives O(1) average lookup by key? A) Array B) Hash map C) Linked list"
 }

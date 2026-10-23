@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
 import { claimDigestSend, deliverOrDefer } from '@/lib/notifications-delivery'
+import { withBudget } from '@/lib/messaging/budget'
 import { emailTemplatesFor } from '@/lib/email-templates'
 import { recipientLocaleFrom } from '@/lib/i18n/recipient'
 import { getUserStreak } from '@/lib/activity-streak'
@@ -80,8 +81,14 @@ async function postImpl(req: NextRequest) {
           name: String(u.fullName || u.name || '').split(' ')[0] || String(u.email).split('@')[0], ...stats,
         })
         // 'engagement': honours unsubscribes and gets the one-click unsubscribe link + headers (AUTO-052).
-        const r = await deliverOrDefer(id, { email: { to: String(u.email), subject: msg.subject, html: msg.html, category: 'engagement' } })
-        if (r === 'deferred') deferred++
+        // A digest counts toward the shared per-person messaging budget (AUTO-094).
+        const res: { r?: Awaited<ReturnType<typeof deliverOrDefer>> } = {}
+        const outcome = await withBudget({ userId: id, email: String(u.email) }, { class: 'digest', topic: 'weekly-digest', object: period, source: 'weekly-digest' }, async () => {
+          res.r = await deliverOrDefer(id, { email: { to: String(u.email), subject: msg.subject, html: msg.html, category: 'engagement' } })
+          return true
+        })
+        if (outcome !== 'sent') skipped++
+        else if (res.r === 'deferred') deferred++
         else sent++
       } catch (e) {
         console.error('[weekly-digest] send failed:', (e as Error)?.message)

@@ -870,5 +870,14 @@
   "rbTemplate:minimal": "मिनिमल",
   "rbTemplate:elegant": "एलिगेंट",
   "rbTemplate:professional": "प्रोफ़ेशनल",
-  "rbTemplate:creative": "क्रिएटिव"
+  "rbTemplate:creative": "क्रिएटिव",
+  "assignments": "असाइनमेंट",
+  "assignmentsHint": "प्लेसमेंट कोपायलट से दिए गए कंपनी प्रैक्टिस टेस्ट, और किसने उन्हें पूरा किया। असाइनमेंट के बाद एक प्रयास पूरा करने पर छात्र का काम पूरा माना जाता है।",
+  "noAssignments": "अभी कोई असाइनमेंट नहीं",
+  "noAssignmentsDesc": "छात्रों के समूह को कंपनी प्रैक्टिस टेस्ट देने के लिए प्लेसमेंट कोपायलट से कहें।",
+  "couldntLoadAssignments": "असाइनमेंट लोड नहीं हो सके",
+  "assignedOn": "{date} को दिया गया",
+  "completedOf": "{total} में से {done} ने पूरा किया",
+  "startedCount": "{count} ने शुरू किया",
+  "inProgress": "जारी"
 }

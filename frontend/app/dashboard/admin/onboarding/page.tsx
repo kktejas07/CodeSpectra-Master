@@ -4,7 +4,8 @@
  * /dashboard/admin/onboarding (organisation admins) — the setup checklist from
  * the org onboarding assistant (lib/assistants/onboarding). Each open step
  * links to its page; steps the copilot can draft open the copilot with a
- * prompt, and the draft is a proposal you confirm there.
+ * prompt, and the draft is a proposal you confirm there. A superadmin picks
+ * the organisation first (CORE-047), like Admin → Hiring agents.
  */
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -27,21 +28,37 @@ export default function OnboardingPage() {
   const addToast = useToast()
   const [view, setView] = useState<View | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Superadmin only: the organisation list (a 403 from the tenants API = "my own organisation").
+  const [tenants, setTenants] = useState<Array<{ id: string; name: string }> | null>(null)
+  const [tenant, setTenant] = useState('')
+  const [tenantsChecked, setTenantsChecked] = useState(false)
+  const isSuper = tenants !== null
+  const q = isSuper ? `?tenant=${encodeURIComponent(tenant)}` : ''
+
+  useEffect(() => {
+    if (!gate.ready) return
+    void fetch('/api/admin/agent/tenants', { credentials: 'include' })
+      .then(async (r) => (r.ok ? ((await r.json()) as { tenants?: Array<{ id: string; name: string }> }).tenants ?? null : null))
+      .then((list) => setTenants(list))
+      .catch(() => setTenants(null))
+      .finally(() => setTenantsChecked(true))
+  }, [gate.ready])
 
   const load = useCallback(async () => {
     setError(null)
+    if (isSuper && !tenant) { setView(null); return }
     try {
-      const r = await fetch('/api/assistants/onboarding', { credentials: 'include' })
+      const r = await fetch(`/api/assistants/onboarding${q}`, { credentials: 'include' })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error((d as { error?: string }).error || t('onboarding.loadFailed'))
       setView(d as View)
     } catch (e) { setError((e as Error).message) }
-  }, [t])
-  useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
+  }, [t, isSuper, tenant, q])
+  useEffect(() => { if (gate.ready && tenantsChecked) void load() }, [gate.ready, tenantsChecked, load])
 
   const setDismissed = async (dismissed: boolean) => {
     try {
-      const r = await csrfFetch('/api/assistants/onboarding', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dismissed }) })
+      const r = await csrfFetch(`/api/assistants/onboarding${q}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dismissed }) })
       if (!r.ok) throw new Error(t('onboarding.saveFailed'))
       setView((v) => (v ? { ...v, dismissed } : v))
       addToast({ type: 'success', title: dismissed ? t('onboarding.hidden') : t('onboarding.shown') })
@@ -57,7 +74,17 @@ export default function OnboardingPage() {
         description={view?.org_name ? t('onboarding.descriptionFor', { org: view.org_name }) : t('onboarding.description')}
         actions={<Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />{t('onboarding.refresh')}</Button>}
       />
-      {error ? <EmptyState illustration="error" title={t('onboarding.loadFailed')} description={error} actionLabel={t('onboarding.retry')} onAction={() => void load()} />
+      {isSuper && (
+        <div className="max-w-sm">
+          <label htmlFor="onb-tenant" className="text-xs font-medium text-foreground">{t('onboarding.orgLabel')}</label>
+          <select id="onb-tenant" value={tenant} onChange={(e) => setTenant(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+            <option value="">{t('onboarding.orgPick')}</option>
+            {tenants!.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </div>
+      )}
+      {isSuper && !tenant ? <EmptyState compact illustration="inbox" title={t('onboarding.orgPick')} description={t('onboarding.orgPickDesc')} />
+        : error ? <EmptyState illustration="error" title={t('onboarding.loadFailed')} description={error} actionLabel={t('onboarding.retry')} onAction={() => void load()} />
         : !view ? <div className="h-80 animate-pulse rounded-3xl bg-muted motion-reduce:animate-none" aria-busy="true" />
         : !view.enabled || !c ? <EmptyState title={t('onboarding.off')} description={t('onboarding.offDesc')} />
         : (
@@ -85,7 +112,7 @@ export default function OnboardingPage() {
                         <Button asChild variant={s.id === c.next ? 'default' : 'outline'} size="sm" className="rounded-full"><Link href={s.href}>{t('onboarding.open')}</Link></Button>
                         {s.copilot && (
                           <Button asChild variant="outline" size="sm" className="rounded-full">
-                            <Link href={`/dashboard/admin/agent?ask=${encodeURIComponent(s.copilot)}`}><BotMessageSquare className="mr-1.5 h-4 w-4" aria-hidden />{t('onboarding.askCopilot')}</Link>
+                            <Link href={`/dashboard/admin/agent?ask=${encodeURIComponent(td(`onboarding.copilot_${s.id}_${c.kind}`, s.copilot))}`}><BotMessageSquare className="mr-1.5 h-4 w-4" aria-hidden />{t('onboarding.askCopilot')}</Link>
                           </Button>
                         )}
                       </div>

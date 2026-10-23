@@ -6,6 +6,8 @@
  * assignments) only run from a confirmed copilot proposal.
  *
  *   placement_assignments  { id, college_id, pattern_id, student_ids[], created_by, created_at }
+ *                          read back by listAssignments (campus console "Assignments" tab and
+ *                          the weekly report), completion from company_test_attempts (CORE-048)
  */
 import 'server-only'
 import { lazyCollection } from '@/lib/community/lazy'
@@ -13,6 +15,7 @@ import { newId, nowIso } from '@/lib/db/ids'
 import { logger } from '@/lib/logger'
 import type { StaffContext } from '@/lib/campus/access'
 import { activeMarks, getAssistantSettings, markOnce, recordRun } from '../store'
+import { assignmentProgress, type AssignmentAttempt, type AssignmentProgress, type AssignmentStudent } from './assignments'
 import { buildPlacementReport, isoWeek, NUDGE_DEFAULTS, rankShortlist, selectNudges, type NudgeReason, type PlacementReport } from './select'
 
 interface AssignmentDoc { id: string; college_id: string; pattern_id: string; student_ids: string[]; created_by: string; created_at: string }
@@ -53,19 +56,53 @@ export async function driveShortlist(ctx: StaffContext, driveId: string, limit =
   return { drive: { id: drive.id, title: drive.title, company: drive.company.name, status: drive.status, mode: drive.process.mode }, applicants: apps.length, rows }
 }
 
+export interface AssignmentRow extends AssignmentProgress {
+  id: string
+  pattern_id: string
+  test: string
+  created_at: string
+}
+
+/** Recent practice assignments of this college with completion (CORE-048). */
+export async function listAssignments(ctx: StaffContext, limit = 20): Promise<AssignmentRow[]> {
+  const rows = await (await assignmentsCol()).find({ college_id: ctx.college.tenant_id }, { projection: { _id: 0 } }).sort({ created_at: -1 }).limit(Math.min(50, Math.max(1, limit))).toArray()
+  if (!rows.length) return []
+  const [{ studentsCol }, { attempts, getPattern }] = await Promise.all([import('@/lib/campus/store'), import('@/lib/company-tests/db')])
+  const ids = [...new Set(rows.flatMap((r) => r.student_ids))].slice(0, 5000)
+  const students = await (await studentsCol()).find({ college_id: ctx.college.tenant_id, id: { $in: ids } }, { projection: { _id: 0, id: 1, name: 1, user_id: 1 } }).toArray()
+  const byId = new Map(students.filter((x) => !!x.user_id).map((x) => [x.id, { student_id: x.id, user_id: String(x.user_id), name: String(x.name || '') }]))
+  const uids = [...new Set([...byId.values()].map((x) => x.user_id))]
+  const oldest = rows[rows.length - 1].created_at
+  const patternIds = [...new Set(rows.map((r) => r.pattern_id))]
+  const tries = uids.length
+    ? (await (await attempts()).find({ userId: { $in: uids }, patternId: { $in: patternIds }, createdAt: { $gte: oldest } }, { projection: { _id: 0, userId: 1, patternId: 1, status: 1, createdAt: 1 } }).limit(20_000).toArray()) as unknown as AssignmentAttempt[]
+    : []
+  const names = new Map<string, string>()
+  for (const pid of patternIds) {
+    const p = await getPattern(pid).catch(() => null)
+    names.set(pid, p ? `${p.companyName} ${p.examName}` : pid)
+  }
+  return rows.map((r) => ({
+    id: r.id, pattern_id: r.pattern_id, test: names.get(r.pattern_id) || r.pattern_id, created_at: r.created_at,
+    ...assignmentProgress(r, r.student_ids.map((sid) => byId.get(sid)).filter((x): x is AssignmentStudent => !!x), tries),
+  }))
+}
+
 export async function placementReport(ctx: StaffContext, now = new Date()): Promise<PlacementReport> {
   const [{ listDrives }, { applicationsCol, offersCol }] = await Promise.all([import('@/lib/campus/drives'), import('@/lib/campus/store')])
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString()
-  const [nudge, drives, apps, offers] = await Promise.all([
+  const [nudge, drives, apps, offers, assignments] = await Promise.all([
     studentsToNudge(ctx, {}, now),
     listDrives(ctx, 'open'),
     (await applicationsCol()).countDocuments({ college_id: ctx.college.tenant_id, applied_at: { $gte: weekAgo } }),
     (await offersCol()).countDocuments({ college_id: ctx.college.tenant_id, created_at: { $gte: weekAgo } }),
+    listAssignments(ctx, 10).catch(() => [] as AssignmentRow[]),
   ])
   return buildPlacementReport({
     college: ctx.college.name, students: nudge.students, active: nudge.overall.active, readiness_avg: nudge.overall.readiness_avg,
     weak_areas: nudge.overall.weak_areas, drives_open: drives.map((d) => ({ title: d.title, apply_by: d.schedule.apply_by, applicants: d.applicants })),
     applications_week: apps, offers_week: offers, to_nudge: nudge.picks.length,
+    assignments_pending: assignments.reduce((n, a) => n + a.pending, 0), assignments_open: assignments.filter((a) => a.pending > 0).length,
   }, now)
 }
 
@@ -85,10 +122,12 @@ export async function previewStudents(ctx: StaffContext, ids: readonly string[])
 export async function nudgeStudents(ctx: StaffContext, ids: readonly string[], kind: 'practice' | 'drive', driveTitle: string | null, now = new Date()) {
   const s = await ownStudents(ctx, ids)
   const { notify } = await import('@/lib/notifications')
-  let sent = 0, skipped = 0
+  let sent = 0, skipped = 0, held = 0
   for (const st of s.withAccount) {
     if (!(await markOnce('placement', `nudge:${st.id}`, NUDGE_DEFAULTS.cooldownDays, now))) { skipped++; continue }
+    // An engagement nudge: through the shared per-person cap (AUTO-094 / CORE-046); null = held.
     const r = await notify({
+      budget: { class: 'engagement', topic: 'placement-nudge', object: `${kind}:${now.toISOString().slice(0, 10)}`, source: 'placement-assistant' },
       user_id: st.user_id, type: 'placement.nudge',
       title: kind === 'drive' ? 'A placement drive is open' : 'Time to practise for placements',
       title_i18n: { key: kind === 'drive' ? 'assistantPlacementDriveTitle' : 'assistantPlacementNudgeTitle' },
@@ -96,9 +135,10 @@ export async function nudgeStudents(ctx: StaffContext, ids: readonly string[], k
       link: kind === 'drive' ? '/dashboard/campus' : '/dashboard/company-tests', send_email: true,
     })
     if (r) sent++
+    else held++
   }
-  await recordRun({ assistant: 'placement', trigger: 'copilot', status: 'ok', tenant_id: ctx.college.tenant_id, message: `Nudged ${sent} student(s)${skipped ? `, ${skipped} nudged recently` : ''}`, counts: { sent, skipped, not_joined: s.noAccount } })
-  return { sent, skipped, not_joined: s.noAccount, not_in_college: s.missing }
+  await recordRun({ assistant: 'placement', trigger: 'copilot', status: 'ok', tenant_id: ctx.college.tenant_id, message: `Nudged ${sent} student(s)${skipped ? `, ${skipped} nudged recently` : ''}${held ? `, ${held} held by the message limit` : ''}`, counts: { sent, skipped, held, not_joined: s.noAccount } })
+  return { sent, skipped, held, not_joined: s.noAccount, not_in_college: s.missing }
 }
 
 /** Assign a company-specific practice test (a company exam pattern) to students and tell them. */

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller } from '@/lib/route-auth'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
@@ -15,7 +15,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const db = await getMongoDb()
-  const filter = user.role === 'superadmin' ? {} : { user_id: user.id }
+  const filter = isSuperAdminCaller(user) ? {} : { user_id: user.id } // SEC-029
   const tickets = await db
     .collection('support_tickets')
     .find(filter)

@@ -9,18 +9,13 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useConfirm } from '@/lib/confirm-context'
+import { useAdminT, type AdminT } from '@/lib/i18n/admin'
 import { cn } from '@/lib/utils'
 import { safeHref } from './agent-markdown'
 import { SchemaForm, fromFormValues, toFormValues, type FieldValue } from './schema-form'
 
-const RISK_LABEL: Record<ProposedAction['risk'], string> = {
-  create: 'Creates a draft',
-  update: 'Changes data',
-  send: 'Sends messages',
-  publish: 'Publishes',
-  delete: 'Deletes',
-  money: 'Charges money',
-}
+/** SEO-044: risk labels from the admin catalog (copilot.risk.*). */
+const riskLabel = (t: AdminT['t'], r: ProposedAction['risk']) => t(`copilot.risk.${r}`)
 
 const humanKey = (k: string) => {
   const s = k.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim().toLowerCase()
@@ -43,20 +38,21 @@ function itemLabel(v: unknown): string {
 }
 
 function PreviewValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
+  const { t, fmt } = useAdminT()
   if (value == null || value === '') return <span className="text-muted-foreground">—</span>
-  if (typeof value === 'boolean') return <span>{value ? 'Yes' : 'No'}</span>
-  if (typeof value === 'number') return <span className="tabular-nums">{value.toLocaleString()}</span>
+  if (typeof value === 'boolean') return <span>{value ? t('copilot.yes') : t('copilot.no')}</span>
+  if (typeof value === 'number') return <span className="tabular-nums">{fmt.number(value)}</span>
   if (typeof value === 'string') return <span className="whitespace-pre-wrap break-words">{value.length > 600 ? `${value.slice(0, 600)}…` : value}</span>
   if (Array.isArray(value)) {
-    if (!value.length) return <span className="text-muted-foreground">None</span>
+    if (!value.length) return <span className="text-muted-foreground">{t('copilot.none')}</span>
     const shown = value.slice(0, LIST_LIMIT)
     return (
       <div>
-        <p className="mb-1 text-xs text-muted-foreground tabular-nums">{value.length} {value.length === 1 ? 'item' : 'items'}</p>
+        <p className="mb-1 text-xs text-muted-foreground tabular-nums">{t('copilot.items', { count: value.length })}</p>
         <ol className="list-decimal space-y-0.5 pl-5">
           {shown.map((v, i) => <li key={i} className="break-words">{itemLabel(v)}</li>)}
         </ol>
-        {value.length > LIST_LIMIT && <p className="mt-1 text-xs text-muted-foreground">+{value.length - LIST_LIMIT} more</p>}
+        {value.length > LIST_LIMIT && <p className="mt-1 text-xs text-muted-foreground">{t('copilot.more', { count: value.length - LIST_LIMIT })}</p>}
       </div>
     )
   }
@@ -93,6 +89,7 @@ export function ProposalCard({
   loadEditForm?: (id: string) => Promise<{ schema: Record<string, unknown> | null; args: Record<string, unknown> } | string>
 }) {
   const confirmDialog = useConfirm()
+  const { t, fmt } = useAdminT()
   const [busy, setBusy] = useState<null | 'confirm' | 'cancel' | 'edit'>(null)
   const [err, setErr] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -109,9 +106,9 @@ export function ProposalCard({
   const run = async (kind: 'confirm' | 'cancel') => {
     if (kind === 'confirm' && risky) {
       const ok = await confirmDialog({
-        title: 'Confirm this action?',
-        description: `${action.title}. ${RISK_LABEL[action.risk]} — this can't be undone from here.`,
-        confirmText: 'Confirm',
+        title: t('copilot.confirmTitle'),
+        description: t('copilot.confirmDesc', { title: action.title, risk: riskLabel(t, action.risk) }),
+        confirmText: t('copilot.confirm'),
         destructive: action.risk === 'delete' || action.risk === 'money',
       })
       if (!ok) return
@@ -121,7 +118,7 @@ export function ProposalCard({
     try {
       setErr(await (kind === 'confirm' ? onConfirm(action.id) : onCancel(action.id)))
     } catch {
-      setErr('Request failed. Try again.')
+      setErr(t('copilot.requestFailed'))
     } finally {
       setBusy(null)
     }
@@ -136,7 +133,7 @@ export function ProposalCard({
     setDraft(JSON.stringify(visibleArgs(), null, 2))
     setEditing(true)
     if (!loadEditForm) return
-    const r = await loadEditForm(action.id).catch(() => 'Could not load the form.')
+    const r = await loadEditForm(action.id).catch(() => t('copilot.formLoadFailed'))
     if (typeof r === 'string') return // keep the JSON fallback
     const sc = r.schema as JsonSchema | null
     if (sc?.properties && Object.keys(sc.properties).length) {
@@ -149,7 +146,7 @@ export function ProposalCard({
     let parsed: unknown
     if (schema) {
       try {
-        parsed = fromFormValues(schema, form)
+        parsed = fromFormValues(schema, form, { notNumber: (field) => t('copilot.mustBeNumber', { field }), notJson: (field) => t('copilot.fieldInvalidJson', { field }) })
       } catch (e) {
         setDraftErr((e as Error).message)
         return
@@ -158,16 +155,16 @@ export function ProposalCard({
       try {
         parsed = JSON.parse(draft)
       } catch {
-        setDraftErr('This is not valid JSON.')
+        setDraftErr(t('copilot.invalidJson'))
         return
       }
     }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      setDraftErr('Details must be a JSON object.')
+      setDraftErr(t('copilot.notObject'))
       return
     }
     setBusy('edit')
-    const e = await onEdit(action.id, parsed as Record<string, unknown>).catch(() => 'Request failed. Try again.')
+    const e = await onEdit(action.id, parsed as Record<string, unknown>).catch(() => t('copilot.requestFailed'))
     setBusy(null)
     if (e) setDraftErr(e)
     else setEditing(false)
@@ -181,17 +178,17 @@ export function ProposalCard({
         'rounded-2xl border bg-card p-4 shadow-[0_1px_2px_rgba(15,23,41,0.04)] dark:shadow-none sm:p-5',
         pending ? 'border-primary/40' : 'border-border',
       )}
-      aria-label={`Proposal: ${action.title}`}
+      aria-label={t('copilot.proposalLabel', { title: action.title })}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-primary">Draft — needs your confirmation</p>
+          <p className="text-xs font-medium text-primary">{t('copilot.draftNeedsConfirm')}</p>
           <h4 className="mt-0.5 text-[15px] font-semibold leading-snug text-foreground">{action.title}</h4>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant={risky ? 'warning' : 'outline'} className={risky ? 'text-amber-700 dark:text-amber-400' : undefined}>
             {risky && <AlertTriangle aria-hidden />}
-            {RISK_LABEL[action.risk]}
+            {riskLabel(t, action.risk)}
           </Badge>
           <StatusBadge status={status} />
         </div>
@@ -215,7 +212,7 @@ export function ProposalCard({
           {link && (
             <Button asChild size="sm" variant="outline">
               <Link href={link} target={link.startsWith('/') ? undefined : '_blank'} rel="noopener noreferrer">
-                Open <ExternalLink aria-hidden />
+                {t('copilot.open')} <ExternalLink aria-hidden />
               </Link>
             </Button>
           )}
@@ -228,24 +225,24 @@ export function ProposalCard({
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button onClick={() => run('confirm')} disabled={!!busy} className="min-h-11 sm:min-h-9">
             {busy === 'confirm' ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
-            Confirm
+            {t('copilot.confirm')}
           </Button>
           <Button variant="outline" onClick={() => void openEdit()} disabled={!!busy} className="min-h-11 sm:min-h-9">
-            <Pencil aria-hidden /> Edit
+            <Pencil aria-hidden /> {t('copilot.edit')}
           </Button>
           <Button variant="ghost" onClick={() => run('cancel')} disabled={!!busy} className="min-h-11 sm:min-h-9">
             {busy === 'cancel' ? <Loader2 className="animate-spin" aria-hidden /> : <X aria-hidden />}
-            Cancel
+            {t('copilot.cancel')}
           </Button>
-          <span className="text-xs text-muted-foreground">Nothing changes until you confirm. Expires {new Date(action.expires_at).toLocaleString()}.</span>
+          <span className="text-xs text-muted-foreground">{t('copilot.nothingChanges', { when: fmt.dateTime(action.expires_at) })}</span>
         </div>
       )}
 
       <Dialog open={editing} onOpenChange={(o) => !busy && setEditing(o)}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit proposal details</DialogTitle>
-            <DialogDescription>Change the details below. The copilot checks them again and shows a fresh preview before anything happens.</DialogDescription>
+            <DialogTitle>{t('copilot.editTitle')}</DialogTitle>
+            <DialogDescription>{t('copilot.editDesc')}</DialogDescription>
           </DialogHeader>
           {schema ? (
             <div className="max-h-[60vh] overflow-y-auto pr-1">
@@ -253,7 +250,7 @@ export function ProposalCard({
             </div>
           ) : (
             <>
-              <label htmlFor={`args-${action.id}`} className="sr-only">Proposal details (JSON)</label>
+              <label htmlFor={`args-${action.id}`} className="sr-only">{t('copilot.detailsJson')}</label>
               <Textarea
                 id={`args-${action.id}`}
                 value={draft}
@@ -265,10 +262,10 @@ export function ProposalCard({
           )}
           {draftErr && <p className="text-sm text-destructive" role="alert">{draftErr}</p>}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(false)} disabled={busy === 'edit'}>Discard changes</Button>
+            <Button variant="outline" onClick={() => setEditing(false)} disabled={busy === 'edit'}>{t('copilot.discard')}</Button>
             <Button onClick={saveEdit} disabled={busy === 'edit'}>
               {busy === 'edit' && <Loader2 className="animate-spin" aria-hidden />}
-              Update preview
+              {t('copilot.updatePreview')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -278,13 +275,14 @@ export function ProposalCard({
 }
 
 function StatusBadge({ status }: { status: ProposedAction['status'] }) {
+  const { t } = useAdminT()
   switch (status) {
-    case 'pending': return <Badge variant="secondary"><Clock3 aria-hidden />Waiting for you</Badge>
+    case 'pending': return <Badge variant="secondary"><Clock3 aria-hidden />{t('copilot.status.pending')}</Badge>
     case 'executing':
-    case 'confirmed': return <Badge variant="secondary"><Loader2 className="animate-spin" aria-hidden />Running</Badge>
-    case 'done': return <Badge variant="success"><Check aria-hidden />Done</Badge>
-    case 'failed': return <Badge variant="outline" className="border-destructive/40 text-destructive"><X aria-hidden />Failed</Badge>
-    case 'cancelled': return <Badge variant="outline" className="text-muted-foreground"><CircleSlash aria-hidden />Cancelled</Badge>
-    case 'expired': return <Badge variant="outline" className="text-muted-foreground"><Clock3 aria-hidden />Expired</Badge>
+    case 'confirmed': return <Badge variant="secondary"><Loader2 className="animate-spin" aria-hidden />{t('copilot.status.running')}</Badge>
+    case 'done': return <Badge variant="success"><Check aria-hidden />{t('copilot.status.done')}</Badge>
+    case 'failed': return <Badge variant="outline" className="border-destructive/40 text-destructive"><X aria-hidden />{t('copilot.status.failed')}</Badge>
+    case 'cancelled': return <Badge variant="outline" className="text-muted-foreground"><CircleSlash aria-hidden />{t('copilot.status.cancelled')}</Badge>
+    case 'expired': return <Badge variant="outline" className="text-muted-foreground"><Clock3 aria-hidden />{t('copilot.status.expired')}</Badge>
   }
 }

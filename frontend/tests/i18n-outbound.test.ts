@@ -246,4 +246,50 @@ describe('notice emails', () => {
     }
     expect([...found].filter((f) => !ALLOWED.has(f))).toEqual([])
   })
+
+  it('no wrapEmail / sendEmail with a literal subject outside the allow-list (SEO-033)', () => {
+    // Contact-form and newsletter mails go to the operator / were written by an admin; everything else uses a catalog.
+    const ALLOWED = new Set(['lib/db/certifications.ts'])
+    const found: string[] = []
+    for (const f of ['app', 'lib'].flatMap((d) => listFiles(path.join(ROOT, d)))) {
+      const s = fs.readFileSync(f, 'utf8')
+      for (const m of s.matchAll(/\b(?:wrapEmail|sendEmail)\(\s*(?:[\w.?]+\s*,\s*)?\{?\s*(?:subject:\s*)?(['`"])([A-Z][a-z][^'`"]*)\1?/g)) {
+        if (m[0].startsWith('sendEmail') && !/subject:/.test(m[0])) continue
+        found.push(`${path.relative(ROOT, f)}: ${m[2].slice(0, 40)}`)
+      }
+    }
+    expect(found.filter((x) => !ALLOWED.has(x.slice(0, x.indexOf(':'))))).toEqual([])
+  })
+
+  it('ATS candidate mails render in the recipient language', async () => {
+    const { wrapEmail, offerSummary } = await import('@/lib/ats/notify')
+    const t = outboundT('email', 'hi')
+    const out = wrapEmail(t('atsMail.iv.subject.scheduled', { role: 'SDE', company: 'Acme' }), '<p>x</p>', { url: 'https://x', label: t('atsMail.iv.join') }, 'hi')
+    expect(out.subject).toMatch(SCRIPT.hi)
+    expect(out.html).toContain('lang="hi"')
+    expect(out.html).toContain(t('atsMail.footer'))
+    expect(out.html).not.toContain('Sent through CodeSpectra hiring.')
+    expect(wrapEmail('S', '').html).toContain('Sent through CodeSpectra hiring.')
+    const job = { title: 'SDE', location: 'Hyderabad', employment_type: 'full_time' } as never
+    expect(offerSummary(job, { config: {} } as never, 'te')).toMatch(SCRIPT.te)
+    expect(offerSummary(job, { config: {} } as never)).toContain('Role: SDE')
+    // Every interview / panel notice kind has a subject in every language.
+    for (const l of ['en', 'hi', 'te'] as const) {
+      for (const k of ['scheduled', 'rescheduled', 'cancelled', 'reminder_24h', 'reminder_1h']) {
+        expect(hasOutboundKey('email', `atsMail.iv.subject.${k}`)).toBe(true)
+        expect(hasOutboundKey('email', `atsMail.panel.subject.${k}`)).toBe(true)
+        expect(outboundT('email', l)(`atsMail.iv.subject.${k}`, { role: 'R', company: 'C' })).not.toMatch(/atsMail|\{/)
+      }
+      for (const k of ['scheduled', 'rescheduled', 'reminder_24h', 'cancelled']) expect(hasOutboundKey('email', `atsMail.iv.wa.${k}`)).toBe(true)
+    }
+  })
+
+  it('the recruiter "pick a time" invite uses the scheduler agent\'s subject and button', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'lib/ats/interviews/notify.ts'), 'utf8')
+    expect(src).toContain("hlt(hl, 'mail.subject'")
+    expect(src).toContain("hlt(hl, 'mail.pick')")
+    for (const f of ['lib/ats/interviews/notify.ts', 'lib/ats/bgv/notify.ts', 'lib/ats/hr/service.ts']) {
+      expect(fs.readFileSync(path.join(ROOT, f), 'utf8'), f).not.toMatch(/`Hi \$\{|'Hi \{\{|`Dear \$\{/)
+    }
+  })
 })

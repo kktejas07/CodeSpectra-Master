@@ -10,7 +10,7 @@ import { livekitConfig } from '@/lib/ats/interviews/livekit'
 import { isValidTimeZone } from '@/lib/ats/interviews/tz'
 import { interviewErrorResponse, NO_STORE } from '@/lib/ats/interviews/http'
 import { limitRequest } from '@/lib/rate-limit'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       redirect_uris: { google: redirectUri('google'), microsoft: redirectUri('microsoft') },
       settings,
       can_manage: actor.role === 'admin',
-      is_platform_admin: user?.role === 'superadmin',
+      is_platform_admin: isSuperAdminCaller(user),
     }, { headers: NO_STORE })
   } catch (e) {
     return interviewErrorResponse(e, 'integrations get')

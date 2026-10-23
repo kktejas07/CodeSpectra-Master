@@ -64,6 +64,7 @@ export async function GET() {
   try {
     await ensureSeeded()
     const db = await getMongoDb()
+    // role-scope: narrows a tenant admin to their own org (never a grant)
     const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
       ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
       : {}

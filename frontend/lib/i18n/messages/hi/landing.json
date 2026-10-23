@@ -79,5 +79,16 @@
   "bentoProofFormats": "प्रतियोगिता फ़ॉर्मैट",
   "bentoProofLanguages": "भाषाएँ",
   "bentoCtaTitle": "एक टेस्ट से शुरुआत करें",
-  "bentoCtaBody": "लर्नर के तौर पर प्रैक्टिस करें, या पायलट बुक करके अपने अगले बैच के उम्मीदवारों की स्क्रीनिंग करें।"
+  "bentoCtaBody": "लर्नर के तौर पर प्रैक्टिस करें, या पायलट बुक करके अपने अगले बैच के उम्मीदवारों की स्क्रीनिंग करें।",
+  "bentoSampleProgress": "प्रश्न {n} / {total}",
+  "bentoSamplePoints": "{n} अंक",
+  "bentoSampleQuestion": "git rebase क्या करता है?",
+  "bentoSampleOptA": "मर्ज कमिट से दो ब्रांच जोड़ता है",
+  "bentoSampleOptB": "आपके कमिट दूसरे बेस के ऊपर फिर से लगाता है",
+  "bentoSampleOptC": "रिमोट ब्रांच हटा देता है",
+  "bentoSampleInterviewQ": "रोज़ दस लाख लिंक संभालने वाला URL शॉर्टनर आप कैसे डिज़ाइन करेंगे?",
+  "bentoSampleRole": "ग्रेजुएट इंजीनियर ट्रेनी",
+  "bentoSampleBacklogs": "0 बैकलॉग",
+  "bentoSampleMinutes": "{n} मिनट",
+  "bentoSampleWhatsappQ": "प्र. कौन-सा डेटा स्ट्रक्चर key से औसतन O(1) लुकअप देता है? A) ऐरे B) हैश मैप C) लिंक्ड लिस्ट"
 }

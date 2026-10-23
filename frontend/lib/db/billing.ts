@@ -159,6 +159,8 @@ export interface BillingCouponDoc {
   plan_ids?: string[]
   first_purchase_only?: boolean
   starts_at?: string | null
+  /** SEC-035 / CORE-049: personal coupon — only this user may redeem it (lib/billing/coupon-eligibility.ts). */
+  user_id?: string | null
   created_at: string
   created_by?: string
   redemptions?: Array<{ user_id: string; user_name?: string; user_email?: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string; status?: 'reserved' | 'redeemed' }>

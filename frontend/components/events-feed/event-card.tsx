@@ -12,6 +12,7 @@ import type { PublicFeedEvent } from '@/lib/events-feed/types'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { localizedPath } from '@/lib/i18n/public-paths'
 
 /** Deadline line; pass the page translator for Hindi / Telugu (English without it). */
 export function deadlineLabel(iso: string | null, now = Date.now(), t?: Translator): { text: string; urgent: boolean } | null {
@@ -77,7 +78,7 @@ export function EventCard({ ev, origin, saved, onToggleSave }: { ev: PublicFeedE
         </div>
         <div>
           <h3 className="text-base font-semibold leading-snug text-foreground">
-            <Link href={`/events/${ev.id}`} className="hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{ev.title}</Link>
+            <Link href={localizedPath(`/events/${ev.id}`, locale)} className="hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{ev.title}</Link>
           </h3>
           {ev.organiser && <p className="mt-0.5 text-xs text-muted-foreground">{t('public.byName', { name: ev.organiser })}</p>}
         </div>

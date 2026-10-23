@@ -89,7 +89,7 @@ export async function LeaguesView({ searchParams, locale }: { searchParams: Leag
               <LeagueBoard
                 locale={locale}
                 title={t('hubs.leaguesColleges')} caption={t('hubs.leaguesCollegesCaption')}
-                rows={b.colleges.slice(0, 25).map((c) => ({ rank: c.rank, name: c.name, points: c.points, href: c.slug ? `/leagues/colleges/${encodeURIComponent(c.slug)}` : null, sub: t('hubs.leaguesScoringStudents', { count: c.scoring_students }) }))}
+                rows={b.colleges.slice(0, 25).map((c) => ({ rank: c.rank, name: c.name, points: c.points, href: c.slug ? localizedPath(`/leagues/colleges/${encodeURIComponent(c.slug)}`, locale) : null, sub: t('hubs.leaguesScoringStudents', { count: c.scoring_students }) }))}
                 empty={t('hubs.leaguesCollegesEmpty')}
               />
               <LeagueBoard
