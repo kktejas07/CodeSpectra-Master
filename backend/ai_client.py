@@ -4,6 +4,16 @@ import json
 from typing import Any, AsyncGenerator
 import httpx
 
+def _record_usage(provider: str, model: str, usage: dict) -> None:
+    """Report the finished call to the request's usage list (core/ai_usage; never raises)."""
+    try:
+        from core.ai_usage import record_call
+
+        record_call(provider, model, usage)
+    except Exception:
+        pass
+
+
 class TextDelta:
     def __init__(self, content: str = "") -> None:
         self.content = content
@@ -83,6 +93,7 @@ class DirectAiClient:
                     elif isinstance(chunk, StreamDone):
                         chunk.usage["input_chars"] = input_chars
                         chunk.usage["output_chars"] = output_chars
+                        _record_usage(self.provider, self.model, chunk.usage)
                     if isinstance(chunk, TextDelta):
                         output_chars += len(chunk.content)
                     yield chunk
@@ -97,6 +108,7 @@ class DirectAiClient:
                     elif isinstance(chunk, StreamDone):
                         chunk.usage["input_chars"] = input_chars
                         chunk.usage["output_chars"] = output_chars
+                        _record_usage(self.provider, self.model, chunk.usage)
                     if isinstance(chunk, TextDelta):
                         output_chars += len(chunk.content)
                     yield chunk
@@ -111,6 +123,7 @@ class DirectAiClient:
                     elif isinstance(chunk, StreamDone):
                         chunk.usage["input_chars"] = input_chars
                         chunk.usage["output_chars"] = output_chars
+                        _record_usage(self.provider, self.model, chunk.usage)
                     if isinstance(chunk, TextDelta):
                         output_chars += len(chunk.content)
                     yield chunk

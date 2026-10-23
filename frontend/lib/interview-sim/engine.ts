@@ -45,12 +45,14 @@ async function callJson(system: string, user: string, feature: string, userId: s
   const { backendComplete } = await import('@/lib/ai/backend')
   const { platformModelOverrides, extractJson } = await import('@/lib/interviews/ai-mock-engine')
   const { costUsd } = await import('@/lib/agent/metering')
-  const { estimateTokens } = await import('@/lib/ai/usage-meter')
+  const { estimateTokens, withUsageMeter } = await import('@/lib/ai/usage-meter')
   const overrides = await platformModelOverrides()
   try {
-    const res = await backendComplete({ systemMessage: system, userMessage: user, responseFormat: 'json', modelRole: 'fast', feature, userId, cache: false, ...overrides })
+    // The recorder prices the call (lib/ai/usage-record); the token estimate is the fallback.
+    let recorded: number | undefined
+    const res = await withUsageMeter((u) => { if (typeof u.costMicros === 'number') recorded = (recorded ?? 0) + u.costMicros }, () => backendComplete({ systemMessage: system, userMessage: user, responseFormat: 'json', modelRole: 'fast', feature, userId, cache: false, ...overrides }))
     const out = res.raw || res.text || (res.json !== undefined ? JSON.stringify(res.json) : '')
-    const cost = costUsd([{ provider: res.provider || '', model: res.model || overrides.modelOverride || '', inputTokens: res.usage?.input_tokens ?? estimateTokens(`${system}\n${user}`), outputTokens: res.usage?.output_tokens ?? estimateTokens(out) }])
+    const cost = recorded !== undefined ? recorded / 1_000_000 : costUsd([{ provider: res.provider || '', model: res.model || overrides.modelOverride || '', inputTokens: res.usage?.input_tokens ?? estimateTokens(`${system}\n${user}`), outputTokens: res.usage?.output_tokens ?? estimateTokens(out) }])
     if (!res.ok) return { json: null, cost }
     return { json: res.json !== undefined && res.json !== null ? res.json : extractJson(out), cost }
   } catch (e) {

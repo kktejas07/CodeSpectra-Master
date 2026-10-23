@@ -447,14 +447,20 @@ async function submitPrompt(user: Who, c: ContestDoc, entry: ContestEntryDoc, ta
   const capUsd = Number(c.config.spend_cap_usd ?? 2)
   if ((contestSpend[0]?.s || 0) >= capUsd) return fail(429, 'This contest has used its model budget. The organiser can raise it.')
   if (dayRuns >= settings.ai_daily_runs) return fail(429, 'The model is busy today. Try again tomorrow.')
-  if ((monthSpend[0]?.s || 0) >= settings.ai_monthly_cost_usd) return fail(429, 'The model budget for this month is used up.')
+  const { capSpendFor } = await import('@/lib/ai/usage-record')
+  if ((await capSpendFor(['contest_prompt_a_thon'], monthSpend[0]?.s || 0)) >= settings.ai_monthly_cost_usd) return fail(429, 'The model budget for this month is used up.')
 
   const { backendComplete } = await import('@/lib/ai/backend')
-  const { withUsageMeter, estimateTokens } = await import('@/lib/ai/usage-meter')
+  const { withUsageMeter, estimateTokens, meteredUsd } = await import('@/lib/ai/usage-meter')
   let tokens = 0
+  // Recorded per-call cost when the recorder priced it; the per-1k-token setting otherwise.
+  let metered = 0
   const results: boolean[] = []
   let errors = 0
-  await withUsageMeter((u) => { tokens += u.inputTokens + u.outputTokens }, async () => {
+  await withUsageMeter((u) => {
+    tokens += u.inputTokens + u.outputTokens
+    metered += meteredUsd(u, () => estimateCostUsd(u.inputTokens + u.outputTokens, settings.ai_cost_per_1k_tokens_usd))
+  }, async () => {
     for (const ec of cases) {
       const req = buildPromptRun(prompt, ec.input)
       try {
@@ -466,10 +472,11 @@ async function submitPrompt(user: Who, c: ContestDoc, entry: ContestEntryDoc, ta
         errors++
         results.push(false)
         tokens += estimateTokens(req.system + req.user)
+        metered += estimateCostUsd(estimateTokens(req.system + req.user), settings.ai_cost_per_1k_tokens_usd)
       }
     }
   })
-  const cost = estimateCostUsd(tokens, settings.ai_cost_per_1k_tokens_usd)
+  const cost = Math.round(metered * 1e6) / 1e6
   await usage.insertOne({ contest_id: c.id, user_id: user.id, task_id: String(task.id), tokens, cost_usd: cost, at: nowIso() })
   if (errors === cases.length) return fail(502, 'The model is not answering right now. This run was not counted against your score; try again shortly.')
   const rate = passRate(results)

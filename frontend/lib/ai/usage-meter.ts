@@ -13,6 +13,8 @@ export interface MeteredUsage {
   inputTokens: number
   outputTokens: number
   feature?: string
+  /** Cost recorded for this call (integer micro-dollars, lib/ai/usage-record); absent → estimate. */
+  costMicros?: number
 }
 
 export type UsageMeter = (u: MeteredUsage) => void
@@ -20,7 +22,9 @@ export type UsageMeter = (u: MeteredUsage) => void
 const store = new AsyncLocalStorage<UsageMeter>()
 
 export function withUsageMeter<T>(meter: UsageMeter, fn: () => Promise<T>): Promise<T> {
-  return store.run(meter, fn)
+  // Nested meters both see the call (e.g. a feature's own cap inside an agent tool).
+  const outer = store.getStore()
+  return store.run(outer ? (u) => { meter(u); outer(u) } : meter, fn)
 }
 
 export function reportAiUsage(u: MeteredUsage): void {
@@ -33,6 +37,7 @@ export function reportAiUsage(u: MeteredUsage): void {
       inputTokens: Math.max(0, Math.floor(Number(u.inputTokens) || 0)),
       outputTokens: Math.max(0, Math.floor(Number(u.outputTokens) || 0)),
       ...(u.feature ? { feature: u.feature } : {}),
+      ...(typeof u.costMicros === 'number' && Number.isFinite(u.costMicros) && u.costMicros >= 0 ? { costMicros: Math.round(u.costMicros) } : {}),
     })
   } catch {
     /* metering never breaks the call */
@@ -42,4 +47,12 @@ export function reportAiUsage(u: MeteredUsage): void {
 /** Token estimate when a provider returns no usage (≈ 4 chars per token). */
 export function estimateTokens(text: string | null | undefined): number {
   return Math.ceil(String(text ?? '').length / 4)
+}
+
+/**
+ * USD for one metered call: the recorded cost when the recorder priced it,
+ * else `estimate()` (the feature's previous token estimate). Pure.
+ */
+export function meteredUsd(u: Pick<MeteredUsage, 'costMicros'>, estimate: () => number): number {
+  return typeof u.costMicros === 'number' ? u.costMicros / 1_000_000 : estimate()
 }

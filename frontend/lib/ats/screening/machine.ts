@@ -648,7 +648,7 @@ async function onMessage(ctx: Ctx, msg: InboundMessage, token: string | null): P
   if (!text && msg.mediaId && /audio|voice/.test(msg.type)) {
     const t = chatTransport(ctx)
     const media = await t.downloadMedia(msg.mediaId)
-    const transcript = media.ok ? await transcribeAudio(ctx.cfg.voice.deepgram_api_key, media.data, media.mime, ctx.call.language) : null
+    const transcript = media.ok ? await transcribeAudio(ctx.cfg.voice.deepgram_api_key, media.data, media.mime, ctx.call.language, { feature: 'ats-bot-screen-stt', tenantId: ctx.call.tenant_id }) : null
     if (!transcript) {
       await save(ctx, { last_inbound_at: at }, [candLine('[voice note]', at)])
       await say(ctx, "Sorry, I couldn't listen to that voice note. Could you type your answer instead?")

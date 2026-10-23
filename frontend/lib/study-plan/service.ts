@@ -121,11 +121,14 @@ async function coachNote(userId: string, week: PlanWeek, areas: WeakArea[], last
   const fallback = { note: templateNote(week, areas, last), source: 'template' as const }
   try {
     const s = await getStudySettings()
-    if (!aiAllowed(s, s.usage, now).ok) return fallback
+    // Cap source: own counter or the platform-recorded cost, whichever is higher.
+    const { capSpendFor } = await import('@/lib/ai/usage-record')
+    const ledger = s.usage.month === now.toISOString().slice(0, 7) ? s.usage.month_cost_usd : 0
+    if (!aiAllowed(s, { ...s.usage, month: now.toISOString().slice(0, 7), month_cost_usd: await capSpendFor(['study-plan-note'], ledger, now) }, now).ok) return fallback
     // AI notes are a plan feature (lib/billing/entitlement-features.ts); free plans get the template.
     const { hasEntitlement } = await import('@/lib/entitlements')
     if (!(await hasEntitlement({ id: userId, role: 'user' }, 'study_plan_ai_notes')).allowed) return fallback
-    const [{ backendComplete }, { withUsageMeter }, { estimateAiCost }, { scanUntrusted, neutraliseUntrusted }] = await Promise.all([
+    const [{ backendComplete }, { withUsageMeter, meteredUsd }, { estimateAiCost }, { scanUntrusted, neutraliseUntrusted }] = await Promise.all([
       import('@/lib/ai/backend'), import('@/lib/ai/usage-meter'), import('@/lib/db/analytics'), import('@/lib/ai/untrusted-input'),
     ])
     // Labels come from the bank / patterns (not typed by the learner) — still neutralised and scanned.
@@ -140,7 +143,7 @@ async function coachNote(userId: string, week: PlanWeek, areas: WeakArea[], last
     let cost = 0
     const { platformModelOverrides } = await import('@/lib/interviews/ai-mock-engine')
     const overrides = await platformModelOverrides()
-    const res = await withUsageMeter((u) => { cost += estimateAiCost(u.model, u.inputTokens, u.outputTokens) }, () => backendComplete({
+    const res = await withUsageMeter((u) => { cost += meteredUsd(u, () => estimateAiCost(u.model, u.inputTokens, u.outputTokens)) }, () => backendComplete({
       systemMessage: 'You are a study coach. Write 2 short, encouraging, concrete sentences for a learner about this week of their study plan. Use only the facts given. No lists, no headings, no invented numbers, no promises of results.',
       userMessage: JSON.stringify(facts),
       modelRole: 'fast', responseFormat: 'text', feature: 'study-plan-note', userId, cache: false,

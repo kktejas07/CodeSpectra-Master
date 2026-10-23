@@ -142,7 +142,7 @@ export async function backendChatStream(args: ChatStreamArgs): Promise<Response>
  * Handles both OpenAI-style (prompt_tokens/completion_tokens) and
  * normalized (input_tokens/output_tokens) shapes, top-level or nested.
  */
-function extractUsageTokens(res: unknown): { promptTokens?: number; completionTokens?: number } {
+function extractUsageTokens(res: unknown): { promptTokens?: number; completionTokens?: number; cachedTokens?: number; estimated?: boolean } {
   try {
     const root = res as Record<string, unknown> | null | undefined
     const usage = (root?.usage ?? (root?.json as Record<string, unknown> | undefined)?.usage) as
@@ -156,43 +156,99 @@ function extractUsageTokens(res: unknown): { promptTokens?: number; completionTo
       pick(usage.prompt_tokens) ?? pick(usage.input_tokens) ?? pick(usage.promptTokens) ?? pick(usage.inputTokens)
     const completionTokens =
       pick(usage.completion_tokens) ?? pick(usage.output_tokens) ?? pick(usage.completionTokens) ?? pick(usage.outputTokens)
-    return { ...(promptTokens !== undefined ? { promptTokens } : {}), ...(completionTokens !== undefined ? { completionTokens } : {}) }
+    const details = (usage.prompt_tokens_details ?? {}) as Record<string, unknown>
+    const cachedTokens = pick(usage.cached_tokens) ?? pick(details.cached_tokens) ?? pick(usage.cache_read_input_tokens) ?? pick(usage.cachedTokens)
+    return {
+      ...(promptTokens !== undefined ? { promptTokens } : {}),
+      ...(completionTokens !== undefined ? { completionTokens } : {}),
+      ...(cachedTokens !== undefined ? { cachedTokens } : {}),
+      // The FastAPI backend estimates from characters when the provider sent no counts.
+      ...(usage.estimated === true ? { estimated: true } : {}),
+    }
   } catch {
     return {}
   }
 }
 
 /**
- * Phase-3 usage telemetry: fire-and-forget, never awaited, never throws.
+ * Price + record one completion (lib/ai/usage-record): fire-and-forget for the
+ * writes, but the cost comes back at once so a usage meter can charge it.
+ * Missing token counts are estimated (≈ 4 chars/token) and flagged.
  * Injection flags are LOG-ONLY — the request always proceeds.
  */
-function fireAndForgetUsage(
-  args: { feature?: string; userId?: string; providerOverride?: string; modelOverride?: string },
-  res: { provider?: string; model?: string } | undefined,
+async function recordCompletion(
+  args: { feature?: string; userId?: string; providerOverride?: string; modelOverride?: string; systemMessage?: string; userMessage?: string },
+  res: { provider?: string; model?: string; raw?: string; text?: string; json?: unknown } | undefined,
   latencyMs: number,
   ok: boolean,
   injectionFlags: string[],
-): void {
+  opts: { cacheHit?: boolean } = {},
+): Promise<{ provider: string; model: string; inputTokens: number; outputTokens: number; costMicros: number }> {
+  const provider = res?.provider || args.providerOverride || 'unknown'
+  const model = res?.model || args.modelOverride || 'unknown'
+  const tk = extractUsageTokens(res)
+  const inputTokens = opts.cacheHit ? 0 : tk.promptTokens ?? estimateTokens(`${args.systemMessage ?? ''}\n${args.userMessage ?? ''}`)
+  const outputTokens = opts.cacheHit || !ok ? 0 : tk.completionTokens ?? estimateTokens(res?.raw || res?.text || (res?.json ? JSON.stringify(res.json) : ''))
   try {
-    const tokens = extractUsageTokens(res)
-    const entry = {
+    const { recordAiUsage } = await import('@/lib/ai/usage-record')
+    const r = recordAiUsage({
+      feature: (args.feature || 'unknown') + (opts.cacheHit ? ':cache-hit' : ''),
+      provider,
+      model,
+      inputTokens,
+      outputTokens,
+      cachedTokens: tk.cachedTokens,
+      tokensEstimated: !opts.cacheHit && (tk.estimated === true || tk.promptTokens === undefined || tk.completionTokens === undefined),
       userId: args.userId,
-      feature: args.feature || 'unknown',
-      provider: res?.provider || args.providerOverride || 'unknown',
-      model: res?.model || args.modelOverride || 'unknown',
-      ...(tokens.promptTokens !== undefined ? { promptTokens: tokens.promptTokens } : {}),
-      ...(tokens.completionTokens !== undefined ? { completionTokens: tokens.completionTokens } : {}),
       latencyMs,
       ok,
       injectionFlags,
+    })
+    return { provider, model, inputTokens, outputTokens, costMicros: r.costMicros }
+  } catch {
+    // Telemetry must never fail the request.
+    return { provider, model, inputTokens, outputTokens, costMicros: 0 }
+  }
+}
+
+/** Feature id for a raw backend call: "/internal/ai/hints" → "hints", "/internal/learning/courses/x/chat" → "learning-chat". */
+export function backendFeatureFor(path: string): string {
+  const parts = path.split('?')[0].replace(/^\/internal\//, '').split('/').filter(Boolean)
+  if (parts[0] === 'ai') return parts.slice(1).join('-') || 'ai'
+  return parts.filter((p) => /^[a-z][a-z-]*$/.test(p) && !/^[0-9a-f-]{16,}$/.test(p)).filter((p, i, a) => i === 0 || i === a.length - 1).join('-') || 'backend'
+}
+
+/** Record the calls the FastAPI backend reported in its `x-ai-usage` header (core/ai_usage.py). */
+async function recordHeaderUsage(res: Response, feature: string, userId: string | undefined, latencyMs: number): Promise<void> {
+  const raw = res.headers.get('x-ai-usage')
+  if (!raw) return
+  try {
+    const calls = JSON.parse(raw) as Array<{ provider?: string; model?: string; input_tokens?: number; output_tokens?: number; cached_tokens?: number; estimated?: boolean }>
+    if (!Array.isArray(calls)) return
+    const { recordAiUsage } = await import('@/lib/ai/usage-record')
+    for (const c of calls.slice(0, 20)) {
+      recordAiUsage({
+        feature,
+        provider: String(c.provider || 'unknown'),
+        model: String(c.model || 'unknown'),
+        inputTokens: c.input_tokens,
+        outputTokens: c.output_tokens,
+        cachedTokens: c.cached_tokens,
+        tokensEstimated: c.estimated !== false,
+        userId,
+        latencyMs,
+        ok: res.ok,
+      })
     }
-    void import('@/lib/ai/cost-tracking').then(
-      ({ logAiUsage }) => logAiUsage(entry),
-      () => undefined,
-    )
   } catch {
     // Telemetry must never fail the request.
   }
+}
+
+/** Refuse a non-critical feature when the platform AI budget is used up (hard stop on). */
+async function assertAiBudget(feature: string | undefined): Promise<void> {
+  const { aiBudgetBlocks, AiBudgetExceededError } = await import('@/lib/ai/usage-record')
+  if (await aiBudgetBlocks(feature)) throw new AiBudgetExceededError(feature || 'unknown')
 }
 
 export async function backendComplete(args: {
@@ -238,27 +294,23 @@ export async function backendComplete(args: {
       })
       const hit = await getCachedCompletion(cacheKey)
       if (hit && (hit.text !== undefined || hit.json !== undefined)) {
-        fireAndForgetUsage({ ...args, feature: (args.feature || 'unknown') + ':cache-hit' }, undefined, Date.now() - start, true, injectionFlags)
+        void recordCompletion(args, undefined, Date.now() - start, true, injectionFlags, { cacheHit: true })
         return { ok: true, ...(hit.text !== undefined ? { text: hit.text } : {}), ...(hit.json !== undefined ? { json: hit.json } : {}) }
       }
     } catch {
       cacheKey = ''
     }
   }
+  // Platform AI budget hard stop (non-critical features only; lib/ai/spend).
+  await assertAiBudget(args.feature)
   // Use OmniRouter-style provider fallback for automatic failover
   const { backendCompleteWithFallback } = await import('@/lib/ai/provider-fallback')
   try {
     const res = await backendCompleteWithFallback(args)
-    fireAndForgetUsage(args, res, Date.now() - start, true, injectionFlags)
-    // AGT-002: charge the real tokens to whoever metered this call (e.g. an agent proposal).
-    const tk = extractUsageTokens(res)
-    reportAiUsage({
-      provider: res.provider || args.providerOverride || 'unknown',
-      model: res.model || args.modelOverride || 'unknown',
-      inputTokens: tk.promptTokens ?? estimateTokens(`${args.systemMessage}\n${args.userMessage}`),
-      outputTokens: tk.completionTokens ?? estimateTokens(res.raw || res.text || (res.json ? JSON.stringify(res.json) : '')),
-      feature: args.feature,
-    })
+    // Priced + recorded once here; the cost rides along to whoever metered this
+    // call (AGT-002 agent proposals, feature caps) so they charge the real cost.
+    const used = await recordCompletion(args, res, Date.now() - start, true, injectionFlags)
+    reportAiUsage({ ...used, feature: args.feature })
     if (cacheable && cacheKey && res.ok && (res.text !== undefined || res.json !== undefined)) {
       try {
         const { setCachedCompletion } = await import('@/lib/ai/semantic-cache')
@@ -269,7 +321,7 @@ export async function backendComplete(args: {
     }
     return res
   } catch (e) {
-    fireAndForgetUsage(args, undefined, Date.now() - start, false, injectionFlags)
+    void recordCompletion(args, undefined, Date.now() - start, false, injectionFlags)
     throw e
   }
 }
@@ -319,9 +371,12 @@ export async function backendPostStream<T = unknown>(
 export async function backendPost<T = unknown>(
   path: string,
   body: unknown,
-  opts?: { providerOverride?: string; modelOverride?: string; modelRole?: 'reasoning' | 'fast'; endpointOverride?: string; apiKeyOverride?: string },
+  opts?: { providerOverride?: string; modelOverride?: string; modelRole?: 'reasoning' | 'fast'; endpointOverride?: string; apiKeyOverride?: string; feature?: string; userId?: string },
 ): Promise<T> {
+  const feature = opts?.feature || backendFeatureFor(path)
+  if (path.startsWith('/internal/ai/')) await assertAiBudget(feature)
   const headers = await backendHeaders({ apiKeyOverride: opts?.apiKeyOverride })
+  const started = Date.now()
   const res = await fetch(`${backendBase()}${path}`, {
     method: 'POST',
     headers,
@@ -336,6 +391,7 @@ export async function backendPost<T = unknown>(
       ...(opts?.apiKeyOverride ? { api_key_override: opts.apiKeyOverride } : {}),
     }),
   })
+  await recordHeaderUsage(res, feature, opts?.userId, Date.now() - started)
   if (!res.ok) {
     throw new Error(`backend ${path} returned ${res.status}: ${await res.text()}`)
   }

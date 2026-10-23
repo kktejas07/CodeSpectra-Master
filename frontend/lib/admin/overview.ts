@@ -24,8 +24,22 @@ export interface AdminOverview {
   tests: { today: number; by_day: number[] }
   /** Attempts with integrity events that nobody has reviewed yet, last 30 days. */
   flags: { open: number }
-  /** Model calls logged in ai_usage, last 30 days (calls and tokens; cost isn't recorded per call). */
-  ai: { requests: number; tokens: number; failed: number; by_day: number[] }
+  /** Model calls logged in ai_usage, last 30 days. */
+  ai: { requests: number; tokens: number; failed: number; by_day: number[]; spend: AdminAiSpend | null }
   /** Sign-ups per day, last 14 days. */
   signups: { by_day: number[] }
+}
+
+/** AI spend this month (lib/ai/spend-report), money in integer micro-dollars. */
+export interface AdminAiSpend {
+  month: string
+  micros: number
+  /** Part estimated from tokens (rows recorded before per-call cost). */
+  estimated_micros: number
+  last_month_to_date_micros: number
+  trend_pct: number | null
+  top: { feature: string; micros: number }[]
+  unpriced_calls: number
+  usd_inr_rate: number
+  budget: { usd: number; level: 0 | 50 | 80 | 100 }
 }

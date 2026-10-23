@@ -91,7 +91,9 @@ export async function updateSimSettings(patch: Partial<InterviewSimSettings>, by
 
 export async function monthSpend(now = new Date()): Promise<{ cost_usd: number; sessions: number }> {
   const doc = await (await usageCol()).findOne({ id: monthKey(now) })
-  return { cost_usd: doc?.cost_usd ?? 0, sessions: doc?.sessions ?? 0 }
+  // Cap source: own ledger or platform-recorded cost, whichever is higher (lib/ai/spend capSpendUsd).
+  const { capSpendFor } = await import('@/lib/ai/usage-record')
+  return { cost_usd: await capSpendFor(['interview-sim*'], doc?.cost_usd ?? 0, now), sessions: doc?.sessions ?? 0 }
 }
 
 export async function recordSpend(costUsd: number, opts: { newSession?: boolean } = {}, now = new Date()): Promise<void> {

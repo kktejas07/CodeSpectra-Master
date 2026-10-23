@@ -6,58 +6,62 @@
  * - Token counts are recorded only when the provider response carries them
  *   (most backend responses don't include usage — many nulls are expected).
  *   Latency / ok / feature / provider / model are ALWAYS recorded.
- * - Cost-$ attribution needs per-model price tables (not built — usage only).
+ * - Cost: priced per call with the shared price book (lib/ai/pricing, lib/ai/usage-record).
  *
  * Collection: `ai_usage` (one doc per backendComplete call).
  */
 
 export interface AiUsageInput {
   userId?: string
+  tenantId?: string | null
   feature: string
   provider: string
   model: string
   promptTokens?: number | null
   completionTokens?: number | null
+  cachedTokens?: number | null
+  audioSeconds?: number | null
+  /** Token counts are estimates (the provider returned none). */
+  tokensEstimated?: boolean
   latencyMs: number
   ok: boolean
   /** Reasons from scanPrompt() — log-only, never blocks. */
   injectionFlags?: string[]
 }
 
+/** Stored row (lib/ai/usage-record AiUsageRow); rows before cost tracking lack the cost fields. */
 export interface AiUsageDoc extends AiUsageInput {
   injectionFlags: string[]
+  costMicros?: number
+  unpriced?: boolean
   createdAt: Date
 }
 
-function toFiniteNum(v: unknown): number | null {
-  return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null
-}
-
 /**
- * Fire-and-forget usage insert. Returns void — never throws, never rejects.
+ * Fire-and-forget usage insert, now priced (lib/ai/usage-record recordAiUsage).
+ * Returns void — never throws, never rejects.
  */
 export function logAiUsage(input: AiUsageInput): void {
   try {
-    const doc: AiUsageDoc = {
-      userId: input.userId,
-      feature: input.feature || 'unknown',
-      provider: input.provider || 'unknown',
-      model: input.model || 'unknown',
-      promptTokens: toFiniteNum(input.promptTokens),
-      completionTokens: toFiniteNum(input.completionTokens),
-      latencyMs: toFiniteNum(input.latencyMs) ?? 0,
-      ok: input.ok === true,
-      injectionFlags: Array.isArray(input.injectionFlags) ? input.injectionFlags : [],
-      createdAt: new Date(),
-    }
     // Dynamic import avoids module cycles (backend.ts ↔ provider-fallback ↔ db).
-    // ponytail: no await, no .catch-logging — a failed insert is silently
-    // dropped; usage telemetry must never break or slow an AI request.
-    // Ceiling: unbounded collection growth → add a TTL index on createdAt
-    // (e.g. 90d) in scripts/create-indexes.ts when this proves useful.
-    void import('@/lib/mongodb')
-      .then(({ getMongoDb }) => getMongoDb())
-      .then((db) => db.collection<AiUsageDoc>('ai_usage').insertOne(doc))
+    void import('@/lib/ai/usage-record')
+      .then(({ recordAiUsage }) => {
+        recordAiUsage({
+          feature: input.feature,
+          provider: input.provider,
+          model: input.model,
+          inputTokens: input.promptTokens,
+          outputTokens: input.completionTokens,
+          cachedTokens: input.cachedTokens,
+          audioSeconds: input.audioSeconds,
+          tokensEstimated: input.tokensEstimated,
+          userId: input.userId,
+          tenantId: input.tenantId,
+          latencyMs: input.latencyMs,
+          ok: input.ok,
+          injectionFlags: input.injectionFlags,
+        })
+      })
       .then(
         () => undefined,
         () => undefined,
@@ -186,6 +190,7 @@ export async function getAiUsageSummary(opts?: { days?: number }): Promise<AiUsa
                   },
                   requests: { $sum: 1 },
                   ok: { $sum: { $cond: ['$ok', 1, 0] } },
+                  costMicros: { $sum: { $ifNull: ['$costMicros', 0] } },
                   totalTokens: {
                     $sum: { $add: [{ $ifNull: ['$promptTokens', 0] }, { $ifNull: ['$completionTokens', 0] }] },
                   },
@@ -200,7 +205,7 @@ export async function getAiUsageSummary(opts?: { days?: number }): Promise<AiUsa
                   provider: '$_id.provider',
                   requests: 1,
                   tokens: '$totalTokens',
-                  cost: 0,
+                  cost: { $divide: ['$costMicros', 1_000_000] },
                   avgLatency: { $round: ['$avgLatencyMs', 0] },
                   successRate: { $round: [{ $multiply: [{ $cond: [{ $eq: ['$requests', 0] }, 0, { $divide: ['$ok', '$requests'] }] }, 100] }, 1] },
                 },

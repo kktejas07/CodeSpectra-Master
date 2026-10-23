@@ -244,6 +244,12 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   ],
   ai_usage: [
     { key: { createdAt: -1 }, expireAfterSeconds: 90 * 24 * 60 * 60 },
+    { key: { createdAt: -1, feature: 1 }, name: 'ai_usage_time_feature' },
+  ],
+  // Month totals + per-feature month totals for AI spend caps / budget (lib/ai/usage-record).
+  ai_spend_counters: [
+    { key: { id: 1 }, unique: true, name: 'ai_spend_counters_id' },
+    { key: { kind: 1, month: -1 }, name: 'ai_spend_counters_kind_month' },
   ],
 }
 

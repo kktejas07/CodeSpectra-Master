@@ -46,11 +46,13 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
   const usage = { day: null as string | null, day_count: 0, month: null as string | null, month_cost_usd: 0, ...(settings.usage || {}) }
   if (usage.day !== dayKey(now)) Object.assign(usage, { day: dayKey(now), day_count: 0 })
   if (usage.month !== monthKey(now)) Object.assign(usage, { month: monthKey(now), month_cost_usd: 0 })
+  // Cap source: own counter or the platform-recorded cost, whichever is higher.
+  usage.month_cost_usd = await (await import('@/lib/ai/usage-record')).capSpendFor(['signals-*'], usage.month_cost_usd, now).catch(() => usage.month_cost_usd)
   let budget = aiBudget(settings, usage, now)
   const fetchItems = opts.deps?.fetchItems || (async (u: string, n: number) => (await import('./rss')).fetchFeedItems(u, n))
   const rewrite = opts.deps?.rewrite || (async (a: Parameters<NonNullable<IngestDeps['rewrite']>>[0]) => (await import('./rewrite')).rewriteSignal(a))
   const og = opts.deps?.og || (async (u: string) => (await import('./og-scraper')).scrapeOgData(u))
-  const { withUsageMeter } = await import('@/lib/ai/usage-meter')
+  const { withUsageMeter, meteredUsd } = await import('@/lib/ai/usage-meter')
   const { estimateAiCost } = await import('@/lib/db/analytics')
   const { scanUntrusted } = await import('@/lib/ai/untrusted-input')
   const { publishDraft } = await import('./publish')
@@ -71,7 +73,8 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
         const summary = page.description || page.title || item.summary
         let cost = 0
         const rewritten = await withUsageMeter(
-          (u) => { cost += estimateAiCost(u.model, u.inputTokens, u.outputTokens) },
+          // Recorded per-call cost (lib/ai/usage-record); token estimate only when none was recorded.
+          (u) => { cost += meteredUsd(u, () => estimateAiCost(u.model, u.inputTokens, u.outputTokens)) },
           () => rewrite({ title: page.title || item.title, summary, sourceUrl: item.link, category: feed.category }),
         ).catch(() => null)
         await store.recordAiUse(cost, now)

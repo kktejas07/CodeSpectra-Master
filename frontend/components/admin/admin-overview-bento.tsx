@@ -6,12 +6,13 @@
  * currency, never summed across currencies); /api/admin/overview adds the
  * day series. Each card loads, fails and empties on its own.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Bot, Coins, ShieldAlert, Users } from 'lucide-react'
 import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { BentoEmpty, BentoGrid, BentoStat, MiniBars } from '@/components/bento'
 import { useAdminT } from '@/lib/i18n/admin'
 import type { AdminOverview } from '@/lib/admin/overview'
+import { microsIn, moneyDigits } from '@/lib/ai/spend'
 
 type Load<T> = { data: T | null; error: boolean }
 
@@ -104,21 +105,63 @@ export function AdminOverviewBento({ totalUsers, usersLoaded, proctorHref }: { t
           action={t('overview.flagsAction')}
           href={proctorHref}
         />
-        <BentoStat
-          span={3}
-          smSpan={1}
-          icon={<Bot />}
-          title={t('overview.ai')}
-          loading={ov.loading}
-          loadingLabel={loading}
-          value={ov.data ? number(ov.data.ai.requests) : undefined}
-          unit={ov.data ? t('overview.aiUnit') : undefined}
-          hint={ov.data ? <>{t('overview.aiHint', { tokens: number(ov.data.ai.tokens), failed: number(ov.data.ai.failed) })}<span className="mt-1 block text-xs">{t('overview.aiNote')}</span></> : undefined}
-          empty={ov.error ? failed : undefined}
-          series={ov.data?.ai.by_day}
-          seriesLabel={t('overview.aiTrend')}
-        />
+        <AiSpendCard ov={ov} failed={failed} />
       </BentoGrid>
     </section>
+  )
+}
+
+/** AI spend this month in USD and INR, trend vs last month, top 3 features by cost. */
+function AiSpendCard({ ov, failed }: { ov: Load<AdminOverview> & { loading: boolean }; failed: ReactNode }) {
+  const { t, fmt } = useAdminT()
+  const sp = ov.data?.ai.spend ?? null
+  const money = (micros: number, currency: 'USD' | 'INR') => {
+    const amount = microsIn(micros, currency, sp?.usd_inr_rate ?? 0)
+    const digits = moneyDigits(amount)
+    return fmt.number(amount, { style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits })
+  }
+  const trend = sp?.trend_pct
+  return (
+    <BentoStat
+      span={3}
+      smSpan={1}
+      icon={<Bot />}
+      title={t('overview.aiSpend')}
+      loading={ov.loading}
+      loadingLabel={t('overview.loading')}
+      value={sp ? money(sp.micros, 'USD') : undefined}
+      unit={sp ? money(sp.micros, 'INR') : undefined}
+      delta={sp && trend !== null && trend !== undefined
+        ? { text: t('overview.aiSpendTrend', { pct: `${trend > 0 ? '+' : ''}${fmt.number(trend, { maximumFractionDigits: 1 })}` }), tone: trend > 0 ? 'down' : trend < 0 ? 'up' : 'flat' }
+        : undefined}
+      hint={ov.data ? (
+        <>
+          {sp && sp.top.length > 0 ? (
+            <span className="block">
+              {t('overview.aiSpendTop')}{' '}
+              {sp.top.map((f, i) => (
+                <span key={f.feature}>{i > 0 ? ', ' : ''}<span className="font-medium text-foreground">{f.feature}</span> {money(f.micros, 'USD')}</span>
+              ))}
+            </span>
+          ) : <span className="block">{t('overview.aiSpendNone')}</span>}
+          <span className="mt-1 block text-xs">{t('overview.aiHint', { tokens: fmt.number(ov.data.ai.tokens), failed: fmt.number(ov.data.ai.failed) })}</span>
+          {sp && (sp.estimated_micros > 0 || sp.unpriced_calls > 0) && (
+            <span className="mt-1 inline-flex rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+              {sp.unpriced_calls > 0 ? t('overview.aiSpendUnpriced', { n: fmt.number(sp.unpriced_calls) }) : t('overview.aiSpendEstimated')}
+            </span>
+          )}
+          {sp && sp.budget.level > 0 && (
+            <span className="ml-1 mt-1 inline-flex rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-700 dark:text-red-400">
+              {t('overview.aiSpendBudget', { pct: sp.budget.level })}
+            </span>
+          )}
+        </>
+      ) : undefined}
+      empty={ov.error ? failed : undefined}
+      series={ov.data?.ai.by_day}
+      seriesLabel={t('overview.aiTrend')}
+      action={t('overview.aiSpendAction')}
+      href="/dashboard/admin/ai-usage"
+    />
   )
 }

@@ -128,6 +128,7 @@ export async function runChatTurn(opts: {
   const logUsage = (u: { provider: string; model: string; inputTokens: number; outputTokens: number; latencyMs: number; ok: boolean }, feature: string) =>
     logAiUsage({
       userId: caller.userId,
+      tenantId: actor.tenantId,
       feature,
       provider: u.provider,
       model: u.model,
@@ -173,7 +174,9 @@ export async function runChatTurn(opts: {
           announced = id
           emit({ type: 'model', provider: u.provider, model: u.model })
         }
-        logUsage(u, u.kind === 'generation' ? 'admin_agent_generation' : u.kind === 'subagent' ? 'admin_agent_subagent' : 'admin_agent')
+        // Generation inside a tool's propose() runs through lib/ai/backend, which already
+        // records (and prices) that call — logging it here too would count it twice.
+        if (u.kind !== 'generation') logUsage(u, u.kind === 'subagent' ? 'admin_agent_subagent' : 'admin_agent')
       },
     },
   )

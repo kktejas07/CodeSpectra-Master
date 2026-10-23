@@ -168,8 +168,19 @@ export async function trackAiUsage(event: {
   latency_ms?: number
   success: boolean
   error?: string
+  /** Price as an embedding (per input token) instead of a chat call. */
+  kind?: 'chat' | 'embedding'
+  tenant_id?: string | null
 }): Promise<void> {
   try {
+    // Platform cost record (ai_usage + spend counters) — the admin AI spend views read this.
+    const { recordAiUsage } = await import('@/lib/ai/usage-record')
+    recordAiUsage({
+      feature: event.feature, provider: event.provider, model: event.model,
+      inputTokens: event.input_tokens ?? 0, outputTokens: event.output_tokens ?? 0,
+      kind: event.kind, tokensEstimated: true, userId: event.user_id, tenantId: event.tenant_id,
+      latencyMs: event.latency_ms, ok: event.success,
+    })
     const { trackAiUsage: trackUsage } = await import('@/lib/db/analytics')
     const inputTokens = event.input_tokens || 0
     const outputTokens = event.output_tokens || 0
