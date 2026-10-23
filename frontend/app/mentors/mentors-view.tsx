@@ -98,7 +98,7 @@ export async function MentorsView({ searchParams, locale }: { searchParams: SP; 
                   <div className="flex items-center gap-3">
                     {m.avatar_url
                       // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={m.avatar_url} alt="" className="h-14 w-14 rounded-2xl object-cover" />
+                      ? <img src={m.avatar_url} alt="" width={56} height={56} loading="lazy" decoding="async" className="h-14 w-14 rounded-2xl object-cover" />
                       : <span aria-hidden className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cs-accent/10 text-lg font-bold text-cs-accent-text">{m.display_name.slice(0, 1).toUpperCase()}</span>}
                     <div className="min-w-0">
                       <p className="flex items-center gap-1 truncate font-semibold text-cs-ink">{m.display_name}<BadgeCheck className="h-4 w-4 shrink-0 text-cs-accent-text" aria-label={t('hubs.mentorsVerified')} /></p>

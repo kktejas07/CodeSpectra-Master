@@ -903,6 +903,10 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
+      {/* SEO-040: keyboard users skip the long sidebar. */}
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:ring-2 focus:ring-ring">
+        {t('common.skipToContent')}
+      </a>
       <ActivityHeartbeat />
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -1266,7 +1270,7 @@ export default function DashboardLayout({
         />
 
         {/* Page Content — full width with proper padding */}
-        <main className={cn("w-full", isLessonPlayer ? "p-0" : "px-4 py-6 lg:px-8 lg:py-8")}>
+        <main id="main" tabIndex={-1} className={cn("w-full focus:outline-none", isLessonPlayer ? "p-0" : "px-4 py-6 lg:px-8 lg:py-8")}>
           <div className={cn("w-full", !isLessonPlayer && "mx-auto max-w-[1400px]")}>
             {/* Locked / forbidden / plan-gated pages are swapped on the server
                 (proxy.ts → /dashboard/locked), so children is always the right page. */}

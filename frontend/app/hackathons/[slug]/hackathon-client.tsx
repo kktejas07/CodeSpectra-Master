@@ -209,7 +209,7 @@ export function HackathonDetail({ slug, initial }: { slug: string; initial: Hack
       {/* Hero Banner Area */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden bg-muted border-b border-border">
         {hackathon.banner_url ? (
-          <img src={hackathon.banner_url} alt="" className="w-full h-full object-cover" />
+          <img src={hackathon.banner_url} alt="" width={1600} height={400} fetchPriority="high" className="w-full h-full object-cover" />
         ) : (
           <div className="absolute inset-0 isolate bg-linear-to-br from-primary/25 via-primary/5 to-background">
             <SoftGlow />

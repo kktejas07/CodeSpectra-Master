@@ -45,7 +45,7 @@ export default async function SellerPage({ params, searchParams }: Props) {
         <header className="mb-10 flex flex-col gap-5 rounded-3xl border border-cs-grid bg-cs-sheet p-6 sm:flex-row sm:items-center">
           {seller.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={seller.logo_url} alt="" className="h-20 w-20 rounded-2xl object-cover" />
+            <img src={seller.logo_url} alt="" width={80} height={80} decoding="async" className="h-20 w-20 rounded-2xl object-cover" />
           ) : <span className="flex h-20 w-20 items-center justify-center rounded-2xl bg-cs-accent/10 text-cs-accent-text"><Store className="h-8 w-8" aria-hidden /></span>}
           <div className="min-w-0">
             <h1 className="cs-heading text-3xl text-cs-ink">{seller.display_name}</h1>

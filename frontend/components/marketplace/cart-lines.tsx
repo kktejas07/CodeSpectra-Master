@@ -33,7 +33,7 @@ function Line({ l, act, busy, saved }: { l: CartViewLine; act: (b: CartActionBod
       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-cs-grid bg-cs-paper">
         {l.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={l.image} alt="" className="h-full w-full object-cover" />
+          <img src={l.image} alt="" width={64} height={64} loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-cs-ink-soft"><ShoppingCart className="h-5 w-5" aria-hidden /></div>
         )}

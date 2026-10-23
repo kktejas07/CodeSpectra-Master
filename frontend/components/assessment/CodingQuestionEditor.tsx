@@ -209,7 +209,7 @@ export function CodingQuestionEditor({
               autoCapitalize="off"
               aria-label={t('exam.codeEditor')}
               placeholder={t('exam.typeYourCodeHere')}
-              className="w-full h-full resize-none bg-zinc-950 text-zinc-100 font-mono text-[13px] leading-relaxed p-3 outline-none"
+              className="w-full h-full resize-none bg-zinc-950 text-zinc-100 font-mono text-[13px] leading-relaxed p-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             />
           ) : (
             <Editor

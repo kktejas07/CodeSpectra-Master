@@ -82,7 +82,7 @@ export function LearnMarkdown({ content, className }: { content: string; classNa
           img: ({ src, alt }) =>
             typeof src === 'string' && /^https:\/\//.test(src) ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={src} alt={alt || ''} loading="lazy" className="rounded-2xl border border-border" />
+              <img src={src} alt={alt || ''} loading="lazy" decoding="async" className="h-auto max-w-full rounded-2xl border border-border" />
             ) : null,
         }}
       >

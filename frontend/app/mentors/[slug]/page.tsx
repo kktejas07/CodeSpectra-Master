@@ -62,7 +62,7 @@ export default async function MentorPage({ params }: Props) {
             <header className="flex flex-col gap-5 sm:flex-row sm:items-center">
               {m.avatar_url
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={m.avatar_url} alt="" className="h-24 w-24 rounded-3xl object-cover" />
+                ? <img src={m.avatar_url} alt="" width={96} height={96} decoding="async" className="h-24 w-24 rounded-3xl object-cover" />
                 : <span aria-hidden className="flex h-24 w-24 items-center justify-center rounded-3xl bg-cs-accent/10 text-3xl font-bold text-cs-accent-text">{m.display_name.slice(0, 1).toUpperCase()}</span>}
               <div className="min-w-0">
                 <h1 className="cs-heading flex items-center gap-2 text-3xl text-cs-ink">{m.display_name}<BadgeCheck className="h-6 w-6 text-cs-accent-text" aria-label="Verified mentor" /></h1>

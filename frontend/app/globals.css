@@ -62,7 +62,8 @@
   
   /* Neutral grays */
   --muted: 220 15% 96%;
-  --muted-foreground: 220 10% 46%;
+  /* SEO-040: 42% lightness keeps muted text ≥ 4.5:1 on --muted (was 4.44:1). */
+  --muted-foreground: 220 10% 42%;
   
   /* Accent */
   --accent: 226 60% 95%;

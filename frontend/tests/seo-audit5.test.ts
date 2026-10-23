@@ -160,3 +160,26 @@ describe('SEO-031: /hi /te pages carry only the chrome catalogs', () => {
     expect(publicClientMessages('en')).toEqual({})
   })
 })
+
+describe('SEO-041: public images reserve their space', () => {
+  it('every <img> on public pages has width/height (markdown images are sized by CSS)', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const root = path.resolve(__dirname, '..')
+    const dirs = ['app/mentors', 'app/marketplace', 'app/news', 'app/hackathons', 'app/events', 'app/learn', 'app/digest', 'app/companies', 'app/community', 'app/certifications', 'app/leagues', 'app/contests', 'components/marketplace', 'components/events-feed', 'components/landing', 'components/mentors', 'components/community', 'components/contests']
+    const walk = (d: string, out: string[] = []): string[] => {
+      if (!fs.existsSync(path.join(root, d))) return out
+      for (const e of fs.readdirSync(path.join(root, d), { withFileTypes: true })) {
+        const rel = `${d}/${e.name}`
+        if (e.isDirectory()) { if (!/admin/.test(e.name)) walk(rel, out) } else if (rel.endsWith('.tsx')) out.push(rel)
+      }
+      return out
+    }
+    const bad: string[] = []
+    for (const f of dirs.flatMap((d) => walk(d))) {
+      const src = fs.readFileSync(path.join(root, f), 'utf8')
+      for (const m of src.matchAll(/<img\b[^>]*>/g)) if (!/\bwidth=|\{\.\.\.common\}|max-w-full/.test(m[0])) bad.push(`${f}: ${m[0].slice(0, 80)}`)
+    }
+    expect(bad).toEqual([])
+  })
+})
