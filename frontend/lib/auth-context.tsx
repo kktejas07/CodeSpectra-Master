@@ -1,5 +1,6 @@
 'use client'
 
+import { fetchSessionState } from '@/lib/session-fetch'
 import {
   createContext,
   useContext,
@@ -182,14 +183,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     // The flag may be stale (e.g. the 2FA step finished on the login page):
     // only leave when the server really has no session.
-    fetch('/api/auth/session', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null)
-      .then((data) => {
+    // A 429/5xx/network blip is not "signed out" (fetchSessionState retries
+    // and reports 'unknown'); only a real 401 / no-user sends them to sign-in.
+    fetchSessionState()
+      .then((st) => {
         if (cancelled) return
-        if (data?.user) {
-          setSessionExpired(false)
-          setPendingOAuth2fa(false)
+        if (st.status !== 'none') {
+          if (st.status === 'user') { setSessionExpired(false); setPendingOAuth2fa(false) }
           return
         }
         const back = encodeURIComponent(path + window.location.search)
@@ -207,9 +207,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const want = needsFirebaseSync({ hasSession, pathname: window.location.pathname, savedFirebaseLogin: hasSession ? false : await hasSavedFirebaseLogin() })
       if (!cancelled && want) setFirebaseWanted(true)
     }
-    fetch('/api/auth/session', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+    fetchSessionState()
+      .then(st => {
+        const data = st.status === 'user' ? { user: st.user as any } : null // eslint-disable-line @typescript-eslint/no-explicit-any
         void decide(!!data?.user)
         if (data?.user) {
           setUser(toAuthUser({
@@ -294,8 +294,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             // Firebase not available yet — use session cookie as fallback
             try {
-              const res = await fetch('/api/auth/session', { credentials: 'include' })
-              const data = await res.json()
+              const st = await fetchSessionState()
+              const data = st.status === 'user' ? { user: st.user as any } : null // eslint-disable-line @typescript-eslint/no-explicit-any
               if (data?.user) {
                 setUser(toAuthUser({
                   uid: data.user.uid,
@@ -307,10 +307,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   onboardingGoal: data.user.onboardingGoal,
             has_enrolled_face: data.user.has_enrolled_face,
                 }))
-              } else {
+              } else if (st.status === 'none') {
                 setUser(null)
                 setSessionExpired(true)
-              }
+              } // 'unknown' (rate limit / outage): keep current state
             } catch { setUser(null) }
           }
           if (!cancelled) setLoading(false)
