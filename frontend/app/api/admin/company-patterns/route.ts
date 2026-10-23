@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const doc = patternFromInput(parsed.data, new Date().toISOString(), gate.user.id)
     const col = await patterns()
     if (await col.findOne({ id: doc.id }, { projection: { _id: 1 } })) {
-      return NextResponse.json({ error: `A pattern with id “${doc.id}” already exists. Pick another id.` }, { status: 409 })
+      return NextResponse.json({ error: `A pattern with id “${doc.id}” already exists. Pick another id.`, code: 'pattern_id_exists', params: { id: String(doc.id) } }, { status: 409 })
     }
     await col.insertOne({ ...doc })
     return NextResponse.json({ pattern: doc }, { status: 201 })

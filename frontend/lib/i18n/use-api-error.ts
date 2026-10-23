@@ -16,7 +16,6 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import type { Locale } from './config'
-import type { Messages } from './catalog'
 import { useMessages, useT } from './client'
 import { localizeApiError } from './api-error'
 
@@ -70,7 +69,7 @@ export function useApiError(): (body: unknown, fallback?: string) => string {
 
   return useCallback(
     (body: unknown, fallback?: string) => {
-      const all = missing && extra ? ({ ...messages, apiErrors: extra.table, apiErrorsEn: extra.en } as Messages) : messages
+      const all = missing && extra ? { ...messages, apiErrors: extra.table, apiErrorsEn: extra.en } : messages
       return localizeApiError(locale, all, body, fallback ?? t('errors.somethingWentWrongRetry'))
     },
     [locale, messages, t, missing, extra],

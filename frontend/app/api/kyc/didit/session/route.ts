@@ -45,7 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!res.ok) {
       const detail = await res.text()
       console.error('[Didit session] Failed:', res.status, detail)
-      return NextResponse.json({ error: 'session_create_failed', detail }, { status: 502 })
+      return NextResponse.json({ error: 'session_create_failed', code: 'kyc_session_create_failed', detail }, { status: 502 })
     }
 
     const session = await res.json() as {

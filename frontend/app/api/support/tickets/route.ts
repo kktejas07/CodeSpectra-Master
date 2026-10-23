@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const ipKey = clientLimiterKeyFromRequest(req, user.id)
   const ipCheck = await rateLimitRedis(`support:ticket:${ipKey}`, 3, 60_000)
   if (!ipCheck.ok) {
-    return NextResponse.json({ error: `Too many requests. Try in ${ipCheck.retryAfterSec}s.` }, { status: 429 })
+    return NextResponse.json({ error: `Too many requests. Try in ${ipCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: ipCheck.retryAfterSec } }, { status: 429 })
   }
 
   let subject = '', message = '', category = 'general'

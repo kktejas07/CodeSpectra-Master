@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 
   const rateCheck = await rateLimitAIRedis(req, gate.user.id)
   if (!rateCheck.ok) {
-    return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
+    return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } }, { status: 429 })
   }
   // W4-16: candidate lookups by e-mail are capped per user (slows probing).
   const lookupLimited = await limitRequest(req, 'interview-candidate-lookup', gate.user.id, 30, 10 * 60_000)

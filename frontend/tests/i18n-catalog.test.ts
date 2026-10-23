@@ -6,10 +6,12 @@
 import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { NAMESPACES } from '@/lib/i18n/catalog'
+import { NAMESPACES as BUNDLED } from '@/lib/i18n/catalog'
 import { ALLOWED_MISSING, INTENTIONALLY_ENGLISH } from '@/lib/i18n/untranslated'
 
 const DIR = path.resolve(__dirname, '../lib/i18n/messages')
+// SEO-055: apiErrors loads on demand (not in the bundled catalog) but is checked the same way.
+const NAMESPACES = [...BUNDLED, 'apiErrors'] as const
 const load = (l: string, ns: string): Record<string, string> => JSON.parse(fs.readFileSync(path.join(DIR, l, `${ns}.json`), 'utf8'))
 const slots = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 const SCRIPT = { hi: /[ऀ-ॿ]/, te: /[ఀ-౿]/ } as const

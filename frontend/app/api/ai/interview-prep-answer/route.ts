@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }

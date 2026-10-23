@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
     let updated
     if (status === 'rejected' || status === 'hired') {
       const stage = job.pipeline.find((s) => s.type === status)
-      if (!stage) return json({ error: `This pipeline has no ${status} stage` }, 400)
+      if (!stage) return json({ error: `This pipeline has no ${status} stage`, code: 'ats_pipeline_no_stage', params: { status: String(status) } }, 400)
       updated = await moveApplication(g.actor, app.id, stage.id, { reason })
     } else if (status === 'active' || status === 'on_hold' || status === 'withdrawn') {
       updated = await setApplicationStatus(g.actor, app.id, status, reason)

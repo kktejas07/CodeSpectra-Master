@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       items = parseCsv(text)
     }
     if (items.length === 0) return NextResponse.json({ error: 'No questions found to import' }, { status: 400 })
-    if (items.length > MAX_ITEMS) return NextResponse.json({ error: `Max ${MAX_ITEMS} per import` }, { status: 400 })
+    if (items.length > MAX_ITEMS) return NextResponse.json({ error: `Max ${MAX_ITEMS} per import`, code: 'qb_import_max', params: { max: MAX_ITEMS } }, { status: 400 })
 
     const col = await questionBank()
     // CORE-031: only the incoming questions are checked against the bank (indexed $in).

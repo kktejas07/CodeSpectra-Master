@@ -17,6 +17,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { NotEventStaff } from '@/components/hackathons/not-event-staff'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Hackathon {
   id: string; name: string; slug: string; status: string
@@ -74,6 +75,7 @@ function formatDuration(ms: number): string {
 }
 
 export default function HackathonReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t: ta } = useAdminT()
   const { id } = use(params)
   const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
@@ -116,7 +118,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
   }
 
   if (!hackathon) {
-    return <EmptyState illustration="not-found" title="Hackathon not found" description="It may have been deleted — go back to all events." actionLabel="All events" actionHref="/dashboard/admin/hackathons" className="m-6" />
+    return <EmptyState illustration="not-found" title={ta('hkForm.hackathonNotFound')} description={ta('hkForm.itMayHaveBeenDeletedGo')} actionLabel={ta('hkForm.allEvents')} actionHref="/dashboard/admin/hackathons" className="m-6" />
   }
 
   if ((hackathon as { is_staff?: boolean }).is_staff === false) return <NotEventStaff />
@@ -174,15 +176,15 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
     <div className="space-y-6">
       <PageHeader
         icon={<FileText />}
-        title={<>{hackathon.name} — judge report</>}
-        description="Activity logs, proctoring events and suspicion scores for every team."
+        title={<>{ta('hkForm.judgeReport', { name: hackathon.name })}</>}
+        description={ta('hkForm.activityLogsProctoringEventsAndSuspicion')}
         actions={
           <>
-            <Button variant="outline" size="sm" className="gap-1.5" title="Back" asChild>
-              <Link href={`/dashboard/admin/hackathons/${id}`}><ArrowLeft className="h-3.5 w-3.5" /> Back to event</Link>
+            <Button variant="outline" size="sm" className="gap-1.5" title={ta('hkForm.back2')} asChild>
+              <Link href={`/dashboard/admin/hackathons/${id}`}><ArrowLeft className="h-3.5 w-3.5" /> {ta('hkForm.backToEvent')}</Link>
             </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
-              <Download className="h-3.5 w-3.5" /> Export CSV
+              <Download className="h-3.5 w-3.5" /> {ta('hkForm.exportCsv')}
             </Button>
             <Badge variant={hackathon.status === 'live' ? 'success' : 'secondary'} className="capitalize">
               {hackathon.status}
@@ -213,10 +215,10 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
       {/* Per-team breakdown */}
       <Panel className="p-5">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" /> Team breakdown
+          <Users className="h-4 w-4 text-primary" /> {ta('hkForm.teamBreakdown')}
         </h2>
         {teams.length === 0 ? (
-          <EmptyState illustration="team" title="No teams registered yet" description="Teams appear here once people sign up for the event." className="border-0 bg-transparent py-6 md:py-8" />
+          <EmptyState illustration="team" title={ta('hkForm.noTeamsRegisteredYet')} description={ta('hkForm.teamsAppearHereOncePeopleSign')} className="border-0 bg-transparent py-6 md:py-8" />
         ) : (
           <div className="space-y-2">
             {/* Copy before sorting: never mutate React state during render. */}
@@ -238,7 +240,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{team.name}</span>
-                        <Badge variant="outline" className="tabular-nums">{team.members.length} members</Badge>
+                        <Badge variant="outline" className="tabular-nums">{ta('hkForm.members2', { length: team.members.length })}</Badge>
                         {score > 0 && (
                           <Badge className={`${severityColors[level]} capitalize tabular-nums`}>{level} ({score})</Badge>
                         )}
@@ -248,8 +250,8 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs tabular-nums text-muted-foreground">
-                      <span>{teamProctor.length} proctoring events</span>
-                      <span>{teamSubs.length} submissions</span>
+                      <span>{ta('hkForm.proctoringEvents', { length: teamProctor.length })}</span>
+                      <span>{ta('hkForm.submissions2', { length: teamSubs.length })}</span>
                       <span>{team.xp} XP</span>
                       {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </div>
@@ -259,7 +261,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                     <div className="border-t p-4 space-y-4 bg-muted/20">
                       {teamProctor.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-2">Proctoring events</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-2">{ta('hkForm.proctoringEvents2')}</p>
                           <div className="space-y-1 max-h-48 overflow-y-auto">
                             {teamProctor.slice(0, 50).map(evt => (
                               <div key={evt.id} className="flex items-center gap-2 text-xs py-1 border-b border-border/50">
@@ -278,7 +280,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                       )}
                       {teamSubs.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-2">Submissions</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-2">{ta('hkForm.submissions')}</p>
                           <div className="space-y-1">
                             {teamSubs.map(sub => (
                               <div key={sub.id} className="flex items-center gap-2 text-xs py-1">
@@ -298,7 +300,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                         </div>
                       )}
                       {teamProctor.length === 0 && teamSubs.length === 0 && (
-                        <p className="text-xs text-muted-foreground text-center py-4">No events recorded for this team</p>
+                        <p className="text-xs text-muted-foreground text-center py-4">{ta('hkForm.noEventsRecordedForThisTeam')}</p>
                       )}
                     </div>
                   )}
@@ -313,7 +315,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
       <Panel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" /> Proctoring event log
+            <FileText className="h-4 w-4 text-primary" /> {ta('hkForm.proctoringEventLog')}
           </h2>
           <div className="flex flex-wrap gap-1">
             {(['all', 'low', 'medium', 'high', 'critical'] as const).map(s => (
@@ -330,17 +332,17 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         {filteredEvents.length === 0 ? (
-          <EmptyState illustration="proctoring" variant="search" title="No proctoring events at this severity" description="Choose All to see every event." className="border-0 bg-transparent py-6 md:py-8" />
+          <EmptyState illustration="proctoring" variant="search" title={ta('hkForm.noProctoringEventsAtThisSeverity')} description={ta('hkForm.chooseAllToSeeEveryEvent')} className="border-0 bg-transparent py-6 md:py-8" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b text-xs text-muted-foreground">
-                  <th className="font-medium text-left py-2 pr-4">Team</th>
-                  <th className="font-medium text-left py-2 pr-4">Event</th>
-                  <th className="font-medium text-left py-2 pr-4">Problem</th>
-                  <th className="font-medium text-left py-2 pr-4">Severity</th>
-                  <th className="font-medium text-left py-2">Timestamp</th>
+                  <th className="font-medium text-left py-2 pr-4">{ta('hkForm.team')}</th>
+                  <th className="font-medium text-left py-2 pr-4">{ta('hkForm.event')}</th>
+                  <th className="font-medium text-left py-2 pr-4">{ta('hkForm.problem')}</th>
+                  <th className="font-medium text-left py-2 pr-4">{ta('hkForm.severity')}</th>
+                  <th className="font-medium text-left py-2">{ta('hkForm.timestamp')}</th>
                 </tr>
               </thead>
               <tbody>

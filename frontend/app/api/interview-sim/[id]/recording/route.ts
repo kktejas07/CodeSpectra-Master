@@ -70,10 +70,10 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
     if (isMultipart) {
       let form: FormData
-      try { form = await req.formData() } catch { return NextResponse.json({ error: `Recordings must be under ${ANSWER_FILE_MAX_MB} MB here.` }, { status: 413 }) }
+      try { form = await req.formData() } catch { return NextResponse.json({ error: `Recordings must be under ${ANSWER_FILE_MAX_MB} MB here.`, code: 'recording_max_mb', params: { mb: ANSWER_FILE_MAX_MB } }, { status: 413 }) }
       const file = form.get('file')
       if (!(file instanceof File) || file.size <= 0) return NextResponse.json({ error: 'No recording was sent.' }, { status: 400 })
-      if (file.size > INLINE_MAX) return NextResponse.json({ error: `Recordings must be under ${ANSWER_FILE_MAX_MB} MB here.` }, { status: 413 })
+      if (file.size > INLINE_MAX) return NextResponse.json({ error: `Recordings must be under ${ANSWER_FILE_MAX_MB} MB here.`, code: 'recording_max_mb', params: { mb: ANSWER_FILE_MAX_MB } }, { status: 413 })
       const mime = (MIMES as readonly string[]).includes(file.type.split(';')[0]) ? (file.type.split(';')[0] as Mime) : 'video/webm'
       const bytes = Buffer.from(await file.arrayBuffer())
       if (!sniffAnswerFile(new Uint8Array(bytes), kindOf(mime))) return NextResponse.json({ error: 'That file is not a WebM or MP4 recording.' }, { status: 400 })

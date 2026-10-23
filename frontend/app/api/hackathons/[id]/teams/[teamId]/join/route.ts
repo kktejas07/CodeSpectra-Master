@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!team) return NextResponse.json({ error: 'This invite link isn’t valid. Ask your team captain for a new one.' }, { status: 404 })
 
   if (team.members.length >= hk.max_per_team) {
-    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)` }, { status: 409 })
+    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)`, code: 'hk_team_full_max', params: { max: Number(hk.max_per_team) } }, { status: 409 })
   }
 
   const already = await teamsCol.findOne({
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   )
 
   if (pushed.modifiedCount === 0) {
-    return NextResponse.json({ error: `Team is full (${maxPerTeam} max)` }, { status: 409 })
+    return NextResponse.json({ error: `Team is full (${maxPerTeam} max)`, code: 'hk_team_full_max', params: { max: Number(maxPerTeam) } }, { status: 409 })
   }
   void import('@/lib/automation/events').then(({ emit }) => emit('hackathon.registered', {
     event_id: hk.id, event_kind: 'hackathon', event_name: hk.name, user_id: user.id, team_name: team.name, starts_at: hk.starts_at ?? null,

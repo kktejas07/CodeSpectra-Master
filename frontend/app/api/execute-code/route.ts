@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'test_cases must be an array' }, { status: 400 })
     }
     if (Array.isArray(test_cases) && test_cases.length > MAX_CASES) {
-      return NextResponse.json({ success: false, error: `At most ${MAX_CASES} test cases per run` }, { status: 400 })
+      return NextResponse.json({ success: false, error: `At most ${MAX_CASES} test cases per run`, code: 'run_max_cases', params: { max: MAX_CASES } }, { status: 400 })
     }
 
     const cases: TestCase[] = (test_cases || []).map((tc: any) => ({

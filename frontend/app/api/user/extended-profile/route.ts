@@ -120,7 +120,7 @@ export async function PUT(request: NextRequest) {
       if (!(key in body)) continue
       const limit = key === 'avatar' ? MAX_AVATAR_BYTES : MAX_FIELD_BYTES
       if (sizeOf(body[key]) > limit) {
-        return NextResponse.json({ error: `The ${key} section is too large.` }, { status: 413 })
+        return NextResponse.json({ error: `The ${key} section is too large.`, code: 'profile_section_too_large', params: { key } }, { status: 413 })
       }
       $set[key] = body[key]
     }
@@ -136,7 +136,7 @@ export async function PUT(request: NextRequest) {
         if (v !== null && typeof v !== 'string' && typeof v !== 'number' && typeof v !== 'boolean') continue
         const limit = key === 'avatar' ? MAX_AVATAR_BYTES : 2_000
         if (typeof v === 'string' && v.length > limit) {
-          return NextResponse.json({ error: `The ${key} field is too long.` }, { status: 413 })
+          return NextResponse.json({ error: `The ${key} field is too long.`, code: 'profile_field_too_long', params: { key } }, { status: 413 })
         }
         $set[`basic.${key}`] = v
       }

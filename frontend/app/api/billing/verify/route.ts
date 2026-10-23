@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
+// SEO-055: machine reasons are codes now; `error` is readable English (hi / te via the code).
+import { apiErrorFor } from '@/lib/api-errors'
 import { verifyPaymentSignature, verifySubscriptionPaymentSignature, getRazorpay } from '@/lib/razorpay-server'
 import {
   billingOrders,
@@ -58,7 +60,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     signature: body.razorpay_signature,
   })
   if (!ok) {
-    return NextResponse.json({ error: 'signature_mismatch' }, { status: 400 })
+    return NextResponse.json(apiErrorFor('signature_mismatch'), { status: 400 })
   }
 
   await ensureBillingIndexes()
@@ -68,11 +70,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     user_id: user.id,
   })
   if (!order) {
-    return NextResponse.json({ error: 'order_not_found' }, { status: 404 })
+    return NextResponse.json(apiErrorFor('order_not_found'), { status: 404 })
   }
 
   if (body.plan_id && body.plan_id !== order.plan_id) {
-    return NextResponse.json({ error: 'plan_mismatch' }, { status: 400 })
+    return NextResponse.json(apiErrorFor('plan_mismatch'), { status: 400 })
   }
 
   const alreadyProcessed = async () => {
@@ -87,7 +89,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   }
   if (order.status === 'paid') return alreadyProcessed()
-  if (order.status === 'refunded') return NextResponse.json({ error: 'order_refunded' }, { status: 409 })
+  if (order.status === 'refunded') return NextResponse.json(apiErrorFor('order_refunded'), { status: 409 })
 
   // Confirm with Razorpay that this payment belongs to this order and covers
   // the amount we charged (the signature alone doesn't prove the amount).
@@ -100,7 +102,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       String(pay.currency).toUpperCase() !== String(order.currency).toUpperCase() ||
       !['captured', 'authorized'].includes(String(pay.status))
     ) {
-      return NextResponse.json({ error: 'payment_mismatch' }, { status: 400 })
+      return NextResponse.json(apiErrorFor('payment_mismatch'), { status: 400 })
     }
     // Manual-capture accounts: an authorized payment is not money yet (it is
     // auto-refunded if never captured), so capture it before activating (D34).
@@ -171,13 +173,13 @@ async function verifySubscription(userId: string, body: VerifyReq): Promise<Next
     return NextResponse.json({ error: 'Missing required fields', code: 'missing_fields' }, { status: 400 })
   }
   if (!(await verifySubscriptionPaymentSignature({ subscription_id: subscriptionId, payment_id: paymentId, signature }))) {
-    return NextResponse.json({ error: 'signature_mismatch' }, { status: 400 })
+    return NextResponse.json(apiErrorFor('signature_mismatch'), { status: 400 })
   }
   try {
     const { confirmFirstSubscriptionPayment } = await import('@/lib/billing/razorpay-subscriptions')
     const r = await confirmFirstSubscriptionPayment(userId, subscriptionId, paymentId)
-    if (!r.ok) return NextResponse.json({ error: r.code, code: r.code }, { status: r.code === 'order_not_found' ? 404 : 400 })
-    if (body.plan_id && body.plan_id !== r.order.plan_id) return NextResponse.json({ error: 'plan_mismatch' }, { status: 400 })
+    if (!r.ok) return NextResponse.json(apiErrorFor(r.code), { status: r.code === 'order_not_found' ? 404 : 400 })
+    if (body.plan_id && body.plan_id !== r.order.plan_id) return NextResponse.json(apiErrorFor('plan_mismatch'), { status: 400 })
     const active = await (await billingSubscriptions()).findOne({ user_id: userId, status: 'active' }, { sort: { ends_at: -1 } })
     return NextResponse.json({
       ok: true,

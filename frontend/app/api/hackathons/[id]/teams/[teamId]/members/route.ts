@@ -36,7 +36,7 @@ export async function POST(
   }
 
   if (team.members.length >= hk.max_per_team) {
-    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)` }, { status: 409 })
+    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)`, code: 'hk_team_full_max', params: { max: Number(hk.max_per_team) } }, { status: 409 })
   }
 
   const body = await req.json().catch(() => ({}))
@@ -72,7 +72,7 @@ export async function POST(
   // Never dissolve the person's existing team on their behalf: they leave it
   // themselves (or accept an invite), then an organiser can add them.
   if (already) {
-    return NextResponse.json({ error: `User is already on team "${already.name}". They need to leave it first.` }, { status: 409 })
+    return NextResponse.json({ error: `User is already on team "${already.name}". They need to leave it first.`, code: 'hk_user_on_other_team', params: { team: String(already.name) } }, { status: 409 })
   }
 
   // Atomic size cap: only push while the team is still under max_per_team.
@@ -83,7 +83,7 @@ export async function POST(
       $set: { updated_at: nowIso() },
     },
   )
-  if (res.modifiedCount === 0) return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)` }, { status: 409 })
+  if (res.modifiedCount === 0) return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)`, code: 'hk_team_full_max', params: { max: Number(hk.max_per_team) } }, { status: 409 })
 
   return NextResponse.json({ ok: true, member: { user_id: targetUserId, name: targetName, role: 'member' } })
 }

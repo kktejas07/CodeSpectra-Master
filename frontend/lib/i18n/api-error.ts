@@ -62,12 +62,16 @@ export function serverErrorText(body: unknown): string | undefined {
   return undefined
 }
 
-export function localizeApiError(locale: Locale, messages: Messages | undefined, body: unknown, fallback: string): string {
+/** `messages`: the active catalogs plus `apiErrors` (and `apiErrorsEn`), see useApiError. */
+export type ApiErrorTables = Messages | Record<string, Record<string, string> | undefined>
+
+export function localizeApiError(locale: Locale, messages: ApiErrorTables | undefined, body: unknown, fallback: string): string {
   const server = serverErrorText(body)
   if (locale === 'en') return server ?? fallback
   const b = (body && typeof body === 'object' ? body : {}) as ApiErrorLike
-  const table = messages?.apiErrors
-  const en = (messages as Record<string, Table | undefined> | undefined)?.apiErrorsEn
+  const tables = messages as Record<string, Table | undefined> | undefined
+  const table = tables?.apiErrors
+  const en = tables?.apiErrorsEn
   const tryKey = (code: unknown, params?: Record<string, string | number>) => {
     if (typeof code !== 'string' || !table || !Object.prototype.hasOwnProperty.call(table, code) || !table[code]) return undefined
     const text = interpolate(locale, table[code], params)

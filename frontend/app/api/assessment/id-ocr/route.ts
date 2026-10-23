@@ -209,7 +209,7 @@ export async function POST(req: Request) {
       const agree = namesAgree(m0, m1)
       if (agree) {
         return NextResponse.json({
-          error: `The name on this ID does not match your account name (${userName}). Two independent reads both saw "${m0}". Please use your own valid government ID.`,
+          error: `The name on this ID does not match your account name (${userName}). Two independent reads both saw "${m0}". Please use your own valid government ID.`, code: 'idocr_name_mismatch', params: { account: String(userName), seen: String(m0) },
           readName: m0,
           mismatch: true,
         }, { status: 400 })
@@ -217,7 +217,7 @@ export async function POST(req: Request) {
     }
     if (mismatchNames.length >= 1) {
       return NextResponse.json({
-        error: `We couldn't clearly read the name on this ID (account: ${userName}). Hold it steady in good light with all text visible, then try again.`,
+        error: `We couldn't clearly read the name on this ID (account: ${userName}). Hold it steady in good light with all text visible, then try again.`, code: 'idocr_name_unreadable', params: { account: String(userName) },
         readName: mismatchNames[0],
         uncertain: true,
       }, { status: 422 })
