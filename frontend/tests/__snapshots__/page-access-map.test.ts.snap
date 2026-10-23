@@ -44,6 +44,7 @@ exports[`route → access map coverage > matches the snapshot (add new pages to 
   "/dashboard/admin/courses": "/dashboard/admin/courses → superadmin [platform]",
   "/dashboard/admin/courses/[id]": "/dashboard/admin/courses/[id] → superadmin [platform]",
   "/dashboard/admin/cron-jobs": "/dashboard/admin/cron-jobs → superadmin [platform]",
+  "/dashboard/admin/digest": "/dashboard/admin/digest → superadmin [platform]",
   "/dashboard/admin/events-feed": "/dashboard/admin/events-feed → superadmin [platform]",
   "/dashboard/admin/feedback": "/dashboard/admin/feedback → superadmin [platform]",
   "/dashboard/admin/hackathons": "/dashboard/admin/hackathons → tenant_admin [tenant]",

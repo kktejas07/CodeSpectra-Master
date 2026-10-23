@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { HubCardView, type CardLabels } from '@/components/learn/post-card'
 import { LearnCategoryIcon } from '@/components/learn/category-icon'
 import { NotifyBox } from '@/components/events-feed/notify-box'
+import { AskBox } from '@/components/public-ask/ask-box'
 import { parseListParams } from '@/lib/learn/queries'
 import type { listHub } from '@/lib/learn/team-queries'
 import { learnHubCached, learnSeriesCached } from '@/lib/cache/public-data'
@@ -227,6 +228,8 @@ export async function LearnView({ searchParams, locale }: { searchParams: SP; lo
             {data.page < data.pages ? <Link className="rounded-lg border border-border px-4 py-2 hover:border-primary/40" href={hw({ page: String(data.page + 1) })}>{t('common.next')}</Link> : null}
           </nav>
         )}
+
+        <AskBox className="mx-auto mt-14 max-w-3xl" locale={locale === 'hi' || locale === 'te' ? locale : 'en'} />
 
         <section aria-label={t('hubs.learnSubscribe')} className="mx-auto mt-14 max-w-xl">
           <NotifyBox topic="blog" />

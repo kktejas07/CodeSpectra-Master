@@ -33,6 +33,7 @@ export const LOCALIZED_PATHS = [
   '/companies',
   '/learn',
   '/news',
+  '/digest',
   '/events',
   '/contests',
   '/leagues',
@@ -43,7 +44,7 @@ export const LOCALIZED_PATHS = [
 ] as const
 
 /** Sections whose detail pages are localized too (/companies/<slug>). */
-export const LOCALIZED_PREFIXES = ['/companies/', '/certifications/', '/community/c/', '/community/t/'] as const
+export const LOCALIZED_PREFIXES = ['/companies/', '/certifications/', '/community/c/', '/community/t/', '/digest/'] as const
 
 /** hreflang codes per locale (+ x-default → English). */
 export const HREFLANG: Record<Locale, string> = { en: 'en', hi: 'hi', te: 'te' }

@@ -38,5 +38,7 @@
   "title:/marketplace": "मार्केटप्लेस: किताबें, कोर्स और मॉक इंटरव्यू",
   "description:/marketplace": "किताबें, कोर्स, ई-बुक और टेम्पलेट खरीदें, या CodeSpectra और मंज़ूर विक्रेताओं के साथ मेंटरिंग और मॉक इंटरव्यू बुक करें।",
   "title:/certifications": "प्रॉक्टर्ड सर्टिफ़िकेशन",
-  "description:/certifications": "प्रॉक्टर्ड CodeSpectra सर्टिफ़िकेशन पाएँ: ऑनलाइन सत्यापित, तय अवधि तक मान्य और LinkedIn में आसानी से जुड़ने वाला।"
+  "description:/certifications": "प्रॉक्टर्ड CodeSpectra सर्टिफ़िकेशन पाएँ: ऑनलाइन सत्यापित, तय अवधि तक मान्य और LinkedIn में आसानी से जुड़ने वाला।",
+  "title:/digest": "डेली डाइजेस्ट: hackathons, contests और टेक खबरें",
+  "description:/digest": "डेवलपर्स और स्टूडेंट्स के लिए रोज़ का डाइजेस्ट: खुले hackathons, कोडिंग contests, टेक खबरें और Learn पोस्ट — स्कोर से चुने और छपने से पहले जाँचे गए।"
 }

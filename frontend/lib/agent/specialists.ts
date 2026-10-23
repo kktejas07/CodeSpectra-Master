@@ -7,7 +7,7 @@
  */
 import type { AgentTool } from '@/lib/agent/contract'
 
-export type SpecialistId = 'hiring' | 'assessments' | 'events' | 'marketplace' | 'content' | 'automations' | 'analytics'
+export type SpecialistId = 'hiring' | 'assessments' | 'events' | 'marketplace' | 'content' | 'automations' | 'analytics' | 'digest'
 
 export interface Specialist {
   id: SpecialistId
@@ -64,6 +64,14 @@ export const SPECIALISTS: readonly Specialist[] = [
     focus: 'You manage Learn hub content. Generating a draft, approving and publishing are proposals; summarise drafts in plain language.',
     tools: ['list_learn_topics', 'list_learn_posts', 'generate_learn_draft', 'set_learn_post_status'],
     keywords: ['learn', 'post', 'posts', 'article', 'articles', 'blog', 'draft', 'drafts', 'topic', 'topics', 'content', 'publish'],
+  },
+  {
+    id: 'digest',
+    label: 'Digest curator',
+    description: 'The daily digest: today’s picks, why items were rejected, the schedule and caps, and running or re-running the digest.',
+    focus: 'You curate the daily digest (lib/digest). Use get_digest to see a day’s picks or the last runs; a separate verifier checks every pick, so report its rejection reasons as given. Running the digest is a proposal. Never invent items, deadlines or prizes.',
+    tools: ['get_digest', 'run_daily_digest', 'search_feed_events', 'list_learn_posts'],
+    keywords: ['digest', 'digests', 'roundup', 'curate', 'curator', 'curation', 'picks'],
   },
   {
     id: 'automations',

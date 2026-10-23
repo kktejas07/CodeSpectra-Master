@@ -33,7 +33,7 @@
  * with Gemini (768 dims) use the in-process path. Set RAG_ATLAS_VECTOR=0 to
  * turn the Atlas path off.
  */
-import type { AgentCaller, KnowledgeHit, KnowledgeSearchArgs } from '@/lib/agent/contract'
+import type { KnowledgeHit, KnowledgeSearchArgs } from '@/lib/agent/contract'
 import { scanPrompt } from '@/lib/ai/prompt-guard'
 import { andFilters, canSeeChunk, knowledgeAclFilter, MATCH_NOTHING, type AclFilter } from './acl'
 import { embedTexts, EMBED_MODELS, OPENAI_EMBED_MODEL } from './embed'
@@ -200,12 +200,12 @@ export const mongoVectorStore: VectorStore = {
 }
 
 /** Vector hits, or null when vectors are unavailable (keyword-only). */
-async function vectorSearch(filter: AclFilter, query: string, caller: AgentCaller): Promise<Scored[] | null> {
+async function vectorSearch(filter: AclFilter, query: string, userId: string): Promise<Scored[] | null> {
   const corpusModel = await dominantEmbeddingModel()
   // RAG-011: no corpus vectors, or the corpus model can't embed the query → keyword only
   // (never embed with another model: its vectors would match nothing).
   if (!corpusModel) return null
-  const emb = await embedTexts([query], { onlyModels: [corpusModel], feature: 'rag_search', userId: caller.userId })
+  const emb = await embedTexts([query], { onlyModels: [corpusModel], feature: 'rag_search', userId })
   if (!emb) {
     console.warn(`[rag] query embedding with ${corpusModel} unavailable — keyword-only search`)
     return null
@@ -230,18 +230,33 @@ function bodyOf(text: string): string {
 
 export async function searchKnowledge(args: KnowledgeSearchArgs): Promise<KnowledgeHit[]> {
   const { caller } = args
-  const query = String(args.query ?? '').replace(/\s+/g, ' ').trim().slice(0, 500)
-  if (!query) return []
-  const limit = Math.max(1, Math.min(20, Math.floor(Number(args.limit) || 8)))
   // tenantId narrowing is a superadmin-only option; tenant admins are always their own tenant.
-  const filter = knowledgeAclFilter(caller, { types: args.types, tenantId: caller.role === 'superadmin' ? args.tenantId ?? null : null })
+  const tenantId = caller.role === 'superadmin' ? args.tenantId ?? null : null
+  const filter = knowledgeAclFilter(caller, { types: args.types, tenantId })
   if (filter === MATCH_NOTHING) return []
+  return runSearch(filter, (row) => canSeeChunk(caller, row, tenantId), args.query, args.limit, caller.userId)
+}
+
+/**
+ * Public search ("Ask about events & news", lib/public-ask): only platform-wide
+ * rows with visibility 'public' of the public types (lib/rag/public.ts). The
+ * filter is built from constants; `types` can only narrow it.
+ */
+export async function searchPublicKnowledge(args: { query: string; types?: readonly unknown[]; limit?: number; userId?: string | null }): Promise<KnowledgeHit[]> {
+  const { publicAclFilter, canSeePublicChunk } = await import('./public')
+  return runSearch(publicAclFilter(args.types), canSeePublicChunk, args.query, args.limit, args.userId || 'public')
+}
+
+async function runSearch(filter: AclFilter, rowOk: (row: RagChunkDoc) => boolean, rawQuery: unknown, rawLimit: unknown, userId: string): Promise<KnowledgeHit[]> {
+  const query = String(rawQuery ?? '').replace(/\s+/g, ' ').trim().slice(0, 500)
+  if (!query) return []
+  const limit = Math.max(1, Math.min(20, Math.floor(Number(rawLimit) || 8)))
 
   const scan = scanPrompt(query)
   if (scan.flagged) console.warn(`[rag] search query flagged (${scan.reasons.slice(0, 3).join(', ')}) — treated as a plain query`)
 
   const [vectorOrNull, keyword] = await Promise.all([
-    vectorSearch(filter, query, caller).catch((e) => {
+    vectorSearch(filter, query, userId).catch((e) => {
       console.warn('[rag] vector search failed:', (e as Error).message)
       return null
     }),
@@ -260,7 +275,7 @@ export async function searchKnowledge(args: KnowledgeSearchArgs): Promise<Knowle
   const byId = new Map(rows.map((r) => [r.id, r as RagChunkDoc]))
   const ranked = fused
     .map((f) => ({ f, row: byId.get(f.id) }))
-    .filter((x): x is { f: { id: string; score: number }; row: RagChunkDoc } => !!x.row && canSeeChunk(caller, x.row, caller.role === 'superadmin' ? args.tenantId ?? null : null))
+    .filter((x): x is { f: { id: string; score: number }; row: RagChunkDoc } => !!x.row && rowOk(x.row))
     .map(({ f, row }) => ({ ...row, _score: f.score }))
 
   return dedupeBySource(ranked).slice(0, limit).map((r) => ({

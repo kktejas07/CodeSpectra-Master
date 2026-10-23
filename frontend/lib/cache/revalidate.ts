@@ -22,6 +22,7 @@ export const CACHE_TAGS = {
   events: 'public:events',
   contests: 'public:contests',
   pricing: 'public:pricing',
+  digest: 'public:digest',
 } as const
 
 export type ContentKind = keyof typeof CACHE_TAGS
@@ -40,6 +41,8 @@ export function pathsFor(kind: ContentKind, slug?: string | null): string[] {
       return ['/contests', ...(s ? [`/contests/${s}`] : [])]
     case 'pricing':
       return ['/pricing']
+    case 'digest':
+      return ['/digest', ...(s ? [`/digest/${s}`, `/hi/digest/${s}`, `/te/digest/${s}`] : []), '/hi/digest', '/te/digest']
   }
 }
 
@@ -53,6 +56,7 @@ export async function revalidateContent(kind: ContentKind, slug?: string | null)
     // Detail pages we can't name (e.g. renamed slugs): every page of the route.
     if (kind === 'learn' || kind === 'news') revalidatePath(`/${kind}/[slug]`, 'page')
     if (kind === 'events') revalidatePath('/events/[id]', 'page')
+    if (kind === 'digest') revalidatePath('/digest/[date]', 'page')
   } catch {
     /* no request store (in-process scheduler) or not in a Next server: TTL covers it */
   }

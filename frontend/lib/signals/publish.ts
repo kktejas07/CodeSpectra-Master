@@ -42,5 +42,6 @@ export async function publishDraft(draft: SignalDraftDoc, opts: { by: string; au
   const { draftsCol } = await import('./store')
   await (await draftsCol()).updateOne({ id: draft.id }, { $set: { status: 'published', blog_slug: slug, auto_published: opts.auto, updated_at: now } })
   await revalidateContent('news', slug)
+  void import('@/lib/rag/hooks').then(({ knowledgeOnNewsPost }) => knowledgeOnNewsPost(post.id)).catch(() => undefined)
   return post
 }

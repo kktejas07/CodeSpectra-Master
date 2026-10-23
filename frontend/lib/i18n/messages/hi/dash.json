@@ -656,5 +656,19 @@
   "bentoNoTestsText": "कंपनी प्रैक्टिस टेस्ट प्रकाशित होते ही यहाँ दिखेंगे।",
   "bentoProblemsSolved": "हल किए गए सवाल",
   "bentoSolvedHint": "{scans} कोड स्कैन और {fixes} सुधार",
-  "bentoXp": "कमाए गए XP"
+  "bentoXp": "कमाए गए XP",
+  "bentoDigest": "आज का डाइजेस्ट",
+  "bentoDigestAll": "डाइजेस्ट खोलें ({count})",
+  "bentoNoDigestTitle": "आज अभी कोई डाइजेस्ट नहीं",
+  "bentoNoDigestText": "हर सुबह बेहतरीन खुले hackathons, contests और टेक खबरें यहाँ आती हैं।",
+  "bentoNoDigestAction": "पुराने डाइजेस्ट देखें",
+  "digestCategory:hackathon": "हैकाथॉन",
+  "digestCategory:ctf": "कैप्चर द फ़्लैग",
+  "digestCategory:datathon": "डेटाथॉन",
+  "digestCategory:conference": "कॉन्फ्रेंस",
+  "digestCategory:contest": "कॉन्टेस्ट",
+  "digestCategory:codeathon": "कोडिंग राउंड",
+  "digestCategory:news": "टेक खबर",
+  "digestCategory:learn": "लर्न",
+  "digestCategory:platform": "CodeSpectra पर नया"
 }

@@ -7,7 +7,7 @@
  * skeleton, an empty state that says what to do next, and an error line.
  */
 import { useEffect, useState } from 'react'
-import { BadgeCheck, Building2, CalendarCheck, Code, Flame, Mic, Trophy } from 'lucide-react'
+import { BadgeCheck, Building2, CalendarCheck, Code, Flame, Mic, Newspaper, Trophy } from 'lucide-react'
 import {
   BentoAction, BentoBody, BentoCard, BentoEmpty, BentoGrid, BentoIcon, BentoList, BentoPill, BentoStat, BentoText, BentoTitle,
   Meter, Sparkline, SkeletonBar, spanClass,
@@ -55,6 +55,8 @@ const pickSims = (j: unknown) => (((j as { sessions?: SimItem[] })?.sessions) ??
 const pickPassport = (j: unknown) => (((j as { summary?: { skills?: PassportSkill[] } })?.summary?.skills) ?? [])
 const pickAttempts = (j: unknown) => (((j as { items?: Attempt[] })?.items) ?? [])
 const pickPatterns = (j: unknown) => (((j as { items?: Pattern[] })?.items) ?? [])
+interface DigestCard { date: string; count: number; path: string; items: Array<{ key: string; title: string; category: string; path: string }> }
+const pickDigest = (j: unknown) => ((j as { digest?: DigestCard | null })?.digest ?? null)
 
 const READINESS_KEY = { ready: 'dash.readinessReady', almost: 'dash.readinessAlmost', developing: 'dash.readinessDeveloping', not_yet: 'dash.readinessNotYet' } as const
 const LEVEL_KEY = { beginner: 'dash.levelBeginner', intermediate: 'dash.levelIntermediate', advanced: 'dash.levelAdvanced', expert: 'dash.levelExpert' } as const
@@ -67,7 +69,7 @@ function ErrorLine({ t }: { t: Translator }) {
 export interface LearnerStats { loaded: boolean; failed: boolean; streak: number; xp: number; challenges: number; scans: number; fixes: number }
 
 export function LearnerBento({ stats }: { stats: LearnerStats }) {
-  const { t } = useT()
+  const { t, td } = useT()
   const { formatDateTime } = useLocaleDates()
   const plan = useJson('/api/study-plan', pickPlan)
   const contests = useJson('/api/contests', pickContests)
@@ -75,6 +77,7 @@ export function LearnerBento({ stats }: { stats: LearnerStats }) {
   const passport = useJson('/api/passport', pickPassport)
   const attempts = useJson('/api/company-tests/attempts', pickAttempts)
   const patterns = useJson('/api/company-tests?all=1', pickPatterns)
+  const digest = useJson('/api/digest/latest', pickDigest)
   const loading = t('dash.bentoLoading')
 
   // Streak: the study plan's streak when there is a plan (it counts plan days too), else the activity streak.
@@ -281,6 +284,19 @@ export function LearnerBento({ stats }: { stats: LearnerStats }) {
             )}
           </BentoBody>
         </BentoCard>
+
+        {/* Today's digest (lib/digest): the curator's top picks */}
+        <BentoList
+          span={2}
+          smSpan={2}
+          icon={<Newspaper />}
+          title={t('dash.bentoDigest')}
+          loading={digest.loading}
+          loadingLabel={loading}
+          more={digest.data ? { label: t('dash.bentoDigestAll', { count: digest.data.count }), href: digest.data.path } : undefined}
+          items={(digest.data?.items ?? []).slice(0, 4).map((i) => ({ key: i.key, primary: i.title, secondary: td(`dash.digestCategory:${i.category}`, i.category), href: i.path }))}
+          empty={digest.error ? <ErrorLine t={t} /> : <BentoEmpty title={t('dash.bentoNoDigestTitle')} text={t('dash.bentoNoDigestText')} actionLabel={t('dash.bentoNoDigestAction')} actionHref="/digest" />}
+        />
 
         {/* Daily challenge keeps its own card; it just takes a bento slot */}
         <div data-hint="daily-challenge" className={`min-w-0 empty:hidden ${spanClass({ span: 2, smSpan: 2 })}`}>

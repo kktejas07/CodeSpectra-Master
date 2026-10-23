@@ -6,6 +6,7 @@
  * 'blog' (Learn) is a weekly email digest, so it offers email only; 'news' is
  * the daily tech news digest (email and/or WhatsApp, optional topics). Events
  * on WhatsApp can be instant or one weekly "hackathons this week" message.
+ * 'digest' is the daily digest (email and/or WhatsApp).
  */
 import { useState } from 'react'
 import { Bell, Loader2, MailCheck, MessageCircle } from 'lucide-react'
@@ -22,14 +23,14 @@ import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
 
-export function NotifyBox({ topic = 'events', className, compact = false }: { topic?: 'events' | 'blog' | 'news'; className?: string; compact?: boolean }) {
+export function NotifyBox({ topic = 'events', className, compact = false }: { topic?: 'events' | 'blog' | 'news' | 'digest'; className?: string; compact?: boolean }) {
   const { t, td, rich } = useT()
   const apiError = useApiError()
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [useEmail, setUseEmail] = useState(true)
   const [useWa, setUseWa] = useState(false)
-  const waOffered = topic === 'events' || topic === 'news'
+  const waOffered = topic === 'events' || topic === 'news' || topic === 'digest'
   const [weekly, setWeekly] = useState(false)
   const [newsTopics, setNewsTopics] = useState<string[]>([])
   const [consent, setConsent] = useState(false)
@@ -106,8 +107,8 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bell className="h-5 w-5" /></span>
         <div>
-          <h2 id="notify-title" className="text-lg font-semibold text-foreground">{topic === 'events' ? t('public.notifyMe') : topic === 'news' ? t('public.notifyNewsTitle') : t('public.notifyBlogTitle')}</h2>
-          <p className="text-sm text-muted-foreground">{topic === 'events' ? t('public.notifyEventsBody') : topic === 'news' ? t('public.notifyNewsBody') : t('public.notifyBlogBody')}</p>
+          <h2 id="notify-title" className="text-lg font-semibold text-foreground">{topic === 'events' ? t('public.notifyMe') : topic === 'news' ? t('public.notifyNewsTitle') : topic === 'digest' ? t('public.notifyDigestTitle') : t('public.notifyBlogTitle')}</h2>
+          <p className="text-sm text-muted-foreground">{topic === 'events' ? t('public.notifyEventsBody') : topic === 'news' ? t('public.notifyNewsBody') : topic === 'digest' ? t('public.notifyDigestBody') : t('public.notifyBlogBody')}</p>
         </div>
       </div>
 

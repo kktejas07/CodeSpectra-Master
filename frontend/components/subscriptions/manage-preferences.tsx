@@ -25,7 +25,7 @@ interface View {
   timezone: string
 }
 
-const TOPIC_LABELS: Record<string, string> = { events: 'Hackathons and coding events', blog: 'New articles', news: 'Daily tech news digest' }
+const TOPIC_LABELS: Record<string, string> = { events: 'Hackathons and coding events', blog: 'New articles', news: 'Daily tech news digest', digest: 'Daily digest of events, news and posts' }
 
 export function ManagePreferences({ s, t, action, scope }: { s: string; t: string; action: string; scope: string }) {
   const [view, setView] = useState<View | null>(null)

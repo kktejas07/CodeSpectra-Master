@@ -13,7 +13,7 @@ import { escapeHtml } from '@/lib/safe-html'
 import { PUBLIC_ROUTES } from './public-routes'
 import { PREFIXED_LOCALES, isLocalizedPath, localizedPath, sitemapAlternates } from '@/lib/i18n/public-paths'
 
-export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
+export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'digest', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
 export type SitemapType = (typeof SITEMAP_TYPES)[number]
 
 export interface SitemapEntry {
@@ -130,6 +130,12 @@ export async function loadSitemapEntries(type: SitemapType): Promise<SitemapEntr
         const { newsPostsCol } = await import('@/lib/signals/store')
         const rows = await (await newsPostsCol()).find({ status: 'published', tags: 'signals' }, { projection: { _id: 0, slug: 1, updated_at: 1, published_at: 1 } }).sort({ published_at: -1 }).limit(MAX_URLS).toArray()
         return rows.map((p) => ({ path: `/news/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly', priority: 0.5 }))
+      })
+    case 'digest':
+      return safe(async () => {
+        const { listDigests } = await import('@/lib/digest/store')
+        const { rows } = await listDigests({ publishedOnly: true, limit: 100 })
+        return withLocalizedEntries(rows.map((d) => ({ path: `/digest/${d.date}`, lastmod: d.published_at, changefreq: 'monthly' as const, priority: 0.5 })))
       })
     case 'docs':
       return safe(async () => {
