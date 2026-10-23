@@ -403,15 +403,34 @@
     js-tokens "^4.0.0"
     picocolors "^1.1.1"
 
-"@babel/helper-validator-identifier@^7.29.7":
+"@babel/helper-string-parser@^7.23.4":
   version "7.29.7"
-  resolved "https://registry.npmjs.org/@babel/helper-validator-identifier/-/helper-validator-identifier-7.29.7.tgz"
+  resolved "https://registry.yarnpkg.com/@babel/helper-string-parser/-/helper-string-parser-7.29.7.tgz#7f0871d99824d23137d60f86fcf6130fd5a1b51f"
+  integrity sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==
+
+"@babel/helper-validator-identifier@^7.22.20", "@babel/helper-validator-identifier@^7.29.7":
+  version "7.29.7"
+  resolved "https://registry.yarnpkg.com/@babel/helper-validator-identifier/-/helper-validator-identifier-7.29.7.tgz#bd87084ced0c796ec46bda492de6e83d29e89fc2"
   integrity sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==
+
+"@babel/parser@7.24.1":
+  version "7.24.1"
+  resolved "https://registry.yarnpkg.com/@babel/parser/-/parser-7.24.1.tgz#1e416d3627393fab1cb5b0f2f1796a100ae9133a"
+  integrity sha512-Zo9c7N3xdOIQrNip7Lc9wvRPzlRtovHVE4lkz8WEDr7uYh/GMQhSiIgFxGIArRHYdJE5kxtZjAf8rT0xhdLCzg==
 
 "@babel/runtime@^7.12.5", "@babel/runtime@^7.28.6":
   version "7.29.7"
   resolved "https://registry.npmjs.org/@babel/runtime/-/runtime-7.29.7.tgz"
   integrity sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==
+
+"@babel/types@7.24.0":
+  version "7.24.0"
+  resolved "https://registry.yarnpkg.com/@babel/types/-/types-7.24.0.tgz#3b951f435a92e7333eba05b7566fd297960ea1bf"
+  integrity sha512-+j7a5c253RfKh8iABBhywc8NSfP5LURe7Uh4qpsh6jc+aLJguvmIUBdjSdEMQv2bENrCR5MfRdjGo7vzS/ob7w==
+  dependencies:
+    "@babel/helper-string-parser" "^7.23.4"
+    "@babel/helper-validator-identifier" "^7.22.20"
+    to-fast-properties "^2.0.0"
 
 "@braintree/sanitize-url@^7.1.2":
   version "7.1.2"
@@ -1819,20 +1838,20 @@
   dependencies:
     "@bufbuild/protobuf" "^1.10.0"
 
-"@mediabunny/aac-encoder@1.50.8":
-  version "1.50.8"
-  resolved "https://registry.npmjs.org/@mediabunny/aac-encoder/-/aac-encoder-1.50.8.tgz"
-  integrity sha512-A5Se/LZd6RmYq/h36lBMSEsHvsyW8d0toR7FrAwpsFYbK+DVQYf90KiBT1Aw/mzLXx8/ypIOORJnd1sVZqOvJQ==
+"@mediabunny/aac-encoder@1.61.6":
+  version "1.61.6"
+  resolved "https://registry.yarnpkg.com/@mediabunny/aac-encoder/-/aac-encoder-1.61.6.tgz#ee3f62cedbe2d61ee4639c5930e2f88c18cb82cd"
+  integrity sha512-rdeYDcjzi1VSpGcVlq9zBBCqrqualmh7cJjckl7lrKGpCrSIOTCdivdEHTFSCgHoH5G/aMxiCOb9M4fyAmzn6w==
 
-"@mediabunny/flac-encoder@1.50.8":
-  version "1.50.8"
-  resolved "https://registry.npmjs.org/@mediabunny/flac-encoder/-/flac-encoder-1.50.8.tgz"
-  integrity sha512-4cfN03SbEoQaG+eBeYFUAb1R1ALaAHzf43dXFzQTr/oO5ueqzTgBoG3coKrIvBaAMU7Vv36mrBKLX8bvTppdAQ==
+"@mediabunny/flac-encoder@1.61.6":
+  version "1.61.6"
+  resolved "https://registry.yarnpkg.com/@mediabunny/flac-encoder/-/flac-encoder-1.61.6.tgz#1a2eff2943d4b9492ae3b7aa418bde4d0d71d955"
+  integrity sha512-EILa24QiFvneAxl2Gyrb5TqadXpdBGxYqpTkPslIL/78MFUq99JJc7b5mScHjuw5TgYqnMdffcWsmf2nLmUS+g==
 
-"@mediabunny/mp3-encoder@1.50.8":
-  version "1.50.8"
-  resolved "https://registry.npmjs.org/@mediabunny/mp3-encoder/-/mp3-encoder-1.50.8.tgz"
-  integrity sha512-eBT/H30tTu8AmZXqZ5RTpJ9VmwVlwednajuOrrWp0GS6cbGXsGMQ60Qvr3ZMIE0QDiadlEzb8/ozR+doP+MC1g==
+"@mediabunny/mp3-encoder@1.61.6":
+  version "1.61.6"
+  resolved "https://registry.yarnpkg.com/@mediabunny/mp3-encoder/-/mp3-encoder-1.61.6.tgz#67afbb5fe91b65b9631b386eaa0b34a49138844f"
+  integrity sha512-QiXZY9e7+LhM/R+1rnQSKD+l53jRu+ku3OPVDcIHffDMSA0bjkRr1Dw2BY68AhBV5qibLoBiQeH+pToWjasxYA==
 
 "@mermaid-js/parser@^2.0.1":
   version "2.0.1"
@@ -2853,174 +2872,232 @@
     redux-thunk "^3.1.0"
     reselect "^5.1.0"
 
-"@remotion/bundler@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/bundler/-/bundler-4.0.513.tgz"
-  integrity sha512-z12SAftOpLiJBXcIMU46rZbcJAXVwvYolbgZCctueIMMgGXkqevK65KFIG2YflsS6biLql3lAyuC8xovdOYzGg==
+"@remotion/bundler@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/bundler/-/bundler-4.0.537.tgz#668858668d99e85672dffa68b718e90831f34f00"
+  integrity sha512-htL/NJx2vUNjVdISYZwCjnkWzLeRdYS9/9rm3zOchv/IYYvZVrIFt2hgerI9C7NVB0Aj2BP/dwNQ2Y5s+SyLcA==
   dependencies:
-    "@remotion/media-parser" "4.0.513"
-    "@remotion/studio" "4.0.513"
-    "@remotion/studio-shared" "4.0.513"
-    "@remotion/timeline-utils" "4.0.513"
+    "@remotion/studio" "4.0.537"
+    "@remotion/studio-shared" "4.0.537"
+    "@remotion/timeline-utils" "4.0.537"
     "@rspack/core" "1.7.11"
     "@rspack/plugin-react-refresh" "1.6.1"
     css-loader "7.1.4"
     esbuild "0.28.1"
     react-refresh "0.18.0"
-    remotion "4.0.513"
+    remotion "4.0.537"
     style-loader "4.0.0"
     webpack "5.105.0"
 
-"@remotion/captions@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/captions/-/captions-4.0.513.tgz"
-  integrity sha512-b2bqswypfeOYiOOhnvW/WMncCKBBougnYl4wnZDkeQ2ni+zxJkV9xWCBO59BeeoUn4e/UIsgKA0YaQiMvf4NvA==
+"@remotion/captions@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/captions/-/captions-4.0.537.tgz#848f3b795a7a7b075d4a4ee4b1301d6562aa7df5"
+  integrity sha512-HpWGE7hgV9G41KNIB3Yq2WDRanbhYw2SKvAWP14B37nPI4quNZ/tiVXuFcY76CiyJIjzzX7I1SUBXThk0j9eQQ==
 
-"@remotion/compositor-darwin-arm64@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.yarnpkg.com/@remotion/compositor-darwin-arm64/-/compositor-darwin-arm64-4.0.513.tgz#760e0316b361c77629141fc9f60d48dce3aac258"
-  integrity sha512-ZsCB+HLjwhmotGKU/TIlkoalAozzXjubB/8mOvWgLdO7XcSugGmvDJ17dHiXGcIadF9Mwy0zykiquArEnjJfnA==
-
-"@remotion/compositor-darwin-x64@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.yarnpkg.com/@remotion/compositor-darwin-x64/-/compositor-darwin-x64-4.0.513.tgz#7cf3e1b5a87555b55f868a7544cef1d243c645cf"
-  integrity sha512-Xr2zphIHAgLnIZNE+ZJlj8bgVg7Z39BSzXDD0HYTfs9N5u78rNf+LXKGgAZ6eCMZpTpZP06qI9mzYeI1wAjLeQ==
-
-"@remotion/compositor-linux-arm64-gnu@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.yarnpkg.com/@remotion/compositor-linux-arm64-gnu/-/compositor-linux-arm64-gnu-4.0.513.tgz#870877188caf95dc3207d4a9fbe8fcf028613add"
-  integrity sha512-rp5d/6osutZwKlPcWRaYEibSTRCUvsAoR4/ammTilN9gXWXRvFJRhAc0nPuoiiKO1Ler6xekyQ9vxRa2NNLkFg==
-
-"@remotion/compositor-linux-arm64-musl@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.yarnpkg.com/@remotion/compositor-linux-arm64-musl/-/compositor-linux-arm64-musl-4.0.513.tgz#afb5e7938d526a67b558be8db04b52c6f71f94dd"
-  integrity sha512-c8doabV2HK5tgWh3JDKqFDWc8Ss7riF6uNx8TSrDLb1QHV55PYPQclMPHvzEUdQNu/qXSFEaebttsfK4OWKNvw==
-
-"@remotion/compositor-linux-x64-gnu@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/compositor-linux-x64-gnu/-/compositor-linux-x64-gnu-4.0.513.tgz"
-  integrity sha512-IJ7TJ2jXv4lGmXdzs/dEF8M7FzSHJb9DUwPcdnf9Z9IP0+NQ/8xgON/JQzm01COmLG+ExGoBoaUlupzZ5fRUvw==
-
-"@remotion/compositor-linux-x64-musl@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/compositor-linux-x64-musl/-/compositor-linux-x64-musl-4.0.513.tgz"
-  integrity sha512-ngdsEt3qN6tEc0UZhz6ppnFY3Wyd//ZKddkZBHgXTU+dzBsHpEEVTTqmlkiAOQ/c0LmOJOUMu8qWovqmEr//dQ==
-
-"@remotion/compositor-win32-x64-msvc@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.yarnpkg.com/@remotion/compositor-win32-x64-msvc/-/compositor-win32-x64-msvc-4.0.513.tgz#80abd6b09bf8820459b4a6be0ef6c3ae4b5b8708"
-  integrity sha512-hW5L6Et+KZsjLYbEhos/aEO1MqNRUuPDg+ICWu8abIL2WPRpsXixaYsver/bS7UbTQlxrjE6e83kdpO/lM+yoQ==
-
-"@remotion/licensing@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/licensing/-/licensing-4.0.513.tgz"
-  integrity sha512-KThoRJcXhGT1y30YeSiQVmHjqav/y7hMGpDjQYDEVi64JZAfbkYqHpmXN/otSztWnceeqcg+u1ApDT8liqqLSQ==
-
-"@remotion/media-parser@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/media-parser/-/media-parser-4.0.513.tgz"
-  integrity sha512-rCQRn1EFVB8Xa51ojLdSWv6bPoGSoXwLjAlX6fkuaqSJRmjq3nvbKR6rzRL3uB6esTjVysaeiXuTzaPMsXoTLQ==
-
-"@remotion/media-utils@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/media-utils/-/media-utils-4.0.513.tgz"
-  integrity sha512-4retja3Q9IHicW48wbjKB+lXjB1yiNtXZ3H/Pa+1Nd0DNK1IvMGYSxDms3LR4ZByucIsdXrBTJIcIoldqL7KVg==
+"@remotion/codemods@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/codemods/-/codemods-4.0.537.tgz#928de73b008d4f7451ea6faa25c9af8aaa13fccd"
+  integrity sha512-0ShrYLiPH06rHG46Xj/1imt3v5FVbJ+J9QUFUqoF7ZbVy4om863nfYoK+7v9KSf6JIVWPHjT66b7cHY8vuUrzg==
   dependencies:
-    mediabunny "1.50.8"
-    remotion "4.0.513"
+    "@babel/parser" "7.24.1"
+    "@babel/types" "7.24.0"
+    "@remotion/studio-protocol" "4.0.537"
+    "@remotion/studio-shared" "4.0.537"
+    ast-types "0.16.1"
+    recast "0.23.21"
+    remotion "4.0.537"
 
-"@remotion/player@4.0.513", "@remotion/player@^4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/player/-/player-4.0.513.tgz"
-  integrity sha512-7zBJIypNp7duagRy7SghedEPtIpIF96Lb+r2EZnGMKRbm8PYc6nO2JOnX+gRnMszaULmaLId3pQHMThOy7CJyA==
-  dependencies:
-    remotion "4.0.513"
+"@remotion/compositor-darwin-arm64@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/compositor-darwin-arm64/-/compositor-darwin-arm64-4.0.537.tgz#bf5b7c4b9df696ef58f34e77f0d489965c2c8221"
+  integrity sha512-wWslDMQSRQIaocR+/4P3PvipTYkpAxk/cF0yARH35D/JGye4EpgZNkJPiCslB1TE5+cUantl8M3VQ/aQGU1xIQ==
 
-"@remotion/renderer@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/renderer/-/renderer-4.0.513.tgz"
-  integrity sha512-jW7mDpEIDKsWJrQ3L7Vi0Xp6PXvc54yaf9Bd9lIhMMpnBEWgZ9uMlqq8ewHjfRJrdchwCDUkhUNRr/XvQLpzhg==
+"@remotion/compositor-darwin-x64@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/compositor-darwin-x64/-/compositor-darwin-x64-4.0.537.tgz#06db2e6646024ad29d6a18f838d55ec69a481505"
+  integrity sha512-H/TyurmZkmj5Gt5OVe4BpLCNidw+OmpVlTtTKcYy99toStylZeGMdtMvZum24ISvIJRRjyfTVWM01hg4WAcWWA==
+
+"@remotion/compositor-linux-arm64-gnu@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/compositor-linux-arm64-gnu/-/compositor-linux-arm64-gnu-4.0.537.tgz#61440d438f35765a13d88352eac7b57bb90bbf12"
+  integrity sha512-oDl4OCEFkbDTlmlXcllI7aQgAdWu5CVpIlx4G0/V4DKStNu7x8MTBVclAWeCmFu4joO8JbeliAa3oKYf1EdoQA==
+
+"@remotion/compositor-linux-arm64-musl@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/compositor-linux-arm64-musl/-/compositor-linux-arm64-musl-4.0.537.tgz#9741ca3695f99761fdc5e85979d3d456b8577982"
+  integrity sha512-aajygFO0ZvEs5J5fIxlec1Dmv4LloDjfVRcfqlO2iwHFyMq99n8ImIF1V7QLrGBMptQ79anC8J82GbF00wMXmA==
+
+"@remotion/compositor-linux-x64-gnu@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/compositor-linux-x64-gnu/-/compositor-linux-x64-gnu-4.0.537.tgz#1a358f21e07f0c6ebe26525fc67cb9bd67b58448"
+  integrity sha512-J4C1IJtz/AxnKxqL8QrtiBPrsZBEfJ12uhSsLOGxzbM6IgsYrQEyjGhc6fJcpWOJY56mp24e/eBzSKtIOrKFYA==
+
+"@remotion/compositor-linux-x64-musl@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/compositor-linux-x64-musl/-/compositor-linux-x64-musl-4.0.537.tgz#a5b6c473978ab0ad888b300d8d4150c26a37fb40"
+  integrity sha512-97hWx5arQBNLRwvCUPrgB2GQYpRhLGLDNVixdNBb+2vlTW3AYUmH6FkrPQM8CBtNFXcDUA78QA8EY9U9HqF+Zw==
+
+"@remotion/compositor-win32-x64-msvc@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/compositor-win32-x64-msvc/-/compositor-win32-x64-msvc-4.0.537.tgz#a8ea139075b9aefc268dc5605a3e2cda4f4a813b"
+  integrity sha512-UPQpMZV/qf1/ZISqxexzQKWWNfg2Jp8wsTsMD4ws+pbTWMIF7wzQqvTTYNyzCtVvAnh5wBWKeS8GBtU0m2HJhA==
+
+"@remotion/elevenlabs@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/elevenlabs/-/elevenlabs-4.0.537.tgz#ea69a148e9111976b8697c9c6a55e26cc85f5731"
+  integrity sha512-NRW6rEdhSnxq40YY/i9WKFki3iTV6lj1ns+B5xQrpZTGMtOEww2GXsTg/t6dlNJqBx1pTj8r+n+VwMiMuny3Ow==
   dependencies:
-    "@remotion/licensing" "4.0.513"
-    "@remotion/streaming" "4.0.513"
+    "@remotion/captions" "4.0.537"
+    zod "4.5.4"
+
+"@remotion/licensing@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/licensing/-/licensing-4.0.537.tgz#f74e1d7ef4631c5fe2be76020b2576e9f3e4e0ac"
+  integrity sha512-D1FFftZ1VbANJXWW9xREuQFaE7whQCkhB6deklQqknQta9Vb9b/CKFqjk7ZBT8Nan+Bs7m+9+5wsd6FKF2wU1g==
+
+"@remotion/media-utils@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/media-utils/-/media-utils-4.0.537.tgz#a49cbdde6b2dbda813909edf51823d4c0bc28be1"
+  integrity sha512-HIEvFO0YjqiKx5F5MXxld0r80jC6y7Gi+nVePKujLflat1hCYkFatRF4gDYEP5/YKt1ptPC9Uo/0Ye7XaoTx4A==
+  dependencies:
+    mediabunny "1.61.6"
+    remotion "4.0.537"
+
+"@remotion/media@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/media/-/media-4.0.537.tgz#2b55efa873ff1b511a2e65fca7601ffcbee4671f"
+  integrity sha512-8w67XsAiO0/W/Vgv6ruRaxdGDu+Rr4zCaeL6HD2+KcV4m2DRABBa387UaAt2ert7/SrybpTVkeMr2lUmIpv0jQ==
+  dependencies:
+    mediabunny "1.61.6"
+    remotion "4.0.537"
+    zod "4.5.4"
+
+"@remotion/openai-whisper@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/openai-whisper/-/openai-whisper-4.0.537.tgz#4ea4647c32ffdb85c2141f5b3b06eadc13e383ec"
+  integrity sha512-flaKnsHJg1XWVvep0Gymp2gL+hQqFs/uNs+wNhlw8VRMzhy3VvKC713VfjDcZbLWEi31QnkFpO05+/s9WfhIyQ==
+  dependencies:
+    "@remotion/captions" "4.0.537"
+    zod "4.5.4"
+
+"@remotion/paths@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/paths/-/paths-4.0.537.tgz#4d4259f2f5e6d7a4fc53832ee32803aa1f196c9a"
+  integrity sha512-UwEwlzSrgZ+9QSZcP9MO0NPVMb2G1tLwWKO4Jz1TfqHxAfPmbgsb40jBL3wD4p9CVhVDWJllBwKpPFhhJ2b25g==
+  dependencies:
+    remotion "4.0.537"
+
+"@remotion/player@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/player/-/player-4.0.537.tgz#f43e8d13bfbea4684dd65e707c4fc12d588aef1b"
+  integrity sha512-zXY13uIqBr6q1fHAaiDvnXVMB8Wqs2BVoJTcXHlhhpoPoH4tGByzLc+961hhxMJjUR4Ubc2JRIaNbUckHEh46A==
+  dependencies:
+    remotion "4.0.537"
+
+"@remotion/renderer@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/renderer/-/renderer-4.0.537.tgz#3ef3ce90a6365e9975fb53c53b725b62211d94f5"
+  integrity sha512-3EsvIFRLfRyuZKM8J1myr7JN9AyGPd8AuEDhUyDo8ntNoNXQsA/TPO8LpnXu90H7ZCdytO3Z1HyFJZujlBMptg==
+  dependencies:
+    "@remotion/licensing" "4.0.537"
+    "@remotion/streaming" "4.0.537"
     execa "5.1.1"
-    remotion "4.0.513"
+    remotion "4.0.537"
     source-map "0.8.0"
     ws "8.21.0"
   optionalDependencies:
-    "@remotion/compositor-darwin-arm64" "4.0.513"
-    "@remotion/compositor-darwin-x64" "4.0.513"
-    "@remotion/compositor-linux-arm64-gnu" "4.0.513"
-    "@remotion/compositor-linux-arm64-musl" "4.0.513"
-    "@remotion/compositor-linux-x64-gnu" "4.0.513"
-    "@remotion/compositor-linux-x64-musl" "4.0.513"
-    "@remotion/compositor-win32-x64-msvc" "4.0.513"
+    "@remotion/compositor-darwin-arm64" "4.0.537"
+    "@remotion/compositor-darwin-x64" "4.0.537"
+    "@remotion/compositor-linux-arm64-gnu" "4.0.537"
+    "@remotion/compositor-linux-arm64-musl" "4.0.537"
+    "@remotion/compositor-linux-x64-gnu" "4.0.537"
+    "@remotion/compositor-linux-x64-musl" "4.0.537"
+    "@remotion/compositor-win32-x64-msvc" "4.0.537"
 
-"@remotion/streaming@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/streaming/-/streaming-4.0.513.tgz"
-  integrity sha512-0iL5y5uWJDhyqXX566SV/zsS/duByYvUTNrrOKzUDL3M8Z/ysPkWPI3mT2d51DdWWr3KfV06Ci7iW/abBu8JYw==
-
-"@remotion/studio-protocol@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/studio-protocol/-/studio-protocol-4.0.513.tgz"
-  integrity sha512-wRfIxboi3Np5z16NhkM2K8DT+rBvBb4hfbXpTV9nmcS+IVeuVeptTUSu5r7L9fE9zlbY/gag/V7ThS/CyYsrvg==
-
-"@remotion/studio-shared@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/studio-shared/-/studio-shared-4.0.513.tgz"
-  integrity sha512-RuXntxoeu8SSzPN037vwWtiV/IGYXxmrHztMXk0I0Kyf/R6qz5DupVYEJoBUA53rVOrCFo+2k1jH3IOBixRUBw==
+"@remotion/sdk@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/sdk/-/sdk-4.0.537.tgz#35fd90428a930ba689b67c2f914ac91d3c518f46"
+  integrity sha512-H+qeWGidqHLgyG4ChE8uQ2p5c1aXDiTcf4cqI7wfNZ+KYLLWOGUmMQud6mT2u79MznrRqetN7xndzzLCB8Co8w==
   dependencies:
-    "@remotion/studio-protocol" "4.0.513"
-    remotion "4.0.513"
+    "@remotion/player" "4.0.537"
+    "@remotion/studio-shared" "4.0.537"
+    remotion "4.0.537"
 
-"@remotion/studio@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/studio/-/studio-4.0.513.tgz"
-  integrity sha512-hEg6CNTf/XQQUyv/1ccXfCZ1LaHXFInnR4mb3HzDE9aIbzo+GSgspsgB8W7OiWfOfEZVpI4HAFPRRtw1GCay1w==
+"@remotion/streaming@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/streaming/-/streaming-4.0.537.tgz#3f5669d9befa93c3b43e7afc5b97ecbcd1cca96f"
+  integrity sha512-CnzAp2e4QIcD9FLcsz+l8AtUj0QevgnPoe+V99U7up996IjG7+ldeVYQ1YCU5OFjpOghSbdYrypJv7JuQPwHTQ==
+
+"@remotion/studio-protocol@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/studio-protocol/-/studio-protocol-4.0.537.tgz#cdc60cba125b978264f0e7529a00c9563264e8e5"
+  integrity sha512-wuMNVmqOmT/hqjS7wNItmytUOnEEQCOAcxouGratpenUDUcQhk3OyvoiQZABxr17X4TMssjoAlz6drXV/Cc67A==
+  dependencies:
+    zod "4.5.4"
+
+"@remotion/studio-shared@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/studio-shared/-/studio-shared-4.0.537.tgz#24cf672e19d05ccaac2db191b55564cc77a36a9c"
+  integrity sha512-h7MWhjEdSR7PlW0TawdRDjlFk0BfsmiS4avzYqLEzOxIlHcV45CiiMwcGgr7IlIzvILyLVETAgYdcYYCaH4Alw==
+  dependencies:
+    remotion "4.0.537"
+
+"@remotion/studio@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/studio/-/studio-4.0.537.tgz#b9c0322d49fba24b94a2691c78a53e2e6691e7d2"
+  integrity sha512-XQMOteaULxS3l/oNNsY7wlZL2czictloWO3eWtPtSstYuP4fT1cGfVCDDzNdPk74wrtECddg32VrmdEueb6hTQ==
   dependencies:
     "@jridgewell/trace-mapping" "0.3.31"
-    "@remotion/captions" "4.0.513"
-    "@remotion/media-utils" "4.0.513"
-    "@remotion/player" "4.0.513"
-    "@remotion/renderer" "4.0.513"
-    "@remotion/studio-protocol" "4.0.513"
-    "@remotion/studio-shared" "4.0.513"
-    "@remotion/timeline-utils" "4.0.513"
-    "@remotion/web-renderer" "4.0.513"
-    "@remotion/zod-types" "4.0.513"
-    mediabunny "1.50.8"
+    "@remotion/captions" "4.0.537"
+    "@remotion/codemods" "4.0.537"
+    "@remotion/elevenlabs" "4.0.537"
+    "@remotion/media" "4.0.537"
+    "@remotion/media-utils" "4.0.537"
+    "@remotion/openai-whisper" "4.0.537"
+    "@remotion/paths" "4.0.537"
+    "@remotion/player" "4.0.537"
+    "@remotion/renderer" "4.0.537"
+    "@remotion/sdk" "4.0.537"
+    "@remotion/studio-protocol" "4.0.537"
+    "@remotion/studio-shared" "4.0.537"
+    "@remotion/timeline-utils" "4.0.537"
+    "@remotion/web-renderer" "4.0.537"
+    "@remotion/zod-types" "4.0.537"
+    "@tanstack/react-virtual" "3.14.9"
+    mediabunny "1.61.6"
     memfs "3.4.3"
     open "8.4.2"
-    remotion "4.0.513"
+    prismjs "1.30.0"
+    remotion "4.0.537"
     semver "7.5.3"
-    zod "4.4.3"
+    zod "4.5.4"
 
-"@remotion/timeline-utils@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/timeline-utils/-/timeline-utils-4.0.513.tgz"
-  integrity sha512-PYpK/VRh1kdrjE4kcNkatsLBeVa1yL+tTqoj0lRVW2N/5NXP9PNTwXF5/CsTZyjGPz01FF0lj+mOW2J8ECCdDg==
+"@remotion/timeline-utils@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/timeline-utils/-/timeline-utils-4.0.537.tgz#650f827510e0937b38cba54de20b5a7308d4b7db"
+  integrity sha512-d7nZ2m+3KojaDE6M58VD+X4kMSfyebbYBvMltF6fvg2UxYN0hH3SFk1nU/Yl24y+oeCokWPg0/00Mca7PQo6QA==
   dependencies:
-    mediabunny "1.50.8"
+    mediabunny "1.61.6"
+    remotion "4.0.537"
 
-"@remotion/web-renderer@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/web-renderer/-/web-renderer-4.0.513.tgz"
-  integrity sha512-yDpjBV9mHD60UBPLcNHT9Ac9ONfBJP3S7egkYYWK68Q+o13+8eXuhTVTuKBUQ0JMljOJCRQ4DzqGyebbWz9sOw==
+"@remotion/web-renderer@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/web-renderer/-/web-renderer-4.0.537.tgz#ab5ac3ee7045581c3bf5bbd9f702bded24a11776"
+  integrity sha512-3bu2ZNzTziMnlFWvaRnUWmNvdGUvR0RGYlrH9sVkXHbfDkPZiWFK34lMzZhdfw+YB21/xDS3dB7crhY55ISU8A==
   dependencies:
-    "@mediabunny/aac-encoder" "1.50.8"
-    "@mediabunny/flac-encoder" "1.50.8"
-    "@mediabunny/mp3-encoder" "1.50.8"
-    "@remotion/licensing" "4.0.513"
-    mediabunny "1.50.8"
-    remotion "4.0.513"
+    "@mediabunny/aac-encoder" "1.61.6"
+    "@mediabunny/flac-encoder" "1.61.6"
+    "@mediabunny/mp3-encoder" "1.61.6"
+    "@remotion/licensing" "4.0.537"
+    mediabunny "1.61.6"
+    remotion "4.0.537"
 
-"@remotion/zod-types@4.0.513":
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/@remotion/zod-types/-/zod-types-4.0.513.tgz"
-  integrity sha512-G0zkfZoXc/QqOoxDNVbuRQbpC+AlpRaePeC5SYzZMV6SMjA4WxkE/K1lEE0Ml4ECd/JwiIWzy4C+FVlw3Th16A==
+"@remotion/zod-types@4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/zod-types/-/zod-types-4.0.537.tgz#6159abb817389926889dd77058b4b265aedbaf26"
+  integrity sha512-v5QfEehuYGSnubvFkNKWfxCak9f1RoBDyxPg6Xbr97iTOFJxmMLhr6yPRkjyDQTT19qXqM6a+N1yW7r11RmIeg==
   dependencies:
-    remotion "4.0.513"
+    remotion "4.0.537"
 
 "@rolldown/binding-android-arm64@1.1.4":
   version "1.1.4"
@@ -3384,6 +3461,18 @@
   integrity sha512-hwbzQuNUfcPvbegQFatVPl/MY/tcM9KLl963hQ5laJKPh81TEZ1+dNG9PirGvcaDBkp+BCshExAyKVPW91dozw==
   dependencies:
     postcss-selector-parser "6.0.10"
+
+"@tanstack/react-virtual@3.14.9":
+  version "3.14.9"
+  resolved "https://registry.yarnpkg.com/@tanstack/react-virtual/-/react-virtual-3.14.9.tgz#b735e93a059a25f577a9577d7f014343ec7205a5"
+  integrity sha512-qZyr0FZDP8rDC4WBhsryIZmAd9bveJvFGUJJtskWaew6/0dTRS6wZxnR6VQ5bY2KwL3LjerrHqQLk3a0GKcPXQ==
+  dependencies:
+    "@tanstack/virtual-core" "3.17.7"
+
+"@tanstack/virtual-core@3.17.7":
+  version "3.17.7"
+  resolved "https://registry.yarnpkg.com/@tanstack/virtual-core/-/virtual-core-3.17.7.tgz#d64525d2c97a53a22f32f55246efdd679af2c392"
+  integrity sha512-bp+v10y65sp2H7WpWfIMyxTNfl8ZVfxFTLRjPIFRryi6FV/J33z4IS53WO4pTk36KlvJ4iLiQz+oaydDC1xbcA==
 
 "@testing-library/dom@^10.4.1":
   version "10.4.1"
@@ -4448,6 +4537,20 @@ assertion-error@^2.0.1:
   version "2.0.1"
   resolved "https://registry.npmjs.org/assertion-error/-/assertion-error-2.0.1.tgz"
   integrity sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==
+
+ast-types@0.16.1:
+  version "0.16.1"
+  resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.16.1.tgz#7a9da1617c9081bc121faafe91711b4c8bb81da2"
+  integrity sha512-6t10qk83GOG8p0vKmaCr8eiilZwO171AvbROMtvvNiwrTly62t+7XkA8RdIIVbpMhCASAsxgAzdRSwh6nw/5Dg==
+  dependencies:
+    tslib "^2.0.1"
+
+ast-types@^0.16.1:
+  version "0.16.3"
+  resolved "https://registry.yarnpkg.com/ast-types/-/ast-types-0.16.3.tgz#a518d2018aa350c1133cf1044b724af4fd1971eb"
+  integrity sha512-FvWoWYfSCM6kRxCSH+MGLHIKKGRL6A6AW7Zek2O32REPQRdg131428uRTKMBYAeRd3XXAaHDS60Wpri7CdKDrA==
+  dependencies:
+    tslib "^2.0.1"
 
 async-retry@^1.3.3:
   version "1.3.3"
@@ -5634,7 +5737,7 @@ esprima@1.2.5:
   resolved "https://registry.npmjs.org/esprima/-/esprima-1.2.5.tgz"
   integrity sha512-S9VbPDU0adFErpDai3qDkjq8+G05ONtKzcyNrPKg/ZKa+tf879nX2KexNU95b31UoTJjRLInNBHHHjFPoCd7lQ==
 
-esprima@^4.0.0, esprima@^4.0.1:
+esprima@^4.0.0, esprima@^4.0.1, esprima@~4.0.0:
   version "4.0.1"
   resolved "https://registry.npmjs.org/esprima/-/esprima-4.0.1.tgz"
   integrity sha512-eGuFFw7Upda+g4p+QHvnW0RyTX/SVeJBDM/gCtMARO0cLuT2HcEKnTPvhjV6aGeqrCB/sbNop0Kszm0jsaWU4A==
@@ -7398,10 +7501,10 @@ media-captions@^1.0.4:
   resolved "https://registry.npmjs.org/media-captions/-/media-captions-1.0.4.tgz"
   integrity sha512-cyDNmuZvvO4H27rcBq2Eudxo9IZRDCOX/I7VEyqbxsEiD2Ei7UYUhG/Sc5fvMZjmathgz3fEK7iAKqvpY+Ux1w==
 
-mediabunny@1.50.8:
-  version "1.50.8"
-  resolved "https://registry.npmjs.org/mediabunny/-/mediabunny-1.50.8.tgz"
-  integrity sha512-LgykLyQzhdpo0V2yw3UXmOpj+b4JAGdpHBwsPE6kjSt8Za0d1VllD+FV7EGHBcdV4+oHUAo+yrqbVAWxNSDCPQ==
+mediabunny@1.61.6:
+  version "1.61.6"
+  resolved "https://registry.yarnpkg.com/mediabunny/-/mediabunny-1.61.6.tgz#ec373ca2e701270204c1f25522f8c57645b313cc"
+  integrity sha512-VHEZ53/7jGl4dQ+uOdndsZufFYwEUFWv9UXgvrGun3OapyzoqI9iaPOD7z3xxY/nAttLZBNwswgJzMtGJAquOQ==
   dependencies:
     "@types/dom-mediacapture-transform" "^0.1.11"
     "@types/dom-webcodecs" "0.1.13"
@@ -8313,6 +8416,11 @@ pretty-format@^27.0.2:
     ansi-styles "^5.0.0"
     react-is "^17.0.1"
 
+prismjs@1.30.0:
+  version "1.30.0"
+  resolved "https://registry.yarnpkg.com/prismjs/-/prismjs-1.30.0.tgz#d9709969d9d4e16403f6f348c63553b19f0975a9"
+  integrity sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==
+
 property-information@^7.0.0:
   version "7.2.0"
   resolved "https://registry.npmjs.org/property-information/-/property-information-7.2.0.tgz"
@@ -8546,6 +8654,17 @@ readable-stream@^3.1.1, readable-stream@^3.6.0:
     string_decoder "^1.1.1"
     util-deprecate "^1.0.1"
 
+recast@0.23.21:
+  version "0.23.21"
+  resolved "https://registry.yarnpkg.com/recast/-/recast-0.23.21.tgz#45eed4cfcaa8ab1724fb30eb2c0bd14f3a0d797b"
+  integrity sha512-mFAyJq9vUbSTARLZUvAEf1z3YxlvAwswbmxMx2mPA/MSm4KmpwvwvhsH/NIrZhyOuwD60Lzyw2qh83uCbgTPYw==
+  dependencies:
+    ast-types "^0.16.1"
+    esprima "~4.0.0"
+    source-map "~0.6.1"
+    tiny-invariant "^1.3.3"
+    tslib "^2.0.1"
+
 recharts@^3.10.1:
   version "3.10.1"
   resolved "https://registry.npmjs.org/recharts/-/recharts-3.10.1.tgz"
@@ -8655,10 +8774,10 @@ remark-stringify@^11.0.0:
     mdast-util-to-markdown "^2.0.0"
     unified "^11.0.0"
 
-remotion@4.0.513, remotion@^4.0.513:
-  version "4.0.513"
-  resolved "https://registry.npmjs.org/remotion/-/remotion-4.0.513.tgz"
-  integrity sha512-cDaUqFq7GBuxYYSINhfXy5+X7V4L3fSy3lDL4G/7v61jCpEzYcRQftAKo2Cyj1evHt34bn++4eMMUZBMh624yA==
+remotion@4.0.537:
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/remotion/-/remotion-4.0.537.tgz#c25919b4702a21b439ae0bb43147ace2eac0b2ac"
+  integrity sha512-chlB4+lnCWnDr6Pk+fDh3vWgac/ntGduq4VUpDsXzY1Pzu6URdnl40LUClK4ZlS3mwMv2U0oflE7qjZ9LGpVWg==
 
 require-directory@^2.1.1:
   version "2.1.1"
@@ -9309,6 +9428,11 @@ tmp@^0.2.4:
   resolved "https://registry.npmjs.org/tmp/-/tmp-0.2.7.tgz"
   integrity sha512-e0votIpp4Uo2AJYSzVHV6xCcawuiez3DzqDAbrTc3YxBkplN6e+dM13ZeIcZnDg/QpSuU2zfZ3rzwY8ukEnaXw==
 
+to-fast-properties@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/to-fast-properties/-/to-fast-properties-2.0.0.tgz#dc5e698cbd079265bc73e0377681a4e4e83f616e"
+  integrity sha512-/OaKK0xYrs3DmxRYqL/yDc+FxFUVYhDlXMhRmv3z915w2HF1tnN1omB354j8VUGO/hbRzyD6Y3sA7v7GS/ceog==
+
 to-regex-range@^5.0.1:
   version "5.0.1"
   resolved "https://registry.npmjs.org/to-regex-range/-/to-regex-range-5.0.1.tgz"
@@ -9367,7 +9491,7 @@ ts-dedent@^2.2.0:
   resolved "https://registry.npmjs.org/ts-dedent/-/ts-dedent-2.3.0.tgz"
   integrity sha512-JfJeIHke7y2egdGGgRAvpCwYFUsHlM2gPcrVOxFkznt/4uzQ7HFmvE63iFHVLBJNDuyDOQgijDK/tXH/f6Msjg==
 
-tslib@2.8.1, tslib@^2.0.0, tslib@^2.1.0, tslib@^2.4.0, tslib@^2.6.2, tslib@^2.8.0, tslib@^2.8.1:
+tslib@2.8.1, tslib@^2.0.0, tslib@^2.0.1, tslib@^2.1.0, tslib@^2.4.0, tslib@^2.6.2, tslib@^2.8.0, tslib@^2.8.1:
   version "2.8.1"
   resolved "https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz"
   integrity sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==
@@ -10000,14 +10124,9 @@ yocto-queue@^0.1.0:
   resolved "https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz"
   integrity sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==
 
-zod@4.4.3:
-  version "4.4.3"
-  resolved "https://registry.npmjs.org/zod/-/zod-4.4.3.tgz"
-  integrity sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==
-
-zod@^4.5.4:
+zod@4.5.4, zod@^4.5.4:
   version "4.5.4"
-  resolved "https://registry.npmjs.org/zod/-/zod-4.5.4.tgz"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-4.5.4.tgz#e215c62420c528dd7951e31fb52c5438f1fd184a"
   integrity sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==
 
 zustand@^4.4.0:
