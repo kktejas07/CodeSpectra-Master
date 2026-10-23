@@ -191,7 +191,7 @@ export const offerInterviewSlotsTool = writeTool<OfferSlotsArgs>({
         const body = `<p style="margin:0 0 12px">${escapeHtml(intro)}</p><ul style="margin:0 0 12px;padding-left:20px">${times.map((t) => `<li>${escapeHtml(`${t} (${timezone})`)}</li>`).join('')}</ul>`
           + `<p style="margin:0 0 12px;font-size:13px;color:#4b5563">${escapeHtml(hlt(locale, 'mail.more'))}</p>`
           + `<p style="margin:16px 0 0;font-size:12px;color:#6b7280">${escapeHtml(hlt(locale, 'mail.footer', { company }))}${unsub ? ` · <a href="${escapeHtml(unsub)}" style="color:#6b7280">${escapeHtml(hlt(locale, 'mail.unsubscribe'))}</a>` : ''}</p>`
-        const msg = wrapEmail(hlt(locale, 'mail.subject', { role, company }), body, { url: link, label: hlt(locale, 'mail.pick') })
+        const msg = wrapEmail(hlt(locale, 'mail.subject', { role, company }), body, { url: link, label: hlt(locale, 'mail.pick') }, locale)
         try {
           const { sendEmail } = await import('@/lib/send-email')
           const headers = listUnsubscribeHeaders(email, 'hiring')
