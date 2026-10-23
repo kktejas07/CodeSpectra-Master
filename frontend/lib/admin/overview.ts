@@ -41,5 +41,7 @@ export interface AdminAiSpend {
   top: { feature: string; micros: number }[]
   unpriced_calls: number
   usd_inr_rate: number
+  /** Admin-set rate's last change (ISO); null = default rate. */
+  usd_inr_rate_updated_at: string | null
   budget: { usd: number; level: 0 | 50 | 80 | 100 }
 }

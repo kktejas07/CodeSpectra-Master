@@ -1,6 +1,6 @@
 /**
  * /api/admin/ai-usage (superadmin)
- * GET   ?days=30            — AI spend: by day, feature, model/provider, tenant; this month vs last; budget; price book.
+ * GET   ?days=30 (≤366)     — AI spend: by day, feature, model/provider, tenant; this month vs last; budget; price book.
  * GET   ?days=30&format=csv — the same rows as CSV (counts and money only; no prompts, no user ids).
  * PATCH                     — price overrides, unknown-model price, monthly budget, hard stop, INR rate.
  */
@@ -18,14 +18,15 @@ export async function GET(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const sp = new URL(req.url).searchParams
-  const days = Math.max(1, Math.min(90, Math.floor(Number(sp.get('days')) || 30)))
+  const days = Math.max(1, Math.min(366, Math.floor(Number(sp.get('days')) || 30)))
   try {
-    const [{ getAiCostSettings }, { spendRows, monthSpend }] = await Promise.all([import('@/lib/ai/usage-record'), import('@/lib/ai/spend-report')])
+    const [{ getAiCostSettings }, { monthSpend }, { spendRowsWithHistory }] = await Promise.all([import('@/lib/ai/usage-record'), import('@/lib/ai/spend-report'), import('@/lib/ai/usage-rollup')])
     const settings = await getAiCostSettings(true)
     const book = bookFor(settings)
     const now = new Date()
     const keys = utcDayKeys(now, days)
-    const rows = await spendRows(new Date(`${keys[0]}T00:00:00.000Z`), new Date(now.getTime() + 1))
+    // Raw rows inside the 90-day TTL window, daily rollups before it.
+    const rows = await spendRowsWithHistory(new Date(`${keys[0]}T00:00:00.000Z`), new Date(now.getTime() + 1), now)
     if (sp.get('format') === 'csv') {
       return new NextResponse(spendCsv(rows, book), {
         headers: {

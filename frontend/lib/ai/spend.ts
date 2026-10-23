@@ -17,8 +17,14 @@ export interface AiCostSettings {
   hard_stop: boolean
   /** Feature ids (or "prefix*") that stop at 100% when hard_stop is on. */
   non_critical_features: string[]
-  /** INR per USD for showing spend in rupees (no FX rate exists elsewhere in the app). */
+  /**
+   * INR per USD for showing spend in rupees. Set by a superadmin: billing has
+   * per-currency plan prices (parity pricing), not an exchange rate, so there
+   * is nothing better to derive it from.
+   */
   usd_inr_rate: number
+  /** When a superadmin last changed the rate (ISO); null = still the default. Server-set. */
+  usd_inr_rate_updated_at: string | null
 }
 
 /**
@@ -28,15 +34,17 @@ export interface AiCostSettings {
 export const DEFAULT_NON_CRITICAL = [
   'question-bot', 'signals-*', 'blog-*', 'learn-*', 'events-feed-summary', 'ebook-outline', 'course-video-*',
   'study-plan-note', 'company-tests:generate', 'generate-problem*', 'module-quiz', 'arena-adapt', 'generate-course',
+  'cover-image',
 ]
 
 export const DEFAULT_AI_COST_SETTINGS: AiCostSettings = {
   prices: [],
-  unknown: { inputPer1M: 1, outputPer1M: 4, perMinute: 0.01 },
+  unknown: { inputPer1M: 1, outputPer1M: 4, perMinute: 0.01, perImage: 0.08 },
   monthly_budget_usd: 0,
   hard_stop: false,
   non_critical_features: DEFAULT_NON_CRITICAL,
   usd_inr_rate: 84,
+  usd_inr_rate_updated_at: null,
 }
 
 const featureId = z.string().trim().regex(/^[A-Za-z0-9_:.-]{1,60}\*?$/)
@@ -47,6 +55,7 @@ export const AiCostSettingsPatch = z.object({
     inputPer1M: z.coerce.number().min(0).max(10_000),
     outputPer1M: z.coerce.number().min(0).max(10_000),
     perMinute: z.coerce.number().min(0).max(100),
+    perImage: z.coerce.number().min(0).max(1000).optional(),
   }).optional(),
   monthly_budget_usd: z.coerce.number().min(0).max(1_000_000).optional(),
   hard_stop: z.boolean().optional(),
@@ -57,7 +66,8 @@ export const AiCostSettingsPatch = z.object({
 /** Stored doc → settings (bad or missing values fall back to defaults). Pure. */
 export function mergeAiCostSettings(raw: unknown): AiCostSettings {
   const d = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
-  const r = AiCostSettingsPatch.partial().safeParse(Object.fromEntries(Object.entries(d).filter(([k]) => k in DEFAULT_AI_COST_SETTINGS)))
+  const r = AiCostSettingsPatch.partial().safeParse(Object.fromEntries(Object.entries(d).filter(([k]) => k in DEFAULT_AI_COST_SETTINGS && k !== 'usd_inr_rate_updated_at')))
+  const at = typeof d.usd_inr_rate_updated_at === 'string' && !Number.isNaN(Date.parse(d.usd_inr_rate_updated_at)) ? d.usd_inr_rate_updated_at : null
   const v = r.success ? r.data : {}
   return {
     prices: (v.prices ?? []).map(cleanPrice).filter((p): p is ModelPrice => !!p),
@@ -66,6 +76,7 @@ export function mergeAiCostSettings(raw: unknown): AiCostSettings {
     hard_stop: v.hard_stop ?? false,
     non_critical_features: v.non_critical_features ?? DEFAULT_NON_CRITICAL,
     usd_inr_rate: v.usd_inr_rate ?? DEFAULT_AI_COST_SETTINGS.usd_inr_rate,
+    usd_inr_rate_updated_at: at,
   }
 }
 
@@ -152,6 +163,8 @@ export interface SpendGroupRow {
   legacyOutput: number
   inputTokens: number
   outputTokens: number
+  /** Already-estimated µ$ carried by a daily rollup (lib/ai/usage-rollup); not in costMicros. */
+  estimatedMicros?: number
 }
 
 export interface SpendBucket {
@@ -188,7 +201,7 @@ export function summarizeSpend(rows: readonly SpendGroupRow[], book: PriceBook):
   }
   for (const r of rows) {
     const legacyCalls = Math.max(0, r.calls - r.costedCalls)
-    let est = 0
+    let est = Math.max(0, Math.round(r.estimatedMicros ?? 0))
     let unpriced = r.unpricedCalls
     if (legacyCalls > 0 && (r.legacyInput > 0 || r.legacyOutput > 0)) {
       const p = priceCall(book, r.provider, r.model, { inputTokens: r.legacyInput, outputTokens: r.legacyOutput }, 'chat')
@@ -259,4 +272,77 @@ export function microsIn(micros: number, currency: 'USD' | 'INR', usdInrRate: nu
 export function moneyDigits(amount: number): number {
   const a = Math.abs(amount)
   return a === 0 ? 2 : a < 0.01 ? 4 : a < 1000 ? 2 : 0
+}
+
+// ─── Daily rollups (history beyond the raw-row TTL) ─────────────────────────
+
+/** ai_usage rows expire after 90 days; days older than this are read from ai_usage_daily. */
+export const RAW_WINDOW_DAYS = 85
+/** Days (re)computed per rollup run at most (first run backfills in chunks). */
+export const ROLLUP_MAX_DAYS = 100
+
+const DAY_MS = 86_400_000
+export const dayOf = (d: Date): string => d.toISOString().slice(0, 10)
+const addDays = (day: string, n: number): string => dayOf(new Date(Date.parse(`${day}T00:00:00.000Z`) + n * DAY_MS))
+
+/** First UTC day served from rollups instead of raw rows (exclusive upper bound for history). */
+export function rawCutoffDay(now: Date): string {
+  return addDays(dayOf(now), -RAW_WINDOW_DAYS)
+}
+
+/**
+ * Days a rollup run should (re)compute, oldest first. Pure.
+ * - first run (nothing rolled yet): backfill from the oldest raw day;
+ * - later runs: re-roll the last rolled day (late rows) up to yesterday;
+ * - never today (still filling), never more than `max` days per run.
+ */
+export function rollupDays(lastRolled: string | null, earliestRaw: string | null, now: Date, max = ROLLUP_MAX_DAYS): string[] {
+  const yesterday = addDays(dayOf(now), -1)
+  const start = lastRolled ? lastRolled : earliestRaw
+  if (!start || start > yesterday) return []
+  const out: string[] = []
+  for (let d = start; d <= yesterday && out.length < max; d = addDays(d, 1)) out.push(d)
+  return out
+}
+
+export interface RollupDoc {
+  id: string
+  day: string
+  feature: string
+  provider: string
+  model: string
+  tenantId: string | null
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  /** Recorded µ$ (calls priced when they ran). */
+  cost_micro: number
+  /** µ$ estimated from tokens for rows without a recorded cost (prices at rollup time). */
+  estimated_micro: number
+  /** Some of this group's cost is an estimate. */
+  estimated: boolean
+  unpricedCalls: number
+}
+
+export const rollupId = (r: Pick<SpendGroupRow, 'day' | 'feature' | 'provider' | 'model' | 'tenantId'>): string =>
+  [r.day, r.feature, r.provider, r.model, r.tenantId || '-'].join('|').slice(0, 400)
+
+/** One raw group row → its rollup doc (legacy rows priced now and flagged). Pure. */
+export function toRollupDoc(r: SpendGroupRow, book: PriceBook): RollupDoc {
+  const s = summarizeSpend([{ ...r, estimatedMicros: 0 }], book).totals
+  return {
+    id: rollupId(r), day: r.day, feature: r.feature, provider: r.provider, model: r.model, tenantId: r.tenantId,
+    calls: r.calls, inputTokens: r.inputTokens, outputTokens: r.outputTokens,
+    cost_micro: r.costMicros, estimated_micro: s.estimatedMicros, estimated: s.estimatedMicros > 0 || r.estimatedTokenCalls > 0,
+    unpricedCalls: s.unpricedCalls,
+  }
+}
+
+/** Rollup doc → group row for summarizeSpend (estimate carried, not recomputed). Pure. */
+export function fromRollupDoc(d: RollupDoc): SpendGroupRow {
+  return {
+    day: d.day, feature: d.feature, provider: d.provider, model: d.model, tenantId: d.tenantId, calls: d.calls,
+    costMicros: d.cost_micro, costedCalls: d.calls, unpricedCalls: d.unpricedCalls, estimatedTokenCalls: d.estimated ? d.calls : 0,
+    legacyInput: 0, legacyOutput: 0, inputTokens: d.inputTokens, outputTokens: d.outputTokens, estimatedMicros: d.estimated_micro,
+  }
 }

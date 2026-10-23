@@ -1277,7 +1277,7 @@
   "aiCost.saveBudget": "బడ్జెట్ సేవ్ చేయండి",
   "aiCost.saved": "సేవ్ అయింది",
   "aiCost.priceBook": "ధరల జాబితా",
-  "aiCost.priceBookDescription": "చాట్, ఎంబెడ్డింగ్‌లకు 10 లక్షల టోకెన్లకు USD, స్పీచ్‌కు నిమిషానికి. కొత్త కాల్స్ ఆ సమయంలో ఉన్న ధరతో లెక్కిస్తారు.",
+  "aiCost.priceBookDescription": "చాట్, ఎంబెడ్డింగ్‌లకు 10 లక్షల టోకెన్లకు USD, స్పీచ్‌కు నిమిషానికి, చిత్రాలకు ఒక్కో చిత్రానికి (పరిమాణం వారీగా). కొత్త కాల్స్ ఆ సమయంలో ఉన్న ధరతో లెక్కిస్తారు.",
   "aiCost.seedWarning": "ప్రారంభ ధరలు అంచనాలు మాత్రమే, వెండర్ ధరలు కావు. ప్రతి ప్రొవైడర్ ప్రస్తుత ధర చూసి ఇక్కడ మార్చండి.",
   "aiCost.filterModels": "మోడళ్లను వెతకండి",
   "aiCost.addModel": "మోడల్ చేర్చండి",
@@ -1295,5 +1295,14 @@
   "aiCost.sourceSeed": "ధర చూడండి",
   "aiCost.resetSeed": "ప్రారంభ ధరకు మార్చండి",
   "aiCost.unknownTitle": "తెలియని మోడల్ ధర",
-  "aiCost.unknownHint": "ధరల జాబితాలో లేని ఏ మోడల్‌కైనా; ఆ కాల్స్‌ను గుర్తిస్తారు."
+  "aiCost.unknownHint": "ధరల జాబితాలో లేని ఏ మోడల్‌కైనా; ఆ కాల్స్‌ను గుర్తిస్తారు.",
+  "overview.aiSpendRate": "USDకి INR {rate} — రేటు అడ్మిన్ నిర్ణయించారు, చివరి మార్పు {date}",
+  "overview.aiSpendRateDefault": "USDకి INR {rate} — డిఫాల్ట్ రేటు, అడ్మిన్ ఇంకా నిర్ణయించలేదు",
+  "aiCost.rateSetBy": "USDకి {rate} — రేటు అడ్మిన్ నిర్ణయించారు, చివరి మార్పు {date}",
+  "aiCost.rateDefault": "USDకి {rate} — డిఫాల్ట్ రేటు, కింద మీ రేటు పెట్టండి",
+  "aiCost.rateUpdated": "చివరి మార్పు {date}.",
+  "aiCost.perImage": "ఒక్కో చిత్రానికి",
+  "aiCost.imageSize": "చిత్ర పరిమాణం",
+  "aiCost.anySize": "ఏ పరిమాణమైనా",
+  "aiCost.kind_image": "చిత్రం"
 }

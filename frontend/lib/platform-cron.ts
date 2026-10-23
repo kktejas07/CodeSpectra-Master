@@ -127,6 +127,12 @@ export async function runPlatformCron(now: Date = new Date()): Promise<PlatformC
       const { purgeExpiredIdentityMedia } = await import('./identity-media')
       await purgeExpiredIdentityMedia(now)
     }, daily)
+    // AI spend history: roll finished days of ai_usage into ai_usage_daily (idempotent; backfills on first run).
+    await run('ai-usage-rollup', day, async () => {
+      const { runAiUsageRollup } = await import('./ai/usage-rollup')
+      const r = await runAiUsageRollup(now)
+      if (r.days.length) logger.info(`[ai-cost] Rolled up ${r.days.length} day(s), ${r.groups} group(s)`)
+    }, daily)
   }
 
   // ── weekly company test refresh (off by default: Admin → Company patterns) ──

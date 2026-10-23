@@ -25,7 +25,10 @@ export interface RecordAiUsageInput {
   outputTokens?: number | null
   cachedTokens?: number | null
   audioSeconds?: number | null
-  /** Price as embedding/speech/chat (default: speech when audioSeconds > 0, else chat). */
+  /** Image generation: images made and their size (priced per image). */
+  images?: number | null
+  imageSize?: string | null
+  /** Price as embedding/speech/image/chat (default: speech when audioSeconds > 0, else chat). */
   kind?: PriceKind
   userId?: string
   tenantId?: string | null
@@ -48,6 +51,8 @@ export interface AiUsageRow {
   completionTokens: number | null
   cachedTokens?: number
   audioSeconds?: number
+  images?: number
+  imageSize?: string
   costMicros: number
   unpriced: boolean
   tokensEstimated: boolean
@@ -107,7 +112,9 @@ export async function getAiCostSettings(fresh = false): Promise<AiCostSettings> 
 }
 
 export async function saveAiCostSettings(patch: Partial<AiCostSettings>, actorId: string): Promise<AiCostSettings> {
-  const next = mergeAiCostSettings({ ...(await getAiCostSettings(true)), ...patch })
+  const prev = await getAiCostSettings(true)
+  const rateChanged = patch.usd_inr_rate !== undefined && patch.usd_inr_rate !== prev.usd_inr_rate
+  const next = mergeAiCostSettings({ ...prev, ...patch, usd_inr_rate_updated_at: rateChanged ? new Date().toISOString() : prev.usd_inr_rate_updated_at })
   await (await db()).collection('platform_settings').updateOne(
     { key: SETTINGS_KEY },
     { $set: { key: SETTINGS_KEY, value: next, updated_at: new Date().toISOString(), updated_by: actorId } },
@@ -133,6 +140,7 @@ const nonNeg = (v: unknown): number | null => (typeof v === 'number' && Number.i
 export function buildUsageRow(input: RecordAiUsageInput, book: PriceBook): AiUsageRow {
   const priced = priceCall(book, input.provider, input.model, {
     inputTokens: input.inputTokens, outputTokens: input.outputTokens, cachedTokens: input.cachedTokens, audioSeconds: input.audioSeconds,
+    images: input.images, imageSize: input.imageSize,
   }, input.kind)
   const audio = typeof input.audioSeconds === 'number' && input.audioSeconds > 0 ? Math.round(input.audioSeconds * 1000) / 1000 : undefined
   const cached = nonNeg(input.cachedTokens)
@@ -146,6 +154,7 @@ export function buildUsageRow(input: RecordAiUsageInput, book: PriceBook): AiUsa
     completionTokens: nonNeg(input.outputTokens),
     ...(cached ? { cachedTokens: cached } : {}),
     ...(audio ? { audioSeconds: audio } : {}),
+    ...(input.images && input.images > 0 ? { images: Math.floor(input.images), ...(input.imageSize ? { imageSize: String(input.imageSize).slice(0, 20) } : {}) } : {}),
     costMicros: input.ok === false ? 0 : priced.costMicros,
     unpriced: priced.unpriced,
     tokensEstimated: input.tokensEstimated === true,

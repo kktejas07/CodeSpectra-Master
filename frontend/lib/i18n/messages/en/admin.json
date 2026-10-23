@@ -1277,7 +1277,7 @@
   "aiCost.saveBudget": "Save budget",
   "aiCost.saved": "Saved",
   "aiCost.priceBook": "Price book",
-  "aiCost.priceBookDescription": "USD per 1M tokens for chat and embeddings, per minute for speech. New calls use the prices in force when they run.",
+  "aiCost.priceBookDescription": "USD per 1M tokens for chat and embeddings, per minute for speech, per image (by size) for images. New calls use the prices in force when they run.",
   "aiCost.seedWarning": "Seed prices are starting points, not vendor quotes. Check each provider's current pricing and edit them here.",
   "aiCost.filterModels": "Filter models",
   "aiCost.addModel": "Add model",
@@ -1295,5 +1295,14 @@
   "aiCost.sourceSeed": "Check price",
   "aiCost.resetSeed": "Reset to seed",
   "aiCost.unknownTitle": "Unknown model price",
-  "aiCost.unknownHint": "Used for any model that isn't in the price book; those calls are flagged."
+  "aiCost.unknownHint": "Used for any model that isn't in the price book; those calls are flagged.",
+  "overview.aiSpendRate": "INR at {rate} per USD — rate set by admin, last updated {date}",
+  "overview.aiSpendRateDefault": "INR at {rate} per USD — default rate, not yet set by an admin",
+  "aiCost.rateSetBy": "At {rate} per USD — rate set by admin, last updated {date}",
+  "aiCost.rateDefault": "At {rate} per USD — default rate, set yours below",
+  "aiCost.rateUpdated": "Last updated {date}.",
+  "aiCost.perImage": "Per image",
+  "aiCost.imageSize": "Image size",
+  "aiCost.anySize": "Any size",
+  "aiCost.kind_image": "Image"
 }

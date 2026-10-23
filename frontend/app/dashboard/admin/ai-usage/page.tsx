@@ -35,14 +35,14 @@ interface UsageData {
   byTenant: SpendBucket[]
   month: {
     month: string; micros: number; estimatedMicros: number; lastMonthToDateMicros: number; lastMonthMicros: number
-    trendPct: number | null; top: { feature: string; micros: number }[]; unpricedCalls: number; usdInrRate: number
+    trendPct: number | null; top: { feature: string; micros: number }[]; unpricedCalls: number; usdInrRate: number; usdInrRateUpdatedAt: string | null
     budget: { usd: number; level: 0 | 50 | 80 | 100; hardStop: boolean }
   }
   settings: AiCostSettings
   book: { prices: ModelPrice[]; unknown: UnknownPrice; seedNote: string }
 }
 
-const RANGES = [7, 30, 90] as const
+const RANGES = [7, 30, 90, 365] as const
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await csrfFetch(url, { headers: { 'Content-Type': 'application/json' }, credentials: 'include', ...init })
@@ -63,7 +63,7 @@ function useMoney(rate: number) {
 // ─── Budget settings ────────────────────────────────────────────────────────
 
 function BudgetPanel({ settings, onSaved }: { settings: AiCostSettings; onSaved: () => void }) {
-  const { t } = useAdminT()
+  const { t, fmt } = useAdminT()
   const addToast = useToast()
   const [budget, setBudget] = useState(String(settings.monthly_budget_usd))
   const [rate, setRate] = useState(String(settings.usd_inr_rate))
@@ -107,7 +107,7 @@ function BudgetPanel({ settings, onSaved }: { settings: AiCostSettings; onSaved:
         <div>
           <Label htmlFor="ai-rate" className="text-xs">{t('aiCost.rateLabel')}</Label>
           <Input id="ai-rate" type="number" inputMode="decimal" min={1} step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} className="mt-1 tabular-nums" />
-          <p className="mt-1 text-xs text-muted-foreground">{t('aiCost.rateHint')}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t('aiCost.rateHint')}{settings.usd_inr_rate_updated_at ? ` ${t('aiCost.rateUpdated', { date: fmt.date(settings.usd_inr_rate_updated_at) })}` : ''}</p>
         </div>
       </div>
       <div className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border p-4">
@@ -138,7 +138,7 @@ function BudgetPanel({ settings, onSaved }: { settings: AiCostSettings; onSaved:
 // ─── Price book ─────────────────────────────────────────────────────────────
 
 type Row = ModelPrice & { _k: string }
-const KINDS: PriceKind[] = ['chat', 'embedding', 'speech']
+const KINDS: PriceKind[] = ['chat', 'embedding', 'speech', 'image']
 const seeds = new Set(SEED_PRICES.map(priceKey))
 
 function PriceBook({ book, settings, onSaved }: { book: UsageData['book']; settings: AiCostSettings; onSaved: () => void }) {
@@ -202,7 +202,7 @@ function PriceBook({ book, settings, onSaved }: { book: UsageData['book']; setti
         {t('aiCost.seedWarning')}
       </p>
       <div className="-mx-5 overflow-x-auto px-5">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[900px] text-left text-sm">
           <caption className="sr-only">{t('aiCost.priceBook')}</caption>
           <thead className="text-xs text-muted-foreground">
             <tr className="border-b border-border">
@@ -213,12 +213,14 @@ function PriceBook({ book, settings, onSaved }: { book: UsageData['book']; setti
               <th scope="col" className="py-2 pr-3 font-medium">{t('aiCost.outputPer1M')}</th>
               <th scope="col" className="py-2 pr-3 font-medium">{t('aiCost.cachedPer1M')}</th>
               <th scope="col" className="py-2 pr-3 font-medium">{t('aiCost.perMinute')}</th>
+              <th scope="col" className="py-2 pr-3 font-medium">{t('aiCost.perImage')}</th>
               <th scope="col" className="py-2 font-medium"><span className="sr-only">{t('common.actions')}</span></th>
             </tr>
           </thead>
           <tbody>
             {shown.map((r) => {
               const speech = r.kind === 'speech'
+              const image = r.kind === 'image'
               return (
                 <tr key={r._k} className="border-b border-border/60 align-middle">
                   <td className="py-2 pr-3">
@@ -236,10 +238,16 @@ function PriceBook({ book, settings, onSaved }: { book: UsageData['book']; setti
                       {KINDS.map((k) => <option key={k} value={k}>{t(`aiCost.kind_${k}` as 'aiCost.kind_chat')}</option>)}
                     </select>
                   </td>
-                  <td className="py-2 pr-3">{!speech && <Input aria-label={t('aiCost.inputPer1M')} type="number" inputMode="decimal" min={0} step="0.001" value={r.inputPer1M ?? ''} onChange={(e) => edit(r._k, { inputPer1M: numOr(e.target.value) })} className={cell} />}</td>
+                  <td className="py-2 pr-3">{!speech && !image && <Input aria-label={t('aiCost.inputPer1M')} type="number" inputMode="decimal" min={0} step="0.001" value={r.inputPer1M ?? ''} onChange={(e) => edit(r._k, { inputPer1M: numOr(e.target.value) })} className={cell} />}</td>
                   <td className="py-2 pr-3">{r.kind === 'chat' && <Input aria-label={t('aiCost.outputPer1M')} type="number" inputMode="decimal" min={0} step="0.001" value={r.outputPer1M ?? ''} onChange={(e) => edit(r._k, { outputPer1M: numOr(e.target.value) })} className={cell} />}</td>
                   <td className="py-2 pr-3">{r.kind === 'chat' && <Input aria-label={t('aiCost.cachedPer1M')} type="number" inputMode="decimal" min={0} step="0.001" value={r.cachedInputPer1M ?? ''} onChange={(e) => edit(r._k, { cachedInputPer1M: numOr(e.target.value) })} className={cell} />}</td>
                   <td className="py-2 pr-3">{speech && <Input aria-label={t('aiCost.perMinute')} type="number" inputMode="decimal" min={0} step="0.0001" value={r.perMinute ?? ''} onChange={(e) => edit(r._k, { perMinute: numOr(e.target.value) })} className={cell} />}</td>
+                  <td className="py-2 pr-3">{image && (
+                    <div className="flex items-center gap-2">
+                      <Input aria-label={t('aiCost.perImage')} type="number" inputMode="decimal" min={0} step="0.001" value={r.perImage ?? ''} onChange={(e) => edit(r._k, { perImage: numOr(e.target.value) })} className={cell} />
+                      <Input aria-label={t('aiCost.imageSize')} placeholder={t('aiCost.anySize')} value={r.size ?? ''} onChange={(e) => edit(r._k, { size: e.target.value.toLowerCase() || undefined })} className="h-9 w-28 font-mono text-xs" disabled={seeds.has(r._k)} />
+                    </div>
+                  )}</td>
                   <td className="py-2 text-right">
                     {overridden.has(r._k) && seeds.has(r._k) && (
                       <Button variant="ghost" size="sm" onClick={() => void save(r._k)} disabled={saving} className="gap-1" aria-label={t('aiCost.resetSeed')}>
@@ -256,11 +264,11 @@ function PriceBook({ book, settings, onSaved }: { book: UsageData['book']; setti
       <div className="rounded-2xl border border-border p-4">
         <p className="font-medium text-foreground">{t('aiCost.unknownTitle')}</p>
         <p className="text-sm text-muted-foreground">{t('aiCost.unknownHint')}</p>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {(['inputPer1M', 'outputPer1M', 'perMinute'] as const).map((k) => (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {(['inputPer1M', 'outputPer1M', 'perMinute', 'perImage'] as const).map((k) => (
             <div key={k}>
               <Label htmlFor={`unk-${k}`} className="text-xs">{t(`aiCost.${k}`)}</Label>
-              <Input id={`unk-${k}`} type="number" inputMode="decimal" min={0} step="0.001" value={unknown[k]} onChange={(e) => { setDirty(true); setUnknown((u) => ({ ...u, [k]: Number(e.target.value) || 0 })) }} className="mt-1 tabular-nums" />
+              <Input id={`unk-${k}`} type="number" inputMode="decimal" min={0} step="0.001" value={unknown[k] ?? ''} onChange={(e) => { setDirty(true); setUnknown((u) => ({ ...u, [k]: Number(e.target.value) || 0 })) }} className="mt-1 tabular-nums" />
             </div>
           ))}
         </div>
@@ -329,7 +337,10 @@ export default function AiUsagePage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label={t('aiCost.thisMonth')} value={<span className="tabular-nums">{money(m.micros)}</span>} hint={money(m.micros, 'INR')} icon={<Wallet />} />
+            <StatCard label={t('aiCost.thisMonth')} value={<span className="tabular-nums">{money(m.micros)}</span>} icon={<Wallet />}
+              hint={<><span className="tabular-nums">{money(m.micros, 'INR')}</span><span className="block text-xs">{m.usdInrRateUpdatedAt
+                ? t('aiCost.rateSetBy', { rate: fmt.number(m.usdInrRate), date: fmt.date(m.usdInrRateUpdatedAt) })
+                : t('aiCost.rateDefault', { rate: fmt.number(m.usdInrRate) })}</span></>} />
             <StatCard label={t('aiCost.vsLastMonth')} icon={<TrendingUp />}
               value={<span className="tabular-nums">{m.trendPct === null ? '—' : `${m.trendPct > 0 ? '+' : ''}${fmt.number(m.trendPct, { maximumFractionDigits: 1 })}%`}</span>}
               hint={t('aiCost.lastMonthHint', { sameDays: money(m.lastMonthToDateMicros), total: money(m.lastMonthMicros) })} />

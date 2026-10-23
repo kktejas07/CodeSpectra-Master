@@ -219,7 +219,7 @@ export function backendFeatureFor(path: string): string {
 }
 
 /** Record the calls the FastAPI backend reported in its `x-ai-usage` header (core/ai_usage.py). */
-async function recordHeaderUsage(res: Response, feature: string, userId: string | undefined, latencyMs: number): Promise<void> {
+export async function recordHeaderUsage(res: Response, feature: string, userId: string | undefined, latencyMs: number): Promise<void> {
   const raw = res.headers.get('x-ai-usage')
   if (!raw) return
   try {

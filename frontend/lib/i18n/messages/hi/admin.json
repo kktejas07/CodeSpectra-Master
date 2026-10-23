@@ -1277,7 +1277,7 @@
   "aiCost.saveBudget": "बजट सहेजें",
   "aiCost.saved": "सहेजा गया",
   "aiCost.priceBook": "मूल्य सूची",
-  "aiCost.priceBookDescription": "चैट और एम्बेडिंग के लिए प्रति 10 लाख टोकन USD, स्पीच के लिए प्रति मिनट। नए कॉल उस समय लागू कीमत से गिने जाते हैं।",
+  "aiCost.priceBookDescription": "चैट और एम्बेडिंग के लिए प्रति 10 लाख टोकन USD, स्पीच के लिए प्रति मिनट, इमेज के लिए प्रति इमेज (आकार के हिसाब से)। नए कॉल उस समय लागू कीमत से गिने जाते हैं।",
   "aiCost.seedWarning": "शुरुआती कीमतें केवल अनुमान हैं, विक्रेता की दरें नहीं। हर प्रदाता की मौजूदा कीमत जाँचें और यहाँ बदलें।",
   "aiCost.filterModels": "मॉडल खोजें",
   "aiCost.addModel": "मॉडल जोड़ें",
@@ -1295,5 +1295,14 @@
   "aiCost.sourceSeed": "कीमत जाँचें",
   "aiCost.resetSeed": "शुरुआती कीमत पर लौटें",
   "aiCost.unknownTitle": "अज्ञात मॉडल की कीमत",
-  "aiCost.unknownHint": "जो मॉडल मूल्य सूची में नहीं है उसके लिए; ऐसे कॉल चिह्नित होते हैं।"
+  "aiCost.unknownHint": "जो मॉडल मूल्य सूची में नहीं है उसके लिए; ऐसे कॉल चिह्नित होते हैं।",
+  "overview.aiSpendRate": "INR {rate} प्रति USD — दर एडमिन ने तय की, आख़िरी बदलाव {date}",
+  "overview.aiSpendRateDefault": "INR {rate} प्रति USD — डिफ़ॉल्ट दर, एडमिन ने अभी तय नहीं की",
+  "aiCost.rateSetBy": "{rate} प्रति USD — दर एडमिन ने तय की, आख़िरी बदलाव {date}",
+  "aiCost.rateDefault": "{rate} प्रति USD — डिफ़ॉल्ट दर, नीचे अपनी दर तय करें",
+  "aiCost.rateUpdated": "आख़िरी बदलाव {date}।",
+  "aiCost.perImage": "प्रति इमेज",
+  "aiCost.imageSize": "इमेज का आकार",
+  "aiCost.anySize": "कोई भी आकार",
+  "aiCost.kind_image": "इमेज"
 }

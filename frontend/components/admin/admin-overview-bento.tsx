@@ -144,6 +144,13 @@ function AiSpendCard({ ov, failed }: { ov: Load<AdminOverview> & { loading: bool
               ))}
             </span>
           ) : <span className="block">{t('overview.aiSpendNone')}</span>}
+          {sp && (
+            <span className="mt-1 block text-xs">
+              {sp.usd_inr_rate_updated_at
+                ? t('overview.aiSpendRate', { rate: fmt.number(sp.usd_inr_rate), date: fmt.date(sp.usd_inr_rate_updated_at) })
+                : t('overview.aiSpendRateDefault', { rate: fmt.number(sp.usd_inr_rate) })}
+            </span>
+          )}
           <span className="mt-1 block text-xs">{t('overview.aiHint', { tokens: fmt.number(ov.data.ai.tokens), failed: fmt.number(ov.data.ai.failed) })}</span>
           {sp && (sp.estimated_micros > 0 || sp.unpriced_calls > 0) && (
             <span className="mt-1 inline-flex rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">

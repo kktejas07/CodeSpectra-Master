@@ -53,6 +53,8 @@ export interface MonthSpend {
   top: { feature: string; micros: number }[]
   unpricedCalls: number
   usdInrRate: number
+  /** When a superadmin last set the rate (ISO); null = default rate. */
+  usdInrRateUpdatedAt: string | null
   budget: { usd: number; level: 0 | 50 | 80 | 100; hardStop: boolean }
   summary: SpendSummary
 }
@@ -66,10 +68,12 @@ export async function monthSpend(now = new Date()): Promise<MonthSpend> {
   // Same elapsed time into last month (clamped to its end).
   const elapsed = now.getTime() - thisStart.getTime()
   const lastCut = new Date(Math.min(lastStart.getTime() + elapsed, thisStart.getTime()))
+  // Old days come from the daily rollups (raw rows expire after 90 days).
+  const { spendRowsWithHistory } = await import('./usage-rollup')
   const [cur, prevToDate, prevRest] = await Promise.all([
-    spendRows(thisStart, new Date(now.getTime() + 1)),
-    spendRows(lastStart, lastCut),
-    spendRows(lastCut, thisStart),
+    spendRowsWithHistory(thisStart, new Date(now.getTime() + 1), now),
+    spendRowsWithHistory(lastStart, lastCut, now),
+    spendRowsWithHistory(lastCut, thisStart, now),
   ])
   const summary = summarizeSpend(cur, book)
   const prevTd = summarizeSpend(prevToDate, book).totals.micros
@@ -85,6 +89,7 @@ export async function monthSpend(now = new Date()): Promise<MonthSpend> {
     top: summary.byFeature.filter((f) => f.micros > 0).slice(0, 3).map((f) => ({ feature: f.key, micros: f.micros })),
     unpricedCalls: summary.totals.unpricedCalls,
     usdInrRate: settings.usd_inr_rate,
+    usdInrRateUpdatedAt: settings.usd_inr_rate_updated_at,
     budget: { usd: settings.monthly_budget_usd, level: budgetLevel(summary.totals.micros, budgetMicros), hardStop: settings.hard_stop },
     summary,
   }

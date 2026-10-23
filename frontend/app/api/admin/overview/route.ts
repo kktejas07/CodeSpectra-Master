@@ -59,6 +59,7 @@ export async function GET() {
       top: m.top,
       unpriced_calls: m.unpricedCalls,
       usd_inr_rate: m.usdInrRate,
+      usd_inr_rate_updated_at: m.usdInrRateUpdatedAt,
       budget: { usd: m.budget.usd, level: m.budget.level },
     }), (e: unknown) => { console.error('[admin/overview] spend', (e as Error)?.message); return null })
     const tests = denseSeries(testRows, days14)

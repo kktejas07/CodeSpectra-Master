@@ -113,6 +113,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: msg })
     }
 
+    // The test call is real spend: price it under "admin_test" (provider counts, else a tiny estimate).
+    const usage = testCallUsage(await res.json().catch(() => null))
+    void import('@/lib/ai/usage-record').then(({ recordAiUsage }) => {
+      recordAiUsage({ feature: 'admin_test', provider: String(body.provider), model: String(body.model), ...usage })
+    }, () => undefined)
     return NextResponse.json({ ok: true, message: 'Connection successful' })
   } catch (e: any) {
     console.error('[CodeSpectra] admin/llm-config/test:', e)
@@ -122,4 +127,18 @@ export async function POST(request: Request) {
       : 'Connection failed. See server logs for details.'
     return NextResponse.json({ ok: false, message: detailed })
   }
+}
+
+/** Token counts from an OpenAI-style or Gemini (stream array) reply; estimated when missing. */
+function testCallUsage(j: unknown): { inputTokens: number; outputTokens: number; tokensEstimated: boolean } {
+  const pick = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : undefined)
+  const last = Array.isArray(j) ? j[j.length - 1] : j
+  const o = (last && typeof last === 'object' ? last : {}) as Record<string, Record<string, unknown> | undefined>
+  const u = o.usage ?? {}
+  const g = o.usageMetadata ?? {}
+  const input = pick(u.prompt_tokens) ?? pick(u.input_tokens) ?? pick(g.promptTokenCount)
+  const output = pick(u.completion_tokens) ?? pick(u.output_tokens) ?? pick(g.candidatesTokenCount)
+  return input !== undefined && output !== undefined
+    ? { inputTokens: input, outputTokens: output, tokensEstimated: false }
+    : { inputTokens: 8, outputTokens: 2, tokensEstimated: true }
 }

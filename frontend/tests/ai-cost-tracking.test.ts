@@ -10,6 +10,7 @@ import {
 import {
   baseFeature, bookFor, budgetCrossings, budgetLevel, capSpendUsd, denseSpend, featureMatches, hardStopApplies, mergeAiCostSettings,
   microsIn, moneyDigits, spendCsv, summarizeSpend, trendPct, type SpendGroupRow,
+  fromRollupDoc, rawCutoffDay, rollupDays, rollupId, toRollupDoc, RAW_WINDOW_DAYS,
 } from '@/lib/ai/spend'
 import { meteredUsd } from '@/lib/ai/usage-meter'
 import { buildUsageRow } from '@/lib/ai/usage-record'
@@ -214,5 +215,58 @@ describe('feature caps use recorded cost', () => {
     expect(meteredUsd({ costMicros: 1234 }, () => 99)).toBeCloseTo(0.001234, 9)
     expect(meteredUsd({ costMicros: 0 }, () => 99)).toBe(0)
     expect(meteredUsd({}, () => 0.5)).toBe(0.5)
+  })
+})
+
+describe('image pricing', () => {
+  it('prices per image by model and size, generic size as fallback', () => {
+    expect(priceCall(DEFAULT_PRICE_BOOK, 'openai', 'dall-e-3', { images: 1, imageSize: '1792x1024' }).costMicros).toBe(80_000)
+    expect(priceCall(DEFAULT_PRICE_BOOK, 'openai', 'dall-e-3', { images: 2, imageSize: '1024x1024' }).costMicros).toBe(80_000)
+    expect(priceCall(DEFAULT_PRICE_BOOK, 'openai', 'gpt-image-1', { images: 1, imageSize: '1536x1024' }).costMicros).toBe(40_000)
+    expect(priceCall(DEFAULT_PRICE_BOOK, 'pollinations', 'flux', { images: 1, imageSize: '1280x720' })).toMatchObject({ costMicros: 0, unpriced: false })
+    const unknown = priceCall(DEFAULT_PRICE_BOOK, 'openai', 'dall-e-3', { images: 1, imageSize: '512x512' })
+    expect(unknown).toMatchObject({ unpriced: true, costMicros: 80_000 }) // unknown-size fallback, flagged
+    expect(cleanPrice({ match: 'img', kind: 'image', perImage: 0.02, size: '1024X1024' })).toEqual({ match: 'img', kind: 'image', perImage: 0.02, size: '1024x1024' })
+    expect(cleanPrice({ match: 'img', kind: 'image', perImage: 0.02, size: 'huge' })).toBeNull()
+  })
+})
+
+describe('daily rollups', () => {
+  const now = new Date('2026-10-23T10:00:00Z')
+
+  it('backfills from the oldest raw day on the first run, then re-rolls from the last rolled day', () => {
+    expect(rollupDays(null, '2026-10-20', now)).toEqual(['2026-10-20', '2026-10-21', '2026-10-22'])
+    expect(rollupDays('2026-10-21', null, now)).toEqual(['2026-10-21', '2026-10-22'])
+    expect(rollupDays('2026-10-22', null, now)).toEqual(['2026-10-22'])
+    expect(rollupDays(null, null, now)).toEqual([])
+    expect(rollupDays(null, '2026-10-23', now)).toEqual([]) // never today
+    expect(rollupDays(null, '2026-01-01', now, 5)).toHaveLength(5)
+  })
+
+  it('serves days before the raw-row window from rollups', () => {
+    expect(RAW_WINDOW_DAYS).toBeLessThan(90)
+    expect(rawCutoffDay(now)).toBe('2026-07-30')
+  })
+
+  it('keeps recorded and estimated money apart and sums the same after a round trip', () => {
+    const raw = [
+      row({ day: '2026-10-01', feature: 'chat', calls: 2, costMicros: 1000, costedCalls: 1, legacyInput: 1_000_000, inputTokens: 1_000_100 }),
+      row({ day: '2026-10-01', feature: 'hints', calls: 1, costMicros: 5, costedCalls: 1, tenantId: 't1' }),
+    ]
+    const docs = raw.map((r) => toRollupDoc(r, DEFAULT_PRICE_BOOK))
+    expect(docs[0]).toMatchObject({ id: '2026-10-01|chat|openai|gpt-4o-mini|-', cost_micro: 1000, estimated_micro: 150_000, estimated: true, calls: 2 })
+    expect(docs[1]).toMatchObject({ estimated: false, estimated_micro: 0, tenantId: 't1' })
+    expect(rollupId(raw[1])).toBe('2026-10-01|hints|openai|gpt-4o-mini|t1')
+    const before = summarizeSpend(raw, DEFAULT_PRICE_BOOK).totals
+    // Prices change later — a rollup keeps the estimate it was made with.
+    const after = summarizeSpend(docs.map(fromRollupDoc), mergePriceBook({ prices: [{ match: 'gpt-4o-mini', kind: 'chat', inputPer1M: 99, outputPer1M: 99 }] })).totals
+    expect(after).toMatchObject({ micros: before.micros, estimatedMicros: before.estimatedMicros, calls: before.calls })
+  })
+})
+
+describe('INR rate', () => {
+  it('keeps the server-set "last updated" date and ignores junk', () => {
+    expect(mergeAiCostSettings({ usd_inr_rate: 83.2, usd_inr_rate_updated_at: '2026-10-01T00:00:00.000Z' })).toMatchObject({ usd_inr_rate: 83.2, usd_inr_rate_updated_at: '2026-10-01T00:00:00.000Z' })
+    expect(mergeAiCostSettings({ usd_inr_rate_updated_at: 'yesterday' }).usd_inr_rate_updated_at).toBeNull()
   })
 })

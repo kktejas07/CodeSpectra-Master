@@ -2,7 +2,8 @@
  * AI price book — one place that turns AI usage into money (pure, client-safe).
  *
  * Prices are USD per 1M input / output / cached-input tokens for chat models,
- * USD per 1M input tokens for embeddings and USD per audio minute for speech.
+ * USD per 1M input tokens for embeddings, USD per audio minute for speech and
+ * USD per image (by model and size) for image generation.
  * Costs are computed in integer micro-dollars (1 USD = 1_000_000 µ$) so sums
  * never drift: every price is first turned into an integer number of µ$ per
  * 1M tokens (or per minute), multiplied by integer token counts, and divided
@@ -16,7 +17,7 @@
  * is charged at the "unknown model" fallback and flagged `unpriced`.
  */
 
-export type PriceKind = 'chat' | 'embedding' | 'speech'
+export type PriceKind = 'chat' | 'embedding' | 'speech' | 'image'
 
 export interface ModelPrice {
   /** Lowercase model id (or id stem) matched on word boundaries, e.g. "gpt-4o-mini". */
@@ -32,6 +33,10 @@ export interface ModelPrice {
   cachedInputPer1M?: number
   /** USD per audio minute (speech). */
   perMinute?: number
+  /** USD per generated image (image). */
+  perImage?: number
+  /** Image size this price applies to, e.g. "1792x1024" (image; missing = any size). */
+  size?: string
   /** Where the entry comes from (set by mergePriceBook). */
   source?: 'seed' | 'admin'
 }
@@ -40,6 +45,8 @@ export interface UnknownPrice {
   inputPer1M: number
   outputPer1M: number
   perMinute: number
+  /** Optional; missing → DEFAULT_UNKNOWN_PRICE.perImage. */
+  perImage?: number
 }
 
 export interface PriceBook {
@@ -58,7 +65,7 @@ export const SEED_NOTE = 'Seed price — check current vendor pricing'
 /** Free-tier model ids served at no cost by their provider (e.g. "…:free", "…-free"). */
 export const FREE_MODEL_RE = /(:free\b|-free\b|\bfree$)/i
 
-export const DEFAULT_UNKNOWN_PRICE: UnknownPrice = { inputPer1M: 1, outputPer1M: 4, perMinute: 0.01 }
+export const DEFAULT_UNKNOWN_PRICE: Required<UnknownPrice> = { inputPer1M: 1, outputPer1M: 4, perMinute: 0.01, perImage: 0.08 }
 
 const chat = (match: string, inputPer1M: number, outputPer1M: number, cachedInputPer1M?: number, provider?: string): ModelPrice => ({
   match, kind: 'chat', inputPer1M, outputPer1M, ...(cachedInputPer1M !== undefined ? { cachedInputPer1M } : {}), ...(provider ? { provider } : {}),
@@ -116,9 +123,15 @@ export const SEED_PRICES: readonly ModelPrice[] = [
   // Speech-to-text (Deepgram pre-recorded)
   { match: 'nova-2', provider: 'deepgram', kind: 'speech', perMinute: 0.0043 },
   { match: 'nova-3', provider: 'deepgram', kind: 'speech', perMinute: 0.0043 },
+  // Image generation (lib/ai-image) — per image, by size
+  { match: 'dall-e-3', kind: 'image', size: '1024x1024', perImage: 0.04 },
+  { match: 'dall-e-3', kind: 'image', size: '1792x1024', perImage: 0.08 },
+  { match: 'dall-e-3', kind: 'image', size: '1024x1792', perImage: 0.08 },
+  { match: 'gpt-image-1', kind: 'image', perImage: 0.04 },
+  { match: 'flux', provider: 'pollinations', kind: 'image', perImage: 0 },
 ]
 
-export const priceKey = (p: Pick<ModelPrice, 'provider' | 'match'>): string => `${(p.provider || '*').toLowerCase()}:${p.match.toLowerCase()}`
+export const priceKey = (p: Pick<ModelPrice, 'provider' | 'match' | 'size'>): string => `${(p.provider || '*').toLowerCase()}:${p.match.toLowerCase()}${p.size ? `@${p.size.toLowerCase()}` : ''}`
 
 const MAX_USD = 10_000
 const num = (v: unknown): number | undefined => {
@@ -134,10 +147,18 @@ export function cleanPrice(raw: unknown): ModelPrice | null {
   if (!/^[a-z0-9][a-z0-9._:/@-]{0,119}$/.test(match)) return null
   const provider = typeof r.provider === 'string' && r.provider.trim() ? r.provider.trim().toLowerCase() : undefined
   if (provider && !/^[a-z0-9_-]{1,40}$/.test(provider)) return null
-  const kind: PriceKind = r.kind === 'embedding' || r.kind === 'speech' ? r.kind : 'chat'
+  const kind: PriceKind = r.kind === 'embedding' || r.kind === 'speech' || r.kind === 'image' ? r.kind : 'chat'
   const out: ModelPrice = { match, kind, ...(provider ? { provider } : {}) }
-  const i = num(r.inputPer1M), o = num(r.outputPer1M), c = num(r.cachedInputPer1M), m = num(r.perMinute)
-  if (kind === 'speech') {
+  const i = num(r.inputPer1M), o = num(r.outputPer1M), c = num(r.cachedInputPer1M), m = num(r.perMinute), img = num(r.perImage)
+  if (kind === 'image') {
+    if (img === undefined) return null
+    out.perImage = img
+    const size = typeof r.size === 'string' ? r.size.trim().toLowerCase() : ''
+    if (size) {
+      if (!/^\d{2,5}x\d{2,5}$/.test(size)) return null
+      out.size = size
+    }
+  } else if (kind === 'speech') {
     if (m === undefined) return null
     out.perMinute = m
   } else {
@@ -167,6 +188,7 @@ export function mergePriceBook(overrides?: PriceOverrides | null): PriceBook {
       inputPer1M: num(u.inputPer1M) ?? DEFAULT_UNKNOWN_PRICE.inputPer1M,
       outputPer1M: num(u.outputPer1M) ?? DEFAULT_UNKNOWN_PRICE.outputPer1M,
       perMinute: num(u.perMinute) ?? DEFAULT_UNKNOWN_PRICE.perMinute,
+      perImage: num(u.perImage) ?? DEFAULT_UNKNOWN_PRICE.perImage,
     },
   }
 }
@@ -207,24 +229,26 @@ export interface ResolvedPrice {
 }
 
 /** Pick the price for a provider/model: provider-specific beats generic, longer match beats shorter. Pure. */
-export function resolvePrice(book: PriceBook, provider: string, model: string, kind: PriceKind = 'chat'): ResolvedPrice {
+export function resolvePrice(book: PriceBook, provider: string, model: string, kind: PriceKind = 'chat', size?: string): ResolvedPrice {
   const prov = (provider || '').toLowerCase().trim()
   const mdl = (model || '').toLowerCase().trim()
+  const sz = (size || '').toLowerCase().trim()
   if (mdl && FREE_MODEL_RE.test(mdl)) {
-    return { price: { match: mdl, kind, inputPer1M: 0, outputPer1M: 0, perMinute: 0 }, unpriced: false, free: true }
+    return { price: { match: mdl, kind, inputPer1M: 0, outputPer1M: 0, perMinute: 0, perImage: 0 }, unpriced: false, free: true }
   }
   let best: ModelPrice | null = null
   let bestScore = -1
   for (const p of book.prices) {
     if (p.provider && p.provider !== prov) continue
+    if (p.size && p.size !== sz) continue
     if (!modelMatches(mdl, p.match)) continue
-    const score = p.match.length * 2 + (p.provider ? 1 : 0) + (p.kind === kind ? 1000 : 0)
+    const score = p.match.length * 2 + (p.provider ? 1 : 0) + (p.size ? 1 : 0) + (p.kind === kind ? 1000 : 0)
     if (score > bestScore) { best = p; bestScore = score }
   }
   if (best) return { price: best, unpriced: false, free: false }
   const u = book.unknown
   return {
-    price: { match: mdl || 'unknown', kind, inputPer1M: u.inputPer1M, outputPer1M: kind === 'chat' ? u.outputPer1M : 0, perMinute: u.perMinute },
+    price: { match: mdl || 'unknown', kind, inputPer1M: u.inputPer1M, outputPer1M: kind === 'chat' ? u.outputPer1M : 0, perMinute: u.perMinute, perImage: u.perImage ?? DEFAULT_UNKNOWN_PRICE.perImage },
     unpriced: true,
     free: false,
   }
@@ -246,10 +270,15 @@ export interface UsageAmounts {
   cachedTokens?: number | null
   /** Speech: audio length in seconds (fractions allowed, counted to the millisecond). */
   audioSeconds?: number | null
+  /** Image generation: number of images. */
+  images?: number | null
+  /** Image generation: size, e.g. "1792x1024". */
+  imageSize?: string | null
 }
 
 /** Integer micro-dollars for one call at `price`. Pure; exact integer maths, one rounding. */
 export function costMicros(price: ModelPrice, u: UsageAmounts): number {
+  if (price.kind === 'image') return int(u.images) * toMicroRate(price.perImage)
   if (price.kind === 'speech') {
     const ms = Math.max(0, Math.round((Number(u.audioSeconds) || 0) * 1000))
     // µ$/minute × ms / 60_000 ms
@@ -271,20 +300,21 @@ export interface PricedCall {
   unpriced: boolean
   free: boolean
   /** The unit prices that applied (stored with the usage row). */
-  rates: { inputPer1M?: number; outputPer1M?: number; cachedInputPer1M?: number; perMinute?: number }
+  rates: { inputPer1M?: number; outputPer1M?: number; cachedInputPer1M?: number; perMinute?: number; perImage?: number }
   matched: string
 }
 
 /** Resolve + compute in one go. Pure. */
 export function priceCall(book: PriceBook, provider: string, model: string, u: UsageAmounts, kind?: PriceKind): PricedCall {
-  const k: PriceKind = kind ?? (u.audioSeconds && u.audioSeconds > 0 ? 'speech' : 'chat')
-  const r = resolvePrice(book, provider, model, k)
+  const k: PriceKind = kind ?? (u.images && u.images > 0 ? 'image' : u.audioSeconds && u.audioSeconds > 0 ? 'speech' : 'chat')
+  const r = resolvePrice(book, provider, model, k, u.imageSize ?? undefined)
   const p = r.price.kind === k ? r.price : { ...r.price, kind: k }
   const rates: PricedCall['rates'] = {}
-  if (p.inputPer1M !== undefined) rates.inputPer1M = p.inputPer1M
+  if (p.inputPer1M !== undefined && (k === 'chat' || k === 'embedding')) rates.inputPer1M = p.inputPer1M
   if (p.outputPer1M !== undefined && k === 'chat') rates.outputPer1M = p.outputPer1M
-  if (p.cachedInputPer1M !== undefined) rates.cachedInputPer1M = p.cachedInputPer1M
+  if (p.cachedInputPer1M !== undefined && k === 'chat') rates.cachedInputPer1M = p.cachedInputPer1M
   if (k === 'speech') rates.perMinute = p.perMinute ?? 0
+  if (k === 'image') rates.perImage = p.perImage ?? 0
   return { costMicros: costMicros(p, u), unpriced: r.unpriced, free: r.free, rates, matched: r.unpriced ? '' : r.price.match }
 }
 
