@@ -67,6 +67,8 @@ const STEPS = [
 
 export async function LandingView({ locale }: { locale: Locale }) {
   const t = publicT(locale)
+  // SEO-060: mock-up copy in the page language (landing.json showcase:*).
+  const sc = (en: string) => t.dyn(`landing.showcase:${en}`, en)
   const lp = (p: string) => localizedPath(p, locale)
   const copy = seoCopy('/', locale)
   const [site, posts, events] = await Promise.all([getSiteOrigin(), landingPosts(), landingEvents()])
@@ -178,7 +180,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
               </Link>
             </div>
           </div>
-          <DeviceShowcase variant="candidate" />
+          <DeviceShowcase tr={sc} variant="candidate" />
         </div>
       </section>
 
@@ -199,7 +201,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
           </div>
           </div>
           {/* What a pilot ends in — the shortlist report on a laptop */}
-          <DeviceShowcase variant="results" compact className="hidden lg:block" />
+          <DeviceShowcase tr={sc} variant="results" compact className="hidden lg:block" />
         </div>
       </section>
     </PublicPageWrapper>

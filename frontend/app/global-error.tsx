@@ -1,6 +1,30 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { GLOBAL_ERROR_THEME_SCRIPT } from '@/lib/csp/inline-scripts'
+import { splitLocalePath } from '@/lib/i18n/public-paths'
+import { LOCALE_COOKIE, toLocale, type Locale } from '@/lib/i18n/config'
+
+/**
+ * SEO-060: the root layout (and its I18nProvider) failed, so the text is inline:
+ * the language comes from the URL (/hi, /te) or the cs_locale cookie, after mount.
+ */
+const TEXT: Record<Locale, { title: string; home: string; heading: string; body: string; ref: string; retry: string; goHome: string; status: string }> = {
+  en: { title: 'Something went wrong · CodeSpectra', home: 'CodeSpectra home', heading: 'Something went wrong', body: 'CodeSpectra couldn’t load this page. Try again, or go back to the home page.', ref: 'Reference:', retry: 'Try again', goHome: 'Go home', status: 'System status' },
+  hi: { title: 'कुछ गड़बड़ हो गई · CodeSpectra', home: 'CodeSpectra होम', heading: 'कुछ गड़बड़ हो गई', body: 'CodeSpectra यह पेज लोड नहीं कर सका। फिर से कोशिश करें, या होम पेज पर वापस जाएँ।', ref: 'संदर्भ:', retry: 'फिर से कोशिश करें', goHome: 'होम पर जाएँ', status: 'सिस्टम स्टेटस' },
+  te: { title: 'ఏదో పొరపాటు జరిగింది · CodeSpectra', home: 'CodeSpectra హోమ్', heading: 'ఏదో పొరపాటు జరిగింది', body: 'CodeSpectra ఈ పేజీని లోడ్ చేయలేకపోయింది. మళ్లీ ప్రయత్నించండి, లేదా హోమ్ పేజీకి తిరిగి వెళ్లండి.', ref: 'రిఫరెన్స్:', retry: 'మళ్లీ ప్రయత్నించండి', goHome: 'హోమ్‌కు వెళ్లండి', status: 'సిస్టమ్ స్టేటస్' },
+}
+
+function pageLocale(): Locale {
+  try {
+    const fromPath = splitLocalePath(window.location.pathname).locale
+    if (fromPath !== 'en') return fromPath
+    const m = new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]+)`).exec(document.cookie)
+    return toLocale(m ? decodeURIComponent(m[1]) : null) ?? 'en'
+  } catch {
+    return 'en'
+  }
+}
 
 /**
  * Root-level error UI. Replaces the root layout, so no globals.css, fonts or
@@ -50,10 +74,13 @@ export default function GlobalErrorPage({
   retry?: () => void
 }) {
   const again = retry ?? reset
+  const [locale, setLocale] = useState<Locale>('en')
+  useEffect(() => { setLocale(pageLocale()) }, [])
+  const tx = TEXT[locale]
   return (
-    <html lang="en">
+    <html lang={locale}>
       <head>
-        <title>Something went wrong · CodeSpectra</title>
+        <title>{tx.title}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
       </head>
@@ -61,7 +88,7 @@ export default function GlobalErrorPage({
         <script dangerouslySetInnerHTML={{ __html: GLOBAL_ERROR_THEME_SCRIPT }} />
         <div className="ge-glow" aria-hidden />
         <main className="ge-in" role="alert">
-          <a href="/" className="ge-brand" aria-label="CodeSpectra home">
+          <a href="/" className="ge-brand" aria-label={tx.home}>
             <span style={{ color: 'var(--accent)', display: 'inline-flex' }}>
               <Logo />
             </span>
@@ -72,27 +99,27 @@ export default function GlobalErrorPage({
               <Logo size={28} />
             </div>
           </div>
-          <h1>Something went wrong</h1>
-          <p>CodeSpectra couldn’t load this page. Try again, or go back to the home page.</p>
+          <h1>{tx.heading}</h1>
+          <p>{tx.body}</p>
           {error?.digest && (
             <p>
-              Reference: <code>{error.digest}</code>
+              {tx.ref} <code>{error.digest}</code>
             </p>
           )}
           <div className="ge-actions">
             {again && (
               <button type="button" className="ge-btn ge-primary" onClick={() => again()}>
-                Try again
+                {tx.retry}
               </button>
             )}
             {/* Full reload on purpose: the root layout failed, so client navigation can't be trusted. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="ge-btn ge-secondary">
-              Go home
+              {tx.goHome}
             </a>
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/status" className="ge-btn ge-secondary">
-              System status
+              {tx.status}
             </a>
           </div>
         </main>

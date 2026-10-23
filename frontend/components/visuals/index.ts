@@ -1,6 +1,7 @@
 export { GradientStage, SoftGlow } from './stage'
 export { PhoneFrame, BrowserFrame, FloatCard, MockAppBar } from './frames'
 export { DeviceShowcase, type ShowcaseVariant } from './device-showcase'
+export { SHOWCASE_EN, type ShowcaseT } from './screens'
 export { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from './app-banner'
 export { EmptyArt, type EmptyArtVariant } from './empty-art'
 export { Illustration, ILLUSTRATION_NAMES, type IllustrationName } from '@/components/illustrations/spot'
