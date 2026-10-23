@@ -51,7 +51,11 @@ async function tabPass(page: Page, stops = 40) {
 for (const path of PAGES) {
   test(`${path}: no critical axe violations, keyboard reachable`, async ({ page }) => {
     await signIn(page)
-    const res = await page.goto(path, { waitUntil: 'networkidle' })
+    // The dashboard polls (notifications, presence), so 'networkidle' never
+    // settles: wait for the document, then for the main landmark to render.
+    const res = await page.goto(path, { waitUntil: 'load' })
+    await page.locator('main').first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
+    await page.waitForTimeout(1500)
     expect(res?.status() ?? 0).toBeLessThan(400)
     await expect(page).not.toHaveURL(/\/auth\/login/)
     const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
