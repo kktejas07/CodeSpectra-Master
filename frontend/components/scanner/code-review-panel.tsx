@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { MessageSquare, Reply, ThumbsUp, ThumbsDown, Trash2, Send } from 'lucide-react'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface CodeReviewComment {
   id: string
@@ -101,7 +102,7 @@ export function CodeReviewPanel({
                 placeholder="Write a reply..."
                 className="flex-1 px-3 py-2 bg-background border border-border rounded text-sm text-foreground placeholder-foreground/40"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (isSubmitEnter(e, { shift: false })) {
                     e.preventDefault()
                     handleSubmitReply(comment.id)
                   }

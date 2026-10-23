@@ -46,6 +46,7 @@ import { NotEventStaff } from '@/components/hackathons/not-event-staff'
 import { rankByScore, formatRank } from '@/lib/hackathons/ranking'
 import { DEFAULT_JUDGING_CONFIG, sanitizeJudgingConfig, type JudgingConfig } from '@/lib/hackathons/judge-config'
 import { EmptyState } from '@/components/ui/empty-state'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface Hackathon {
   id: string
@@ -493,7 +494,7 @@ export default function HackathonDetailPage({
             placeholder="Search by name or email..."
             value={judgeInput}
             onChange={(e) => setJudgeInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void searchJudges(judgeInput) }}
+            onKeyDown={(e) => { if (isSubmitEnter(e)) void searchJudges(judgeInput) }}
             aria-label="Search people to add as judges"
             className="h-11 text-sm flex-1 rounded-xl"
           />
@@ -662,7 +663,7 @@ export default function HackathonDetailPage({
                           value={editNameInput}
                           onChange={(e) => setEditNameInput(e.target.value)}
                           className="h-7 text-xs flex-1"
-                          onKeyDown={(e) => e.key === 'Enter' && void saveTeamName(t)}
+                          onKeyDown={(e) => isSubmitEnter(e) && void saveTeamName(t)}
                         />
                         <Button size="sm" className="h-7 text-xs px-2" onClick={() => saveTeamName(t)}>Save</Button>
                         <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingTeamId(null)}>Cancel</Button>
@@ -696,7 +697,7 @@ export default function HackathonDetailPage({
                             value={addMemberInput}
                             onChange={(e) => setAddMemberInput(e.target.value)}
                             className="h-6 text-[10px] w-36 px-1.5"
-                            onKeyDown={(e) => e.key === 'Enter' && void addMemberToTeam(t)}
+                            onKeyDown={(e) => isSubmitEnter(e) && void addMemberToTeam(t)}
                           />
                           <Button size="sm" className="h-6 text-[10px] px-1.5" onClick={() => addMemberToTeam(t)}>Add</Button>
                           <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1" onClick={() => setAddingMemberTeamId(null)} aria-label="Cancel adding member">

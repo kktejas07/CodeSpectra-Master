@@ -13,7 +13,16 @@
  *      for capped classes (engagement, marketing, digest, deadline +1/day);
  *      transactional / security / payment / legal bypass it;
  *   3. commit() after something actually went out records it in nudge_ledger
- *      (capped classes only); release() undoes the dedupe claim when nothing did.
+ *      (capped classes only); release() undoes the dedupe claim when nothing did;
+ *   4. one logical message over several channels (pass `channel`): each channel
+ *      gets its own dedupe claim, but the message is counted once — the second
+ *      channel is admitted without a cap check (CORE-051);
+ *   5. a held message (capped, or a duplicate of another sender's) is written to
+ *      the nudge run log (Admin → Automations → Nudge run log), ids only (AUTO-114).
+ *
+ * 'subscribed' (a schedule the person chose: WhatsApp practice, study-plan
+ * reminders, the daily / news digest, subscribed event alerts) is de-duplicated
+ * but never capped or counted (AUTO-108).
  *
  * ponytail: the cap check and the ledger write aren't one transaction, so two
  * senders racing in the same millisecond can both pass; the next one is held.
@@ -23,7 +32,7 @@ import { createHash } from 'node:crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { claimOnce, releaseClaim } from '@/lib/automation/store'
 import { getNudgeSettings } from '@/lib/automation/nudges/settings'
-import { budgetAllows, isCapped, messageDedupeKey, messageDedupePrefix, type MessageClass } from './budget-rules'
+import { alreadyCounted, budgetAllows, isCapped, messageDedupeKey, messageDedupePrefix, type LedgerEntry, type MessageClass } from './budget-rules'
 
 export type { MessageClass } from './budget-rules'
 
@@ -35,6 +44,10 @@ export interface MessageBudget {
   object?: string | null
   /** Who sent it (for the ledger / admin log). */
   source?: string | null
+  /** One channel of a multi-channel message ("email", "whatsapp"): deduped per channel, counted once. */
+  channel?: string | null
+  /** false = the caller writes its own run-log row (deliverNudge). */
+  log?: boolean
 }
 
 export interface Recipient { userId?: string | null; email?: string | null }
@@ -64,9 +77,46 @@ export function capSubject(to: Recipient): string | null {
   return e ? `e:${createHash('sha256').update(e).digest('hex').slice(0, 32)}` : null
 }
 
-async function history(subject: string, now: Date): Promise<{ at: string }[]> {
-  const rows = await (await ledger()).find({ subject, at: { $gte: new Date(now.getTime() - 7 * 86_400_000) } }, { projection: { _id: 0, at: 1 } }).limit(100).toArray()
-  return rows.map((r) => ({ at: (r.at instanceof Date ? r.at : new Date(String(r.at))).toISOString() }))
+async function history(subject: string, now: Date): Promise<LedgerEntry[]> {
+  const rows = await (await ledger()).find({ subject, at: { $gte: new Date(now.getTime() - 7 * 86_400_000) } }, { projection: { _id: 0, at: 1, class: 1, topic: 1, object: 1 } }).limit(100).toArray()
+  return rows.map((r) => ({
+    at: (r.at instanceof Date ? r.at : new Date(String(r.at))).toISOString(),
+    class: typeof r.class === 'string' ? r.class : null,
+    topic: typeof r.topic === 'string' ? r.topic : null,
+    object: typeof r.object === 'string' ? r.object : null,
+  }))
+}
+
+const LOG = 'nudge_log'
+let logIndexes: Promise<unknown> | null = null
+/** Run-log row for a held message (same collection + shape as deliverNudge's log). Never throws. */
+async function logHeld(subject: string, b: MessageBudget, outcome: 'capped' | 'duplicate', reason: string, now: Date): Promise<void> {
+  if (b.log === false) return
+  try {
+    const d = await getMongoDb()
+    if (!logIndexes) {
+      logIndexes = Promise.all([
+        d.collection(LOG).createIndex({ automation_id: 1, at: -1 }, { name: 'nudge_log_automation' }),
+        d.collection(LOG).createIndex({ at: 1 }, { expireAfterSeconds: 60 * 86_400, name: 'nudge_log_ttl' }),
+      ]).catch(() => { logIndexes = null })
+    }
+    await d.collection(LOG).insertOne({
+      automation_id: String(b.source || 'messaging').slice(0, 80),
+      ref: createHash('sha256').update(`${subject}:${b.topic || ''}:${b.object || ''}`).digest('hex').slice(0, 16),
+      outcome,
+      class: b.class,
+      channels: b.channel ? [b.channel] : [],
+      reason: reason.slice(0, 120),
+      tenant_id: null,
+      at: now,
+    })
+  } catch { /* the log never blocks a send */ }
+}
+
+/** Who already sent this (person, topic, object): logged only when it was another sender. */
+async function claimOwner(key: string): Promise<string | null> {
+  const row = await (await getMongoDb()).collection('automation_sends').findOne({ key: key.slice(0, 300) }, { projection: { _id: 0, source: 1 } }).catch(() => null)
+  return row && typeof row.source === 'string' ? row.source : null
 }
 
 /** Would a message of this class fit the person's budget right now? Read only (e.g. before minting a coupon). */
@@ -97,16 +147,27 @@ export async function admitMessage(to: Recipient, b: MessageBudget, now = new Da
   const subject = capSubject(to)
   const noop = async () => {}
   if (!subject) return { ok: true, commit: noop, release: noop }
-  const dKey = b.topic && b.object ? messageDedupeKey(subject, b.topic, b.object) : null
-  if (dKey && !(await claimOnce(dKey, { source: b.source || null }))) return { ok: false, outcome: 'duplicate' }
+  const dObject = b.object && b.channel ? `${b.object}:${b.channel}` : b.object
+  const dKey = b.topic && dObject ? messageDedupeKey(subject, b.topic, dObject) : null
+  if (dKey && !(await claimOnce(dKey, { source: b.source || null }))) {
+    const owner = await claimOwner(dKey)
+    if (owner && owner !== (b.source || null)) await logHeld(subject, b, 'duplicate', `sent_by:${owner}`, now)
+    return { ok: false, outcome: 'duplicate' }
+  }
   const release = async () => { if (dKey) await releaseClaim(dKey) }
+  let counted = false
   if (isCapped(b.class)) {
     try {
-      const caps = await getNudgeSettings()
-      const v = budgetAllows(b.class, await history(subject, now), now, { daily: caps.cap_daily, weekly: caps.cap_weekly })
-      if (!v.ok) {
-        await release()
-        return { ok: false, outcome: 'capped', reason: v.reason }
+      const rows = await history(subject, now)
+      counted = alreadyCounted(rows, b.topic, b.object)
+      if (!counted) {
+        const caps = await getNudgeSettings()
+        const v = budgetAllows(b.class, rows, now, { daily: caps.cap_daily, weekly: caps.cap_weekly })
+        if (!v.ok) {
+          await release()
+          await logHeld(subject, b, 'capped', v.reason, now)
+          return { ok: false, outcome: 'capped', reason: v.reason }
+        }
       }
     } catch (e) {
       await release()
@@ -117,8 +178,8 @@ export async function admitMessage(to: Recipient, b: MessageBudget, now = new Da
     ok: true,
     release,
     commit: async () => {
-      if (!isCapped(b.class)) return
-      await (await ledger()).insertOne({ subject, automation_id: b.source || null, class: b.class, topic: b.topic || null, priority: b.class === 'deadline' ? 'high' : 'normal', at: now }).catch(() => {})
+      if (!isCapped(b.class) || counted) return
+      await (await ledger()).insertOne({ subject, automation_id: b.source || null, class: b.class, topic: b.topic || null, object: b.object || null, priority: b.class === 'deadline' ? 'high' : 'normal', at: now }).catch(() => {})
     },
   }
 }

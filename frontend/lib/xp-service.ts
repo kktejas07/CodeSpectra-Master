@@ -150,14 +150,25 @@ export async function issueLevelUpCertificate(
       metadata: { verify_token: verifyToken },
     })
 
-    // Branded level-up email.
+    // Branded level-up email: an engagement message (AUTO-094) — honours the email switch and engagement
+    // unsubscribes, carries the unsubscribe link + one-click headers, waits out quiet hours, and goes
+    // through the shared per-person limit (once per level).
     if (email) {
       try {
-        const { sendEmail } = await import('@/lib/send-email')
-        const { emailTemplatesFor } = await import('@/lib/email-templates')
-        const { recipientLocaleFrom } = await import('@/lib/i18n/recipient')
-        const tpl = emailTemplatesFor(recipientLocaleFrom(user as { ui_locale?: unknown } | null)).levelUp({ name, newLevel, totalXp, certUrl: link })
-        await sendEmail(email, tpl)
+        const pref = await db.collection('notification_preferences').findOne({ user_id: userId, type: 'email' }, { projection: { enabled: 1 } })
+        const { isUnsubscribed } = await import('@/lib/automation/mailer')
+        if (pref?.enabled !== false && !(await isUnsubscribed(email, 'engagement'))) {
+          const { emailTemplatesFor } = await import('@/lib/email-templates')
+          const { recipientLocaleFrom } = await import('@/lib/i18n/recipient')
+          const { withBudget } = await import('@/lib/messaging/budget')
+          const { deliverOrDefer } = await import('@/lib/notifications-delivery')
+          const locale = recipientLocaleFrom(user as { ui_locale?: unknown } | null)
+          const tpl = emailTemplatesFor(locale).levelUp({ name, newLevel, totalXp, certUrl: link })
+          await withBudget({ userId, email }, { class: 'engagement', topic: 'level-up', object: String(newLevel), source: 'xp-level-up' }, async () => {
+            await deliverOrDefer(userId, { email: { to: email, subject: tpl.subject, html: tpl.html, category: 'engagement', locale } })
+            return true
+          })
+        }
       } catch { /* email is optional */ }
     }
 

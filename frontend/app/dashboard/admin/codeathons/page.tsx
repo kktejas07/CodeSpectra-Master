@@ -27,6 +27,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { TenantFilter, tenantQuery } from '@/components/hackathons/tenant-filter'
 import { ReleaseResultsDialog } from '@/components/codeathons/release-results-dialog'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface TestCase {
   input: string
@@ -987,7 +988,7 @@ export default function AdminCodeathonsPage() {
                   onChange={(e) => setBankSearch(e.target.value)}
                   placeholder="Search problem bank by title or algorithm (e.g. Dynamic Programming, Trees, Arrays)..."
                   className="h-8 text-xs flex-1"
-                  onKeyDown={(e) => { if (e.key === 'Enter') void searchBankProblems(bankSearch) }}
+                  onKeyDown={(e) => { if (isSubmitEnter(e)) void searchBankProblems(bankSearch) }}
                 />
                 <Button
                   size="sm"

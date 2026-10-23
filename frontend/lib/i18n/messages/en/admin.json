@@ -1285,6 +1285,7 @@
   "aiCost.budgetDescription": "Superadmins get an in-app and email alert at 50, 80 and 100% of the budget.",
   "aiCost.budgetLabel": "Budget per month (USD)",
   "aiCost.budgetHint": "0 turns the budget off",
+  "aiCost.noCeilingWarning": "There is no platform-wide AI spending ceiling: set a monthly budget above 0 and turn the hard stop on.",
   "aiCost.rateLabel": "Rupees per US dollar",
   "aiCost.rateHint": "Used only to show spend in INR",
   "aiCost.hardStop": "Pause non-critical features at 100%",
@@ -2190,5 +2191,17 @@
   "auditLogs.title": "Audit logs",
   "auditLogs.refresh": "Refresh",
   "auditLogs.loadFailed": "Couldn't load audit logs",
-  "auditLogs.refreshFailed": "Couldn't refresh the audit logs — showing the last loaded entries."
+  "auditLogs.refreshFailed": "Couldn't refresh the audit logs — showing the last loaded entries.",
+  "system.tourHeaderTitle": "Platform operations overview",
+  "system.tourHeaderBody": "Admin hub for live server health, platform metrics, and audit access.",
+  "system.tourHealthTitle": "Monitor server health",
+  "system.tourHealthBody": "Monitor CPU, RAM, disk, and containers; refresh or clear caches in Maintenance.",
+  "system.tourRedisTitle": "Check Redis limits",
+  "system.tourRedisBody": "Check Redis mode, latency, and live rate-limit counters before debugging throttles.",
+  "system.tourLinksTitle": "Jump to admin sections",
+  "system.tourLinksBody": "Open Users and roles, Insights, Platform settings, or Audit logs quickly.",
+  "system.tourVitalsTitle": "Review Web Vitals",
+  "system.tourVitalsBody": "Review LCP, INP, and CLS p75 scores by range; refresh for latest samples.",
+  "system.tourTrendsTitle": "Spot trends next",
+  "system.tourTrendsBody": "Tip: spot user growth and activity trends here, then check audit logs below."
 }

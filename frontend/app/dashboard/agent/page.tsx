@@ -13,6 +13,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.DiffEditor), { ssr: false })
@@ -276,7 +277,7 @@ export default function AgentPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  if (isSubmitEnter(e, { modifier: true })) {
                     e.preventDefault()
                     void runAgent()
                   }

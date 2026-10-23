@@ -156,10 +156,39 @@ export async function runAutomationTick(now: Date = new Date()): Promise<Automat
   // Time budget for the cadenced sweeps (AUTO-099): this runs inside the every-minute critical
   // lane, so once it is spent the remaining sweeps wait for the next minute. Their window is
   // still unclaimed then, and the ones that already ran are skipped, so every sweep gets its turn.
+  // Sweeps marked `heavy` (content freshness) don't run here at all: see runHeavyAutomationSweeps.
+  await runCadencedSweeps(now, 'critical', report, safe)
+  return report
+}
+
+/**
+ * The slow cadenced sweeps (`heavy: true`), called from the scheduler's heavy content lane
+ * (lib/scheduler.ts) so link checks and AI notes never delay the every-minute critical jobs.
+ */
+export async function runHeavyAutomationSweeps(now: Date = new Date()): Promise<AutomationTickReport> {
+  const report: AutomationTickReport = { events: 0, runsResumed: 0, jobs: { done: 0, retried: 0, dead: 0 }, ran: [], failed: [] }
+  const safe = async <T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await fn()
+    } catch (e) {
+      console.error(`[automation] ${label} failed:`, e)
+      report.failed.push(label)
+      return fallback
+    }
+  }
+  await runCadencedSweeps(now, 'heavy', report, safe)
+  return report
+}
+
+/** Pure: which lane runs this sweep. */
+export const sweepLane = (a: Pick<SystemAutomation, 'heavy'>): 'critical' | 'heavy' => (a.heavy ? 'heavy' : 'critical')
+
+async function runCadencedSweeps(now: Date, lane: 'critical' | 'heavy', report: AutomationTickReport, safe: <T>(label: string, fn: () => Promise<T>, fallback: T) => Promise<T>): Promise<void> {
   const sweepsStarted = Date.now()
   for (const a of SYSTEM_AUTOMATIONS) {
     if (!a.cadence || !a.run) continue
-    if (Date.now() - sweepsStarted > SWEEP_BUDGET_MS) { report.deferred = (report.deferred || 0) + 1; continue }
+    if (sweepLane(a) !== lane) continue
+    if (lane === 'critical' && Date.now() - sweepsStarted > SWEEP_BUDGET_MS) { report.deferred = (report.deferred || 0) + 1; continue }
     const key = windowKeyFor(a.cadence, now)
     if (!key) continue
     if (!(await safe(`toggle:${a.id}`, () => automationOn(a), false))) continue
@@ -178,5 +207,4 @@ export async function runAutomationTick(now: Date = new Date()): Promise<Automat
     if (r.ok) report.ran.push(a.id)
     else report.failed.push(a.id)
   }
-  return report
 }

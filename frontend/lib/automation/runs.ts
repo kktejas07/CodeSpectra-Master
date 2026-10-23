@@ -154,7 +154,7 @@ export async function processRun(runId: string, wfHint?: WorkflowDoc): Promise<W
 
   const state: RunState = { step_state: { ...(claimed.step_state || {}) }, logs: [...((claimed.steps || []) as RunState['logs'])] }
   const secret = await signingSecret(wf)
-  const actionEnv = { tenantId: wf.tenant_id ?? null, workflowId: wf.id, workflowName: wf.name, runId, signingSecret: secret }
+  const actionEnv = { tenantId: wf.tenant_id ?? null, workflowId: wf.id, workflowName: wf.name, runId, signingSecret: secret, eventType: wf.trigger === 'event' ? wf.event_type ?? null : null }
   const persist = async (s: RunState) => {
     await runs.updateOne({ id: runId }, { $set: { step_state: s.step_state, steps: s.logs as WorkflowRunDoc['steps'], updated_at: nowIso() } })
   }
@@ -279,7 +279,7 @@ export async function executeEphemeral(wf: WorkflowDoc, payload: Record<string, 
     now: () => new Date(),
     dryRun: false,
     persistent: false,
-    exec: (step, cfg, raw, ctx, info) => executeAction(step, cfg, raw, ctx, info, { tenantId: wf.tenant_id ?? null, workflowId: wf.id, workflowName: wf.name, runId, signingSecret: secret }),
+    exec: (step, cfg, raw, ctx, info) => executeAction(step, cfg, raw, ctx, info, { tenantId: wf.tenant_id ?? null, workflowId: wf.id, workflowName: wf.name, runId, signingSecret: secret, eventType: wf.trigger === 'event' ? wf.event_type ?? null : null }),
   })
   const status = result.status === 'waiting' ? 'partial' : result.status
   return { status, steps: state.logs as WorkflowRunDoc['steps'], duration_ms: Date.now() - started }

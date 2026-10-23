@@ -34,6 +34,11 @@ const en = {
   autoSendHint: 'When on, this step runs without a confirmation for each item and goes out in the organisation’s name. Only the organisation owner or a platform admin can turn it on; any admin can turn it off. Caps still apply.',
   autoSendOwnerOnly: 'Only the organisation owner or a platform admin can turn on auto-send.',
   autoSendBy: 'Turned on by {name}',
+  autoSendNeedsOwner: 'Auto-send is switched on but not running: the organisation owner needs to switch it on again. Until then each item is drafted for someone to confirm.',
+  autoSendNeedsOwnerStep: 'Waiting for the owner to switch it on again',
+  autoSendAskOwner: 'Ask the organisation owner to switch auto-send on again.',
+  autoSendReauthorise: 'Switch auto-send back on',
+  autoSendReauthorised: 'Auto-send is running again',
   'step.send_invites': 'Send talent invites',
   'step.offer_slots': 'Send slot offers to candidates',
   'step.book_requested': 'Book a time the candidate picked',
@@ -125,6 +130,7 @@ const en = {
   'ai.platform_budget': 'Platform AI budget used up: running without AI',
   'blocked.daily_cap': 'Daily item cap reached',
   'blocked.owner': 'The admin who switched this on no longer has access. Switch it on again.',
+  'blocked.owner_2fa': 'The admin who switched this on has to set up two-factor authentication first. Switch it on again once they have.',
   'ev.trust': 'Trust score {score} with {count} recorded incidents ({top}).',
   'ev.trustNone': 'Trust score {score}, no incidents.',
   'ev.similar': 'Code for one question is {pct}% similar to {count} other candidate(s).',
@@ -147,6 +153,9 @@ const en = {
   'wa.text': 'Hi {name}, pick a time for your {role} interview at {company}: {times}. Choose here: {link}',
   'notify.title': 'Hiring agents: {count} proposal(s) to review',
   'notify.message': '{agent} drafted {count} proposal(s). Nothing is sent until you confirm.',
+  'notify.paused.title': 'Hiring agent paused: {agent}',
+  'notify.paused.owner': '{agent} was switched off because the admin who turned it on no longer has admin access. An organisation admin can switch it on again.',
+  'notify.paused.owner_2fa': '{agent} was switched off because the admin who turned it on still has to set up two-factor authentication. An organisation admin can switch it on again.',
 } as const
 
 export type HlKey = keyof typeof en
@@ -176,6 +185,11 @@ const hi: Record<HlKey, string> = {
   autoSendHint: 'चालू होने पर यह चरण हर आइटम की पुष्टि के बिना चलता है और संगठन के नाम से भेजा जाता है। इसे केवल संगठन के मालिक या प्लेटफ़ॉर्म एडमिन चालू कर सकते हैं; कोई भी एडमिन इसे बंद कर सकता है। सीमाएँ फिर भी लागू रहती हैं।',
   autoSendOwnerOnly: 'ऑटो-भेजना केवल संगठन के मालिक या प्लेटफ़ॉर्म एडमिन चालू कर सकते हैं।',
   autoSendBy: '{name} ने चालू किया',
+  autoSendNeedsOwner: 'ऑटो-सेंड चालू है पर चल नहीं रहा: संगठन के मालिक को इसे फिर से चालू करना होगा। तब तक हर आइटम पुष्टि के लिए ड्राफ़्ट होता है।',
+  autoSendNeedsOwnerStep: 'मालिक द्वारा फिर से चालू किए जाने का इंतज़ार',
+  autoSendAskOwner: 'संगठन के मालिक से ऑटो-सेंड फिर से चालू करने को कहें।',
+  autoSendReauthorise: 'ऑटो-सेंड फिर से चालू करें',
+  autoSendReauthorised: 'ऑटो-सेंड फिर से चल रहा है',
   'step.send_invites': 'टैलेंट निमंत्रण भेजें',
   'step.offer_slots': 'उम्मीदवारों को समय-विकल्प भेजें',
   'step.book_requested': 'उम्मीदवार का चुना समय बुक करें',
@@ -267,6 +281,7 @@ const hi: Record<HlKey, string> = {
   'ai.platform_budget': 'प्लेटफ़ॉर्म AI बजट समाप्त: बिना AI के चल रहा है',
   'blocked.daily_cap': 'दैनिक आइटम सीमा पूरी',
   'blocked.owner': 'जिस एडमिन ने इसे चालू किया था उसकी पहुँच अब नहीं है। इसे फिर से चालू करें।',
+  'blocked.owner_2fa': 'जिस एडमिन ने इसे चालू किया था उन्हें पहले टू-फ़ैक्टर ऑथेंटिकेशन चालू करना होगा। उसके बाद इसे फिर से चालू करें।',
   'ev.trust': 'ट्रस्ट स्कोर {score}, {count} दर्ज घटनाएँ ({top})।',
   'ev.trustNone': 'ट्रस्ट स्कोर {score}, कोई घटना नहीं।',
   'ev.similar': 'एक प्रश्न का कोड {count} अन्य उम्मीदवार(ों) से {pct}% मिलता-जुलता है।',
@@ -289,6 +304,9 @@ const hi: Record<HlKey, string> = {
   'wa.text': 'नमस्ते {name}, {company} में अपने {role} इंटरव्यू का समय चुनें: {times}। यहाँ चुनें: {link}',
   'notify.title': 'हायरिंग एजेंट: समीक्षा के लिए {count} प्रस्ताव',
   'notify.message': '{agent} ने {count} प्रस्ताव बनाए। आपकी पुष्टि तक कुछ नहीं भेजा जाता।',
+  'notify.paused.title': 'हायरिंग एजेंट रोका गया: {agent}',
+  'notify.paused.owner': '{agent} बंद कर दिया गया क्योंकि इसे चालू करने वाले एडमिन के पास अब एडमिन पहुँच नहीं है। संगठन का कोई एडमिन इसे फिर से चालू कर सकता है।',
+  'notify.paused.owner_2fa': '{agent} बंद कर दिया गया क्योंकि इसे चालू करने वाले एडमिन ने अभी तक टू-फ़ैक्टर ऑथेंटिकेशन चालू नहीं किया है। संगठन का कोई एडमिन इसे फिर से चालू कर सकता है।',
 }
 
 const te: Record<HlKey, string> = {
@@ -316,6 +334,11 @@ const te: Record<HlKey, string> = {
   autoSendHint: 'ఆన్ చేస్తే ఈ దశ ప్రతి అంశానికి నిర్ధారణ లేకుండా నడుస్తుంది, సంస్థ పేరుతో పంపబడుతుంది. సంస్థ యజమాని లేదా ప్లాట్‌ఫామ్ అడ్మిన్ మాత్రమే దీన్ని ఆన్ చేయగలరు; ఏ అడ్మిన్ అయినా ఆఫ్ చేయవచ్చు. పరిమితులు అయినా వర్తిస్తాయి.',
   autoSendOwnerOnly: 'ఆటో-పంపడాన్ని సంస్థ యజమాని లేదా ప్లాట్‌ఫామ్ అడ్మిన్ మాత్రమే ఆన్ చేయగలరు.',
   autoSendBy: '{name} ఆన్ చేశారు',
+  autoSendNeedsOwner: 'ఆటో-సెండ్ ఆన్‌లో ఉంది కానీ పని చేయడం లేదు: సంస్థ యజమాని దీన్ని మళ్లీ ఆన్ చేయాలి. అప్పటివరకు ప్రతి అంశం నిర్ధారణ కోసం డ్రాఫ్ట్ అవుతుంది.',
+  autoSendNeedsOwnerStep: 'యజమాని మళ్లీ ఆన్ చేసే వరకు వేచి ఉంది',
+  autoSendAskOwner: 'ఆటో-సెండ్‌ను మళ్లీ ఆన్ చేయమని సంస్థ యజమానిని అడగండి.',
+  autoSendReauthorise: 'ఆటో-సెండ్‌ను మళ్లీ ఆన్ చేయండి',
+  autoSendReauthorised: 'ఆటో-సెండ్ మళ్లీ పని చేస్తోంది',
   'step.send_invites': 'టాలెంట్ ఆహ్వానాలు పంపండి',
   'step.offer_slots': 'అభ్యర్థులకు సమయ ఎంపికలు పంపండి',
   'step.book_requested': 'అభ్యర్థి ఎంచుకున్న సమయాన్ని బుక్ చేయండి',
@@ -407,6 +430,7 @@ const te: Record<HlKey, string> = {
   'ai.platform_budget': 'ప్లాట్‌ఫాం AI బడ్జెట్ అయిపోయింది: AI లేకుండా నడుస్తోంది',
   'blocked.daily_cap': 'రోజువారీ అంశాల పరిమితి చేరింది',
   'blocked.owner': 'దీన్ని ఆన్ చేసిన అడ్మిన్‌కు ఇప్పుడు యాక్సెస్ లేదు. మళ్లీ ఆన్ చేయండి.',
+  'blocked.owner_2fa': 'దీన్ని ఆన్ చేసిన అడ్మిన్ ముందుగా టూ-ఫ్యాక్టర్ ఆథెంటికేషన్ సెటప్ చేయాలి. ఆ తర్వాత మళ్లీ ఆన్ చేయండి.',
   'ev.trust': 'ట్రస్ట్ స్కోర్ {score}, {count} నమోదైన సంఘటనలు ({top}).',
   'ev.trustNone': 'ట్రస్ట్ స్కోర్ {score}, సంఘటనలు లేవు.',
   'ev.similar': 'ఒక ప్రశ్నకు కోడ్ {count} ఇతర అభ్యర్థుల కోడ్‌తో {pct}% పోలి ఉంది.',
@@ -429,6 +453,9 @@ const te: Record<HlKey, string> = {
   'wa.text': 'హాయ్ {name}, {company} లో మీ {role} ఇంటర్వ్యూకు సమయం ఎంచుకోండి: {times}. ఇక్కడ ఎంచుకోండి: {link}',
   'notify.title': 'హైరింగ్ ఏజెంట్లు: సమీక్షకు {count} ప్రతిపాదన(లు)',
   'notify.message': '{agent} {count} ప్రతిపాదన(లు) తయారుచేసింది. మీరు నిర్ధారించే వరకు ఏదీ పంపబడదు.',
+  'notify.paused.title': 'హైరింగ్ ఏజెంట్ ఆపబడింది: {agent}',
+  'notify.paused.owner': 'దీన్ని ఆన్ చేసిన అడ్మిన్‌కు ఇప్పుడు అడ్మిన్ యాక్సెస్ లేనందున {agent} ఆఫ్ చేయబడింది. సంస్థ అడ్మిన్ ఎవరైనా దీన్ని మళ్లీ ఆన్ చేయవచ్చు.',
+  'notify.paused.owner_2fa': 'దీన్ని ఆన్ చేసిన అడ్మిన్ ఇంకా టూ-ఫ్యాక్టర్ ఆథెంటికేషన్ సెటప్ చేయనందున {agent} ఆఫ్ చేయబడింది. సంస్థ అడ్మిన్ ఎవరైనా దీన్ని మళ్లీ ఆన్ చేయవచ్చు.',
 }
 
 export const HL_MESSAGES: Record<HlLocale, Record<HlKey, string>> = { en, hi, te }

@@ -38,6 +38,8 @@ export interface InterviewDetail {
   } | null
   job: { id: string; title: string; stages: { id: string; name: string; type: string }[] } | null
   self_schedule_link: string | null
+  /** how the "pick a time" invite reached the candidate (schedulers only, CORE-053) */
+  self_schedule_invite?: { email: 'sent' | 'unsubscribed' | 'failed' | 'no_email'; whatsapp: boolean } | null
   me: { user_id: string; role: string; on_panel: boolean; can_schedule: boolean; can_score: boolean; sees_all_scorecards: boolean }
 }
 

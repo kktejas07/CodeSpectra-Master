@@ -230,6 +230,8 @@ export const OPS_NUDGE_AUTOMATIONS: SystemAutomation[] = [
     refs: ['W15-AUTO-12'],
     defaultOn: false,
     cadence: { kind: 'weekly', weekdayUtc: 1, hourUtc: 3 },
+    // Up to 60 link checks + AI notes: the heavy lane, never the every-minute critical one (AUTO-099).
+    heavy: true,
     run: async (now) => runContentFreshness(now),
   },
   {

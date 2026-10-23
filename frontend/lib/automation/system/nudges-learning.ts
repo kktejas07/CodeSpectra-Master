@@ -260,7 +260,9 @@ export async function runMentorSessions(now = new Date()): Promise<Record<string
     if (!first.modifiedCount && !first.upsertedCount) continue
     const mentorMissed = outcome === 'no_show_mentor' || outcome === 'no_show_both'
     outcomes.push(await deliverNudge({
-      automationId: 'mentor-sessions', key: `${String(b.id)}:noshow:buyer`, now, priority: 'high', to: { userId: String(b.buyer_id), email: buyer?.email || null },
+      // About a paid booking (how to reschedule / get help): transactional, never held by the cap (AUTO-110).
+      // The no-show is recorded once above, so a capped notice would never be retried.
+      automationId: 'mentor-sessions', key: `${String(b.id)}:noshow:buyer`, now, priority: 'high', class: 'transactional', to: { userId: String(b.buyer_id), email: buyer?.email || null },
       email: nudgeMail({ id: mentorMissed ? 'mentorNoShow' : 'learnerNoShow', category: 'transactional', params, name: firstName(buyer?.fullName || buyer?.name), cta: { url: sessionLink } }),
       inApp: { type: 'mentor.no_show', ...nudgeNote('session', { title: 'noShowTitle', message: mentorMissed ? 'mentorMissedLearner' : 'learnerMissedLearner' }, params), link: sessionLink, icon: 'alert-circle' },
     }))

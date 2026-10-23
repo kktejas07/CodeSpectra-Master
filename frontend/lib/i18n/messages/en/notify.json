@@ -342,5 +342,20 @@
   "nudge.offer.expiredTitle": "Offer expired: {job}",
   "nudge.offer.expiredMessage": "{candidate} didn’t answer before the deadline. The application is flagged; decide the next step.",
   "nudge.bgv.title": "Background check overdue: {candidate}",
-  "nudge.bgv.message": "The {check} check at {vendor} is {days} day(s) past its expected time. We asked the vendor for a fresh status."
+  "nudge.bgv.message": "The {check} check at {vendor} is {days} day(s) past its expected time. We asked the vendor for a fresh status.",
+  "interview.inviteNotSentTitle": "Invite e-mail not sent",
+  "interview.inviteNotSentUnsubscribed": "{name} unsubscribed from hiring e-mails, so they were not e-mailed the link to pick an interview time. Open the interview to copy the link and share it another way.",
+  "interview.inviteNotSentUnsubscribedWa": "{name} unsubscribed from hiring e-mails, so the link to pick an interview time went by WhatsApp only. Open the interview to copy the link if you need to share it another way.",
+  "interview.inviteNotSentNoEmail": "{name} has no e-mail address, so they did not get the link to pick an interview time. Open the interview to copy the link and share it another way.",
+  "interview.inviteNotSentNoEmailWa": "{name} has no e-mail address, so the link to pick an interview time went by WhatsApp only. Open the interview to copy the link if you need to share it another way.",
+  "interview.inviteNotSentFailed": "The e-mail with the link to pick an interview time could not be sent to {name}. Open the interview to copy the link and share it another way.",
+  "interview.inviteNotSentFailedWa": "The e-mail with the link to pick an interview time could not be sent to {name}; it went by WhatsApp. Open the interview to copy the link if you need to share it another way.",
+  "time.left.minutes_one": "{count} minute",
+  "time.left.minutes_other": "{count} minutes",
+  "time.left.hours_one": "{count} hour",
+  "time.left.hours_other": "{count} hours",
+  "hiring.nudge.title": "{job}: candidates waiting",
+  "hiring.nudge.aJob": "A job",
+  "hiring.nudge.sla": "{count} candidate(s) will be auto-rejected tomorrow by the stage time limit.",
+  "hiring.nudge.idle": "{count} candidate(s) have had no progress for {days}+ days."
 }

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { requireAuth, requireAdmin, getAPIUser } from '@/lib/route-auth'
+import { requireAdmin, getAPIUser, gateErrorBody } from '@/lib/route-auth'
 import { accessFor, getPackContext } from '@/lib/entitlements'
 import { problems, nowIso, newId, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
@@ -124,10 +124,15 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data: seedList, count: seedList.length })
 }
 
+/**
+ * POST /api/problems — admins only (SEC-037). The practice library and the
+ * platform knowledge index are curated: a learner account can't add to them
+ * (there is no learner authoring UI). requireAdmin also enforces admin 2FA.
+ */
 export async function POST(request: NextRequest) {
-  const gate = await requireAuth()
+  const gate = await requireAdmin()
   if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
+    return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   }
   try {
     const body = (await request.json()) as Partial<ProblemDoc>
@@ -171,7 +176,7 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     }
     await col.insertOne(doc)
-    knowledgeOnLibraryChange('problem', doc.id) // RAG-003: searchable within a minute
+    if (doc.is_published) knowledgeOnLibraryChange('problem', doc.id) // RAG-003: searchable within a minute
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {
     console.error('[problems]', error)

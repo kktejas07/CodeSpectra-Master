@@ -149,6 +149,15 @@ export function reminderWindow(at: string | null | undefined, now: Date): '24h' 
   return null
 }
 
+/**
+ * SEO-054: the same duration as hoursLeftLabel, for catalog text: unit + count
+ * (`auto.left.<unit>` in email.json, `time.left.<unit>` in notify.json).
+ */
+export function hoursLeftParts(at: string, now: Date): { unit: 'minutes' | 'hours'; count: number } {
+  const mins = Math.max(1, Math.round((Date.parse(at) - now.getTime()) / 60_000))
+  return mins < 90 ? { unit: 'minutes', count: mins } : { unit: 'hours', count: Math.round(mins / 60) }
+}
+
 export function hoursLeftLabel(at: string, now: Date): string {
   const mins = Math.max(1, Math.round((Date.parse(at) - now.getTime()) / 60_000))
   if (mins < 90) return `${mins} minutes`

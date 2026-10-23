@@ -17,6 +17,7 @@ import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
 import { AdminOverviewBento } from '@/components/admin/admin-overview-bento'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { useAdminT } from '@/lib/i18n/admin'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
@@ -157,6 +158,7 @@ export default function SystemAdminDashboard() {
   const gate = usePageGuard('/dashboard/admin/system')
   const addToast = useToast()
   const { startTour, setTourSeen } = useTour()
+  const { t: ta } = useAdminT()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, superadmins: 0, admins: 0 })
   const [metricsLoaded, setMetricsLoaded] = useState(false)
@@ -287,44 +289,44 @@ export default function SystemAdminDashboard() {
       const adminSystemTour: TourStep[] = [
         {
           target: '[data-tour="admin-system-header"]',
-          title: 'Platform operations overview',
-          description: 'Admin hub for live server health, platform metrics, and audit access.',
+          title: ta('system.tourHeaderTitle'),
+          description: ta('system.tourHeaderBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-server-health"]',
-          title: 'Monitor server health',
-          description: 'Monitor CPU, RAM, disk, and containers; refresh or clear caches in Maintenance.',
+          title: ta('system.tourHealthTitle'),
+          description: ta('system.tourHealthBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-redis"]',
-          title: 'Check Redis limits',
-          description: 'Check Redis mode, latency, and live rate-limit counters before debugging throttles.',
+          title: ta('system.tourRedisTitle'),
+          description: ta('system.tourRedisBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-quick-links"]',
-          title: 'Jump to admin sections',
-          description: 'Open Users and roles, Insights, Platform settings, or Audit logs quickly.',
+          title: ta('system.tourLinksTitle'),
+          description: ta('system.tourLinksBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-web-vitals"]',
-          title: 'Review Web Vitals',
-          description: 'Review LCP, INP, and CLS p75 scores by range; refresh for latest samples.',
+          title: ta('system.tourVitalsTitle'),
+          description: ta('system.tourVitalsBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-analytics"]',
-          title: 'Spot trends next',
-          description: 'Tip: spot user growth and activity trends here, then check audit logs below.',
+          title: ta('system.tourTrendsTitle'),
+          description: ta('system.tourTrendsBody'),
           position: 'bottom',
         },
       ];
       autoPlayPageTour('admin-system', adminSystemTour)
     }
-  }, [gate.ready, startTour]);
+  }, [gate.ready, startTour, ta]);
 
   if (!gate.ready || loading) {
     return (

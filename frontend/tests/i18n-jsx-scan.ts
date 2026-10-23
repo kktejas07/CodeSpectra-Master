@@ -19,6 +19,8 @@ export const SCAN_DIRS = [
     'hiring', 'integrity', 'interview-sim', 'kyc', 'leagues', 'marketplace', 'mentors', 'passport', 'problems', 'proctoring', 'pwa', 'resources', 'scanner',
     // SEO-043: contest pages (public detail, workspace, judging) and hackathon widgets.
     'contests', 'hackathons'].map((d) => `components/${d}`),
+  // SEO-053 / SEO-058: cookie banner, email preferences pages and shared widgets (credits, video player, command menu, theme).
+  'components/analytics', 'components/subscriptions', 'components/ui', 'components/command-menu.tsx', 'components/theme-switcher.tsx',
 ]
 const SKIP_DIRS = ['app/dashboard/admin', 'components/marketplace/admin', 'components/dashboard/settings']
 
@@ -27,7 +29,9 @@ const SKIP_DIRS = ['app/dashboard/admin', 'components/marketplace/admin', 'compo
  * admin widgets, help assistant, study-plan cards). Scanned by
  * tests/i18n-admin-jsx.test.ts against its own allow-list that may only shrink.
  */
-export const ADMIN_SCAN_DIRS = ['app/dashboard/admin', 'components/agent', 'components/admin', 'components/support', 'components/study-plan']
+export const ADMIN_SCAN_DIRS = ['app/dashboard/admin', 'components/agent', 'components/admin', 'components/support', 'components/study-plan',
+  // SEO-057: platform settings, marketplace admin, the workflow builder and the question bot admin.
+  'components/dashboard/settings', 'components/marketplace/admin', 'components/workflows', 'components/question-bot']
 const SKIP_PARENTS = new Set(['code', 'pre', 'kbd', 'samp', 'script', 'style', 'text', 'tspan', 'title', 'svg', 'math'])
 const TEXT_PROPS = new Set(['placeholder', 'title', 'aria-label', 'alt', 'label', 'description', 'actionLabel', 'emptyText', 'message', 'confirmLabel', 'cancelLabel'])
 const KEEP = /^(CodeSpectra|GitHub|LinkedIn|Google|SQL|API|JSON|CSV|PDF|AI|ATS|BGV|OK|Python|Java|JavaScript|TypeScript|C\+\+|Go|Rust|React|Node\.js|HTML|CSS|DSA|AWS|Docker|Git|CAD|XP|PR|UPI|PAN|GST|INR|USD|ID|OTP|QR|IST|UTC|LOC|CTC|CGPA|vs|px|ms|min|MB|KB|Aadhaar|DigiLocker|WhatsApp|Stripe|Zoom)$/
@@ -43,6 +47,8 @@ function isHuman(s: string): boolean {
 function walkTsx(dirs: string[], skip: string[]): string[] {
   const out: string[] = []
   const walk = (d: string) => {
+    // A single file (components/command-menu.tsx) is scanned as itself.
+    if (d.endsWith('.tsx')) { out.push(d); return }
     for (const f of fs.readdirSync(path.join(ROOT, d))) {
       const rel = `${d}/${f}`
       if (skip.some((s) => rel === s || rel.startsWith(`${s}/`))) continue

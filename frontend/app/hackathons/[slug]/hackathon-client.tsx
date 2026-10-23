@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 export interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -577,7 +578,7 @@ export function HackathonDetail({ slug, initial }: { slug: string; initial: Hack
                 placeholder="teammate@example.com"
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && void sendEmailInvite()}
+                onKeyDown={e => isSubmitEnter(e) && void sendEmailInvite()}
                 className="h-11"
               />
             </div>
@@ -611,7 +612,7 @@ export function HackathonDetail({ slug, initial }: { slug: string; initial: Hack
                 placeholder="e.g. PARADISE"
                 value={editTeamName}
                 onChange={e => setEditTeamName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && void handleRenameTeam()}
+                onKeyDown={e => isSubmitEnter(e) && void handleRenameTeam()}
               />
             </div>
             <p className="text-xs text-muted-foreground">

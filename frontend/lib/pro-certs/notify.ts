@@ -42,8 +42,9 @@ export async function notifyAttemptOutcome(a: AttemptDoc, p: ProgramDoc, status:
   })
 }
 
-export async function notifyExpirySoon(c: CredentialDoc): Promise<void> {
-  await notify({
+/** True when the notice went out; false when it was held by the message limit (or failed) — CORE-052. */
+export async function notifyExpirySoon(c: CredentialDoc): Promise<boolean> {
+  const n = await notify({
     user_id: c.user_id,
     type: 'pro_cert.expiring',
     title: `${c.program_title} expires on ${day(c.expires_at)}`,
@@ -54,6 +55,7 @@ export async function notifyExpirySoon(c: CredentialDoc): Promise<void> {
     icon: 'award',
     send_email: true,
   })
+  return !!n
 }
 
 /** Purge the learner's public passport cache (credentials changed). Never throws. */

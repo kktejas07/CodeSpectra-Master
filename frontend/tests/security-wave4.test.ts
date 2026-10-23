@@ -192,6 +192,24 @@ describe('request guards', () => {
     expect(impersonationBlocked('POST', '/api/user/email-change/request', normal)).toBe(false)
     expect(impersonationBlocked('POST', '/api/courses', imp)).toBe(false)
   })
+
+  it('SEC-039: view-as never upgrades a plan, buys, or refunds', () => {
+    const imp = fakeJwt({ uid: 'u1', imp: 'admin1' })
+    const normal = fakeJwt({ uid: 'u1' })
+    for (const p of [
+      '/api/billing/change-plan', '/api/billing/verify', '/api/billing/anything-new',
+      '/api/pro-certs/aws-saa/checkout', '/api/licences', '/api/licences/l1/seats',
+      '/api/marketplace/orders/o1/refund', '/api/marketplace/orders/o1/cancel', '/api/marketplace/seller/refunds',
+    ]) {
+      expect(impersonationBlocked('POST', p, imp), p).toBe(true)
+      expect(impersonationBlocked('POST', p, normal), p).toBe(false)
+    }
+    expect(impersonationBlocked('PATCH', '/api/licences/l1', imp)).toBe(true)
+    expect(impersonationBlocked('GET', '/api/billing/invoices', imp)).toBe(false)
+    expect(impersonationBlocked('GET', '/api/marketplace/orders/o1', imp)).toBe(false)
+    expect(impersonationBlocked('POST', '/api/billing/stripe-webhook', imp)).toBe(false)
+    expect(impersonationBlocked('POST', '/api/pro-certs/webhooks/stripe', imp)).toBe(false)
+  })
 })
 
 // ─── SEC-008 / SEC-011: re-authentication ───────────────────────────────────

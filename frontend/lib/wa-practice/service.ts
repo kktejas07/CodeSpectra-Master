@@ -623,10 +623,15 @@ export async function runPracticeTick(now = new Date(), opts: { budgetMs?: numbe
       }
       const t = tFor(e.locale)
       const label = await domainLabel(e.domain)
-      // The out-of-session prompt is an engagement nudge: through the shared per-person cap (AUTO-094).
+      // The learner enrolled for this daily prompt at their hour: 'subscribed' — de-duplicated per
+      // enrolment + day, never capped by the shared nudge limit (AUTO-108). If it is ever held, the
+      // day's claim is undone so the next run can still send it (AUTO-109).
       const { admitMessage } = await import('@/lib/messaging/budget')
-      const admit = await admitMessage({ userId: e.user_id }, { class: 'engagement', topic: 'wa-practice', object: `${e.id}:${due.day}`, source: 'wa-practice' }, now)
-      if (!admit.ok) continue
+      const admit = await admitMessage({ userId: e.user_id }, { class: 'subscribed', topic: 'wa-practice', object: `${e.id}:${due.day}`, source: 'wa-practice' }, now)
+      if (!admit.ok) {
+        if (admit.outcome === 'capped') await col.updateOne({ id: e.id, last_daily_day: due.day }, { $set: { last_daily_day: null } }).catch(() => {})
+        continue
+      }
       const r = due.kind === 'mock'
         ? await sendLocalizedTemplate(e.phone, { name: s.templates.mock, locale: e.locale, params: [label, String(s.mock_size)], quickReplyPayloads: ['wp:mock', 'wp:stop'], preview: t('waPractice.mockPreview', { domain: label, count: s.mock_size }) })
         : await sendLocalizedTemplate(e.phone, { name: s.templates.daily, locale: e.locale, params: [label, levelLabel(t, e.level)], quickReplyPayloads: ['wp:get', 'wp:stop'], preview: t('waPractice.dailyPreview', { domain: label }) })

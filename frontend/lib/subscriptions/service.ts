@@ -27,6 +27,8 @@ import type {
   Channel, SubscribeInput, SubscribeResult, SubscribeTrust, SubscriberDoc, Topic, TopicFilters,
 } from './types'
 import { randomBytes } from 'node:crypto'
+import { outboundT } from '@/lib/i18n/outbound'
+import { toLocale } from '@/lib/i18n/config'
 
 export const WHATSAPP_CONSENT_TEXT =
   'I agree to receive CodeSpectra updates on WhatsApp for the topics I picked. I can reply STOP at any time to stop.'
@@ -69,16 +71,19 @@ async function sendEmailConfirmation(sub: SubscriberDoc): Promise<boolean> {
   const lim = await rateLimitRedis(`subs:confirm:${sub.email}`, 3, 24 * 3600_000)
   if (!lim.ok) return true // answer the same way; never let the form spam an inbox
   const token = await signConfirmToken({ id: sub.id, n: sub.token_nonce, e: sub.email, r: sub.pending.requested_at })
-  const link = `${getAppOrigin()}/subscriptions/confirm?t=${encodeURIComponent(token)}`
-  const topics = sub.pending.topics.map((t) => (t === 'events' ? 'hackathons and coding events' : t === 'blog' ? 'new articles' : t === 'news' ? 'the daily tech news digest' : t === 'digest' ? 'the daily digest of events, news and posts' : t)).join(', ')
+  const lang = toLocale(sub.locale)
+  const link = `${getAppOrigin()}/subscriptions/confirm?t=${encodeURIComponent(token)}${lang && lang !== 'en' ? `&lang=${lang}` : ''}`
+  // SEO-054: in the language of the page they signed up on (English text unchanged).
+  const et = outboundT('email', toLocale(sub.locale) ?? 'en')
+  const topics = sub.pending.topics.map((t) => (['events', 'blog', 'news', 'digest'].includes(t) ? et(`sub.topic.${t}`) : t)).join(', ')
   const outcome = await sendSubscriberEmail(sub, {
     type: 'confirm', ref: sub.pending.requested_at, topic: null, allowPending: true,
-    subject: 'Confirm your CodeSpectra updates',
-    heading: 'Confirm your subscription',
-    preheader: 'One click to start getting updates.',
-    reason: 'You got this email because someone entered this address on CodeSpectra. If it wasn’t you, ignore it and nothing will be sent.',
-    bodyHtml: `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151">Please confirm you want email updates about ${escapeHtml(topics || 'CodeSpectra')}. The link works for 72 hours.</p>
-      <p style="margin:0 0 8px"><a href="${escapeHtml(link)}" style="display:inline-block;background:#2F5BE7;color:#ffffff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:600">Confirm subscription</a></p>`,
+    subject: et('sub.confirm.subject'),
+    heading: et('sub.confirm.heading'),
+    preheader: et('sub.confirm.preheader'),
+    reason: et('sub.confirm.reason'),
+    bodyHtml: `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151">${escapeHtml(et('sub.confirm.body', { topics: topics || 'CodeSpectra' }))}</p>
+      <p style="margin:0 0 8px"><a href="${escapeHtml(link)}" style="display:inline-block;background:#2F5BE7;color:#ffffff;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:600">${escapeHtml(et('sub.confirm.button'))}</a></p>`,
   })
   return outcome === 'sent' || outcome === 'duplicate'
 }
@@ -96,13 +101,14 @@ async function sendManageLink(sub: SubscriberDoc, at: string): Promise<boolean> 
   const { rateLimitRedis } = await import('@/lib/upstash-rate-limit')
   const lim = await rateLimitRedis(`subs:manage:${sub.email}`, 2, 24 * 3600_000)
   if (!lim.ok) return true
+  const et = outboundT('email', toLocale(sub.locale) ?? 'en')
   const outcome = await sendSubscriberEmail(sub, {
     type: 'manage', ref: at.slice(0, 10), topic: null, allowPending: true,
-    subject: 'Your CodeSpectra updates',
-    heading: 'You’re already on our list',
-    preheader: 'Use this link to change what you get.',
-    reason: 'You got this email because someone entered this address on CodeSpectra. If it wasn’t you, ignore it — nothing changed.',
-    bodyHtml: '<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151">Someone asked to subscribe this address, and it already has a subscription. To change your topics, channels or time zone, use the <strong>Manage preferences</strong> link below.</p>',
+    subject: et('sub.manage.subject'),
+    heading: et('sub.manage.heading'),
+    preheader: et('sub.manage.preheader'),
+    reason: et('sub.manage.reason'),
+    bodyHtml: `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151">${escapeHtml(et('sub.manage.body')).replace('{link}', `<strong>${escapeHtml(et('sub.shell.manage'))}</strong>`)}</p>`,
   })
   return outcome === 'sent' || outcome === 'duplicate'
 }
@@ -160,6 +166,9 @@ export async function subscribe(input: SubscribeInput, trust: SubscribeTrust = {
 
   const sub: SubscriberDoc = existing ? { ...existing } : blank(at, { source: (input.source || 'web').slice(0, 40), timezone: tz || 'UTC' })
   if (tz && (!existing || trust.emailVerified)) sub.timezone = tz
+  // SEO-054: remember the page language (new records, or an existing one without a language yet).
+  const pageLocale = toLocale(input.locale)
+  if (pageLocale && (!existing || !sub.locale)) sub.locale = pageLocale
   const result: SubscribeResult = { ok: true, email: 'skipped', whatsapp: 'skipped' }
 
   // Topics/filters change what every ACTIVE channel receives, so a request may

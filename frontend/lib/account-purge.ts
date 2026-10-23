@@ -26,6 +26,9 @@ export function tombstoneId(uid: string): string {
 
 export const DELETED_NAME = 'Deleted user'
 
+/** Rows that point at objects in upload storage (deleted before the rows). */
+const RECORDINGS = 'interview_sim_recordings'
+
 /**
  * The full plan for one user. `ids` carries ids looked up first (guardian
  * links, seller ids) so the plan itself stays pure and testable.
@@ -68,6 +71,11 @@ export function accountPurgePlan(uid: string, ids: { guardianLinkIds?: string[];
     del('job_match_prefs', 'user_id', 'job match preferences'),
     del('resumes', 'user_id', 'résumés'),
     del('resume_drafts', 'user_id', 'résumé drafts'),
+    // Mock interviews (SEC-038): questions, answers, AI report, share link, and
+    // voice/video recordings. Recording objects in S3 are removed first
+    // (purgeAccountData); the rows only go once their objects are gone.
+    del('interview_sim_sessions', 'user_id', 'mock-interview transcripts and reports'),
+    del(RECORDINGS, 'user_id', 'mock-interview recordings'),
     // Marketplace / mentoring: carts go; orders and bookings stay for the ledger, without contact data.
     del('mkt_carts', 'user_id', 'cart'),
     upd('mkt_orders', { buyer_id: uid }, { $set: { buyer_email: null, anonymised_at: at }, $unset: { shipping_address: '' } }, 'orders kept for accounting'),
@@ -133,10 +141,18 @@ export async function purgeAccountData(db: Db, uid: string, now = new Date()): P
   const productIds = ids.sellerIds.length
     ? (await Promise.resolve().then(() => db.collection('mkt_products').find({ seller_id: { $in: ids.sellerIds }, status: { $ne: 'archived' } }, { projection: { _id: 0, id: 1 } }).limit(2000).toArray()).catch(() => [])).map((p) => String((p as { id?: unknown }).id || '')).filter(Boolean)
     : []
-  const results = await Promise.allSettled(plan.map((op) => op.kind === 'delete'
+  // SEC-038: recordings may live in S3 — delete the objects before the rows.
+  // If an object can't be deleted, keep its row (it holds the key) so the
+  // nightly scrub retries; the step is reported as failed.
+  const blobsFailed = await import('@/lib/storage/blobs')
+    .then((b) => b.deleteBlobsFor(db.collection(RECORDINGS), { user_id: uid }))
+    .catch(() => 1)
+  const runPlan = blobsFailed ? plan.filter((op) => op.collection !== RECORDINGS) : plan
+  const results = await Promise.allSettled(runPlan.map((op) => op.kind === 'delete'
     ? db.collection(op.collection).deleteMany(op.filter)
     : db.collection(op.collection).updateMany(op.filter, op.update)))
-  const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [plan[i].collection] : []))
+  const failed = results.flatMap((r, i) => (r.status === 'rejected' ? [runPlan[i].collection] : []))
+  if (blobsFailed) failed.push(RECORDINGS)
   if (productIds.length) void import('@/lib/rag/hooks').then((h) => h.knowledgeOnMarketplaceProduct(productIds)).catch(() => {})
-  return { ok: results.length - failed.length, failed }
+  return { ok: results.filter((r) => r.status === 'fulfilled').length, failed }
 }

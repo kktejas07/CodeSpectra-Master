@@ -15,6 +15,7 @@ import { Cookie, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { CONSENT_OPEN_EVENT, readSignals, saveConsent, type EffectiveConsent } from '@/lib/analytics/consent'
+import { useT } from '@/lib/i18n/client'
 
 export function ConsentBanner({ consent, hidden }: { consent: EffectiveConsent; hidden?: boolean }) {
   const [open, setOpen] = useState(false)
@@ -23,6 +24,9 @@ export function ConsentBanner({ consent, hidden }: { consent: EffectiveConsent; 
   const [marketing, setMarketing] = useState(consent.marketing)
   const [signal, setSignal] = useState(false)
   const titleId = useId()
+  // SEO-053: the banner is mounted in the root layout; useT() reads the language
+  // the page's provider published (/hi, /te, or the signed-in user's choice).
+  const { t } = useT()
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -73,18 +77,16 @@ export function ConsentBanner({ consent, hidden }: { consent: EffectiveConsent; 
             <Cookie className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="text-base font-semibold text-foreground">Your privacy choices</h2>
+            <h2 id={titleId} className="text-base font-semibold text-foreground">{t('common.consentTitle')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              We use essential cookies to sign you in and keep CodeSpectra secure. With your permission we&apos;d also like to
-              measure how the site is used (analytics) and how our ads perform (marketing). Saying no doesn&apos;t change what you
-              can do here, and you can change your mind any time from Cookie settings.{' '}
-              <Link href="/cookies" className="font-medium text-primary underline-offset-4 hover:underline">Cookie policy</Link>
+              {t('common.consentBody')}{' '}
+              <Link href="/cookies" className="font-medium text-primary underline-offset-4 hover:underline">{t('common.consentCookiePolicy')}</Link>
               {' · '}
-              <Link href="/privacy" className="font-medium text-primary underline-offset-4 hover:underline">Privacy policy</Link>
+              <Link href="/privacy" className="font-medium text-primary underline-offset-4 hover:underline">{t('common.consentPrivacyPolicy')}</Link>
             </p>
           </div>
           {consent.decided && (
-            <button type="button" aria-label="Close cookie settings" onClick={() => setOpen(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" aria-label={t('common.consentCloseAria')} onClick={() => setOpen(false)} className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <X className="h-4 w-4" />
             </button>
           )}
@@ -92,33 +94,33 @@ export function ConsentBanner({ consent, hidden }: { consent: EffectiveConsent; 
 
         {details && (
           <ul className="mt-4 space-y-3">
-            <Choice title="Essential" desc="Sign-in, security, load balancing and anonymous page counts (no cookie, nothing that identifies you)." checked disabled />
+            <Choice title={t('common.consentEssential')} desc={t('common.consentEssentialDesc')} checked disabled />
             <Choice
-              title="Analytics"
-              desc="A random id on this device so we can see which pages and features help, and tools like Google Analytics, PostHog or Clarity if we use them."
+              title={t('common.consentAnalytics')}
+              desc={t('common.consentAnalyticsDesc')}
               checked={analytics}
               onChange={setAnalytics}
             />
             <Choice
-              title="Marketing"
-              desc="Lets ad platforms (Meta, LinkedIn) know a visit or sign-up came from an ad."
+              title={t('common.consentMarketing')}
+              desc={t('common.consentMarketingDesc')}
               checked={marketing && !signal}
               onChange={setMarketing}
               disabled={signal}
-              note={signal ? 'Your browser asks sites not to track you (Global Privacy Control / Do Not Track), so this stays off.' : undefined}
+              note={signal ? t('common.consentSignalNote') : undefined}
             />
           </ul>
         )}
 
         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
           {!details && (
-            <Button type="button" variant="ghost" className="min-h-11" onClick={() => setDetails(true)}>Choose</Button>
+            <Button type="button" variant="ghost" className="min-h-11" onClick={() => setDetails(true)}>{t('common.consentChoose')}</Button>
           )}
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => choose(false, false)}>Essential only</Button>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => choose(false, false)}>{t('common.consentEssentialOnly')}</Button>
           {details ? (
-            <Button type="button" className="min-h-11" onClick={() => choose(analytics, marketing && !signal)}>Save choices</Button>
+            <Button type="button" className="min-h-11" onClick={() => choose(analytics, marketing && !signal)}>{t('common.consentSave')}</Button>
           ) : (
-            <Button type="button" className="min-h-11" onClick={() => choose(true, !signal)}>Accept all</Button>
+            <Button type="button" className="min-h-11" onClick={() => choose(true, !signal)}>{t('common.consentAcceptAll')}</Button>
           )}
         </div>
       </div>

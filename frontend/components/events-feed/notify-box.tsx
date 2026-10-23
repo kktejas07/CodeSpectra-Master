@@ -24,7 +24,7 @@ import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
 
 export function NotifyBox({ topic = 'events', className, compact = false }: { topic?: 'events' | 'blog' | 'news' | 'digest'; className?: string; compact?: boolean }) {
-  const { t, td, rich } = useT()
+  const { t, td, rich, locale } = useT()
   const apiError = useApiError()
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -65,6 +65,7 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
           whatsapp_consent: useWa ? consent : undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           source: `${topic}-page`,
+          locale, // SEO-054: confirmation and later emails in this page's language
           turnstileToken: captchaToken || undefined,
         }),
       })

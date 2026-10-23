@@ -34,6 +34,11 @@ export const PRODUCT_FACTS = {
     'University and team leagues: quarterly league tables built from released results of contests, codeathons, hackathons and the arena',
     'Community forum for questions, solution write-ups (unlocked after you solve the problem) and study groups',
     'Release scores to candidates or export results as CSV',
+    // SEO-063: hiring, learner and integration features added since (see /features and /for-colleges).
+    'Applicant tracking: job posts, a stage-by-stage hiring pipeline, interview scheduling, offers and background verification through connected vendors',
+    'AI hiring agents that work under recruiter review: a sourcer, an interview scheduler, an assessment author and an integrity reviewer',
+    'Campus placement portal for colleges (drives, eligibility rules, readiness and offer records), a shareable skill passport with recruiter talent search, a resume builder with job matching, daily practice on WhatsApp, progress reports for parents and guardians, and cohort-based courses',
+    'Integrations: Google Classroom, LTI 1.3 for Moodle and other learning platforms, and hiring notifications to Slack and Microsoft Teams',
     'GitHub connection via OAuth; organisation single sign-on via SAML or OIDC (Okta, Azure AD, Google Workspace)',
     'Learn hub of free explainers on algorithms, system design and engineering practice; daily tech news and a daily digest; public job board; global events feed; marketplace for books, courses and mock interviews',
     'Interface in English, Hindi and Telugu; installable as a web app (PWA), with Android and iOS app builds of the same app',

@@ -9,6 +9,7 @@ import { GitPullRequest, AlertTriangle, FileCode, Users, Zap, ExternalLink, Load
 import { BlastRadiusAnalysis } from './blast-radius-analysis'
 import type { D3Component, D3Dependency } from './d3-force-graph'
 import { useT } from '@/lib/i18n/client'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface PRFile {
   filename: string
@@ -138,7 +139,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
             placeholder="https://github.com/owner/repo/pull/123"
             value={prUrl}
             onChange={e => setPrUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && fetchPR()}
+            onKeyDown={e => isSubmitEnter(e) && fetchPR()}
             className="flex-1 font-mono text-sm"
           />
           <Button onClick={fetchPR} disabled={loading || !prUrl.trim()}>

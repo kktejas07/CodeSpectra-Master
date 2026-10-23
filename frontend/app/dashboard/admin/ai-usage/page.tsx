@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { microsIn, moneyDigits, type AiCostSettings, type SpendBucket } from '@/lib/ai/spend'
+import { microsIn, moneyDigits, noPlatformAiCeiling, type AiCostSettings, type SpendBucket } from '@/lib/ai/spend'
 import { priceKey, SEED_PRICES, type ModelPrice, type PriceKind, type UnknownPrice } from '@/lib/ai/pricing'
 
 interface UsageData {
@@ -98,6 +98,9 @@ function BudgetPanel({ settings, onSaved }: { settings: AiCostSettings; onSaved:
 
   return (
     <Panel className="space-y-5 p-5">
+      {noPlatformAiCeiling(settings) && (
+        <p role="status" className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">{t('aiCost.noCeilingWarning')}</p>
+      )}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="ai-budget" className="text-xs">{t('aiCost.budgetLabel')}</Label>

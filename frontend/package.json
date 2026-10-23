@@ -121,7 +121,7 @@
     "vaul": "^1.1.2",
     "vidstack": "^1.15.6",
     "web-push": "3.6.7",
-    "zod": "^4.5.4",
+    "zod": "^4.6.6",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
@@ -164,7 +164,8 @@
     "underscore": "^1.13.8",
     "ws": "^8.22.0",
     "follow-redirects": "^1.16.1",
-    "dompurify": "^3.4.17"
+    "dompurify": "^3.4.17",
+    "zod": "^4.6.6"
   },
   "overrides": {
     "snarkjs": "0.7.5"

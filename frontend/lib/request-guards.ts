@@ -67,7 +67,23 @@ export const IMPERSONATION_BLOCKED_PREFIXES: readonly string[] = [
   '/api/marketplace/checkout',
   '/api/marketplace/seller/payouts',
   '/api/admin/impersonate',
+  // SEC-039 (audit 7): every other route that charges, refunds or changes a plan.
+  '/api/billing/change-plan',
+  '/api/billing/verify',
+  '/api/billing/coupons',
+  '/api/marketplace/orders',
+  '/api/marketplace/seller/refunds',
+  '/api/licences',
 ]
+
+/**
+ * SEC-039: whole money areas — every non-GET under these is refused while
+ * impersonating, so a new billing route is covered without a list edit.
+ * Provider webhooks / callbacks carry no session cookie, but stay exempt
+ * explicitly so a stray cookie never blocks a payment notification.
+ */
+const IMPERSONATION_BLOCKED_AREAS: readonly string[] = ['/api/billing', '/api/marketplace/orders', '/api/pro-certs']
+const MONEY_WEBHOOK = /\/(webhooks?|stripe-webhook|phonepe-webhook|phonepe-callback)(\/|$)/
 
 function b64urlJson(part: string): Record<string, unknown> | null {
   try {
@@ -100,7 +116,9 @@ export function impersonationBlocked(method: string, pathname: string, sessionTo
   if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return false
   // Stopping an impersonation must always work.
   if (pathname === '/api/admin/impersonate/stop' || pathname.startsWith('/api/admin/impersonate/stop/')) return false
-  if (!IMPERSONATION_BLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
+  const listed = IMPERSONATION_BLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  const moneyArea = !MONEY_WEBHOOK.test(pathname) && IMPERSONATION_BLOCKED_AREAS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  if (!listed && !moneyArea) return false
   return impersonatorOfToken(sessionToken) !== null
 }
 

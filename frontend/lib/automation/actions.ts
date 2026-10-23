@@ -26,6 +26,8 @@ export interface ActionEnv {
   runId: string
   /** Decrypted signing secret for outbound webhooks (null = none yet). */
   signingSecret: string | null
+  /** Event type that started the run (event-triggered workflows) — decides whether email may be 'transactional' (AUTO-115). */
+  eventType?: string | null
 }
 
 const fail = (msg: string): never => {
@@ -276,7 +278,10 @@ export async function executeAction(step: StepDef, cfg: Record<string, unknown>,
         .split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
         .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#374151">${p.replace(/\n/g, '<br/>')}</p>`).join('')
       const ctaUrl = str('cta_url')
-      const category = str('category') === 'engagement' ? 'engagement' : 'transactional'
+      // Only a run started by a service event (application, interview, invite, offer, payment…) may send
+      // service mail; anything else is engagement mail — shared limit + engagement unsubscribes (AUTO-115).
+      const { workflowMailClass } = await import('@/lib/messaging/budget-rules')
+      const category = workflowMailClass(str('category'), env.eventType)
       const allowed = !T || (await tenantMayEmail(db, T, to!))
       const { isDedupeKind, sendAutomationEmail } = await import('./mailer')
       const dedupeKind = str('dedupe_kind')
@@ -292,7 +297,7 @@ export async function executeAction(step: StepDef, cfg: Record<string, unknown>,
         onceKey: `wf:${env.runId}:${info.key}`,
         dedupe,
         // Shared per-person budget (AUTO-094): engagement mail counts toward the cap, service mail doesn't.
-        budget: { class: category === 'engagement' ? 'engagement' : 'transactional', source: `workflow:${env.workflowId}` },
+        budget: { class: category, source: `workflow:${env.workflowId}` },
         ...(orgName ? { fromName: orgName } : {}),
         reason: T ? `You got this email from an automation set up by ${orgName?.replace(/ via CodeSpectra$/, '') || 'an organisation'} on CodeSpectra.` : 'You got this email from an automation set up by CodeSpectra.',
       })
@@ -313,11 +318,17 @@ export async function executeAction(step: StepDef, cfg: Record<string, unknown>,
       if (!rcpt) return { skipped: 'no WhatsApp consent' }
       await consumeQuotaOnce(T, 'whatsapp', `${env.runId}:${info.key}`)
       return sideEffectOnce(env, info, async () => {
-        // Shared per-person budget (AUTO-094): a workflow WhatsApp to a member counts toward their cap.
+        // Shared per-person budget (AUTO-094): a workflow WhatsApp counts toward the person's cap — a member
+        // by user id, a candidate by their linked account or e-mail (AUTO-094 re-check).
+        let to: { userId?: string | null; email?: string | null } = { userId }
+        if (!userId && candidateId) {
+          const c = await db.collection('ats_candidates').findOne({ id: candidateId, ...(T ? { tenant_id: T } : {}) }, { projection: { _id: 0, user_id: 1, email: 1 } }).catch(() => null)
+          to = { userId: typeof c?.user_id === 'string' ? c.user_id : null, email: typeof c?.email === 'string' ? c.email : null }
+        }
         let admit: { commit: () => Promise<void>; release: () => Promise<void> } | null = null
-        if (userId) {
+        if (to.userId || to.email) {
           const { admitMessage } = await import('@/lib/messaging/budget')
-          const a = await admitMessage({ userId }, { class: 'engagement', source: `workflow:${env.workflowId}` })
+          const a = await admitMessage(to, { class: 'engagement', source: `workflow:${env.workflowId}` })
           if (!a.ok) return { skipped: 'recipient reached the message limit' }
           admit = a
         }

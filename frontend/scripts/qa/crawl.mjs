@@ -16,6 +16,8 @@
  *     critical per page (@axe-core/playwright). Reported; with
  *     --axe-gate critical (CI, SEO-039) critical violations fail --strict,
  *     --axe-gate serious also fails on serious ones (once that backlog is zero).
+ *     SEO-056: extra comma-separated rule ids also gate at serious impact, e.g.
+ *     --axe-gate critical,color-contrast (CI) fails on any serious contrast issue.
  *
  * Usage (app already running). Against `next dev` use http://localhost:<port>,
  * not 127.0.0.1: Next blocks dev assets for other origins and the page never hydrates.
@@ -47,7 +49,11 @@ const STRICT = Boolean(arg('strict', false))
 const AXE = Boolean(arg('axe', false))
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 /** SEO-039: which axe impacts fail --strict: 'critical' or 'serious' (= serious + critical). Off by default. */
-const AXE_GATE = String(arg('axe-gate', '') || '')
+const AXE_GATE_PARTS = String(arg('axe-gate', '') || '').split(',').map((x) => x.trim()).filter(Boolean)
+const AXE_GATE = AXE_GATE_PARTS.includes('serious') ? 'serious' : AXE_GATE_PARTS.includes('critical') ? 'critical' : ''
+/** SEO-056: rule ids that fail at serious impact even when the impact gate is 'critical'. */
+const AXE_GATE_RULES = new Set(AXE_GATE_PARTS.filter((x) => x !== 'serious' && x !== 'critical'))
+const axeGates = (v) => v.impact === 'critical' ? Boolean(AXE_GATE) || AXE_GATE_RULES.has(v.id) : AXE_GATE === 'serious' || AXE_GATE_RULES.has(v.id)
 const NAV_TIMEOUT = Number(arg('timeout', 90_000))
 /** --paths /a,/b crawls only these (plus --discover to follow their links). */
 const ONLY = arg('paths', null)
@@ -366,7 +372,7 @@ async function main() {
   console.log(`Positive tabindex pages: ${s.positiveTabindexPages}  pages with invisible focus stops: ${s.invisibleFocusPages}  skip link not first: ${s.skipLinkMissing.length}`)
 
   if (AXE) {
-    console.log(`axe-core (serious/critical, ${AXE_GATE ? `gating on ${AXE_GATE}` : 'not gating'}): ${s.axeCritical} critical + ${s.axeSerious} serious on ${s.axePages} pages`)
+    console.log(`axe-core (serious/critical, ${AXE_GATE_PARTS.length ? `gating on ${AXE_GATE_PARTS.join(', ')}` : 'not gating'}): ${s.axeCritical} critical + ${s.axeSerious} serious on ${s.axePages} pages`)
     for (const [rule, n] of Object.entries(s.axeByRule).sort((a, b) => b[1] - a[1])) console.log(`  ${rule}: ${n} page(s)`)
     for (const [p, e] of pages) for (const v of (e.axe || []).slice(0, 3)) console.log(`  ${p} [${v.impact}] ${v.id} × ${v.nodes} ${v.targets[0] ?? ''}`)
     if (process.env.GITHUB_ACTIONS && s.axePages) console.log(`::warning title=axe-core::${s.axeCritical} critical + ${s.axeSerious} serious accessibility violations on ${s.axePages} pages (see qa-crawl-report.json)`)
@@ -374,7 +380,7 @@ async function main() {
 
   if (OUT) writeFileSync(OUT, JSON.stringify(report, null, 2))
 
-  const axeGating = !AXE ? 0 : AXE_GATE === 'critical' ? s.axeCritical : AXE_GATE === 'serious' ? s.axeCritical + s.axeSerious : 0
+  const axeGating = !AXE ? 0 : pages.reduce((n, [, e]) => n + (e.axe || []).filter(axeGates).length, 0)
   const gating = WIDTHS.reduce((n, w) => n + s.overflowPages[w], 0) + s.brokenLinks + s.titleIssues + s.positiveTabindexPages + s.serverErrors.length + s.navErrors.length + axeGating
   if (STRICT && (gating > 0 || serverDown || s.unverifiedLinks > 0)) {
     // Surface gating findings as pull request annotations (readable without the raw log/artifact).
@@ -387,7 +393,7 @@ async function main() {
       for (const e of [...s.serverErrors, ...s.navErrors].slice(0, 10)) ann(`page error ${e.page} ${e.status ?? e.error}`)
       for (const t of titleIssues.slice(0, 10)) ann(`title ${t.issue}: ${t.title ?? t.page}${t.pages ? ' on ' + t.pages.join(', ') : ''}`)
       if (s.positiveTabindexPages) ann(`${s.positiveTabindexPages} pages use a positive tabindex`)
-      if (axeGating) for (const [p, e] of pages) for (const v of (e.axe || []).filter((x) => x.impact === 'critical' || AXE_GATE === 'serious').slice(0, 3)) ann(`axe ${v.impact} ${v.id} on ${p}: ${v.help} (${v.targets[0] ?? ''})`)
+      if (axeGating) for (const [p, e] of pages) for (const v of (e.axe || []).filter(axeGates).slice(0, 3)) ann(`axe ${v.impact} ${v.id} on ${p}: ${v.help} (${v.targets[0] ?? ''})`)
     }
     console.error(`\nQA crawl failed: ${gating} gating finding(s).`)
     process.exit(1)

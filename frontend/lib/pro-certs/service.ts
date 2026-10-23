@@ -715,7 +715,10 @@ export async function runProCertSweep(now = new Date()): Promise<{ finalized: nu
     const { notifyExpirySoon } = await import('./notify')
     for (const c of soon) {
       const claimed = await (await credentials()).updateOne({ id: c.id, reminder_sent_at: null }, { $set: { reminder_sent_at: now.toISOString() } })
-      if (claimed.modifiedCount === 1) { await notifyExpirySoon(c).catch(() => null); out.reminded++ }
+      if (claimed.modifiedCount !== 1) continue
+      // Held by the shared message limit (or failed): unclaim so the next daily run tries again (CORE-052).
+      if (await notifyExpirySoon(c).catch(() => false)) out.reminded++
+      else await (await credentials()).updateOne({ id: c.id, reminder_sent_at: now.toISOString() }, { $set: { reminder_sent_at: null } }).catch(() => {})
     }
   }
   return out

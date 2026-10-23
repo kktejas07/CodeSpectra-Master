@@ -12,7 +12,7 @@ import { sendAutomationEmail } from '../mailer'
 import { withBudget } from '@/lib/messaging/budget'
 import { claimOnce, releaseClaim } from '../store'
 import { configValue, getSystemSettings } from '../settings'
-import { hoursLeftLabel, reminderWindow } from './rules'
+import { hoursLeftLabel, hoursLeftParts, reminderWindow } from './rules'
 import type { SystemAutomation } from './types'
 
 type Doc = Record<string, unknown>
@@ -95,6 +95,11 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
   for (const m of moments) {
     const users = await m.userIds()
     const left = hoursLeftLabel(m.at, now)
+    // SEO-054: the same duration and copy in the recipient's language (email + bell).
+    const lp = hoursLeftParts(m.at, now)
+    const leftMail = { t: `auto.left.${lp.unit}`, params: { count: lp.count } }
+    const leftNote = { t: `time.left.${lp.unit}`, params: { count: lp.count } }
+    const atLabel = `${new Date(m.at).toISOString().slice(0, 16).replace('T', ' ')} UTC`
     for (const uid of users) {
       if (Date.now() - started > budgetMs) return { moments: moments.length, reminders }
       const remKey = `evrem:${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}:${uid}`
@@ -104,7 +109,7 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
       const u = (await db.collection('user').findOne({ id: uid }, { projection: { email: 1, name: 1, fullName: 1 } })) as Doc | null
       // One message over email + bell + WhatsApp through the shared per-person budget (AUTO-094).
       const outcome = await withBudget({ userId: uid, email: typeof u?.email === 'string' ? u.email : null }, { class: 'deadline', topic: 'event-reminder', object: `${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}`, source: 'event-reminders' }, async () => {
-      const n = await notify({ budget: false, user_id: uid, type: starting ? 'hackathon.started' : 'hackathon.ending_soon', title, message: starting ? 'Get your team ready.' : 'Submit your work before the deadline.', title_i18n: { key: starting ? 'event.starts.title' : 'event.closes.title', params: { name: m.name, left } }, message_i18n: { key: starting ? 'event.starts.message' : 'event.closes.message' }, link: m.url.replace(getAppOrigin(), ''), icon: 'clock', skip_push: m.window === '24h', urgent: m.window === '1h' })
+      const n = await notify({ budget: false, user_id: uid, type: starting ? 'hackathon.started' : 'hackathon.ending_soon', title, message: starting ? 'Get your team ready.' : 'Submit your work before the deadline.', title_i18n: { key: starting ? 'event.starts.title' : 'event.closes.title', params: { name: m.name, left: leftNote } }, message_i18n: { key: starting ? 'event.starts.message' : 'event.closes.message' }, link: m.url.replace(getAppOrigin(), ''), icon: 'clock', skip_push: m.window === '24h', urgent: m.window === '1h' })
       let mailed = false
       if (u?.email) {
         mailed = ['sent', 'deferred', 'queued'].includes(await sendAutomationEmail({
@@ -116,6 +121,13 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
             : `Hi ${String(u.fullName || u.name || 'there')},\n\nSubmissions for ${m.name} close in ${left}. Submit what you have — you can still improve it until the deadline.`,
           cta: { label: starting ? 'Open the event' : 'Submit now', url: m.url },
           reason: `You got this email because you registered for ${m.name}.`,
+          i18n: {
+            subject: { key: starting ? 'auto.event.startsSubject' : 'auto.event.closesSubject', params: { name: m.name, left: leftMail } },
+            heading: { key: starting ? 'auto.event.startsHeading' : 'auto.event.closesHeading', params: { name: m.name } },
+            body: [u.fullName || u.name ? { key: 'auto.hi', params: { name: String(u.fullName || u.name) } } : { key: 'auto.hiNoName' }, { key: starting ? 'auto.event.startsBody' : 'auto.event.closesBody', params: { name: m.name, left: leftMail, at: atLabel } }],
+            cta: { key: starting ? 'auto.event.startsCta' : 'auto.event.closesCta' },
+            reason: { key: 'auto.event.reason', params: { name: m.name } },
+          },
         }))
       }
       if (m.window === '1h' && settings.config.wa_template_event) {

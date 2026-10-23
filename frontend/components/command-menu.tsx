@@ -34,6 +34,7 @@ import {
   isJudge,
   type UserRole,
 } from '@/lib/rbac'
+import { useT } from '@/lib/i18n/client'
 
 type CommandMenuProps = {
   fullWidth?: boolean
@@ -128,6 +129,7 @@ export function CommandMenu({
   allowedRoutes,
   deniedRoutes,
 }: CommandMenuProps) {
+  const { t } = useT()
   const router = useRouter()
   const [open, setOpen] = useState(false)
 
@@ -231,9 +233,9 @@ export function CommandMenu({
   return (
     <>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search pages and commands..." />
+        <CommandInput placeholder={t('common.cmdPlaceholder')} />
         <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandEmpty>{t('common.cmdEmpty')}</CommandEmpty>
           <CommandGroup heading="Navigation">
             {commands.map((command) => (
               <CommandItem
@@ -253,7 +255,7 @@ export function CommandMenu({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Search (Ctrl or Command + K)"
+        aria-label={t('common.cmdOpenAria')}
         className={cn(
           'inline-flex items-center gap-2 text-sm rounded-lg border border-border/40 bg-background/90 hover:bg-muted/80 transition-colors group text-muted-foreground',
           fullWidth ? 'w-full justify-between px-3 py-2.5' : 'px-3 py-2',
@@ -269,7 +271,7 @@ export function CommandMenu({
             fullWidth && compact && 'lg:hidden'
           )}
         >
-          Search…
+          {t('common.cmdSearch')}
         </span>
         <span
           className={cn(

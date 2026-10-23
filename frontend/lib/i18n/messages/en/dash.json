@@ -670,5 +670,11 @@
   "digestCategory:codeathon": "Coding round",
   "digestCategory:news": "Tech news",
   "digestCategory:learn": "Learn",
-  "digestCategory:platform": "New on CodeSpectra"
+  "digestCategory:platform": "New on CodeSpectra",
+  "tourWelcomeHomeTitle": "Your developer home",
+  "tourWelcomeHomeBody": "Your command center: track XP and streaks here, then jump into practice, scans, or events below.",
+  "tourWelcomeArenaTitle": "Practice arena",
+  "tourWelcomeArenaBody": "Challenge yourself with coding problems and interview questions. Track your progress and compete with peers.",
+  "tourWelcomeScannerTitle": "Code scanner",
+  "tourWelcomeScannerBody": "AI-powered code analysis that identifies issues, suggests improvements, and provides security insights."
 }

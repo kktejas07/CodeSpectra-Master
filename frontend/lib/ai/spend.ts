@@ -11,7 +11,11 @@ export interface AiCostSettings {
   /** Admin price overrides (replace/extend the seed price book). */
   prices: ModelPrice[]
   unknown: UnknownPrice
-  /** Platform-wide monthly AI budget in USD; 0 = no budget (no alerts, no stop). */
+  /**
+   * Platform-wide monthly AI budget in USD; 0 = no budget (no alerts, no stop —
+   * Admin → AI usage then shows a warning). SEC-042: ships with a conservative
+   * default and the hard stop on, so a fresh install has a ceiling.
+   */
   monthly_budget_usd: number
   /** At 100% of the budget, refuse AI calls from non-critical features. */
   hard_stop: boolean
@@ -39,11 +43,14 @@ export const DEFAULT_NON_CRITICAL = [
   'assistant-*',
 ]
 
+/** SEC-042: default platform-wide monthly AI ceiling (USD); the owner changes it in Admin → AI usage. */
+export const DEFAULT_MONTHLY_BUDGET_USD = 100
+
 export const DEFAULT_AI_COST_SETTINGS: AiCostSettings = {
   prices: [],
   unknown: { inputPer1M: 1, outputPer1M: 4, perMinute: 0.01, perImage: 0.08 },
-  monthly_budget_usd: 0,
-  hard_stop: false,
+  monthly_budget_usd: DEFAULT_MONTHLY_BUDGET_USD,
+  hard_stop: true,
   non_critical_features: DEFAULT_NON_CRITICAL,
   usd_inr_rate: 84,
   usd_inr_rate_updated_at: null,
@@ -74,8 +81,8 @@ export function mergeAiCostSettings(raw: unknown): AiCostSettings {
   return {
     prices: (v.prices ?? []).map(cleanPrice).filter((p): p is ModelPrice => !!p),
     unknown: v.unknown ?? DEFAULT_AI_COST_SETTINGS.unknown,
-    monthly_budget_usd: v.monthly_budget_usd ?? 0,
-    hard_stop: v.hard_stop ?? false,
+    monthly_budget_usd: v.monthly_budget_usd ?? DEFAULT_AI_COST_SETTINGS.monthly_budget_usd,
+    hard_stop: v.hard_stop ?? DEFAULT_AI_COST_SETTINGS.hard_stop,
     non_critical_features: v.non_critical_features ?? DEFAULT_NON_CRITICAL,
     usd_inr_rate: v.usd_inr_rate ?? DEFAULT_AI_COST_SETTINGS.usd_inr_rate,
     usd_inr_rate_updated_at: at,
@@ -83,6 +90,11 @@ export function mergeAiCostSettings(raw: unknown): AiCostSettings {
 }
 
 export const bookFor = (s: Pick<AiCostSettings, 'prices' | 'unknown'>): PriceBook => mergePriceBook({ prices: s.prices, unknown: s.unknown })
+
+/** SEC-042: no platform-wide ceiling (budget 0, or no hard stop) — Admin → AI usage warns. Pure. */
+export function noPlatformAiCeiling(s: Pick<AiCostSettings, 'monthly_budget_usd' | 'hard_stop'>): boolean {
+  return !(s.monthly_budget_usd > 0) || !s.hard_stop
+}
 
 // ─── Features ───────────────────────────────────────────────────────────────
 

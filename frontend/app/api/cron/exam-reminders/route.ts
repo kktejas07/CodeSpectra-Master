@@ -31,7 +31,11 @@ async function postImpl(req: NextRequest) {
         status: { $in: ['pending', 'active'] },
         expires_at: { $gt: now.toISOString(), $lte: soon.toISOString() },
         reminded_at: { $exists: false },
+        // Held by the shared limit in the last 30 min (an extra run): skip, so held invites can't crowd out the rest (AUTO-118).
+        $or: [{ reminder_held_at: { $exists: false } }, { reminder_held_at: { $lt: new Date(now.getTime() - 30 * 60_000).toISOString() } }],
       })
+      // Closest deadline first.
+      .sort({ expires_at: 1 })
       .limit(200)
       .toArray()
 
@@ -97,8 +101,8 @@ async function postImpl(req: NextRequest) {
       else {
         if (outcome === 'capped') capped++
         else failed++
-        // Let the next run retry a reminder that never went out.
-        await db.collection('candidate_invites').updateOne({ id: invite.id }, { $unset: { reminded_at: '' }, $inc: { reminder_count: -1 }, $pull: { reminder_steps: '24h' } } as never).catch(() => {})
+        // Let the next run retry a reminder that never went out (a held one on a later run).
+        await db.collection('candidate_invites').updateOne({ id: invite.id }, { $unset: { reminded_at: '' }, $inc: { reminder_count: -1 }, $pull: { reminder_steps: '24h' }, ...(outcome === 'capped' ? { $set: { reminder_held_at: now.toISOString() } } : {}) } as never).catch(() => {})
       }
     }
 

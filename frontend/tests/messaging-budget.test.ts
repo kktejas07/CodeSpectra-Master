@@ -3,7 +3,7 @@
  * and the pure rules behind AUTO-092 / 093 / 096 / 098 / 100 / 103.
  */
 import { describe, expect, it } from 'vitest'
-import { budgetAllows, classForMailCategory, classPriority, isCapped, isoWeekKey, messageDedupeKey, messageDedupePrefix, MESSAGE_CLASSES } from '@/lib/messaging/budget-rules'
+import { alreadyCounted, budgetAllows, classForMailCategory, classPriority, dunningBudgetObject, heldRetryAt, isCapped, isoWeekKey, isServiceEvent, messageDedupeKey, messageDedupePrefix, MESSAGE_CLASSES, workflowMailClass } from '@/lib/messaging/budget-rules'
 import { autoRenews, cohortRisk, followUpTooOld, nextSourceHealth, sourceHealthAction } from '@/lib/automation/nudges/rules'
 import { needsExpiryReminder } from '@/lib/automation/system/rules'
 import { reminderTopic } from '@/lib/assistants/revenue/signals'
@@ -16,10 +16,10 @@ const at = (ms: number) => new Date(now.getTime() + ms).toISOString()
 const caps = { daily: 2, weekly: 6 }
 
 describe('message classes', () => {
-  it('receipts, security, payment and legal notices bypass the cap; nudges and digests are capped', () => {
-    for (const c of ['transactional', 'security', 'payment', 'legal'] as const) expect(isCapped(c)).toBe(false)
+  it('receipts, security, payment, legal and subscribed messages bypass the cap; nudges and digests are capped', () => {
+    for (const c of ['transactional', 'security', 'payment', 'legal', 'subscribed'] as const) expect(isCapped(c)).toBe(false)
     for (const c of ['engagement', 'marketing', 'digest', 'deadline'] as const) expect(isCapped(c)).toBe(true)
-    expect(MESSAGE_CLASSES).toHaveLength(8)
+    expect(MESSAGE_CLASSES).toHaveLength(9)
   })
   it('only deadline reminders get the extra daily slot', () => {
     expect(classPriority('deadline')).toBe('high')
@@ -28,13 +28,16 @@ describe('message classes', () => {
     expect(budgetAllows('engagement', two, now, caps)).toEqual({ ok: false, reason: 'daily_cap' })
     expect(budgetAllows('marketing', two, now, caps).ok).toBe(false)
     expect(budgetAllows('deadline', two, now, caps).ok).toBe(true)
-    expect(budgetAllows('deadline', [...two, { at: at(-3 * H) }], now, caps).ok).toBe(false)
+    // A second deadline reminder the same day still fits the +1 slot only.
+    const withDeadline = [{ at: at(-H), class: 'deadline' }, { at: at(-2 * H), class: 'engagement' }]
+    expect(budgetAllows('deadline', withDeadline, now, caps).ok).toBe(true)
+    expect(budgetAllows('deadline', [...withDeadline, { at: at(-3 * H), class: 'engagement' }], now, caps).ok).toBe(false)
   })
   it('uncapped classes always pass, even over the weekly cap', () => {
     const week = Array.from({ length: 10 }, (_, i) => ({ at: at(-(i + 1) * H) }))
     expect(budgetAllows('payment', week, now, caps).ok).toBe(true)
     expect(budgetAllows('legal', week, now, caps).ok).toBe(true)
-    expect(budgetAllows('deadline', week, now, caps)).toEqual({ ok: false, reason: 'weekly_cap' })
+    expect(budgetAllows('subscribed', week, now, caps).ok).toBe(true)
   })
   it('maps automation email categories', () => {
     expect(classForMailCategory('engagement')).toBe('engagement')
@@ -44,6 +47,66 @@ describe('message classes', () => {
     expect(classForMailCategory('security')).toBe('security')
     expect(classForMailCategory('hiring')).toBe('transactional')
     expect(classForMailCategory('assessment')).toBe('transactional')
+  })
+})
+
+describe('opted-in schedules and deadlines (AUTO-108 / CORE-050)', () => {
+  const daily = (days: number, cls = 'engagement') => Array.from({ length: days }, (_, i) => ({ at: at(-(i * D + H)), class: cls }))
+  it('a daily message the person chose is never held, even after a full week of them', () => {
+    // WhatsApp practice + study-plan reminder + daily digest: 3 a day for 7 days.
+    for (let day = 0; day < 7; day++) for (let n = 0; n < 3; n++) expect(budgetAllows('subscribed', daily(day * 3), now, caps).ok).toBe(true)
+  })
+  it('marketing volume never blocks the first deadline reminder of the day', () => {
+    const week = daily(6, 'marketing') // weekly cap of 6 used up by tips / offers
+    expect(budgetAllows('engagement', week, now, caps)).toEqual({ ok: false, reason: 'weekly_cap' })
+    expect(budgetAllows('deadline', week, now, caps).ok).toBe(true)
+    const busyDay = [{ at: at(-H), class: 'marketing' }, { at: at(-2 * H), class: 'engagement' }, { at: at(-3 * H), class: 'engagement' }]
+    expect(budgetAllows('deadline', busyDay, now, caps).ok).toBe(true)
+  })
+  it('deadline reminders get one extra slot on the weekly limit too', () => {
+    const week = [{ at: at(-H), class: 'deadline' }, ...daily(5, 'engagement').map((h, i) => ({ ...h, at: at(-(i + 1) * D - H) }))]
+    expect(week).toHaveLength(6)
+    expect(budgetAllows('deadline', week, now, caps).ok).toBe(true) // 6 < weekly 6 + 1
+    expect(budgetAllows('deadline', [...week, { at: at(-2 * H), class: 'engagement' }], now, caps)).toEqual({ ok: false, reason: 'weekly_cap' })
+  })
+})
+
+describe('one logical message, several channels (CORE-051)', () => {
+  it('the second channel of a counted message is not counted again', () => {
+    const h = [{ at: at(-H), class: 'digest', topic: 'weekly-digest', object: '2026-W43' }]
+    expect(alreadyCounted(h, 'weekly-digest', '2026-W43')).toBe(true)
+    expect(alreadyCounted(h, 'weekly-digest', '2026-W44')).toBe(false)
+    expect(alreadyCounted(h, null, '2026-W43')).toBe(false)
+  })
+})
+
+describe('held messages are retried (AUTO-109)', () => {
+  it('a held job waits 6 hours and gives up after 3 days', () => {
+    expect(heldRetryAt(at(-H), now)?.toISOString()).toBe(at(6 * H))
+    expect(heldRetryAt(at(-2 * D), now)).not.toBeNull()
+    expect(heldRetryAt(at(-3 * D), now)).toBeNull()
+    expect(heldRetryAt(undefined, now)?.toISOString()).toBe(at(6 * H))
+  })
+})
+
+describe('workflow email class (AUTO-115)', () => {
+  it('only service events may send transactional mail', () => {
+    expect(workflowMailClass('transactional', 'candidate.applied')).toBe('transactional')
+    expect(workflowMailClass('transactional', 'interview.scheduled')).toBe('transactional')
+    expect(workflowMailClass('transactional', 'assessment.invite.expiring')).toBe('transactional')
+    expect(workflowMailClass('transactional', 'user.inactive')).toBe('engagement')
+    expect(workflowMailClass('transactional', 'learn.post.published')).toBe('engagement')
+    expect(workflowMailClass('transactional', null)).toBe('engagement') // manual / schedule / webhook
+    expect(workflowMailClass('engagement', 'candidate.applied')).toBe('engagement')
+    expect(isServiceEvent('cohort.member_at_risk')).toBe(false)
+  })
+})
+
+describe('dunning vs the revenue assistant (AUTO-117)', () => {
+  it('ordinary steps share the assistant topic/day; the final notice has its own object', () => {
+    expect(dunningBudgetObject('sub_1', 'ep', { key: 'd3' }, now)).toBe('sub_1:2026-10-23')
+    expect(dunningBudgetObject('sub_1', 'ep', { key: 'd7', final: true }, now)).toBe('sub_1:final:ep')
+    expect(reminderTopic('payment:sub_1:2026-11-01', now)?.object).toBe(dunningBudgetObject('sub_1', 'ep', { key: 'd3' }, now))
   })
 })
 
@@ -81,6 +144,8 @@ describe('notification types (AUTO-105)', () => {
   it('engagement types are capped when sent with notify(); receipts are not listed', () => {
     expect(NOTIFICATION_BUDGET_CLASS['streak.saver']).toBe('engagement')
     expect(NOTIFICATION_BUDGET_CLASS['billing.upgrade_offer']).toBe('marketing')
+    expect(NOTIFICATION_BUDGET_CLASS.newsletter).toBe('marketing')
+    expect(NOTIFICATION_BUDGET_CLASS['study_plan.reminder']).toBe('subscribed')
     expect(NOTIFICATION_BUDGET_CLASS['billing.payment_success']).toBeUndefined()
     expect(NOTIFICATION_BUDGET_CLASS['auth.password_changed']).toBeUndefined()
   })

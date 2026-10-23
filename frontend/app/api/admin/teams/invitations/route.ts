@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, type APIUser } from '@/lib/route-auth'
+import { requireAdmin, isSuperAdminCaller, type APIUser } from '@/lib/route-auth'
 import { orgInvitations, tenants, users, nowIso } from '@/lib/db/admin'
 import { createOrgInvitation, checkSeatLimit } from '@/lib/org-invitations'
 import { resolveInviteRole } from '@/lib/org-invitations-core'
@@ -15,7 +15,7 @@ function parseEmail(s: unknown): string | null {
 
 /** Caller's organisation; a superadmin may target one with `tenantId`. */
 function tenantFor(user: APIUser, requested: unknown): string | null {
-  if (user.role === 'superadmin' && typeof requested === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(requested)) return requested
+  if (isSuperAdminCaller(user) && typeof requested === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(requested)) return requested
   return user.tenantId || null
 }
 

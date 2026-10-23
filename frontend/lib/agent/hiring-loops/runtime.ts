@@ -26,7 +26,7 @@ import { withUsageMeter } from '@/lib/ai/usage-meter'
 import { loopBudget, LOOP_FEATURE, loopWindow, STEP_TOOL, type LoopBudget, type LoopId, type LoopSettings, type RunItem, type RunStatus } from './types'
 import { getLoopSettings, disableLoop, startRun, saveRun, usageSoFar, claimManual, releaseManual, type RunDoc } from './store'
 import { hlLocale, hlt, type HlLocale } from './i18n'
-import { autoSentNote, orgSenderName, type AutoSendGrant } from './auto-send'
+import { autoSentNote, orgSenderName, ownerBlockReason, type AutoSendGrant, type OwnerBlock } from './auto-send'
 
 export interface LoopRunContext<L extends LoopId = LoopId> {
   loop: L
@@ -51,9 +51,28 @@ export interface LoopRunContext<L extends LoopId = LoopId> {
 
 export interface LoopRunSummary { ok: boolean; status: RunStatus; runId?: string; message: string; items: number }
 
-/** The owner as an agent caller, re-authorised from the account (never from stored settings alone). */
-async function ownerCaller(ownerId: string | null, tenantId: string): Promise<AgentCaller | null> {
-  if (!ownerId) return null
+/**
+ * AGT-049: does this admin still owe two-factor (locked out of admin tools)?
+ * Same answer as the admin API gate, including its fail-open on a settings
+ * read error (a DB blip must not switch every organisation's agents off).
+ */
+async function owesAdmin2fa(userId: string, role: string): Promise<boolean> {
+  try {
+    const { getAdmin2faState } = await import('@/lib/admin-2fa')
+    return (await getAdmin2faState(userId, role)).status === 'required'
+  } catch (e) {
+    logger.warn(`[hiring-agents] 2FA check failed: ${(e as Error)?.message}`)
+    return false
+  }
+}
+
+/**
+ * The owner as an agent caller, re-authorised from the account (never from
+ * stored settings alone). AGT-049: an owner who lost admin rights for the
+ * organisation, or who owes admin 2FA, cannot act — `block` says which.
+ */
+async function ownerCaller(ownerId: string | null, tenantId: string): Promise<{ caller: AgentCaller | null; block: OwnerBlock | null }> {
+  if (!ownerId) return { caller: null, block: null }
   try {
     const { loadAuthProfile, isTenantActive } = await import('@/lib/session')
     const { resolveAccount, profileTenantId } = await import('@/lib/auth-account')
@@ -62,12 +81,39 @@ async function ownerCaller(ownerId: string | null, tenantId: string): Promise<Ag
     const tenantActive = profile ? await isTenantActive(profileTenantId(profile)).catch(() => false) : null
     const resolved = resolveAccount(profile, { tenantActive })
     const check = creatorStillAuthorised(resolved, tenantId, profile?.email)
-    if (!check.ok || !resolved.ok) return null
+    const authorised = check.ok && resolved.ok
+    const block = ownerBlockReason({ authorised, twoFactorOwed: authorised && resolved.ok ? await owesAdmin2fa(ownerId, resolved.role) : false })
+    if (block || !check.ok || !resolved.ok) return { caller: null, block: block ?? 'owner' }
     const p = profile as { id?: string; name?: string; fullName?: string; email?: string }
-    return { userId: String(p.id || ownerId), role: resolved.role === 'superadmin' ? 'superadmin' : 'tenant_admin', tenantId, name: p.fullName || p.name, email: check.email }
+    return { caller: { userId: String(p.id || ownerId), role: resolved.role === 'superadmin' ? 'superadmin' : 'tenant_admin', tenantId, name: p.fullName || p.name, email: check.email }, block: null }
   } catch (e) {
     logger.warn(`[hiring-agents] owner check failed: ${(e as Error)?.message}`)
-    return null
+    return { caller: null, block: 'owner' }
+  }
+}
+
+/** AGT-049: tell the organisation's admins that a loop was paused (once per run window; the run row dedupes). */
+async function notifyLoopPaused(tenantId: string, loop: LoopId, reason: OwnerBlock): Promise<void> {
+  try {
+    const [{ getMongoDb }, { localeForUser }, { notify }] = await Promise.all([import('@/lib/mongodb'), import('@/lib/i18n/recipient'), import('@/lib/notifications')])
+    const admins = await (await getMongoDb()).collection('user')
+      .find({ role: 'tenant_admin', $or: [{ tenantId }, { organizationId: tenantId }] }, { projection: { _id: 1, id: 1 } })
+      .limit(20).toArray()
+    for (const a of admins) {
+      const uid = String(a.id || a._id)
+      const locale = hlLocale(await localeForUser(uid).catch(() => 'en'))
+      const agent = hlt(locale, `loop.${loop}.name`)
+      await notify({
+        user_id: uid,
+        type: 'system.alert',
+        title: hlt(locale, 'notify.paused.title', { agent }),
+        message: hlt(locale, `notify.paused.${reason}`, { agent }),
+        link: '/dashboard/admin/hiring-agents',
+        icon: 'briefcase',
+      } as never).catch(() => null)
+    }
+  } catch (e) {
+    logger.warn(`[hiring-agents] pause notice failed: ${(e as Error)?.message?.slice(0, 200)}`)
   }
 }
 
@@ -75,7 +121,7 @@ async function ownerCaller(ownerId: string | null, tenantId: string): Promise<Ag
  * SEC-036: the admin who turned an auto-send step on may still do so — an
  * active superadmin, or still the owner (and an admin) of this organisation.
  */
-async function autoSendEnablerValid(userId: string, tenantId: string): Promise<boolean> {
+export async function autoSendEnablerValid(userId: string, tenantId: string): Promise<boolean> {
   try {
     const { loadAuthProfile, isTenantActive } = await import('@/lib/session')
     const { resolveAccount, profileTenantId } = await import('@/lib/auth-account')
@@ -84,6 +130,8 @@ async function autoSendEnablerValid(userId: string, tenantId: string): Promise<b
     const tenantActive = await isTenantActive(profileTenantId(profile)).catch(() => false)
     const acc = resolveAccount(profile, { tenantActive })
     if (!acc.ok) return false
+    // AGT-049: an enabler who owes admin 2FA is locked out of admin tools — no auto-send in their name.
+    if ((acc.role === 'superadmin' || acc.role === 'tenant_admin') && (await owesAdmin2fa(userId, acc.role))) return false
     if (acc.role === 'superadmin') return true
     if (acc.role !== 'tenant_admin' || acc.tenantId !== tenantId) return false
     const { orgOwnerId } = await import('@/lib/tenant-owner')
@@ -126,15 +174,24 @@ export async function runLoop<L extends LoopId>(
   const settings = loaded.settings
   if (opts.trigger === 'cron' && !settings.enabled) return { ok: true, status: 'skipped', message: 'switched off', items: 0 }
 
-  const caller: AgentCaller | null = opts.trigger === 'manual' ? (opts.by ? { ...opts.by, tenantId } : null) : await ownerCaller(loaded.owner_id, tenantId)
+  const owner = opts.trigger === 'manual' ? { caller: opts.by ? { ...opts.by, tenantId } : null, block: null } : await ownerCaller(loaded.owner_id, tenantId)
+  const caller: AgentCaller | null = owner.caller
   const runKey = opts.trigger === 'cron' ? `${tenantId}:${loop}:${loopWindow(loop, now)}` : null
 
   if (!caller && !(opts.allowNoOwner && !loaded.owner_id)) {
-    // Owner lost access (or never existed for a loop that needs one): stop it, log once per window.
+    // Owner lost access or owes admin 2FA (AGT-049), or never existed for a loop that
+    // needs one: stop it, log once per window, and tell the organisation's admins.
+    const reason: OwnerBlock = owner.block ?? 'owner'
     const run = await startRun({ run_key: runKey, tenant_id: tenantId, loop, trigger: opts.trigger, by: null, now })
-    if (run) await saveRun(run.id, { status: 'blocked', finished_at: new Date().toISOString(), message: 'owner' })
-    if (loaded.owner_id) await disableLoop(tenantId, loop)
-    return { ok: false, status: 'blocked', runId: run?.id, message: 'The admin who switched this agent on no longer has access.', items: 0 }
+    if (run) await saveRun(run.id, { status: 'blocked', finished_at: new Date().toISOString(), message: reason })
+    if (loaded.owner_id) {
+      await disableLoop(tenantId, loop)
+      if (run && settings.enabled) await notifyLoopPaused(tenantId, loop, reason)
+    }
+    const message = reason === 'owner_2fa'
+      ? 'The admin who switched this agent on has to set up two-factor authentication first.'
+      : 'The admin who switched this agent on no longer has access.'
+    return { ok: false, status: 'blocked', runId: run?.id, message, items: 0 }
   }
 
   const usage = await usageSoFar(tenantId, loop, now)

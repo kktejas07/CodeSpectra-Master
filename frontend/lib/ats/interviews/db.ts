@@ -46,6 +46,8 @@ export interface AtsInterviewDoc extends AtsInterview {
   job_title?: string
   stage_name?: string
   last_error?: string | null
+  /** how the self-schedule invite reached the candidate (CORE-053) */
+  invite_delivery?: { email: 'sent' | 'unsubscribed' | 'failed' | 'no_email'; whatsapp: boolean; at: string } | null
   created_by: string
 }
 
@@ -116,9 +118,9 @@ export async function interviewSettings(): Promise<Collection<InterviewSettingsD
 /** Strip server bookkeeping. Host links only for people who run the meeting. */
 export function publicInterview(doc: AtsInterviewDoc, opts: { showHost: boolean }) {
   const {
-    _id, sent, token_nonce, entry_key, provider_account, last_error, host_url, ...rest
+    _id, sent, token_nonce, entry_key, provider_account, last_error, host_url, invite_delivery, ...rest
   } = doc as AtsInterviewDoc & { _id?: unknown }
-  void _id; void sent; void token_nonce; void entry_key; void provider_account
+  void _id; void sent; void token_nonce; void entry_key; void provider_account; void invite_delivery // schedulers get it via the detail route
   return { ...rest, host_url: opts.showHost ? host_url ?? null : null, last_error: opts.showHost ? last_error ?? null : null }
 }
 export type PublicInterview = ReturnType<typeof publicInterview>

@@ -84,7 +84,8 @@ function cleanPath(path: string): string {
 export function isLocalizedPath(path: string): boolean {
   const p = cleanPath(path)
   if ((LOCALIZED_PATHS as readonly string[]).includes(p)) return true
-  return LOCALIZED_PREFIXES.some((pre) => p.startsWith(pre) && /^[a-z0-9-]+$/.test(p.slice(pre.length)))
+  // SEO-059: feed event ids are `ef_<hex>`, so underscores are allowed in the detail segment.
+  return LOCALIZED_PREFIXES.some((pre) => p.startsWith(pre) && /^[a-z0-9_-]+$/.test(p.slice(pre.length)))
 }
 
 /** "/hi/pricing?x=1" → { locale: 'hi', path: '/pricing?x=1' }; unprefixed → English. */

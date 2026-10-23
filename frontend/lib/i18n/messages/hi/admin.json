@@ -1285,6 +1285,7 @@
   "aiCost.budgetDescription": "सुपरएडमिन को बजट के 50, 80 और 100% पर ऐप में और ईमेल से अलर्ट मिलता है।",
   "aiCost.budgetLabel": "हर महीने का बजट (USD)",
   "aiCost.budgetHint": "0 रखने पर बजट बंद रहता है",
+  "aiCost.noCeilingWarning": "पूरे प्लेटफ़ॉर्म पर AI खर्च की कोई ऊपरी सीमा नहीं है: 0 से ज़्यादा मासिक बजट रखें और हार्ड स्टॉप चालू करें।",
   "aiCost.rateLabel": "एक अमेरिकी डॉलर में रुपये",
   "aiCost.rateHint": "केवल INR में खर्च दिखाने के लिए",
   "aiCost.hardStop": "100% पर गैर-ज़रूरी फ़ीचर रोकें",
@@ -2190,5 +2191,17 @@
   "auditLogs.title": "ऑडिट लॉग",
   "auditLogs.refresh": "रीफ़्रेश करें",
   "auditLogs.loadFailed": "ऑडिट लॉग लोड नहीं हो सके",
-  "auditLogs.refreshFailed": "ऑडिट लॉग रीफ़्रेश नहीं हो सके — आख़िरी लोड की गई एंट्री दिखा रहे हैं।"
+  "auditLogs.refreshFailed": "ऑडिट लॉग रीफ़्रेश नहीं हो सके — आख़िरी लोड की गई एंट्री दिखा रहे हैं।",
+  "system.tourHeaderTitle": "प्लेटफ़ॉर्म संचालन की झलक",
+  "system.tourHeaderBody": "सर्वर की लाइव स्थिति, प्लेटफ़ॉर्म मेट्रिक्स और ऑडिट लॉग — सब एक जगह।",
+  "system.tourHealthTitle": "सर्वर की सेहत पर नज़र रखें",
+  "system.tourHealthBody": "CPU, RAM, डिस्क और कंटेनर देखें; Maintenance में कैश रीफ़्रेश या साफ़ करें।",
+  "system.tourRedisTitle": "Redis लिमिट जाँचें",
+  "system.tourRedisBody": "थ्रॉटलिंग की गड़बड़ी खोजने से पहले Redis मोड, लेटेंसी और लाइव रेट-लिमिट काउंटर देख लें।",
+  "system.tourLinksTitle": "एडमिन सेक्शन पर जाएँ",
+  "system.tourLinksBody": "यूज़र और रोल, इनसाइट्स, प्लेटफ़ॉर्म सेटिंग्स या ऑडिट लॉग तुरंत खोलें।",
+  "system.tourVitalsTitle": "वेब वाइटल्स देखें",
+  "system.tourVitalsBody": "चुनी गई अवधि के LCP, INP और CLS के p75 स्कोर देखें; ताज़ा सैंपल के लिए रीफ़्रेश करें।",
+  "system.tourTrendsTitle": "फिर रुझान देखें",
+  "system.tourTrendsBody": "सुझाव: यूज़र की बढ़त और गतिविधि के रुझान यहाँ देखें, फिर नीचे ऑडिट लॉग जाँचें।"
 }

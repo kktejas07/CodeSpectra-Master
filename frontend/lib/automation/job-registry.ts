@@ -33,6 +33,7 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'grace-expiry', label: 'Payment grace expiry', group: 'Platform', everyMinutes: 1440 },
   { id: 'identity-media-purge', label: 'Identity photo retention', group: 'Platform', everyMinutes: 1440 },
   { id: 'interview-sim-retention', label: 'Mock-interview recording retention', group: 'Platform', everyMinutes: 1440 },
+  { id: 'automations-heavy', label: 'Slow automation sweeps (content freshness)', group: 'Content', everyMinutes: 1 },
   { id: 'learn', label: 'Learn hub (publish + drafts)', group: 'Content', everyMinutes: 1 },
   // Its own heartbeat (lib/learn/generate.ts): the daily AI draft, ok or error (AUTO-104).
   { id: 'learn-daily', label: 'Learn daily AI draft', group: 'Content', everyMinutes: 1440, optional: true },

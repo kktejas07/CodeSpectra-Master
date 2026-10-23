@@ -9,7 +9,8 @@
  * tooltip/renderer anymore — driver.js owns all tour UI.
  */
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react'
+import { useT } from '@/lib/i18n/client'
 import {
   startPageTour,
   autoPlayPageTour,
@@ -21,6 +22,7 @@ import {
   markTourSeen,
   isTourSeen as isSeen,
   getActiveTourId,
+  setTourLabels,
   type TourStep,
 } from '@/lib/tour-driver'
 
@@ -46,6 +48,18 @@ interface TourContextValue {
 const TourContext = createContext<TourContextValue | undefined>(undefined)
 
 export function TourProvider({ children }: { children: ReactNode }) {
+  // SEO-061: tour buttons in the active language. The provider sits above the
+  // per-segment I18nProvider; useT() reads the published locale there.
+  const { t } = useT()
+  useEffect(() => {
+    setTourLabels({
+      next: t('common.next'),
+      back: t('common.back'),
+      finish: t('common.tourFinish'),
+      progress: t('common.tourProgress', { current: '{{current}}', total: '{{total}}' }),
+      gotIt: t('common.tourGotIt'),
+    })
+  }, [t])
   const value = useMemo<TourContextValue>(
     () => ({
       isTourActive: false,

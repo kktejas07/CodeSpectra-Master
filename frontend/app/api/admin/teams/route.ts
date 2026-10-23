@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/route-auth'
+import { requireAdmin, isSuperAdminCaller } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { auditAdmin } from '@/lib/admin-audit'
@@ -121,11 +121,11 @@ export async function POST(request: NextRequest) {
 }
 
 /** Team the caller may manage: superadmin any, tenant_admin only their own organisation's. */
-async function manageableTeam(db: Awaited<ReturnType<typeof getMongoDb>>, id: string, user: { role: string; tenantId?: string | null }) {
+async function manageableTeam(db: Awaited<ReturnType<typeof getMongoDb>>, id: string, user: { role: string; tenantId?: string | null; adminTwoFactorRequired?: boolean }) {
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null
   const team = await db.collection('teams').findOne({ id })
   if (!team) return null
-  if (user.role !== 'superadmin' && (!user.tenantId || (team.tenant_id ?? team.tenantId) !== user.tenantId)) return null
+  if (!isSuperAdminCaller(user) && (!user.tenantId || (team.tenant_id ?? team.tenantId) !== user.tenantId)) return null
   return team
 }
 

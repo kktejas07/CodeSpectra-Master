@@ -33,6 +33,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -793,7 +794,7 @@ export function ChallengeEditor({
                           onChange={(e) => setGithubRepo(e.target.value)}
                           placeholder="https://github.com/username/repo"
                           className="h-8 text-xs font-mono"
-                          onKeyDown={(e) => e.key === 'Enter' && handleSubmitGithub()}
+                          onKeyDown={(e) => isSubmitEnter(e) && handleSubmitGithub()}
                         />
                         <Button
                           size="sm"

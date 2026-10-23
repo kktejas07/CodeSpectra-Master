@@ -63,7 +63,7 @@ export const nudgeStudentsTool = writeTool<NudgeArgs>({
     const drive = a.drive_id ? (await (await import('@/lib/campus/drives')).getDrive(staff, a.drive_id)).title : null
     const { nudgeStudents } = await import('@/lib/assistants/placement/service')
     const r = await nudgeStudents(staff, a.student_ids, a.kind, drive)
-    return { ok: true, message: `Nudged ${r.sent} student(s)${r.skipped ? `; ${r.skipped} were nudged recently` : ''}${r.not_joined ? `; ${r.not_joined} have not joined yet` : ''}.`, link: '/dashboard/placement', data: r }
+    return { ok: true, message: `Nudged ${r.sent} student(s)${r.skipped ? `; ${r.skipped} were nudged recently` : ''}${r.held ? `; ${r.held} held by the message limit (not counted as nudged — you can try them again later)` : ''}${r.not_joined ? `; ${r.not_joined} have not joined yet` : ''}.`, link: '/dashboard/placement', data: r }
   },
 })
 
@@ -159,7 +159,7 @@ export const sendUpgradeOfferTool = writeTool<UpgradeArgs>({
     const [{ getAssistantSettings }, { sendUpgradeOffer }] = await Promise.all([import('@/lib/assistants/store'), import('@/lib/assistants/revenue/service')])
     const r = await sendUpgradeOffer(a.org_id, a.signal_key, a.reason, (await getAssistantSettings('revenue')).cooldown_days)
     await adminAudit(ctx.caller.userId, 'assistant.revenue.upgrade', a.org_id, `Upgrade offer (${a.reason}) to ${r.sent}`)
-    return { ok: true, message: `Upgrade note sent to ${r.sent} admin(s).`, data: r }
+    return { ok: true, message: `Upgrade note sent to ${r.sent} admin(s).${r.held ? ` ${r.held} held by the message limit — it will be retried on the next daily run.` : ''}`, data: r }
   },
 })
 
@@ -184,7 +184,8 @@ export const sendWinbackOfferTool = writeTool<WinbackArgs>({
   async execute(a, ctx) {
     const [{ getAssistantSettings }, { sendWinbackOffer }] = await Promise.all([import('@/lib/assistants/store'), import('@/lib/assistants/revenue/service')])
     const r = await sendWinbackOffer(ctx.caller.userId, a.user_id, a.signal_key, a.percent_off, (await getAssistantSettings('revenue')).cooldown_days)
-    await adminAudit(ctx.caller.userId, 'assistant.revenue.winback', a.user_id, `Win-back coupon ${r.code} (${a.percent_off}%)`)
+    await adminAudit(ctx.caller.userId, 'assistant.revenue.winback', a.user_id, `Win-back coupon ${r.code} (${a.percent_off}%)${r.held ? ' held' : ''}`)
+    if (r.held) return { ok: true, message: `The user is at their message limit, so coupon ${r.code} is held — it will be created and sent on the next daily run (for up to 7 days).`, link: '/dashboard/admin/coupons', data: r }
     return { ok: true, message: `Coupon ${r.code} created and sent (valid until ${r.valid_until}).`, link: '/dashboard/admin/coupons', data: r }
   },
 })

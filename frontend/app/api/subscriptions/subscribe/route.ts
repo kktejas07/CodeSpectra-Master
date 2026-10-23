@@ -1,6 +1,6 @@
 /**
  * POST /api/subscriptions/subscribe — public.
- * Body: { email?, phone?, phone_country?, channels[], topics[], filters?, whatsapp_consent?, timezone?, source?, turnstileToken? }
+ * Body: { email?, phone?, phone_country?, channels[], topics[], filters?, whatsapp_consent?, timezone?, source?, locale?, turnstileToken? }
  * A signed-in user's own account email skips double opt-in; everything else is
  * confirmed by email link / WhatsApp YES before anything is sent.
  */
@@ -10,6 +10,8 @@ import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { getAPIUser } from '@/lib/route-auth'
 import { subscribe, getSubscriptionSettings } from '@/lib/subscriptions'
 import { captchaGate } from '@/lib/captcha/require'
+import { LOCALE_COOKIE, toLocale } from '@/lib/i18n/config'
+import { resolveLocale } from '@/lib/i18n/negotiate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -39,6 +41,8 @@ export async function POST(req: NextRequest) {
         whatsapp_consent: body.whatsapp_consent === true,
         timezone: typeof body.timezone === 'string' ? body.timezone : null,
         source: typeof body.source === 'string' ? body.source.replace(/[^a-z0-9_-]/gi, '').slice(0, 40) : 'web',
+        // SEO-054: the page language (sent by the form), else the visitor's cookie / browser language.
+        locale: toLocale(body.locale) ?? resolveLocale({ cookie: req.cookies.get(LOCALE_COOKIE)?.value, acceptLanguage: req.headers.get('accept-language') }),
       },
       { emailVerified: Boolean(user && email && user.email?.toLowerCase() === email) },
     )

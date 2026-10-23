@@ -186,6 +186,7 @@ async function provisionAccount(
     tenantId = t.id
     orgName = t.name || orgName
   }
+  // role-scope: the new account's role, not the caller's
   if (role === 'tenant_admin' && !tenantId) {
     return NextResponse.json({ error: 'An organization admin needs an organization.' }, { status: 400 })
   }
@@ -217,6 +218,7 @@ async function provisionAccount(
     let emailSent = false
     try {
       const { sendEmail } = await import('@/lib/send-email')
+      // role-scope: label for the new account's role
       const roleName = role === 'tenant_admin' ? 'Organization Admin' : role === 'superadmin' ? 'Superadmin' : role === 'judge' ? 'Judge' : 'Team Member'
       if (password) {
         const { emailTemplatesFor } = await import('@/lib/email-templates')

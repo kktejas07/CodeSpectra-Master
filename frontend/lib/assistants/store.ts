@@ -12,6 +12,9 @@
  *   assistant_counters  { id, n, expires_at } — daily AI calls, per-user question counts (TTL)
  *   assistant_marks     { key, assistant, at, expires_at } — "already did this" marks for
  *                       idempotent loops / cooldowns (unique key, TTL)
+ *   assistant_pending   { key, assistant, kind, args, attempts, next_at, expires_at } — confirmed
+ *                       sends held by the shared message limit, retried by the next loop run
+ *                       until delivered or expired (AGT-046 / CORE-052; unique key, TTL)
  */
 import 'server-only'
 import { createHash } from 'node:crypto'
@@ -126,6 +129,57 @@ export async function markOnce(assistant: AssistantId, key: string, ttlDays: num
     if ((e as { code?: number })?.code === 11000) return false
     throw e
   }
+}
+
+/** Undo a mark (the work it stood for did not happen, e.g. a message held by the limit). */
+export async function releaseMark(assistant: AssistantId, key: string): Promise<void> {
+  await (await marksCol()).deleteOne({ key: `${assistant}:${key}` })
+}
+
+// ─── Held sends (retry on the next run) ─────────────────────────────────────
+
+export interface PendingSend { key: string; assistant: AssistantId; kind: string; args: Record<string, unknown>; attempts: number; created_at: string; next_at: Date; expires_at: Date }
+const pendingCol = lazyCollection<PendingSend>('assistant_pending', (c) => Promise.all([
+  c.createIndex({ key: 1 }, { unique: true, name: 'assistant_pending_key' }),
+  c.createIndex({ assistant: 1, next_at: 1 }, { name: 'assistant_pending_due' }),
+  c.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0, name: 'assistant_pending_ttl' }),
+]))
+
+export const PENDING_MAX_DAYS = 7
+
+/** Pure: stop retrying a held send after PENDING_MAX_DAYS daily attempts or days (whichever first). */
+export function pendingGiveUp(attempts: number, createdAt: string, now: Date, maxDays = PENDING_MAX_DAYS): boolean {
+  const age = now.getTime() - Date.parse(createdAt)
+  return attempts >= maxDays || !(age < maxDays * DAY)
+}
+
+/** Store (or bump) a held send; ids and small args only — never message text or addresses. */
+export async function savePending(assistant: AssistantId, key: string, kind: string, args: Record<string, unknown>, now = new Date()): Promise<void> {
+  const k = `${assistant}:${key}`
+  await (await pendingCol()).updateOne(
+    { key: k },
+    { $set: { kind, args, next_at: new Date(now.getTime() + 20 * 3_600_000) }, $inc: { attempts: 1 }, $setOnInsert: { key: k, assistant, created_at: now.toISOString(), expires_at: new Date(now.getTime() + (PENDING_MAX_DAYS + 1) * DAY) } },
+    { upsert: true },
+  )
+}
+
+export async function clearPending(assistant: AssistantId, key: string): Promise<void> {
+  await (await pendingCol()).deleteOne({ key: `${assistant}:${key}` })
+}
+
+/** Held sends due a retry now (key returned without the assistant prefix). */
+export async function duePending(assistant: AssistantId, now = new Date(), limit = 50): Promise<PendingSend[]> {
+  const rows = await (await pendingCol()).find({ assistant, next_at: { $lte: now } }, { projection: { _id: 0 } }).sort({ next_at: 1 }).limit(limit).toArray()
+  const prefix = `${assistant}:`.length
+  return rows.map((r) => ({ ...r, key: r.key.slice(prefix) }))
+}
+
+/** Which of these keys (without prefix) have a held send waiting. */
+export async function pendingKeys(assistant: AssistantId, keys: readonly string[]): Promise<Set<string>> {
+  if (!keys.length) return new Set()
+  const rows = await (await pendingCol()).find({ key: { $in: keys.map((k) => `${assistant}:${k}`) } }, { projection: { _id: 0, key: 1 } }).toArray()
+  const prefix = `${assistant}:`.length
+  return new Set(rows.map((r) => r.key.slice(prefix)))
 }
 
 /** Keys (without the assistant prefix) still marked — pure cooldown filter input. */

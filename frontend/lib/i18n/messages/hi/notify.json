@@ -342,5 +342,20 @@
   "nudge.offer.expiredTitle": "ऑफ़र समाप्त: {job}",
   "nudge.offer.expiredMessage": "{candidate} ने समय-सीमा से पहले जवाब नहीं दिया। आवेदन फ़्लैग किया गया है; अगला कदम तय करें।",
   "nudge.bgv.title": "बैकग्राउंड चेक में देरी: {candidate}",
-  "nudge.bgv.message": "{vendor} पर {check} चेक अपेक्षित समय से {days} दिन आगे है। हमने वेंडर से नई स्थिति माँगी है।"
+  "nudge.bgv.message": "{vendor} पर {check} चेक अपेक्षित समय से {days} दिन आगे है। हमने वेंडर से नई स्थिति माँगी है।",
+  "interview.inviteNotSentTitle": "आमंत्रण ई-मेल नहीं भेजा गया",
+  "interview.inviteNotSentUnsubscribed": "{name} ने हायरिंग ई-मेल से अनसब्सक्राइब किया है, इसलिए उन्हें इंटरव्यू का समय चुनने का लिंक ई-मेल नहीं हुआ। लिंक कॉपी करके किसी और तरीके से भेजने के लिए इंटरव्यू खोलें।",
+  "interview.inviteNotSentUnsubscribedWa": "{name} ने हायरिंग ई-मेल से अनसब्सक्राइब किया है, इसलिए इंटरव्यू का समय चुनने का लिंक सिर्फ़ WhatsApp से गया। ज़रूरत हो तो लिंक कॉपी करने के लिए इंटरव्यू खोलें।",
+  "interview.inviteNotSentNoEmail": "{name} का कोई ई-मेल पता नहीं है, इसलिए उन्हें इंटरव्यू का समय चुनने का लिंक नहीं मिला। लिंक कॉपी करके किसी और तरीके से भेजने के लिए इंटरव्यू खोलें।",
+  "interview.inviteNotSentNoEmailWa": "{name} का कोई ई-मेल पता नहीं है, इसलिए इंटरव्यू का समय चुनने का लिंक सिर्फ़ WhatsApp से गया। ज़रूरत हो तो लिंक कॉपी करने के लिए इंटरव्यू खोलें।",
+  "interview.inviteNotSentFailed": "{name} को इंटरव्यू का समय चुनने के लिंक वाला ई-मेल नहीं भेजा जा सका। लिंक कॉपी करके किसी और तरीके से भेजने के लिए इंटरव्यू खोलें।",
+  "interview.inviteNotSentFailedWa": "{name} को इंटरव्यू का समय चुनने के लिंक वाला ई-मेल नहीं भेजा जा सका; यह WhatsApp से गया। ज़रूरत हो तो लिंक कॉपी करने के लिए इंटरव्यू खोलें।",
+  "time.left.minutes_one": "{count} मिनट",
+  "time.left.minutes_other": "{count} मिनट",
+  "time.left.hours_one": "{count} घंटे",
+  "time.left.hours_other": "{count} घंटे",
+  "hiring.nudge.title": "{job}: उम्मीदवार इंतज़ार में हैं",
+  "hiring.nudge.aJob": "एक जॉब",
+  "hiring.nudge.sla": "स्टेज की समय-सीमा के कारण {count} उम्मीदवार कल अपने-आप रिजेक्ट हो जाएँगे।",
+  "hiring.nudge.idle": "{count} उम्मीदवारों पर {days}+ दिनों से कोई प्रगति नहीं हुई है।"
 }

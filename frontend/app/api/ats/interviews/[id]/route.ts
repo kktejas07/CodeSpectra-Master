@@ -55,6 +55,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       } : null,
       job: job ? { id: job.id, title: job.title, stages: job.pipeline.map((s) => ({ id: s.id, name: s.name, type: s.type })) } : null,
       self_schedule_link: selfLink,
+      // CORE-053: when the "pick a time" e-mail didn't go out, the scheduler shares the link another way.
+      self_schedule_invite: selfLink && iv.invite_delivery ? { email: iv.invite_delivery.email, whatsapp: iv.invite_delivery.whatsapp } : null,
       me: {
         user_id: actor.userId,
         role: actor.role,

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { SkeletonCard, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 export default function RagAdminPage() {
   const gate = usePageGuard('superadmin')
@@ -128,7 +129,7 @@ export default function RagAdminPage() {
         <h2 className="mb-1 text-base font-semibold text-foreground">Try a search</h2>
         <p className="mb-4 text-sm text-muted-foreground">See what the AI would find for a question.</p>
         <div className="flex gap-2 mb-4">
-          <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search query..." aria-label="Search query" onKeyDown={e => e.key === 'Enter' && search()} />
+          <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search query..." aria-label="Search query" onKeyDown={e => isSubmitEnter(e) && search()} />
           <Button onClick={search} disabled={searching || !searchQuery.trim()} aria-label="Search">
             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </Button>

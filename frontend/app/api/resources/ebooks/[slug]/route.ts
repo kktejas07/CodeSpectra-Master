@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
+import { getAPIUser, requireSuperAdmin, isSuperAdminCaller } from '@/lib/route-auth'
 import { ebooksCol, nowIso, type EbookStatus } from '@/lib/db/ebooks'
 import { ensureEbookSeed } from '@/lib/ebooks-seed'
 import { buildEbookCoverPrompt, generateCoverImage } from '@/lib/ai-image'
@@ -19,7 +19,8 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const doc = await col.findOne({ slug: decodeURIComponent(slug) })
   if (!doc) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
-  if (doc.status !== 'published' && user.role !== 'superadmin') {
+  // SEC-029: drafts only for a superadmin who is not owing admin 2FA.
+  if (doc.status !== 'published' && !isSuperAdminCaller(user)) {
     return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   }
 
