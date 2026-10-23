@@ -142,7 +142,7 @@ describe('SEC-033 licence domains', () => {
     expect(licenceDomainProblem('in')).toBe('invalid')
     expect(licenceDomainProblem('vnrvjiet.ac.in')).toBeNull()
     expect(cleanLicenceDomains(['college.edu', 'gmail.com'])).toEqual({ ok: false, code: 'licence_domain_public_mail', domain: 'gmail.com' })
-    expect(cleanLicenceDomains(['College.edu', '@college.edu'])).toEqual({ ok: true, domains: ['college.edu'] })
+    expect(cleanLicenceDomains(['College.edu', '@college.edu', 'not a domain'])).toEqual({ ok: true, domains: ['college.edu'] })
   })
   it('only superadmin-approved or tenant-verified domains hand out seats', () => {
     expect(approvedLicenceDomains({ domains: ['a.edu', 'b.edu'], previouslyApproved: [], tenantVerified: [], bySuperadmin: true })).toEqual(['a.edu', 'b.edu'])

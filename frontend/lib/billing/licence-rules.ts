@@ -71,11 +71,13 @@ export function licenceDomainProblem(raw: unknown): LicenceDomainProblem | null 
   return null
 }
 
-/** Normalise a domain list for a licence; the first unusable one is reported. */
+/** Normalise a domain list for a licence: junk is dropped, the first free-mail / shared-suffix domain is reported. */
 export function cleanLicenceDomains(list: unknown[]): { ok: true; domains: string[] } | { ok: false; code: `licence_domain_${LicenceDomainProblem}`; domain: string } {
   const out: string[] = []
   for (const raw of list) {
     const problem = licenceDomainProblem(raw)
+    // A malformed entry (stray text) is dropped as before; a real but forbidden domain is an error.
+    if (problem === 'invalid') continue
     if (problem) return { ok: false, code: `licence_domain_${problem}`, domain: String(raw ?? '').trim().slice(0, 80) }
     const d = normDomain(raw)!
     if (!out.includes(d)) out.push(d)

@@ -68,8 +68,6 @@ const SEEDS = [
   '/bgv/qa-invalid-token', '/hr-form/qa-invalid-token', '/interview/join/qa-invalid-token',
   '/interview/schedule/qa-invalid-token', '/hiring-invite/qa-invalid-token', '/assessment/invite/qa-invalid-token',
   '/cert/verify/qa-invalid-token', '/hackathons/verify/qa-invalid-token',
-  // SEO-039: the public demo test (exam player chrome, CAD tools) gets the same checks.
-  '/assessment/demo/cad',
   '/qa-this-page-does-not-exist',
 ]
 /** Never crawl into the signed-in app, APIs or files. */
