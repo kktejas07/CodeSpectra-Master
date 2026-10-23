@@ -123,6 +123,7 @@ import {
   Store,
   ShoppingBag,
   UserSearch,
+  Share2,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -514,6 +515,7 @@ export default function DashboardLayout({
       '/dashboard/admin/blog': Newspaper,
       '/dashboard/admin/learn': BookOpenText,
       '/dashboard/admin/signals': Radio,
+      '/dashboard/admin/social': Share2,
       '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/leagues': Shield,
