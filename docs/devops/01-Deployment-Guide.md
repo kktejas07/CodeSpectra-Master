@@ -44,7 +44,7 @@ Three services defined in `docker-compose.yml`:
 
 ```yaml
 piston:
-  image: ${PISTON_IMAGE:?…}   # digest-pinned, see "Piston sandbox configuration"
+  image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}   # pin by digest, see "Piston sandbox configuration"
   container_name: codespectra-piston
   privileged: true
   expose: ["2000"]   # internal only — never publish (runs arbitrary code, no auth)
@@ -194,9 +194,9 @@ DB_NAME=codespectra
 ## Piston Sandbox Configuration
 
 - **Image:** pinned by digest — `PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<digest>` in `.env`
-  (SEC-023). `docker compose` refuses to start without it. Run
-  `scripts/pin-piston-image.sh` to resolve the current upstream digest and write it;
-  re-pin only on purpose after reviewing upstream changes.
+  (SEC-023). Unset, compose falls back to `:latest` and Admin → System shows
+  "Piston image not pinned". Run `scripts/pin-piston-image.sh` to resolve the current
+  upstream digest and write it; re-pin only on purpose after reviewing upstream changes.
 - **Capabilities:** `SYS_ADMIN` + `SYS_PTRACE` (Piston's own isolate sandbox needs them)
 - **Network:** `sandbox` — a Docker `internal: true` network with no route out; only
   `frontend` and `backend` join it. Installing a language runtime needs egress for a
@@ -206,6 +206,8 @@ DB_NAME=codespectra
   curl -X POST http://localhost:2000/api/v2/packages -d '{"language":"python","version":"3.10.0"}'  # from inside the frontend container
   docker network disconnect bridge codespectra-piston
   ```
+  Code execution itself needs no internet. To disable the isolation entirely, set
+  `internal: false` on the `sandbox` network in `docker-compose.yml`.
 - **Port:** `2000`
 - **Healthcheck:** `/api/v2/runtimes` endpoint
 - **API URL inside frontend:** `http://piston:2000/api/v2` (auto-set via docker-compose env)

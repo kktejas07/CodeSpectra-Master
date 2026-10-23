@@ -14,6 +14,7 @@ import { maskEmail } from '@/lib/billing/referral-reward'
 import { GRADE_RETRY_MAX, gradeRetryAt, launchBindingDecision } from '@/lib/integrations/lti/core'
 import { approvedLicenceDomains, cleanLicenceDomains, licenceDomainProblem } from '@/lib/billing/licence-rules'
 import { cappedFluencyScore, FLUENCY_FLAGGED_SCORE_CAP, prepareFluencyAnswer } from '@/lib/assessments/ai-fluency-engine'
+import { pistonImagePinned } from '@/lib/piston-image'
 import { PRINT_BUTTON_SCRIPT, PRINT_BUTTON_SCRIPT_HASH, PRINT_PAGE_CSP } from '@/lib/csp/print-page'
 
 const ROOT = path.resolve(__dirname, '..')
@@ -179,10 +180,15 @@ describe('SEC-024 printable documents carry no inline handlers', () => {
 
 describe('SEC-023 Piston image', () => {
   const compose = readFileSync(path.join(ROOT, '..', 'docker-compose.yml'), 'utf8')
-  it('is digest-pinned via PISTON_IMAGE with no :latest default, on an internal network', () => {
-    expect(compose).toMatch(/image: \$\{PISTON_IMAGE:\?/)
-    expect(compose).not.toMatch(/piston:latest\}/)
+  it('PISTON_IMAGE overrides a :latest default (compose still starts), on an internal network', () => {
+    expect(compose).toMatch(/image: \$\{PISTON_IMAGE:-ghcr\.io\/engineer-man\/piston:latest\}/)
+    expect(compose).toMatch(/- PISTON_IMAGE=\$\{PISTON_IMAGE:-\}/)
     expect(compose).toMatch(/sandbox:\n\s+internal: true/)
+  })
+  it('flags an unpinned image', () => {
+    expect(pistonImagePinned('')).toBe(false)
+    expect(pistonImagePinned('ghcr.io/engineer-man/piston:latest')).toBe(false)
+    expect(pistonImagePinned(`ghcr.io/engineer-man/piston@sha256:${'a'.repeat(64)}`)).toBe(true)
   })
 })
 

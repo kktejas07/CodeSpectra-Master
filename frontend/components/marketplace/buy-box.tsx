@@ -7,6 +7,7 @@ import { formatMinor } from '@/lib/marketplace/pricing'
 import type { Currency, ItemKind, ProductVariant } from '@/lib/marketplace/contract'
 import { openCartDrawer, useCart } from './use-cart'
 import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
+import { useT } from '@/lib/i18n/client'
 
 interface Props {
   productId: string
@@ -25,6 +26,7 @@ function dayKey(iso: string, tz: string) {
 
 /** Slots come from the server as UTC instants; shown in the buyer's own time zone. */
 export function SlotPicker({ slug, value, onChange }: { slug: string; value: string | null; onChange: (iso: string | null) => void }) {
+  const { t } = useT()
   const tz = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', [])
   const [from, setFrom] = useState(() => Date.now())
   const [slots, setSlots] = useState<string[] | null>(null)
@@ -50,22 +52,22 @@ export function SlotPicker({ slug, value, onChange }: { slug: string; value: str
   return (
     <fieldset className="space-y-3">
       <legend className="flex w-full items-center justify-between text-sm font-semibold text-cs-ink">
-        <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-4 w-4" aria-hidden />Pick a time</span>
-        <span className="text-xs font-normal text-cs-ink-soft">Times in {tz.replace(/_/g, ' ')}</span>
+        <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-4 w-4" aria-hidden />{t('public.mktPickTime')}</span>
+        <span className="text-xs font-normal text-cs-ink-soft">{t('public.mktTimesIn', { tz: tz.replace(/_/g, ' ') })}</span>
       </legend>
       <div className="flex items-center gap-2">
-        <button type="button" aria-label="Earlier dates" disabled={from <= Date.now() + 60_000} onClick={() => setFrom(Math.max(Date.now(), from - 14 * 86_400_000))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cs-grid text-cs-ink disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button>
-        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Dates">
-          {slots === null ? <span className="inline-flex items-center gap-2 text-sm text-cs-ink-soft"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />Loading times…</span>
-            : days.length === 0 ? <span className="text-sm text-cs-ink-soft">No free times in these two weeks — try the next ones.</span>
+        <button type="button" aria-label={t('public.mktEarlierDates')} disabled={from <= Date.now() + 60_000} onClick={() => setFrom(Math.max(Date.now(), from - 14 * 86_400_000))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cs-grid text-cs-ink disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button>
+        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1" role="tablist" aria-label={t('public.mktDates')}>
+          {slots === null ? <span className="inline-flex items-center gap-2 text-sm text-cs-ink-soft"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />{t('public.mktLoadingTimes')}</span>
+            : days.length === 0 ? <span className="text-sm text-cs-ink-soft">{t('public.mktNoTimes')}</span>
             : days.map((d) => (
               <button key={d} type="button" role="tab" aria-selected={d === active} onClick={() => setDay(d)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${d === active ? 'border-cs-accent bg-cs-accent text-cs-accent-ink' : 'border-cs-grid text-cs-ink-soft hover:text-cs-ink'}`}>{fmtDay(d)}</button>
             ))}
         </div>
-        <button type="button" aria-label="Later dates" onClick={() => setFrom(from + 14 * 86_400_000)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cs-grid text-cs-ink"><ChevronRight className="h-4 w-4" /></button>
+        <button type="button" aria-label={t('public.mktLaterDates')} onClick={() => setFrom(from + 14 * 86_400_000)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cs-grid text-cs-ink"><ChevronRight className="h-4 w-4" /></button>
       </div>
       {active && (
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Start time">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={t('public.mktStartTime')}>
           {byDay.get(active)!.map((s) => (
             <button key={s} type="button" role="radio" aria-checked={value === s} onClick={() => onChange(value === s ? null : s)} className={`rounded-xl border px-2 py-2 text-sm tabular-nums ${value === s ? 'border-cs-accent bg-cs-accent/10 font-semibold text-cs-accent-text' : 'border-cs-grid text-cs-ink hover:border-cs-accent/50'}`}>{fmtTime(s)}</button>
           ))}
@@ -77,6 +79,7 @@ export function SlotPicker({ slug, value, onChange }: { slug: string; value: str
 
 export function BuyBox(p: Props) {
   const router = useRouter()
+  const { t } = useT()
   const { act, busy } = useCart()
   const [variant, setVariant] = useState<string | null>(p.variants[0]?.id ?? null)
   const [qty, setQty] = useState(1)
@@ -102,12 +105,12 @@ export function BuyBox(p: Props) {
       <p className="text-3xl font-bold tabular-nums text-cs-ink">{formatMinor(price * qty, p.currency)}</p>
       {p.variants.length > 0 && (
         <fieldset>
-          <legend className="mb-2 text-sm font-semibold text-cs-ink">Option</legend>
+          <legend className="mb-2 text-sm font-semibold text-cs-ink">{t('public.mktOption')}</legend>
           <div className="flex flex-wrap gap-2">
             {p.variants.map((x) => (
               <button key={x.id} type="button" aria-pressed={variant === x.id} onClick={() => { setVariant(x.id); setQty(1) }} disabled={x.stock != null && x.stock <= 0}
                 className={`rounded-full border px-4 py-2 text-sm ${variant === x.id ? 'border-cs-accent bg-cs-accent/10 font-semibold text-cs-accent-text' : 'border-cs-grid text-cs-ink'} disabled:opacity-40`}>
-                {x.name}{x.stock != null && x.stock <= 0 ? ' (sold out)' : ''}
+                {x.name}{x.stock != null && x.stock <= 0 ? ` ${t('public.mktSoldOutSuffix')}` : ''}
               </button>
             ))}
           </div>
@@ -115,21 +118,21 @@ export function BuyBox(p: Props) {
       )}
       {p.kind === 'physical' && !soldOut && (
         <div className="flex items-center gap-3">
-          <label htmlFor="mkt-qty" className="text-sm font-semibold text-cs-ink">Quantity</label>
+          <label htmlFor="mkt-qty" className="text-sm font-semibold text-cs-ink">{t('public.mktQuantity')}</label>
           <select id="mkt-qty" value={qty} onChange={(e) => setQty(Number(e.target.value))} className="h-10 rounded-xl border border-cs-grid bg-cs-sheet px-3 text-sm text-cs-ink">
             {Array.from({ length: Math.max(1, maxQty) }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-          {stock != null && stock <= 5 && <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Only {stock} left</span>}
+          {stock != null && stock <= 5 && <span className="text-xs font-medium text-amber-700 dark:text-amber-400">{t('public.mktOnlyLeft', { count: stock })}</span>}
         </div>
       )}
       {p.kind === 'service' && <SlotPicker slug={p.slug} value={slot} onChange={setSlot} />}
       <div className="flex flex-col gap-2 sm:flex-row">
         <button type="button" disabled={busy || soldOut || needsSlot} onClick={() => add(false)} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-cs-accent px-6 text-[15px] font-semibold text-cs-accent-ink shadow-lg shadow-[#2f5be7]/25 hover:brightness-110 disabled:opacity-50 disabled:shadow-none">
           {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}
-          {soldOut ? 'Sold out' : needsSlot ? 'Pick a time first' : 'Add to cart'}
+          {soldOut ? t('public.mktSoldOut') : needsSlot ? t('public.mktPickTimeFirst') : t('public.mktAddToCart')}
         </button>
         {!soldOut && !needsSlot && (
-          <button type="button" disabled={busy} onClick={() => add(true)} className="inline-flex h-12 flex-1 items-center justify-center rounded-full border border-cs-ink/20 bg-cs-sheet px-6 text-[15px] font-semibold text-cs-ink hover:border-cs-accent disabled:opacity-50">Buy now</button>
+          <button type="button" disabled={busy} onClick={() => add(true)} className="inline-flex h-12 flex-1 items-center justify-center rounded-full border border-cs-ink/20 bg-cs-sheet px-6 text-[15px] font-semibold text-cs-ink hover:border-cs-accent disabled:opacity-50">{t('public.mktBuyNow')}</button>
         )}
       </div>
     </div>

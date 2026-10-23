@@ -35,7 +35,7 @@ interface ServerStats {
   disk: { total: number; used: number; free: number; usagePct: number }
   uptime: number
   containers: { available: boolean; count: number; list: Array<{ name: string; status: string; cpu: string; memory: string }> }
-  piston: { status: string; runtimes: number; queue: number }
+  piston: { status: string; runtimes: number; queue: number; image_pinned?: boolean }
   node: { heapUsed: number; heapTotal: number; rss: number }
 }
 
@@ -443,6 +443,11 @@ export default function SystemAdminDashboard() {
                 </Badge>
                 {' '}· {server.piston.runtimes} langs
               </p>
+              {server.piston.image_pinned === false && (
+                <p role="status" className="text-[11px] text-amber-700 dark:text-amber-400">
+                  Piston image not pinned — set PISTON_IMAGE to a digest (scripts/pin-piston-image.sh)
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 <Clock className="inline h-3 w-3 mr-1" /> Up {fmtUptime(server.uptime)}
               </p>

@@ -240,41 +240,6 @@
    "match score"
   ]
  },
- "components/marketplace/buy-box.tsx": {
-  "why": "public marketplace",
-  "text": [
-   "Buy now",
-   "Loading times…",
-   "No free times in these two weeks — try the next ones.",
-   "Only",
-   "Option",
-   "Pick a time",
-   "Quantity",
-   "Times in",
-   "aria-label=\"Dates\"",
-   "aria-label=\"Earlier dates\"",
-   "aria-label=\"Later dates\"",
-   "aria-label=\"Start time\"",
-   "left"
-  ]
- },
- "components/marketplace/product-extras.tsx": {
-  "why": "public marketplace",
-  "text": [
-   "Bought this?",
-   "Copy link",
-   "Post review",
-   "Review",
-   "Share",
-   "Sign in",
-   "Title",
-   "Write a review",
-   "aria-label=\"Rating\"",
-   "placeholder=\"Title (optional)\"",
-   "placeholder=\"What did you like? What could be better?\"",
-   "to leave a review."
-  ]
- },
  "components/marketplace/seller/coupons.tsx": {
   "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
   "text": [

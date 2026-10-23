@@ -1,12 +1,10 @@
 services:
   piston:
-    # SEC-023: the code runner image is pinned by digest — no floating :latest.
-    # ghcr.io/engineer-man/piston publishes only `latest`, so resolve the digest
-    # once and keep it in .env (scripts/pin-piston-image.sh does both):
-    #   PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<64 hex>
-    # Compose refuses to start until it is set. Re-pin deliberately (after
-    # reviewing upstream changes) — a changed image is never pulled silently.
-    image: ${PISTON_IMAGE:?Set PISTON_IMAGE to a digest-pinned image (ghcr.io/engineer-man/piston@sha256:...); run scripts/pin-piston-image.sh}
+    # SEC-023: pin the code runner by digest in .env so a changed upstream image is
+    # never pulled silently:  PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<64 hex>
+    # (scripts/pin-piston-image.sh resolves + writes it). Unset → falls back to the
+    # floating :latest tag and Admin → System shows "Piston image not pinned".
+    image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}
     container_name: codespectra-piston
     cap_add:
       - SYS_ADMIN
@@ -18,9 +16,10 @@ services:
     volumes:
       - piston-data:/piston
     # SEC-023: no egress. `sandbox` is an internal network (no route out), so
-    # untrusted code can't reach the internet or the other services. Installing
-    # a runtime needs egress for a moment — see docs/devops/01-Deployment-Guide.md
-    # ("Piston sandbox configuration").
+    # untrusted code can't reach the internet or the other services. Running code
+    # needs no internet; only installing a runtime does (one-off, see
+    # docs/devops/01-Deployment-Guide.md). To turn the isolation off, set
+    # `internal: false` on the sandbox network at the bottom of this file.
     networks:
       - sandbox
     restart: unless-stopped
@@ -52,6 +51,8 @@ services:
     # Runtime-only secrets (never build args — they would be baked into the image).
     environment:
       - PISTON_URL=http://piston:2000/api/v2
+      # SEC-023: lets Admin → System warn when the runner image isn't digest-pinned.
+      - PISTON_IMAGE=${PISTON_IMAGE:-}
       - DIDIT_API_KEY=${DIDIT_API_KEY:-}
       - DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET:-}
       - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:-}
