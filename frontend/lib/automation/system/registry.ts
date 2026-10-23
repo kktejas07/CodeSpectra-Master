@@ -31,6 +31,7 @@ import { ENGAGEMENT_AUTOMATIONS } from './engagement'
 import { OPS_AUTOMATIONS } from './ops'
 import { SIGNAL_AUTOMATIONS } from './signals'
 import { MARKETPLACE_AUTOMATIONS } from './marketplace'
+import { SOCIAL_AUTOMATIONS } from './social'
 import { INTEGRATION_AUTOMATIONS } from '@/lib/integrations/automation'
 
 export const SYSTEM_AUTOMATIONS: readonly SystemAutomation[] = [
@@ -42,6 +43,7 @@ export const SYSTEM_AUTOMATIONS: readonly SystemAutomation[] = [
   ...ENGAGEMENT_AUTOMATIONS,
   ...MARKETPLACE_AUTOMATIONS,
   ...INTEGRATION_AUTOMATIONS,
+  ...SOCIAL_AUTOMATIONS,
   ...OPS_AUTOMATIONS,
 ]
 
