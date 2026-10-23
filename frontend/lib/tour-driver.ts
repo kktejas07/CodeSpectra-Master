@@ -300,6 +300,11 @@ async function getDriver(): Promise<Driver | null> {
       // driver.js marks every highlighted element aria-haspopup/aria-expanded,
       // which is invalid ARIA on plain containers (axe: aria-allowed-attr) and
       // confuses screen readers. Keep them only on elements that support them.
+      // driver.js sets those attributes synchronously right after
+      // onHighlightStarted, but onHighlighted only fires once the ~400 ms
+      // stage animation ends — so strip in a microtask after the start hook
+      // (covers the animation window) and again when highlighting finishes.
+      onHighlightStarted: (el) => { if (el) queueMicrotask(() => stripUnsupportedTourAria(el)) },
       onHighlighted: (el) => { if (el) stripUnsupportedTourAria(el) },
       onDestroyed: () => {
         // ponytail: mark seen on EVERY destroy (finish, X, overlay click) —
