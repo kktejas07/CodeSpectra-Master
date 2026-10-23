@@ -32,6 +32,29 @@ export default function AdminResourcesPage() {
   const [busy, setBusy] = useState(false)
   const [coverBusy, setCoverBusy] = useState<string | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; slug: string | null }>({ open: false, slug: null })
+  // AUTO-086: the daily AI draft is off until switched on here.
+  const [autoDraft, setAutoDraft] = useState<boolean | null>(null)
+  const [autoBusy, setAutoBusy] = useState(false)
+  useEffect(() => {
+    if (!gate.ready) return
+    fetch('/api/resources/ebooks/settings', { credentials: 'include', cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setAutoDraft(d?.settings?.auto_draft_enabled === true))
+      .catch(() => setAutoDraft(false))
+  }, [gate.ready])
+  async function toggleAutoDraft(next: boolean) {
+    setAutoBusy(true)
+    try {
+      const r = await csrfFetch('/api/resources/ebooks/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auto_draft_enabled: next }) })
+      if (!r.ok) throw new Error('Could not save the setting')
+      setAutoDraft(next)
+      addToast({ type: 'success', title: next ? 'Daily AI draft turned on' : 'Daily AI draft turned off' })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not save the setting' })
+    } finally {
+      setAutoBusy(false)
+    }
+  }
 
   // Outline review state
   const [outlineReview, setOutlineReview] = useState<{
@@ -199,9 +222,26 @@ export default function AdminResourcesPage() {
       <PageHeader
         illustration="courses"
         title="Resources and ebooks"
-        description="Short CodeSpectra guides for candidates. A new draft is created every day; review and publish them here."
+        description="Short CodeSpectra guides for candidates. Generate drafts (or turn on the daily AI draft), then review and publish them here."
         icon={<BookOpen />}
       />
+
+      <Panel className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="font-semibold text-foreground">Daily AI draft</h2>
+          <p className="text-sm text-muted-foreground">Creates one draft ebook with an AI cover every day at 07:00 UTC. Uses your AI budget.</p>
+        </div>
+        <Button
+          type="button"
+          variant={autoDraft ? 'outline' : 'default'}
+          disabled={autoDraft === null || autoBusy}
+          aria-pressed={autoDraft === true}
+          onClick={() => void toggleAutoDraft(!autoDraft)}
+        >
+          {autoBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
+          {autoDraft ? 'Turn off' : 'Turn on'}
+        </Button>
+      </Panel>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Ebooks" value={items.length} icon={<BookOpen />} />

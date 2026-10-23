@@ -8,6 +8,7 @@ import { PERMISSIONS_POLICY } from '@/lib/security-headers'
 import { TAG_CONNECT_HOSTS, TAG_FRAME_HOSTS, TAG_SCRIPT_HOSTS } from '@/lib/analytics/integrations'
 import { cspHeaders, cspMode, makeNonce, type CspHeaderPlan } from '@/lib/csp/policy'
 import { currentStorageOrigin } from '@/lib/csp/storage-origin'
+import { publicHtmlCacheControl } from '@/lib/cache/cdn-headers'
 import { bearerSkipsCsrf, corsAllowedOrigins, httpsRedirectUrl, impersonationBlocked, isPageRequestPath, loginCsrfBlocked } from '@/lib/request-guards'
 
 // Optional analytics / ad tags (Admin → Settings → Analytics) load only after
@@ -210,6 +211,11 @@ export async function proxy(request: NextRequest) {
     for (const [k, v] of Object.entries(csp.response)) response.headers.set(k, v)
     response.headers.set('X-Frame-Options', 'DENY')
   }
+
+  // SEO-004: public HTML (static CSP, no cookies) may be shared by the CDN even
+  // when Next renders it per request (lib/cache/cdn-headers.ts).
+  const cdnCache = publicHtmlCacheControl({ method: request.method, pathname, headers: request.headers, cookies: request.cookies })
+  if (cdnCache && !response.headers.has('location')) response.headers.set('Cache-Control', cdnCache)
 
   return response
 }

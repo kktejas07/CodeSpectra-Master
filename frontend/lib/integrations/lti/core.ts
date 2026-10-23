@@ -17,6 +17,9 @@
  */
 import { SignJWT, jwtVerify, type JWK, type JWTPayload, type JWTVerifyGetKey, type CryptoKey } from 'jose'
 
+/** SEC-031: the three platform URLs the server will fetch / redirect to. */
+export const PLATFORM_URL_FIELDS = ['auth_login_url', 'auth_token_url', 'jwks_url'] as const
+
 export const LTI = {
   version: 'https://purl.imsglobal.org/spec/lti/claim/version',
   messageType: 'https://purl.imsglobal.org/spec/lti/claim/message_type',
@@ -253,4 +256,40 @@ export function moodleDefaults(site: string): Pick<LtiPlatform, 'issuer' | 'auth
   const base = httpsUrl(site)?.replace(/\/+$/, '')
   if (!base) return null
   return { issuer: base, auth_login_url: `${base}/mod/lti/auth.php`, auth_token_url: `${base}/mod/lti/token.php`, jwks_url: `${base}/mod/lti/certs.php` }
+}
+
+// ─── Grade passback retry (CORE-041) ─────────────────────────────────────────
+
+export const GRADE_RETRY_MAX = 8
+
+/**
+ * When to retry a failed score post: 5 min, 10, 20, 40 … capped at 12 h; null
+ * after GRADE_RETRY_MAX failures (the admin can still press "Resend grades").
+ */
+export function gradeRetryAt(failures: number, now: Date = new Date()): string | null {
+  if (!Number.isFinite(failures) || failures < 1 || failures > GRADE_RETRY_MAX) return null
+  const delay = Math.min(12 * 3_600_000, 5 * 60_000 * 2 ** (failures - 1))
+  return new Date(now.getTime() + delay).toISOString()
+}
+
+// ─── Launch → account binding (SEC-030) ──────────────────────────────────────
+
+/**
+ * Who may continue a resource launch. A launch token is bound to the first
+ * account that continues it, and an LMS user (platform + sub) is bound to one
+ * CodeSpectra account for good, so a copied launch link can't send a friend's
+ * score to someone else's gradebook.
+ */
+export function launchBindingDecision(p: {
+  userId: string
+  userEmail: string
+  launchEmail: string | null
+  launchUsedBy: string | null
+  /** account already linked to this LMS user, if any */
+  linkedUserId: string | null
+}): { ok: true } | { ok: false; code: 'lti_email_mismatch' | 'lti_launch_taken' | 'lti_account_mismatch' } {
+  if (p.launchEmail && p.launchEmail.toLowerCase() !== p.userEmail.toLowerCase()) return { ok: false, code: 'lti_email_mismatch' }
+  if (p.launchUsedBy && p.launchUsedBy !== p.userId) return { ok: false, code: 'lti_launch_taken' }
+  if (p.linkedUserId && p.linkedUserId !== p.userId) return { ok: false, code: 'lti_account_mismatch' }
+  return { ok: true }
 }

@@ -8,10 +8,12 @@
  * Relative URLs resolve against metadataBase (set in app/layout.tsx).
  */
 import type { Metadata } from 'next'
-import { SITE_NAME } from './site'
+import { SITE_NAME, SITE_TAGLINE } from './site'
+import { ogCardText } from './og-text'
+import { publicRoute } from './public-routes'
 import { signOg } from './og-sign'
 import { LOCALE_META, type Locale } from '@/lib/i18n/config'
-import { hreflangAlternates, localizedPath } from '@/lib/i18n/public-paths'
+import { canonicalLocalePath, hreflangAlternates } from '@/lib/i18n/public-paths'
 
 export const TITLE_MAX = 60
 export const DESCRIPTION_MAX = 160
@@ -88,10 +90,13 @@ export function buildMetadata(input: PageMetaInput): Metadata {
   const title = pageTitle(input.title)
   const description = clampText(input.description, DESCRIPTION_MAX)
   const locale = input.locale ?? 'en'
-  const canonical = localizedPath(canonicalPath(input.canonical || input.path), locale)
+  // SEO-034: English-body pages (legal, forum threads) canonicalise to English in every language.
+  const canonical = canonicalLocalePath(canonicalPath(input.canonical || input.path), locale)
   // hreflang only on the page itself, not on filter variants with their own canonical.
   const languages = !input.canonical || canonicalPath(input.canonical) === canonicalPath(input.path) ? hreflangAlternates(input.path) : null
-  const image = input.image || ogImagePath({ title: input.title, kind: input.kind ?? 'page', subtitle: input.ogSubtitle })
+  // SEO-030: the card can't draw Hindi / Telugu (lib/seo/og-text.ts) → English page title + "In Hindi".
+  const card = ogCardText({ title: input.title, subtitle: input.ogSubtitle, fallbackTitle: publicRoute(canonicalPath(input.path))?.title || SITE_TAGLINE })
+  const image = input.image || ogImagePath({ title: card.title, kind: input.kind ?? 'page', subtitle: card.subtitle })
   const images = [{ url: image, width: 1200, height: 630, alt: input.imageAlt || input.title }]
   const robots: Metadata['robots'] = input.noIndex
     ? { index: false, follow: input.noIndex === 'follow' }

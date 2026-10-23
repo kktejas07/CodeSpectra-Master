@@ -61,6 +61,7 @@ export type ServerSecretsRecord = {
   play_integrity_service_account_json?: string
   android_package_names?: string
   android_cert_sha256?: string
+  android_sha256_cert_fingerprints?: string // CORE-043 assetlinks.json
   // --- iOS app (App Attest / DeviceCheck) — lib/mobile/app-attest.ts ---------
   apple_team_id?: string
   ios_bundle_ids?: string

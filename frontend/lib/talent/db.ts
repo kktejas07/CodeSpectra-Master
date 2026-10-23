@@ -273,6 +273,11 @@ export async function sendTalentInvite(actor: AtsActor, input: SendInviteInput, 
     if ((e as { code?: number })?.code === 11000) throw new TalentError('You already invited this learner to that. Wait for their answer.', 409)
     throw e
   }
+  // AUTO-088: the inviting organisation's workflows (follow-ups, CRM sync). Learner id only, no contact data.
+  void import('@/lib/automation/events').then(({ emit }) => emit('talent.invite.sent', {
+    invite_id: doc.id, learner_id: doc.learner_id, handle: doc.handle, recruiter_id: doc.recruiter_id, target_type: doc.target_type, target_id: doc.target_id,
+    target_title: doc.target_title, expires_at: doc.expires_at,
+  }, { tenantId: doc.tenant_id, idempotencyKey: `talent.invite.sent:${doc.id}` })).catch(() => {})
   void auditAts(actor, 'talent.invite', 'talent_invite', doc.id, `${doc.target_type}:${doc.target_id} → ${doc.handle}`, req).catch(() => {})
   void import('@/lib/notifications').then(({ notify }) => notify({
     user_id: doc.learner_id,

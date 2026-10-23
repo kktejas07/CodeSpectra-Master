@@ -9,9 +9,10 @@
  *                                                  → template summary instead
  *
  * "Invented facts": every number (dates, prizes, counts — Devanagari / Telugu
- * digits included) in a summary must appear in the item's own facts.
+ * digits included), proper noun and selling claim in a summary must appear in
+ * the item's own facts (lib/ai/fact-check).
  */
-import { unsupportedNumbers } from '@/lib/social/captions'
+import { checkFacts } from '@/lib/ai/fact-check'
 import { candidateFactsText } from './candidates'
 import { isNearDuplicate, isOpen } from './rank'
 import type { DigestCandidate, DigestLocale, DigestSummary, RejectReason, SummaryIssue, VerifyResult } from './types'
@@ -55,7 +56,8 @@ export function summaryIssues(s: DigestSummary | undefined, item: DigestCandidat
   if (/https?:\/\/|www\./i.test(s.text)) out.push('has_url')
   if ([...s.text].length > SUMMARY_MAX) out.push('too_long')
   // Title is part of the facts, so a number from the title is allowed.
-  if (unsupportedNumbers(s.text, candidateFactsText(item)).length) out.push('invented_facts')
+  // AGT-034: invented names / organisations and unbacked claims ("sponsored by", "beginner friendly") too.
+  if (!checkFacts(s.text, candidateFactsText(item)).ok) out.push('invented_facts')
   return out
 }
 

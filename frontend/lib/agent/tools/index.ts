@@ -51,6 +51,19 @@ import {
   updateCodeathonTool, publishCodeathonTool, updateProblemTool, publishProblemTool, addQuestionsToBankTool,
 } from './write/modules'
 
+import {
+  listPendingNewsTool, listSocialQueueTool, listForumReportsTool, listMentorsTool, listCohortsTool, listCouponsTool, listOrgLicencesTool,
+  listCertReviewsTool, listLiveDrivesTool,
+} from './read/operations'
+import { reviewNewsDraftTool, createCouponTool, moderateForumPostTool, decideMentorTool, decideCertReviewTool } from './write/operations'
+import { listAgentLoopFindingsTool } from './read/agent-loops'
+import { decideAgentLoopFindingTool } from './write/agent-loops'
+// Wave 15 assistants (lib/assistants): placement, onboarding, revenue, activity.
+import { ASSISTANT_READ_TOOLS } from './read/assistants'
+import { ASSISTANT_WRITE_TOOLS } from './write/assistants'
+import { sendTalentInvitesTool, offerInterviewSlotsTool, setIntegrityHoldTool } from './write/hiring-agents'
+import { getHiringAgentsTool } from './read/hiring-agents'
+
 export const ALL_TOOLS: AnyTool[] = [
   // read
   searchKnowledgeTool,
@@ -88,6 +101,16 @@ export const ALL_TOOLS: AnyTool[] = [
   getDigestTool, runDailyDigestTool,
   getStudyPlanTool, regenerateStudyPlanTool,
   startMockInterviewTool,
+  // operations (AGT-033): news review, social studio, community, mentors, cohorts, coupons/licences, paid certs, live drives
+  listPendingNewsTool, listSocialQueueTool, listForumReportsTool, listMentorsTool, listCohortsTool, listCouponsTool, listOrgLicencesTool,
+  listCertReviewsTool, listLiveDrivesTool,
+  reviewNewsDraftTool, createCouponTool, moderateForumPostTool, decideMentorTool, decideCertReviewTool,
+  // wave 15 agent loops (lib/agent-loops)
+  listAgentLoopFindingsTool, decideAgentLoopFindingTool,
+  // wave 15 assistants (lib/assistants)
+  ...ASSISTANT_READ_TOOLS, ...ASSISTANT_WRITE_TOOLS,
+  // hiring agents (lib/agent/hiring-loops): status + the write steps the loops propose
+  getHiringAgentsTool, sendTalentInvitesTool, offerInterviewSlotsTool, setIntegrityHoldTool,
 ]
 
 const BY_NAME = new Map<string, AnyTool>(ALL_TOOLS.map((t) => [t.name, t]))

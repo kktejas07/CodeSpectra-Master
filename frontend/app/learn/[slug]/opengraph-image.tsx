@@ -4,6 +4,7 @@ import { getPublishedPost } from '@/lib/learn/queries'
 import { categoryLabel } from '@/lib/learn/types'
 import { resolveLearnSlug } from '@/lib/learn/team-queries'
 import { TEAM_LABEL, teamCategoryLabel } from '@/lib/learn/team-posts'
+import { indicScript } from '@/lib/seo/og-text'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,10 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   const post = await getPublishedPost(slug).catch(() => null)
   // A "From the team" post (blog_posts) when no Learn post has this slug.
   const team = post ? null : (await resolveLearnSlug(slug, false).catch(() => null))?.post ?? null
-  const title = post?.title ?? team?.title ?? 'CodeSpectra Learn'
+  const raw = post?.title ?? team?.title ?? 'CodeSpectra Learn'
+  // SEO-030: satori can't shape Hindi / Telugu; the localized title stays in og:title as text.
+  const script = indicScript(raw)
+  const title = script ? `A Learn post in ${script}` : raw
   const meta = post
     ? `${categoryLabel(post.category)} · ${post.level} · ${post.reading_minutes} min read`
     : team ? `${TEAM_LABEL} · ${teamCategoryLabel(team.category)} · ${team.read_minutes} min read` : 'Algorithms, system design and engineering practices'

@@ -305,5 +305,17 @@
   "stopGenerating": "జవాబు తయారీ ఆపండి",
   "sendMessage": "మెసేజ్ పంపండి",
   "copilotDisclaimer": "కోపైలట్ పొరపాటు చేయవచ్చు. నిర్ధారించే ముందు ప్రివ్యూలు చెక్ చేయండి.",
-  "readRepliesAloud": "జవాబులు పైకి చదవండి"
+  "readRepliesAloud": "జవాబులు పైకి చదవండి",
+  "mmTitle": "సహాయం చేయగల మెంటార్లు",
+  "mmDesc": "మీ ఫోకస్ అంశాలు, లక్ష్య కంపెనీ, భాష మరియు టైమ్ జోన్ ఆధారంగా ఎంచుకున్నవి.",
+  "mmReasonSkill": "{value}లో నిపుణులు",
+  "mmReasonCompany": "{value}లో పనిచేశారు",
+  "mmReasonLanguage": "{value} మాట్లాడతారు",
+  "mmReasonTimezone": "దగ్గరి టైమ్ జోన్",
+  "mmReasonRating": "రేటింగ్ {value}",
+  "mmRating": "{n} సమీక్షల నుంచి {value}",
+  "mmOffering": "{title} · {minutes} నిమి · {price}",
+  "mmEmpty": "ఇంకా మెంటార్ సరిపోలికలు లేవు. ఇంకొంచెం సాధన చేయండి లేదా అందరు మెంటార్లను చూడండి.",
+  "mmBrowse": "మెంటార్లను చూడండి",
+  "mmBook": "సెషన్‌లు చూడండి"
 }

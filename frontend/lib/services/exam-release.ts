@@ -54,9 +54,10 @@ export async function previewExamRelease(user: ServiceUser, examId: string, cuto
   const cutoff = clampCutoff(cutoffIn, examPassPercent(exam))
   const db = await getMongoDb()
   const submissions = await db.collection('exam_submissions')
-    .find({ exam_id: examId, score_released: { $ne: true } }, { projection: { _id: 0, user_id: 1, score: 1, max_score: 1, has_pending_review: 1 } })
+    .find({ exam_id: examId, score_released: { $ne: true } }, { projection: { _id: 0, user_id: 1, score: 1, max_score: 1, has_pending_review: 1, integrity_hold: 1 } })
     .toArray()
-  const releasable = submissions.filter((s) => s.has_pending_review !== true)
+  // Integrity holds (lib/agent/tools/write/hiring-agents.ts set_integrity_hold) stay unreleased like pending reviews.
+  const releasable = submissions.filter((s) => s.has_pending_review !== true && s.integrity_hold !== true)
   let pass = 0
   const passingUsers = new Set<string>()
   for (const s of releasable) {
@@ -106,7 +107,7 @@ export async function releaseExamScores(user: ServiceUser, examId: string, cutof
   }
 
   // Only graded work releases — pending_review stays locked (same as before).
-  const releasable = submissions.filter((s) => s.has_pending_review !== true)
+  const releasable = submissions.filter((s) => s.has_pending_review !== true && s.integrity_hold !== true)
   const skippedPending = submissions.length - releasable.length
 
   const now = nowIso()

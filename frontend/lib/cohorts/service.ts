@@ -661,6 +661,15 @@ async function certifyLearner(cohort: CohortDoc, userId: string): Promise<boolea
   await awardXpWithLevelUp({ userId, amount: COHORT_COMPLETION_XP, reason: 'cohort_completed', submissionId: `cohort:${cohort.id}`, metadata: { cohort_id: cohort.id }, quiet: true }).catch(() => {})
   const { notifyLocalized } = await import('@/lib/community/i18n-server')
   await notifyLocalized(userId, { type: 'certificate.issued', titleKey: 'notifyCertTitle', messageKey: 'notifyCertMessage', params: { title: cohort.title }, link: '/dashboard/passport', icon: 'award', email: true })
+  // AUTO-089 / AUTO-088: certificate follow-up automation + workflows (cohort.completed for the org's cohort workflows).
+  void import('@/lib/automation/events').then(async ({ emit }) => {
+    const pp = await import('@/lib/passport/db').then(async ({ passports }) => (await passports()).findOne({ user_id: userId }, { projection: { _id: 0, handle: 1 } })).catch(() => null)
+    const verify = pp?.handle ? `/p/${encodeURIComponent(String(pp.handle))}` : null
+    await emit('certificate.issued', { user_id: userId, title: cohort.title, verify_url: verify, issued_at: cert.issued_at }, { tenantId: cohort.tenant_id ?? undefined, idempotencyKey: `certificate.issued:cohort:${cert.id}` })
+    await emit('cohort.completed', {
+      user_id: userId, cohort_id: cohort.id, cohort_title: cohort.title, certificate_id: cert.id, score_pct: p.assignment_pct, completed_at: cert.issued_at,
+    }, { tenantId: cohort.tenant_id ?? undefined, idempotencyKey: `cohort.completed:${cohort.id}:${userId}` })
+  }).catch((e) => console.error('[automation] emit failed:', e))
   // The skill passport reads `cohort_certificates` (lib/passport/db loadEvidence).
   const { passports } = await import('@/lib/passport/db')
   const pp = await (await passports()).findOne({ user_id: userId }, { projection: { _id: 0, handle: 1 } }).catch(() => null)

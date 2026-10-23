@@ -85,6 +85,25 @@ export function reportDue(now: Date, tz: string, lastWeek: string | null | undef
   return { due: dow === REPORT_WEEKDAY && h >= REPORT_HOUR && lastWeek !== week, week, start, end }
 }
 
+/**
+ * AUTO-082: Mongo filter for active links whose weekly report is due now, so the hourly run
+ * reads only those (no row cap). `timezones` are the distinct values stored on active links.
+ */
+export function dueLinkFilter(timezones: Array<string | null | undefined>, now: Date): Record<string, unknown> {
+  const or: Record<string, unknown>[] = []
+  const seen = new Set<string>()
+  for (const raw of timezones) {
+    const stored = typeof raw === 'string' ? raw : ''
+    if (seen.has(stored)) continue
+    seen.add(stored)
+    const d = reportDue(now, stored, null)
+    if (!d.due) continue
+    or.push({ ...(stored ? { timezone: stored } : { timezone: { $in: [null, ''] } }), last_report_week: { $ne: d.week } })
+  }
+  if (!or.length) return { _id: { $exists: false } }
+  return { status: 'active', $or: or }
+}
+
 function addDays(day: string, n: number): string {
   const [y, m, d] = day.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)

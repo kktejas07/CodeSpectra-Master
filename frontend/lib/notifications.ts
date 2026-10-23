@@ -101,6 +101,25 @@ export const NOTIFICATION_TYPES = {
   'mkt.seller_application': { category: 'marketplace', icon: 'store', default_title: 'New seller application', default_link: '/dashboard/admin/marketplace?tab=sellers' },
   'mkt.refund_requested': { category: 'marketplace', icon: 'rotate-ccw', default_title: 'Refund request', default_link: '/dashboard/admin/marketplace?tab=refunds' },
   'mkt.payout_requested': { category: 'marketplace', icon: 'banknote', default_title: 'Payout requested', default_link: '/dashboard/admin/marketplace?tab=payouts' },
+
+  // Assistants, agent loops and nudges (wave 15)
+  'placement.nudge': { category: 'learning', icon: 'graduation-cap', default_title: 'From your placement team', default_link: '/dashboard/study-plan' },
+  'placement.practice_assigned': { category: 'learning', icon: 'clipboard-list', default_title: 'Practice assigned', default_link: '/dashboard/company-tests' },
+  'placement.report_ready': { category: 'learning', icon: 'file-text', default_title: 'Placement report ready', default_link: '/dashboard/placement' },
+  'placement.weekly_report': { category: 'learning', icon: 'file-text', default_title: 'Weekly placement report', default_link: '/dashboard/placement' },
+  'mentor.booking.created': { category: 'marketplace', icon: 'calendar', default_title: 'Mentor session booked', default_link: '/dashboard/sessions' },
+  'mentor.session_booked': { category: 'marketplace', icon: 'calendar', default_title: 'Mentor session booked', default_link: '/dashboard/sessions' },
+  'mentor.session_rescheduled': { category: 'marketplace', icon: 'calendar', default_title: 'Mentor session rescheduled', default_link: '/dashboard/sessions' },
+  'mentor.session_followup': { category: 'marketplace', icon: 'message-circle', default_title: 'How was your session?', default_link: '/dashboard/sessions' },
+  'mentor.feedback': { category: 'marketplace', icon: 'star', default_title: 'Rate your mentor session', default_link: '/dashboard/sessions' },
+  'mentor.no_show': { category: 'marketplace', icon: 'alert-circle', default_title: 'Session missed', default_link: '/dashboard/sessions' },
+  'onboarding_tips': { category: 'account', icon: 'lightbulb', default_title: 'Getting started', default_link: '/dashboard' },
+  'onboarding_verify': { category: 'account', icon: 'mail-check', default_title: 'Verify your account', default_link: '/dashboard/settings' },
+  'assistant.onboarding_step': { category: 'system', icon: 'list-checks', default_title: 'Next setup step', default_link: '/dashboard/admin/onboarding' },
+  'assistant.revenue_proposals': { category: 'system', icon: 'trending-up', default_title: 'Revenue proposals ready', default_link: '/dashboard/admin/agent' },
+  'agent_loop.insight': { category: 'system', icon: 'line-chart', default_title: 'Weekly insight', default_link: '/dashboard/admin/agent-loops' },
+  'agent_loop.run_finished': { category: 'system', icon: 'bot', default_title: 'Agent loop finished', default_link: '/dashboard/admin/agent-loops' },
+  'hiring_agent.proposals': { category: 'system', icon: 'users', default_title: 'Hiring proposals ready', default_link: '/dashboard/admin/hiring-agents' },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES

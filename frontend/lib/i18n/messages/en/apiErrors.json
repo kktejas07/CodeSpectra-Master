@@ -1,4 +1,11 @@
 {
+  "assess_answer_too_long": "Keep your answer under {max} characters.",
+  "assess_question_answered": "You already answered this question.",
+  "licence_domain_invalid": "“{domain}” is not a valid email domain.",
+  "licence_domain_public_mail": "{domain} is a public email provider. Use your organisation’s own domain.",
+  "licence_domain_public_suffix": "{domain} is shared by many organisations. Use your organisation’s own domain (for example college.ac.in).",
+  "id_ocr_paused": "Automatic ID reading is paused. Try again later or ask your proctor to check your ID.",
+  "native_purchase_blocked": "Purchases aren’t available in the app. Manage purchases on the web at codespectra.ai.",
   "unauthorized": "Unauthorized",
   "not_authenticated": "Not authenticated",
   "sign_in_to_continue": "Sign in to continue.",
@@ -461,5 +468,7 @@
   "guardian_unsubscribe_invalid": "This unsubscribe link is not valid.",
   "accommodation_invalid": "Choose +25%, +50% or a custom amount (1–300% or 1–600 minutes).",
   "accommodation_reason_required": "Add a short reason for the audit trail.",
-  "accommodation_candidate_not_found": "No account found for that candidate."
+  "accommodation_candidate_not_found": "No account found for that candidate.",
+  "assistant_off": "The help assistant is switched off.",
+  "assistant_daily_limit": "You have asked {n} questions today. Try again tomorrow or open a ticket."
 }

@@ -9,11 +9,14 @@ import { requireAuth } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import { createCheckout, parseCheckoutInput } from '@/lib/marketplace/checkout'
 import { errorResponse } from '@/lib/marketplace/http'
+import { nativeCheckoutBlock } from '@/lib/billing/native-checkout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  const blocked = nativeCheckoutBlock(req) // CORE-038
+  if (blocked) return blocked
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: 'Sign in to check out.', code: 'mkt_signin_checkout' }, { status: gate.status })
   const limited = await limitRequest(req, 'mkt-checkout', gate.user.id, 10, 10 * 60_000)

@@ -32,6 +32,8 @@ export const DASHBOARD_HREF = '/dashboard'
 const FOOTER_COLUMNS = [
   { title: 'public.footProduct', links: [['/features', 'public.navFeatures'], ['/pricing', 'public.navPricing'], ['/marketplace', 'public.navMarketplace'], ['/jobs', 'public.footJobBoard'], ['/hackathons', 'public.navHackathons'], ['/events', 'public.navEvents'], ['/companies', 'public.footInterviewPrep']] },
   { title: 'public.footResources', links: [['/docs', 'public.footDocs'], ['/newsletter', 'public.footNewsletter'], ['/learn', 'public.navLearn'], ['/news', 'public.footTechNews'], ['/api-reference', 'public.footApi'], ['/support', 'public.footSupport'], ['/faq', 'public.footFaq']] },
+  // SEO-029: the community hubs need internal links (they were reachable only from the sitemap).
+  { title: 'public.footCommunity', links: [['/community', 'public.footForum'], ['/contests', 'public.footContests'], ['/certifications', 'public.footCertifications'], ['/leagues', 'public.footLeagues'], ['/mentors', 'public.footMentors']] },
   { title: 'public.footCompany', links: [['/about', 'public.footAbout'], ['/contact', 'public.footContact'], ['/careers', 'public.footCareers'], ['/security', 'public.footSecurity'], ['/open-source', 'public.footOpenSource'], ['/editorial-policy', 'public.footEditorial']] },
   { title: 'public.footLegal', links: [['/privacy', 'public.footPrivacy'], ['/terms', 'public.footTerms'], ['/cookies', 'public.footCookies'], ['/credits', 'public.footCredits']] },
 ] as const
@@ -249,7 +251,7 @@ export function PublicPageWrapper({
       <footer className="relative overflow-hidden border-t border-cs-grid bg-cs-sheet py-16 lg:py-20">
         <FooterAnimatedBackdrop />
         <div className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-8 md:gap-12 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
               <Link href={lp('/')} className="mb-5 flex items-center gap-2.5" aria-label={t('common.homeAria')}>
                 <BrandLogo />

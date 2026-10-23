@@ -33,6 +33,10 @@ import { SIGNAL_AUTOMATIONS } from './signals'
 import { MARKETPLACE_AUTOMATIONS } from './marketplace'
 import { SOCIAL_AUTOMATIONS } from './social'
 import { INTEGRATION_AUTOMATIONS } from '@/lib/integrations/automation'
+import { LEARNING_NUDGE_AUTOMATIONS } from './nudges-learning'
+import { BILLING_NUDGE_AUTOMATIONS } from './nudges-billing'
+import { HIRING_NUDGE_AUTOMATIONS } from './nudges-hiring'
+import { OPS_NUDGE_AUTOMATIONS } from './nudges-ops'
 
 export const SYSTEM_AUTOMATIONS: readonly SystemAutomation[] = [
   ...SIGNAL_AUTOMATIONS,
@@ -45,6 +49,11 @@ export const SYSTEM_AUTOMATIONS: readonly SystemAutomation[] = [
   ...INTEGRATION_AUTOMATIONS,
   ...SOCIAL_AUTOMATIONS,
   ...OPS_AUTOMATIONS,
+  // Wave 15 nudges (shared frequency cap: lib/automation/nudges).
+  ...LEARNING_NUDGE_AUTOMATIONS,
+  ...BILLING_NUDGE_AUTOMATIONS,
+  ...HIRING_NUDGE_AUTOMATIONS,
+  ...OPS_NUDGE_AUTOMATIONS,
 ]
 
 /** Wrap a handler so each call records the automation's heartbeat. */

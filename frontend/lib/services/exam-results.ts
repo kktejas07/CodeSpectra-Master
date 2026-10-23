@@ -23,6 +23,8 @@ export interface CandidateResultRow {
   submittedAt: string | null
   inviteToken?: string | null
   invitedAt: string | null
+  /** Automatic reminders sent for this invite (24 h cron + W15 invite ladder). */
+  reminderCount?: number
   proctoringFlags: number
   released: boolean
   deliveryStatus: string | null
@@ -214,6 +216,7 @@ export async function getExamResults(user: ServiceUser, id: string): Promise<Ser
       // Admin-only, tenant-checked route: the token lets the recruiter copy
       // the candidate's real /assessment/invite/[token] link.
       inviteToken: inv.token || null,
+      reminderCount: Math.max(0, Number(inv.reminder_count) || (inv.reminded_at ? 1 : 0)),
       proctoringFlags: proctorMap.get(inv.user_id) || (sub ? proctorMap.get(sub.user_id) || 0 : 0),
       released: sub?.released_at ? true : false,
       deliveryStatus: sub && inv.delivery_status === 'sending' ? 'delivered' : (inv.delivery_status || null),

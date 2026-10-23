@@ -62,6 +62,8 @@ export async function askPublic(q: string, opts: { want: 'ask' | 'search'; local
   const { searchPublicKnowledge } = await import('@/lib/rag/search')
   const hits: KnowledgeHit[] = publicHits(await searchPublicKnowledge({ query: q, types: opts.types, limit: 6, userId: opts.userId }))
   const results = publicCitations(hits)
+  // Search demand for the SEO / content gap loop: normalised query + counts only (lib/agent-loops/search-log).
+  void import('@/lib/agent-loops/search-log').then((m) => m.recordAskQuery(q, results.length)).catch(() => undefined)
   const [{ scanUntrusted }, { aiBudgetBlocks }] = await Promise.all([import('@/lib/ai/untrusted-input'), import('@/lib/ai/usage-record')])
   const decision = askMode({
     want: opts.want,

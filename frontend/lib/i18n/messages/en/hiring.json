@@ -1615,5 +1615,11 @@
   "jmGaps": "Not shown yet:",
   "jmInviteToApply": "Invite to apply",
   "jmInvited": "Invited",
-  "jmConsidered": "Profiles considered: {count}"
+  "jmConsidered": "Profiles considered: {count}",
+  "ldNoShowsTitle": "{count} candidates didn’t join",
+  "ldNoShowsHelp": "They never started before joining closed. Add them to another upcoming drive; they get its reminders.",
+  "ldNoShowsTarget": "Add them to",
+  "ldNoShowsMove": "Add {count} to this drive",
+  "ldNoShowsNoTarget": "Create or schedule another drive to offer them a new slot.",
+  "ldNoShowsMoved": "Added {added} (already there: {already})."
 }

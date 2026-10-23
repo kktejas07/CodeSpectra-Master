@@ -1,13 +1,18 @@
 'use client'
 
-import { useCallback, type ReactNode } from 'react'
-import { GooeyToaster, gooeyToast } from 'goey-toast'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import dynamic from 'next/dynamic'
+import { readyToaster, registerToasterHost } from '@/lib/toast-bus'
 // Static import is fine: AnimatedIcon loads its Lottie player lazily (never in this root chunk).
 import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 
 /**
  * Single toast system for the entire app — goey-toast
  * (https://goey-toast.vercel.app, gooey morphing toasts built on Sonner).
+ *
+ * SEO-032: goey-toast (framer-motion + sonner) is not in the root bundle: the
+ * toaster (components/toast/gooey-toaster.tsx) mounts on the first toast, so
+ * pages that never toast never download it.
  *
  * Exactly one `<GooeyToaster />` is mounted here. Call sites keep using the
  * existing `useToast()` hook — `const addToast = useToast()` then
@@ -55,23 +60,15 @@ const TYPE_DURATIONS: Record<ToastType, number> = {
   error: 8000,
 }
 
+const LazyToaster = dynamic(() => import('@/components/toast/gooey-toaster'), { ssr: false })
+
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const [on, setOn] = useState(false)
+  useEffect(() => registerToasterHost(() => setOn(true)), [])
   return (
     <>
       {children}
-      {/* ponytail: app defaults to dark theme, so the toaster does too */}
-      <GooeyToaster
-        position="top-right"
-        theme="dark"
-        closeButton
-        closeOnEscape
-        showProgress
-        showTimestamp
-        // ponytail: storm ceiling — burst toasts (retry loops, bulk actions)
-        // evict oldest-first instead of stacking off-screen unbounded.
-        maxQueue={5}
-        queueOverflow="drop-oldest"
-      />
+      {on && <LazyToaster />}
     </>
   )
 }
@@ -82,32 +79,34 @@ export function useToast() {
   // forever (settings page hit 1200+ requests → 429 storm). gooeyToast fns
   // are module-singleton refs, so [] deps are safe.
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
-    const fn =
-      toast.type === 'success'
-        ? gooeyToast.success
-        : toast.type === 'error'
-          ? gooeyToast.error
-          : toast.type === 'warning'
-            ? gooeyToast.warning
-            : toast.type === 'info'
-              ? gooeyToast.info
-              : gooeyToast
-    // ponytail: explicit duration wins; otherwise the per-severity default.
-    // 0 = sticky (mapped to ~24h: no setTimeout-overflow risk, effectively
-    // never auto-dismisses — the old custom toaster's sticky contract).
-    const duration =
-      typeof toast.duration === 'number'
-        ? toast.duration === 0
-          ? 86_400_000
-          : toast.duration
-        : TYPE_DURATIONS[toast.type] ?? 5000
-    fn(toast.title, {
-      description: toast.message ?? undefined,
-      action: toast.action,
-      timing: { displayDuration: duration },
-      // Success gets the animated check (plays once; still frame under reduced motion).
-      ...(toast.type === 'success' ? { icon: <AnimatedIcon name="check-circle" size={18} autoplay hover={false} /> } : {}),
-    })
+    void readyToaster().then(({ gooeyToast }) => {
+      const fn =
+        toast.type === 'success'
+          ? gooeyToast.success
+          : toast.type === 'error'
+            ? gooeyToast.error
+            : toast.type === 'warning'
+              ? gooeyToast.warning
+              : toast.type === 'info'
+                ? gooeyToast.info
+                : gooeyToast
+      // ponytail: explicit duration wins; otherwise the per-severity default.
+      // 0 = sticky (mapped to ~24h: no setTimeout-overflow risk, effectively
+      // never auto-dismisses — the old custom toaster's sticky contract).
+      const duration =
+        typeof toast.duration === 'number'
+          ? toast.duration === 0
+            ? 86_400_000
+            : toast.duration
+          : TYPE_DURATIONS[toast.type] ?? 5000
+      fn(toast.title, {
+        description: toast.message ?? undefined,
+        action: toast.action,
+        timing: { displayDuration: duration },
+        // Success gets the animated check (plays once; still frame under reduced motion).
+        ...(toast.type === 'success' ? { icon: <AnimatedIcon name="check-circle" size={18} autoplay hover={false} /> } : {}),
+      })
+    }).catch(() => { /* toast module failed to load (offline): nothing to show */ })
   }, [])
   return addToast
 }

@@ -13,7 +13,7 @@ import 'server-only'
 import { getMongoDb } from '@/lib/mongodb'
 import type { AgentCaller } from '@/lib/agent/contract'
 import {
-  DEFAULT_BUDGET, budgetKey, budgetState, dayKey, limitsFor, monthKey, sanitizeBudget,
+  DEFAULT_BUDGET, budgetKey, budgetState, dayKey, limitsFor, monthKey, sanitizeBudget, withPlatformHardStop,
   type AgentBudgetSettings, type BudgetState,
 } from './budget'
 import type { TurnCharge } from './metering'
@@ -73,7 +73,10 @@ export async function checkBudget(caller: AgentCaller, now = new Date()): Promis
   const settings = await getBudgetSettings()
   const key = budgetKey(caller)
   try {
-    return budgetState(await counters(key, now), limitsFor(key, settings))
+    const state = budgetState(await counters(key, now), limitsFor(key, settings))
+    // AGT-028: honour the platform AI money hard stop as well (never throws; fails open).
+    const { aiBudgetBlocks } = await import('@/lib/ai/usage-record')
+    return withPlatformHardStop(state, await aiBudgetBlocks('admin_agent'))
   } catch (e) {
     console.error('[agent/usage] budget read failed:', e)
     return { ok: true, remaining: settings.max_tokens_per_turn, daily: { used: 0, limit: 0 }, monthly: { used: 0, limit: 0 } }

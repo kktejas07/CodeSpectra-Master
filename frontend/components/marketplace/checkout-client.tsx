@@ -13,6 +13,7 @@ import type { Quote } from '@/lib/marketplace/pricing'
 import { Totals, formatSlot } from './cart-lines'
 import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 
 const field = 'h-11 w-full rounded-xl border border-cs-grid bg-cs-sheet px-3 text-sm text-cs-ink outline-none placeholder:text-cs-ink-soft/70 focus:border-cs-accent/50 focus:ring-2 focus:ring-cs-accent/30'
 
@@ -93,6 +94,8 @@ export function CheckoutClient({ email }: { email: string }) {
     <PublicPageWrapper>
       <div className="mx-auto w-full min-w-0 max-w-[1100px] px-4 py-10 sm:px-6 lg:px-8">
         <h1 className="cs-heading mb-6 text-3xl text-cs-ink sm:text-4xl">{t('market.checkoutTitle')}</h1>
+        {/* CORE-038: no checkout inside the phone apps (store rules). */}
+        <NativePurchaseGate>
         {loading && !cart ? (
           <div className="h-60 animate-pulse rounded-3xl bg-cs-paper motion-reduce:animate-none" role="status" aria-label={t('market.checkoutLoading')} />
         ) : empty ? (
@@ -160,6 +163,7 @@ export function CheckoutClient({ email }: { email: string }) {
             </aside>
           </form>
         )}
+        </NativePurchaseGate>
       </div>
     </PublicPageWrapper>
   )

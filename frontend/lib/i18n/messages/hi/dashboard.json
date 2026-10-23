@@ -305,5 +305,17 @@
   "stopGenerating": "जवाब बनाना रोकें",
   "sendMessage": "मैसेज भेजें",
   "copilotDisclaimer": "कोपायलट गलती कर सकता है। कन्फ़र्म करने से पहले प्रीव्यू जाँचें।",
-  "readRepliesAloud": "जवाब बोलकर सुनाएँ"
+  "readRepliesAloud": "जवाब बोलकर सुनाएँ",
+  "mmTitle": "मदद कर सकने वाले मेंटर",
+  "mmDesc": "आपके फ़ोकस एरिया, लक्ष्य कंपनी, भाषा और टाइम ज़ोन के हिसाब से चुने गए।",
+  "mmReasonSkill": "{value} में मज़बूत",
+  "mmReasonCompany": "{value} में काम किया",
+  "mmReasonLanguage": "{value} बोलते हैं",
+  "mmReasonTimezone": "मिलता-जुलता टाइम ज़ोन",
+  "mmReasonRating": "रेटिंग {value}",
+  "mmRating": "{n} रिव्यू से {value}",
+  "mmOffering": "{title} · {minutes} मिनट · {price}",
+  "mmEmpty": "अभी कोई मेंटर मैच नहीं। थोड़ा और अभ्यास करें या सभी मेंटर देखें।",
+  "mmBrowse": "मेंटर देखें",
+  "mmBook": "सेशन देखें"
 }

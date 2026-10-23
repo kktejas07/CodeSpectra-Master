@@ -178,6 +178,12 @@ export async function runPostPayment(orderId: string): Promise<void> {
         const m = await createMeeting(order, l, b.id, b.start)
         if (m.join_url) await setBookingMeeting(b.id, m)
         lines.push({ ...l, fulfilment: { ...l.fulfilment, status: 'booked', booking: { start: b.start, end: b.end, join_url: m.join_url ?? undefined, meeting_id: m.meeting_id ?? undefined } } })
+        // AUTO-088: a paid session / mentor booking (one event per booking).
+        const buyerId = order.buyer_id
+        void import('@/lib/automation/events').then(({ emit }) => emit('mentor.booking.created', {
+          booking_id: b.id, order_id: orderId, product_id: l.product_id, title: l.title, seller_id: b.seller_id, buyer_id: buyerId,
+          starts_at: b.start, ends_at: b.end, join_url: m.join_url ?? null,
+        }, { idempotencyKey: `mentor.booking.created:${b.id}` })).catch((e) => console.error('[automation] emit failed:', e))
       } else lines.push(l) // physical: the seller is notified by recordSale → onSaleRecorded
     }
     await col.updateOne({ id: orderId }, { $set: { lines, ...(skip.size ? { unavailable_line_ids: [...skip] } : {}), updated_at: nowIso() } })
@@ -294,6 +300,26 @@ export async function settlePhonePeTxn(txn: string): Promise<'paid' | 'failed' |
   return 'pending'
 }
 
+/**
+ * CORE-039: Razorpay Payment Link callback / `payment_link.*` webhook. Looks the order up by
+ * our own id or by the link id, then settles from Razorpay's view of the link only.
+ */
+export async function settleRazorpayOrder(by: { orderId?: string; linkId?: string }): Promise<'paid' | 'failed' | 'pending' | 'unknown'> {
+  const q = by.orderId ? { id: by.orderId } : by.linkId ? { 'payment.ref': by.linkId } : null
+  if (!q) return 'unknown'
+  const order = await (await orders()).findOne({ ...q, 'payment.gateway': 'razorpay' } as never, { projection: { _id: 0 } })
+  if (!order) return 'unknown'
+  if (order.payment.status === 'succeeded') return 'paid'
+  const st = await fetchGatewayState(order)
+  if (st.state === 'paid') {
+    const r = await settlePaid(order.id, { amount: st.amount, currency: st.currency, txn: st.txn, intent: st.intent })
+    return r === 'mismatch' ? 'failed' : 'paid'
+  }
+  // An expired / cancelled link releases the hold like a failed payment (once).
+  if (st.state === 'failed') { await markFailed(order.id); return 'failed' }
+  return 'pending'
+}
+
 /** Stripe checkout.session.* for a marketplace session (signature already verified by the caller). */
 export async function handleStripeSessionEvent(type: string, session: { id: string; payment_status?: string | null; amount_total?: number | null; currency?: string | null; payment_intent?: string | { id: string } | null }, orderId: string): Promise<void> {
   const order = await (await orders()).findOne({ id: orderId }, { projection: { _id: 0 } })
@@ -332,14 +358,15 @@ export async function runBuyerSweep(now = new Date()): Promise<{ released: numbe
   }
 
   const bk = await bookings()
-  const soon = await bk.find({ status: 'booked', start: { $gt: now.toISOString(), $lte: new Date(now.getTime() + 24 * 3_600_000).toISOString() }, reminder_sent_at: { $exists: false } } as never, { projection: { _id: 0 } }).limit(100).toArray()
+  const soon = await bk.find({ status: 'booked', start: { $gt: now.toISOString(), $lte: new Date(now.getTime() + 24 * 3_600_000).toISOString() }, reminder_sent_at: null } as never, { projection: { _id: 0 } }).limit(100).toArray()
   for (const b of soon) {
-    const c = await bk.updateOne({ id: b.id, reminder_sent_at: { $exists: false } } as never, { $set: { reminder_sent_at: now.toISOString() } } as never)
+    // AUTO-081: `null` matches both "never sent" and "cleared by a reschedule".
+    const c = await bk.updateOne({ id: b.id, reminder_sent_at: null } as never, { $set: { reminder_sent_at: now.toISOString() } } as never)
     if (!c.modifiedCount) continue
     const o = await col.findOne({ id: b.order_id }, { projection: { _id: 0, id: 1, number: 1, buyer_email: 1, buyer_id: 1, lines: 1 } })
     if (!o) continue
     const line = o.lines.find((l) => l.id === b.line_id)
-    await sendBookingReminder(o.buyer_email, o, line?.title || 'Your session', b.start, b.join_url)
+    if (o.buyer_email) await sendBookingReminder(o.buyer_email, o, line?.title || 'Your session', b.start, b.join_url)
     await notify({ user_id: o.buyer_id, type: 'mkt.booking_reminder', title: 'Session tomorrow', message: `${(line?.title || 'Your session').slice(0, 80)} starts within 24 hours.`, title_i18n: { key: 'mkt.sessionTomorrow.title' }, message_i18n: { key: 'mkt.sessionTomorrow.message', params: { title: (line?.title || 'Your session').slice(0, 80) } }, link: `/dashboard/orders/${o.id}`, icon: 'clock' }).catch(() => null)
     out.reminders++
   }

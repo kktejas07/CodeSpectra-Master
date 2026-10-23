@@ -21,12 +21,12 @@ import { FORMATS, rankDirection, taskLanguages, type FileSlot } from './formats'
 import { golfLength, outputMatches, scoreDebug, scoreTests } from './scoring/code'
 import { verifyFlag } from './scoring/ctf'
 import { csvColumns, scorePredictions, type DatathonMetric } from './scoring/datathon'
-import { buildPromptRun, estimateCostUsd, matchOutput, passRate, promptPoints } from './scoring/prompt'
+import { buildPromptRun, estimateCostUsd, matchOutput, passRate, promptPoints, promptRunComplete, runSlotClaimFilter } from './scoring/prompt'
 import { cleanRubricScores, judgedScore, judgeTotal, wordCount } from './scoring/judged'
 import { isGithubLogin, parsePrUrl, prEligibility, registeredRepoKeys, type GithubPull } from './scoring/oss'
 import { freezeStart } from './standings'
 import { getContestSettings, isContestJudge, isContestStaff, liveStandings, loadSecret } from './service'
-import { clean, contestsCol, entriesCol, filesCol, resultsCol, submissionsCol, usageCol, type ContestFileDoc } from './store'
+import { clean, contestsCol, entriesCol, filesCol, resultsCol, runSlotsCol, submissionsCol, usageCol, type ContestFileDoc } from './store'
 import type { ContestDoc, ContestEntryDoc, ContestFileRef, ContestSubmissionDoc, JudgeScore, StandingRow } from './types'
 
 const nowIso = () => new Date().toISOString()
@@ -433,59 +433,99 @@ async function submitPrompt(user: Who, c: ContestDoc, entry: ContestEntryDoc, ta
   const usage = await usageCol()
   const subs = await submissionsCol()
   const runsCap = Math.max(1, Number(c.config.runs_per_user) || 10)
-  if ((await subs.countDocuments({ contest_id: c.id, user_id: user.id })) >= runsCap) return fail(429, `You have used all ${runsCap} runs for this contest.`)
   const limited = await limit(`contest-prompt:${user.id}`, 3, 60_000, 'One run at a time, please.')
   if (limited) return fail(429, limited)
-  const settings = await getContestSettings()
-  const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString()
-  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString()
-  const [contestSpend, dayRuns, monthSpend] = await Promise.all([
-    usage.aggregate<{ s: number }>([{ $match: { contest_id: c.id } }, { $group: { _id: null, s: { $sum: '$cost_usd' } } }]).toArray(),
-    usage.countDocuments({ at: { $gte: dayAgo } }),
-    usage.aggregate<{ s: number }>([{ $match: { at: { $gte: monthStart } } }, { $group: { _id: null, s: { $sum: '$cost_usd' } } }]).toArray(),
-  ])
-  const capUsd = Number(c.config.spend_cap_usd ?? 2)
-  if ((contestSpend[0]?.s || 0) >= capUsd) return fail(429, 'This contest has used its model budget. The organiser can raise it.')
-  if (dayRuns >= settings.ai_daily_runs) return fail(429, 'The model is busy today. Try again tomorrow.')
-  const { capSpendFor } = await import('@/lib/ai/usage-record')
-  if ((await capSpendFor(['contest_prompt_a_thon'], monthSpend[0]?.s || 0)) >= settings.ai_monthly_cost_usd) return fail(429, 'The model budget for this month is used up.')
+  // AGT-030: claim the run slot atomically (run cap + one run in flight per person) before the
+  // check-then-spend below, so quick repeated clicks cannot overshoot the run or spend caps.
+  const slot = await claimRunSlot(c.id, user.id, runsCap, () => subs.countDocuments({ contest_id: c.id, user_id: user.id }))
+  if (slot !== 'ok') return fail(429, slot === 'busy' ? 'One run at a time, please. Wait for your last run to finish.' : `You have used all ${runsCap} runs for this contest.`)
+  let counted = false
+  try {
+    const settings = await getContestSettings()
+    const dayAgo = new Date(Date.now() - 24 * 3600_000).toISOString()
+    const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString()
+    const [contestSpend, dayRuns, monthSpend] = await Promise.all([
+      usage.aggregate<{ s: number }>([{ $match: { contest_id: c.id } }, { $group: { _id: null, s: { $sum: '$cost_usd' } } }]).toArray(),
+      usage.countDocuments({ at: { $gte: dayAgo } }),
+      usage.aggregate<{ s: number }>([{ $match: { at: { $gte: monthStart } } }, { $group: { _id: null, s: { $sum: '$cost_usd' } } }]).toArray(),
+    ])
+    const capUsd = Number(c.config.spend_cap_usd ?? 2)
+    if ((contestSpend[0]?.s || 0) >= capUsd) return fail(429, 'This contest has used its model budget. The organiser can raise it.')
+    if (dayRuns >= settings.ai_daily_runs) return fail(429, 'The model is busy today. Try again tomorrow.')
+    const { capSpendFor } = await import('@/lib/ai/usage-record')
+    if ((await capSpendFor(['contest_prompt_a_thon'], monthSpend[0]?.s || 0)) >= settings.ai_monthly_cost_usd) return fail(429, 'The model budget for this month is used up.')
 
-  const { backendComplete } = await import('@/lib/ai/backend')
-  const { withUsageMeter, estimateTokens, meteredUsd } = await import('@/lib/ai/usage-meter')
-  let tokens = 0
-  // Recorded per-call cost when the recorder priced it; the per-1k-token setting otherwise.
-  let metered = 0
-  const results: boolean[] = []
-  let errors = 0
-  await withUsageMeter((u) => {
-    tokens += u.inputTokens + u.outputTokens
-    metered += meteredUsd(u, () => estimateCostUsd(u.inputTokens + u.outputTokens, settings.ai_cost_per_1k_tokens_usd))
-  }, async () => {
-    for (const ec of cases) {
-      const req = buildPromptRun(prompt, ec.input)
-      try {
-        const r = await backendComplete({ systemMessage: req.system, userMessage: req.user, modelRole: 'fast', responseFormat: 'text', feature: 'contest_prompt_a_thon', userId: user.id, cache: false })
-        const out = String(r.text ?? r.raw ?? '').slice(0, 4000)
-        if (!r.ok) errors++
-        results.push(r.ok && matchOutput(out, ec.expected, ec.match))
-      } catch {
-        errors++
-        results.push(false)
-        tokens += estimateTokens(req.system + req.user)
-        metered += estimateCostUsd(estimateTokens(req.system + req.user), settings.ai_cost_per_1k_tokens_usd)
+    const { backendComplete } = await import('@/lib/ai/backend')
+    const { withUsageMeter, estimateTokens, meteredUsd } = await import('@/lib/ai/usage-meter')
+    let tokens = 0
+    // Recorded per-call cost when the recorder priced it; the per-1k-token setting otherwise.
+    let metered = 0
+    const results: boolean[] = []
+    let errors = 0
+    await withUsageMeter((u) => {
+      tokens += u.inputTokens + u.outputTokens
+      metered += meteredUsd(u, () => estimateCostUsd(u.inputTokens + u.outputTokens, settings.ai_cost_per_1k_tokens_usd))
+    }, async () => {
+      for (const ec of cases) {
+        const req = buildPromptRun(prompt, ec.input)
+        try {
+          const r = await backendComplete({ systemMessage: req.system, userMessage: req.user, modelRole: 'fast', responseFormat: 'text', feature: 'contest_prompt_a_thon', userId: user.id, cache: false })
+          const out = String(r.text ?? r.raw ?? '').slice(0, 4000)
+          if (!r.ok) errors++
+          results.push(r.ok && matchOutput(out, ec.expected, ec.match))
+        } catch {
+          errors++
+          results.push(false)
+          tokens += estimateTokens(req.system + req.user)
+          metered += estimateCostUsd(estimateTokens(req.system + req.user), settings.ai_cost_per_1k_tokens_usd)
+        }
       }
+    })
+    const cost = Math.round(metered * 1e6) / 1e6
+    // Spend is real either way, so it always counts toward the contest/platform budgets.
+    await usage.insertOne({ contest_id: c.id, user_id: user.id, task_id: String(task.id), tokens, cost_usd: cost, at: nowIso() })
+    // AGT-029: a model error on any case means the run is not scored and does not use up a run.
+    if (!promptRunComplete(errors, cases.length)) {
+      return fail(502, errors === cases.length
+        ? 'The model is not answering right now. This run was not counted against your score; try again shortly.'
+        : `The model did not answer ${errors} of ${cases.length} hidden cases. This run was not counted and you keep it; try again shortly.`)
     }
-  })
-  const cost = Math.round(metered * 1e6) / 1e6
-  await usage.insertOne({ contest_id: c.id, user_id: user.id, task_id: String(task.id), tokens, cost_usd: cost, at: nowIso() })
-  if (errors === cases.length) return fail(502, 'The model is not answering right now. This run was not counted against your score; try again shortly.')
-  const rate = passRate(results)
-  const passed = results.filter(Boolean).length
-  return insertSubmission({
-    ...base, score: promptPoints(rate, Number(task.points) || 100),
-    detail: { passed, total: cases.length, pass_rate: Math.round(rate * 1000) / 10 },
-    payload: { prompt }, feedback: `${passed} of ${cases.length} hidden cases pass.`,
-  })
+    const rate = passRate(results)
+    const passed = results.filter(Boolean).length
+    const res = await insertSubmission({
+      ...base, score: promptPoints(rate, Number(task.points) || 100),
+      detail: { passed, total: cases.length, pass_rate: Math.round(rate * 1000) / 10 },
+      payload: { prompt }, feedback: `${passed} of ${cases.length} hidden cases pass.`,
+    })
+    counted = res.ok
+    return res
+  } finally {
+    await releaseRunSlot(c.id, user.id, counted)
+  }
+}
+
+/** Claim one prompt-a-thon run (AGT-030). Seeds the counter from earlier submissions on first use. */
+async function claimRunSlot(contestId: string, userId: string, cap: number, existing: () => Promise<number>): Promise<'ok' | 'busy' | 'cap'> {
+  const slots = await runSlotsCol()
+  const id = `${contestId}:${userId}`
+  if (!(await slots.findOne({ id }, { projection: { _id: 1 } }))) {
+    try {
+      await slots.insertOne({ id, contest_id: contestId, user_id: userId, runs: await existing(), busy_since: null })
+    } catch (e) {
+      if ((e as { code?: number }).code !== 11000) throw e
+    }
+  }
+  const staleBefore = new Date(Date.now() - 10 * 60_000).toISOString()
+  const claimed = await slots.findOneAndUpdate(runSlotClaimFilter(id, cap, staleBefore) as never, { $inc: { runs: 1 }, $set: { busy_since: nowIso() } })
+  if (claimed) return 'ok'
+  const cur = await slots.findOne({ id }, { projection: { runs: 1 } })
+  return cur && cur.runs >= cap ? 'cap' : 'busy'
+}
+
+/** Release the in-flight lock; give the run back unless it was scored (AGT-029: errors never cost a run). */
+async function releaseRunSlot(contestId: string, userId: string, counted: boolean): Promise<void> {
+  const slots = await runSlotsCol()
+  await slots.updateOne({ id: `${contestId}:${userId}` }, counted ? { $set: { busy_since: null } } : { $set: { busy_since: null }, $inc: { runs: -1 } }).catch(() => undefined)
 }
 
 // ─── Open-source sprint ──────────────────────────────────────────────────────

@@ -44,6 +44,8 @@ export interface SignalDraftDoc {
   ai_rewritten?: boolean
   /** Prompt-guard reasons found in the source text (forces review). */
   flags?: string[]
+  /** AGT-031: news fact verifier result (unsupported numbers / names / claims force review). */
+  fact_check?: { ok: boolean; numbers: string[]; names: string[]; claims: string[]; checked_at: string }
   created_at: string
   updated_at: string
 }

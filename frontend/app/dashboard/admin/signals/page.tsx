@@ -47,6 +47,7 @@ type Draft = {
   auto_published?: boolean
   ai_rewritten?: boolean
   flags?: string[]
+  fact_check?: { ok: boolean; numbers: string[]; names: string[]; claims: string[] }
   created_at: string
 }
 
@@ -231,6 +232,7 @@ export default function AdminSignalsPage() {
                     {d.trusted && <Badge variant="outline" className="gap-1"><ShieldCheck className="h-3 w-3" aria-hidden /> {tx('signals.trustedFeed')}</Badge>}
                     {d.ai_rewritten === false && <Badge variant="outline">{tx('signals.noAiPass')}</Badge>}
                     {d.flags && d.flags.length > 0 && <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400" title={d.flags.join(', ')}><AlertTriangle className="h-3 w-3" aria-hidden /> {tx('signals.sourceTextFlagged')}</Badge>}
+                    {d.fact_check && !d.fact_check.ok && <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400" title={[...d.fact_check.numbers, ...d.fact_check.names, ...d.fact_check.claims].join(', ')}><AlertTriangle className="h-3 w-3" aria-hidden /> {tx('signals.factsUnverified')}</Badge>}
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.excerpt}</p>
                   {d.angle ? (

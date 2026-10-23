@@ -288,6 +288,10 @@ export async function createThread(user: NonNullable<Viewer>, raw: unknown) {
     accepted_reply_id: null, hash: m.hash, last_activity_at: now, created_at: now, updated_at: now,
   }
   await (await threadsCol()).insertOne(t)
+  // AUTO-088: visible community threads (held-for-review posts are not announced).
+  if (t.status === 'visible') void import('@/lib/automation/events').then(({ emit }) => emit('community.thread.created', {
+    user_id: user.id, thread_id: t.id, title: t.title, kind: t.kind, category_id: t.category_id, problem_id: t.problem_id, tags: t.tags, url: `/community/t/${t.id}`,
+  }, { idempotencyKey: `community.thread.created:${t.id}` })).catch(() => {})
   await Promise.all([
     (await followsCol()).updateOne({ thread_id: t.id, user_id: user.id }, { $setOnInsert: { thread_id: t.id, user_id: user.id, created_at: now } }, { upsert: true }),
     (await profilesCol()).updateOne({ user_id: user.id }, { $inc: { posts: 1 } }),
@@ -517,6 +521,27 @@ export async function moderationAction(user: NonNullable<Viewer>, raw: Record<st
   }
   await (await reportsCol()).updateMany({ target_id: id, status: 'open' }, { $set: { status: 'resolved', action, resolved_by: user.id, resolved_at: now } })
   return { ok: true }
+}
+
+/** Reporter id of the community moderator loop (lib/agent-loops/loops/community-mod). */
+export const AGENT_REPORTER_ID = 'agent:community-moderator'
+
+/** Community moderator loop: hide clear spam / restore it, with the reasons shown to moderators. */
+export async function systemSetPostStatus(type: 'thread' | 'reply', id: string, status: 'visible' | 'hidden', reasons: string[]): Promise<void> {
+  await setStatus(type, id, status)
+  const moderation = { reasons: reasons.slice(0, 8), ai: null }
+  if (type === 'thread') await (await threadsCol()).updateOne({ id }, { $set: { moderation } })
+  else await (await repliesCol()).updateOne({ id }, { $set: { moderation } })
+}
+
+/** Community moderator loop: one open report in the moderators' queue (once per post). */
+export async function systemReport(type: 'thread' | 'reply', id: string, threadId: string, reason: ReportReason, note: string): Promise<boolean> {
+  try {
+    await (await reportsCol()).insertOne({ id: newPostId('rp'), target_type: type, target_id: id, thread_id: threadId, group_id: null, reporter_id: AGENT_REPORTER_ID, reason, note: note.slice(0, 1000), status: 'open', action: null, resolved_by: null, created_at: nowIso(), resolved_at: null })
+    return true
+  } catch {
+    return false // already reported by the loop
+  }
 }
 
 /** Superadmin grants or removes forum moderator rights. */

@@ -44,7 +44,8 @@ export function hackathonSource(h: Doc): ExtractedSource | null {
     tenant_id: tenantOf(h),
     visibility: eventVisibility(h, h.status === 'draft'),
     title: str(h.name, 200) || 'Hackathon',
-    url: `/dashboard/admin/hackathons/${encodeURIComponent(id)}`,
+    // RAG-022: public hackathons are answerable from the public Ask box, so cite the public page there.
+    url: eventVisibility(h, h.status === 'draft') === 'public' && str(h.slug, 200) ? `/hackathons/${encodeURIComponent(str(h.slug, 200))}` : `/dashboard/admin/hackathons/${encodeURIComponent(id)}`,
     text,
     metadata: { slug: str(h.slug, 200), status: str(h.status, 20) },
   }
@@ -89,7 +90,7 @@ export async function loadCodeathon(db: Db, id: string): Promise<ExtractedSource
   return c ? codeathonSource(c as Doc) : null
 }
 
-export async function listEventIds(db: Db, collection: 'hackathons' | 'codeathons', limit: number, tenantId?: string | null): Promise<string[]> {
+export async function listEventIds(db: Db, collection: 'hackathons' | 'codeathons' | 'contests', limit: number, tenantId?: string | null): Promise<string[]> {
   const rows = await db.collection(collection).find(tenantId ? { tenant_id: tenantId } : {}, { projection: { _id: 0, id: 1 } }).limit(limit).toArray()
   return rows.map((r) => str(r.id, 200)).filter(Boolean)
 }

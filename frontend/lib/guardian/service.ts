@@ -21,7 +21,7 @@ import type { Locale } from '@/lib/i18n/config'
 import { phoneKey, isWhatsAppOptedOut } from '@/lib/whatsapp-send'
 import { toE164 } from '@/lib/ats/phone'
 import {
-  buildGuardianSummary, checkGuardianContact, guardianTemplateParams, isMinorProfile, normalizeShare, renderGuardianEmail, reportDue, summaryLines,
+  buildGuardianSummary, checkGuardianContact, dueLinkFilter, guardianTemplateParams, isMinorProfile, normalizeShare, renderGuardianEmail, reportDue, summaryLines,
   DEFAULT_SHARE, MAX_GUARDIANS, type GuardianSummary, type Relation, type ShareSettings,
 } from './summary'
 
@@ -393,11 +393,20 @@ async function claimSend(linkId: string, week: string, channel: 'email' | 'whats
 }
 
 /** Hourly: send each active link's weekly report once per ISO week (Sunday evening, learner's time zone). */
-export async function runGuardianReports(now = new Date(), opts: { max?: number } = {}): Promise<{ checked: number; sent: number }> {
+export async function runGuardianReports(now = new Date(), opts: { budgetMs?: number } = {}): Promise<{ checked: number; sent: number; deferred?: number }> {
   const col = await links()
-  const rows = (await col.find({ status: 'active' }, { projection: { _id: 0 } }).limit(opts.max ?? 5000).toArray()) as GuardianLink[]
+  // AUTO-082: only links due now (per timezone in use), streamed with a time budget instead of a 5,000-row cap.
+  // Rows left past the budget stay unclaimed and are picked up by the next hourly run (due = hour >= report hour).
+  const timezones = (await col.distinct('timezone', { status: 'active' })) as Array<string | null>
+  const cursor = col.find(dueLinkFilter(timezones.length ? timezones : [null], now) as never, { projection: { _id: 0 } }).sort({ id: 1 })
+  const deadline = Date.now() + (opts.budgetMs ?? 15 * 60_000)
   let sent = 0
-  for (const l of rows) {
+  let checked = 0
+  let deferred = 0
+  for await (const doc of cursor) {
+    const l = doc as unknown as GuardianLink
+    if (Date.now() > deadline) { deferred++; continue }
+    checked++
     const due = reportDue(now, l.timezone, l.last_report_week)
     if (!due.due) continue
     const claimed = await col.updateOne({ id: l.id, status: 'active', last_report_week: { $ne: due.week } }, { $set: { last_report_week: due.week, last_report_at: now.toISOString() } })
@@ -434,5 +443,6 @@ export async function runGuardianReports(now = new Date(), opts: { max?: number 
       logger.warn(`[guardian] report failed for ${l.id}: ${redactString((e as Error).message)}`)
     }
   }
-  return { checked: rows.length, sent }
+  if (deferred) logger.warn(`[guardian] time budget reached: ${deferred} due reports left for the next run`)
+  return { checked, sent, ...(deferred ? { deferred } : {}) }
 }

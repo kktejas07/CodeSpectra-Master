@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useCart } from '@/components/marketplace/use-cart'
 import { CartLines, SavedLines, Totals } from '@/components/marketplace/cart-lines'
 import { useT } from '@/lib/i18n/client'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 
 function CartInner() {
   const { cart, loading, busy, act } = useCart()
@@ -24,6 +25,8 @@ function CartInner() {
         <Link href="/marketplace" className="text-sm font-semibold text-cs-accent-text hover:underline">{t('market.cartContinue')}</Link>
       </div>
       {notice && <p role="status" className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-cs-ink">{notice}</p>}
+      {/* CORE-038: no cart / checkout inside the phone apps (store rules). */}
+      <NativePurchaseGate>
       {loading ? (
         <div className="h-40 animate-pulse rounded-3xl bg-cs-paper motion-reduce:animate-none" role="status" aria-label={t('market.cartLoading')} />
       ) : !cart || (!cart.lines.length && !cart.saved.length) ? (
@@ -48,6 +51,7 @@ function CartInner() {
           )}
         </div>
       )}
+      </NativePurchaseGate>
     </div>
   )
 }

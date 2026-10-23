@@ -49,6 +49,39 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'ebooks-daily', label: 'Daily ebook draft', group: 'Cron routes', everyMinutes: 1440, optional: true },
   { id: 'signals-ingest', label: 'Signals ingest', group: 'Cron routes', everyMinutes: 360, optional: true },
   { id: 'security-scan', label: 'Security scan', group: 'Cron routes', everyMinutes: 10080 },
+  // AUTO-083: jobs added in later waves (all record heartbeats via runLeasedJob / withCronHeartbeat).
+  { id: 'news-digest', label: 'Tech news daily digest', group: 'Content', everyMinutes: 1440, optional: true },
+  { id: 'content-digest', label: 'Daily digest page (events, news, Learn, contests)', group: 'Content', everyMinutes: 1440, optional: true },
+  { id: 'study-plans', label: 'Study plans (weekly build + reminders)', group: 'Content', everyMinutes: 60 },
+  { id: 'wa-practice', label: 'WhatsApp daily practice', group: 'Content', everyMinutes: 60 },
+  { id: 'guardian-reports', label: 'Guardian weekly reports', group: 'Content', everyMinutes: 60 },
+  { id: 'knowledge', label: 'Knowledge index (queue, nightly sweep, vector sync, copilot eval)', group: 'Content', everyMinutes: 1 },
+  { id: 'razorpay-cancel-sweep', label: 'Razorpay cancellations at period end', group: 'Platform', everyMinutes: 1440 },
+  { id: 'referral-rewards', label: 'Referral rewards', group: 'Platform', everyMinutes: 1440 },
+  { id: 'licence-expiry', label: 'Organisation licence expiry', group: 'Platform', everyMinutes: 1440 },
+  { id: 'ai-usage-rollup', label: 'AI spend daily rollup', group: 'Platform', everyMinutes: 1440 },
+  { id: 'pro-cert-sweep', label: 'Proctored certifications (finalise, payments, expiry reminders)', group: 'Platform', everyMinutes: 5 },
+  { id: 'lti-grade-retry', label: 'LMS grade passback retries', group: 'Platform', everyMinutes: 5 },
+  { id: 'company-tests-refresh', label: 'Company test weekly refresh', group: 'Content', everyMinutes: 10080, optional: true },
+  { id: 'hiring-analytics-digest', label: 'Hiring analytics weekly digest', group: 'Hiring', everyMinutes: 10080 },
+  // Wave 15 agent loops (lib/agent-loops/registry.ts): switchable in Admin → Agent loops.
+  { id: 'agent-loop:content-qa', label: 'Agent loop: content QA', group: 'Content', everyMinutes: 10080, optional: true },
+  { id: 'agent-loop:seo-gap', label: 'Agent loop: SEO / content gaps', group: 'Content', everyMinutes: 10080, optional: true },
+  { id: 'agent-loop:community-mod', label: 'Agent loop: community moderator', group: 'Content', everyMinutes: 30, optional: true },
+  { id: 'agent-loop:analytics-insight', label: 'Agent loop: analytics insights', group: 'Platform', everyMinutes: 10080, optional: true },
+  { id: 'agent-loop:social-pack', label: 'Agent loop: daily social pack', group: 'Content', everyMinutes: 1440, optional: true },
+  // Wave 15 assistants (lib/assistants/tick.ts): each switched on / off in Admin → Assistants.
+  { id: 'assistant-revenue', label: 'Revenue and renewal agent (daily proposals)', group: 'Platform', everyMinutes: 1440, optional: true },
+  { id: 'assistant-onboarding', label: 'Org onboarding checklist and nudges', group: 'Platform', everyMinutes: 1440, optional: true },
+  { id: 'assistant-placement-report', label: 'Weekly placement report', group: 'Content', everyMinutes: 10080, optional: true },
+  { id: 'assistant-mentor-followup', label: 'Mentor session follow-ups', group: 'Marketplace', everyMinutes: 60, optional: true },
+  // Only hit by an external scheduler on serverless hosts; the in-process loop covers everything else.
+  { id: 'tick', label: 'External cron tick (/api/cron/tick)', group: 'Cron routes', everyMinutes: 1, optional: true },
+  // Hiring agents (lib/agent/hiring-loops/tick.ts): checked on these cadences; per-org work only when switched on.
+  { id: 'hiring-agent-sourcer', label: 'Hiring agent: sourcer (nightly invite shortlists)', group: 'Hiring', everyMinutes: 60 },
+  { id: 'hiring-agent-scheduler', label: 'Hiring agent: interview scheduler', group: 'Hiring', everyMinutes: 60 },
+  { id: 'hiring-agent-author', label: 'Hiring agent: assessment author queue', group: 'Hiring', everyMinutes: 15 },
+  { id: 'hiring-agent-integrity', label: 'Hiring agent: integrity review queue', group: 'Hiring', everyMinutes: 60 },
 ]
 
 /** Minutes after which a heartbeat counts as stale. */

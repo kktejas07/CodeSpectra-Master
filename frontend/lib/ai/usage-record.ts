@@ -284,7 +284,14 @@ async function maybeAlert(month: string, prev: number, next: number, sent: reado
   for (const t of crossed) {
     // Claim the threshold once per month (concurrent writers race on $ne).
     const claimed = await col.updateOne({ id: `m:${month}`, alerts: { $ne: t } }, { $addToSet: { alerts: t } })
-    if (claimed.modifiedCount === 1) await sendBudgetAlert(t, next, s, month)
+    if (claimed.modifiedCount !== 1) continue
+    try {
+      await sendBudgetAlert(t, next, s, month)
+    } catch (e) {
+      // AUTO-091: release the claim so the next usage record retries this alert.
+      await col.updateOne({ id: `m:${month}` }, { $pull: { alerts: t } } as never).catch(() => {})
+      console.error(`[ai-cost] budget alert ${t}% failed, will retry:`, (e as Error)?.message)
+    }
   }
 }
 
@@ -293,7 +300,8 @@ async function sendBudgetAlert(threshold: BudgetThreshold, spentMicros: number, 
   const spent = (spentMicros / 1e6).toFixed(2)
   const budget = s.monthly_budget_usd.toFixed(2)
   const stopNote = threshold === 100 && s.hard_stop ? 'stopped' : 'running'
-  await notifySuperAdmins({
+  // notifySuperAdmins never throws; 0 delivered means it failed (DB/mail down), so throw to retry (AUTO-091).
+  const delivered = await notifySuperAdmins({
     type: 'ai.budget_alert',
     title: `AI spend reached ${threshold}% of the monthly budget`,
     message: `$${spent} of $${budget} used in ${month}.`,
@@ -308,4 +316,5 @@ async function sendBudgetAlert(threshold: BudgetThreshold, spentMicros: number, 
     urgent: threshold === 100,
     metadata: { threshold, month },
   })
+  if (!delivered) throw new Error('budget alert not delivered')
 }

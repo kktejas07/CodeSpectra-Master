@@ -15,6 +15,7 @@ import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
 import { formatCurrency, formatDate } from '@/lib/i18n/format'
 import { BillingDetailsForm, type BillingProfileView } from './billing-details-form'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 
 interface PlanRow { id: string; name: string; checkout_mode?: string }
 interface Preview { kind: string; charge_now: number; credit: number; currency: string; period_end: string; plan: { id: string; name: string; interval: 'month' | 'year' } }
@@ -90,6 +91,8 @@ export function BillingExtras({ hasPlan, onChanged }: { hasPlan: boolean; onChan
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {hasPlan && plans.length ? (
+        // CORE-038: no plan upgrade inside the phone apps (store rules).
+        <NativePurchaseGate fallback={null}>
         <Panel className="space-y-4 p-6">
           <div className="flex items-start gap-3">
             <ArrowUpRight className="mt-1 h-5 w-5 text-primary" aria-hidden />
@@ -149,6 +152,7 @@ export function BillingExtras({ hasPlan, onChanged }: { hasPlan: boolean; onChan
             </Button>
           </div>
         </Panel>
+        </NativePurchaseGate>
       ) : null}
 
       <Panel className="space-y-4 p-6">

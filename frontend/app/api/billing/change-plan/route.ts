@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import { apiErrorFor } from '@/lib/api-errors'
+import { nativeCheckoutBlock } from '@/lib/billing/native-checkout'
 import { parseInterval } from '@/lib/billing-plan-mode'
 
 export const runtime = 'nodejs'
@@ -23,6 +24,8 @@ const STATUS: Record<string, number> = { no_subscription: 404, unknown_plan: 404
  * proration (lib/billing/plan-change.ts). Downgrades happen at renewal.
  */
 export async function POST(req: Request) {
+  const blocked = nativeCheckoutBlock(req) // CORE-038
+  if (blocked) return blocked
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json(apiErrorFor('unauthorized'), { status: 401 })
   const limited = await limitRequest(req, 'billing-change-plan', gate.user.id, 20, 60_000)

@@ -160,17 +160,17 @@ export async function POST(req: NextRequest) {
     const candidate = await db.collection('user').findOne({ id: session.candidate_id })
     if (candidate?.email) {
       const liveUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/interviews/${session.id}/live`
-      const startTime = formatDateTime(session.scheduled_at)
-      await sendEmail(candidate.email, {
-        subject: `Interview Scheduled: ${session.title.replace(/[\r\n]+/g, ' ')}`,
-        html: `<p>You have been scheduled for an interview.</p>
-<p><strong>Title:</strong> ${escapeHtml(session.title)}</p>
-<p><strong>Role:</strong> ${escapeHtml(session.role)}</p>
-<p><strong>Type:</strong> ${escapeHtml(session.type)}</p>
-<p><strong>When:</strong> ${startTime}</p>
-<p><strong>Duration:</strong> ${session.duration_minutes} minutes</p>
-<p><a href="${liveUrl}">Join Live Interview →</a></p>`,
-      })
+      // SEO-033: in the candidate's language (dates too).
+      const [{ emailTemplatesFor }, { recipientLocaleFrom }, { LOCALE_META }] = await Promise.all([import('@/lib/email-templates'), import('@/lib/i18n/recipient'), import('@/lib/i18n/config')])
+      const locale = recipientLocaleFrom(candidate as { ui_locale?: unknown })
+      const startTime = formatDateTime(session.scheduled_at, undefined, undefined, locale === 'en' ? undefined : LOCALE_META[locale].intl)
+      const params = { title: escapeHtml(session.title), role: escapeHtml(session.role), type: escapeHtml(session.type), when: startTime, minutes: session.duration_minutes }
+      await sendEmail(candidate.email, emailTemplatesFor(locale).notice({
+        key: 'interviewScheduled',
+        params,
+        subjectParams: { ...params, title: session.title },
+        buttonUrl: liveUrl,
+      }))
     }
   } catch (e) {
     console.error('[Interview] Candidate email failed:', e)

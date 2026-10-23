@@ -41,6 +41,7 @@ image layers/history. Set them in Dokploy's environment (or `docker-compose.yml`
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Rate limits and **scheduler locks** across replicas. Required if you run more than one frontend replica. |
 | `INTERNAL_BACKEND_URL` / `INTERNAL_BACKEND_SECRET` | FastAPI backend (AI, ClamAV scan). |
 | `PISTON_URL` | Code runner, internal only: `http://piston:2000/api/v2`. |
+| `PISTON_IMAGE` | Pin the code runner by digest (`ghcr.io/engineer-man/piston@sha256:…`, run `scripts/pin-piston-image.sh`). Unset = floating `:latest`; Admin → System shows **Piston image not pinned** until it is set (SEC-023). |
 | `PGVECTOR_URL` / `RAG_VECTOR_STORE` | Optional Postgres + pgvector (≥ 0.8, TLS required for remote hosts) for the knowledge-search vector leg once the corpus outgrows the in-process scan (~5k chunks) and there is no Atlas vector index. Reads switch only after the admin backfill completes. See `09-RAG-Vector-Store.md`. |
 | `DIDIT_API_KEY`, `DIDIT_WEBHOOK_SECRET` | KYC (runtime env only). |
 | `PHONEPE_ENABLED=true` + PhonePe keys | PhonePe stays off until this is set. Run one real sandbox payment first (success, failure, closed tab) — the automated tests use a mocked gateway. |

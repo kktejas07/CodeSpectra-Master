@@ -65,7 +65,7 @@ export function EventCard({ ev, origin, saved, onToggleSave }: { ev: PublicFeedE
       {ev.image && (
         <div className="h-32 w-full overflow-hidden bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ev.image} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+          <img src={ev.image} alt="" width={640} height={256} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
         </div>
       )}
       <div className="flex flex-1 flex-col gap-3 p-5">

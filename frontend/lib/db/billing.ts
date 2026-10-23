@@ -98,6 +98,8 @@ export interface BillingSubscriptionDoc {
   billing_mode?: 'prepaid' | 'stripe_subscription' | 'razorpay_subscription'
   /** Razorpay subscription id (billing_mode razorpay_subscription). */
   razorpay_subscription_id?: string
+  /** CORE-036: free days (referral reward) added to every Razorpay period end — lib/billing/gateway-bonus.ts. */
+  gateway_bonus_days?: number
   stripe_customer_id?: string
   stripe_subscription_id?: string
   /** A renewal payment failed: access continues until grace_ends_at (= ends_at), then lapses. */

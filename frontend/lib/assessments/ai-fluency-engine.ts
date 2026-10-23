@@ -2,6 +2,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import type { FluencyCategory, FluencyQuestion, FluencyEvaluation, FluencyAnswerEntry, CategoryBreakdown, FluencyReport, FluencySession } from './ai-fluency-types'
 import { CATEGORY_LABELS, ALL_CATEGORIES, DIFFICULTY_LEVELS } from './ai-fluency-types'
+import { fenceUntrusted, neutraliseUntrusted, scanUntrusted, untrustedRule } from '@/lib/ai/untrusted-input'
 
 export type { FluencyCategory, FluencyQuestion, FluencyEvaluation, FluencyAnswerEntry, CategoryBreakdown, FluencyReport, FluencySession }
 export { CATEGORY_LABELS, ALL_CATEGORIES, DIFFICULTY_LEVELS }
@@ -127,13 +128,32 @@ Requirements:
 
 // ── Answer Evaluation ───────────────────────────────────────────────────
 
+/** SEC-032: longest answer the grader reads (the route refuses longer ones). */
+export const FLUENCY_ANSWER_MAX_CHARS = 8000
+/** SEC-032: highest score an answer that tries to steer the grader can get. */
+export const FLUENCY_FLAGGED_SCORE_CAP = 4
+
+/** Pure: scan + neutralise + fence a candidate answer for the grader prompt. */
+export function prepareFluencyAnswer(answer: string): { fenced: string; flags: string[] } {
+  const text = String(answer || '').slice(0, FLUENCY_ANSWER_MAX_CHARS)
+  const scan = scanUntrusted(text)
+  return { fenced: fenceUntrusted('candidate_answer', scan.flagged ? neutraliseUntrusted(text) : text, FLUENCY_ANSWER_MAX_CHARS), flags: scan.reasons }
+}
+
+/** Pure: final score after the integrity cap. */
+export function cappedFluencyScore(score: number, flags: readonly string[]): number {
+  return flags.length ? Math.min(score, FLUENCY_FLAGGED_SCORE_CAP) : score
+}
+
 export async function evaluateFluencyAnswer(
   question: FluencyQuestion,
   answer: string,
 ): Promise<FluencyEvaluation> {
   const overrides = await platformModelOverrides()
+  const prepared = prepareFluencyAnswer(answer)
 
   const system = `You are an expert AI Fluency evaluator. Grade the candidate's response against the rubric for this ${CATEGORY_LABELS[question.category]} question.
+${untrustedRule(['candidate_answer'])}
 
 Return ONLY a valid JSON object with this exact shape:
 {
@@ -157,7 +177,7 @@ ${question.rubric.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 ${question.sampleAnswer ? `\nSample strong answer:\n${question.sampleAnswer}` : ''}
 
 Candidate's answer:
-${answer}
+${prepared.fenced}
 
 Grade the answer 0-10 against the rubric. Be fair but rigorous.
 Score 0-3: Did not address the core task or fundamentally misunderstood.
@@ -184,8 +204,11 @@ Score 10: Exceptional depth, creativity, and mastery.`
     return { score: 5, strengths: [], improvements: [], detailedFeedback: 'Evaluation temporarily unavailable.' }
   }
 
-  const score = typeof parsed.score === 'number' ? Math.max(0, Math.min(10, Math.round(parsed.score))) : 5
+  const raw = typeof parsed.score === 'number' ? Math.max(0, Math.min(10, Math.round(parsed.score))) : 5
+  const score = cappedFluencyScore(raw, prepared.flags)
+  if (prepared.flags.length) console.warn('[ai-fluency] answer flagged for grader manipulation', { flags: prepared.flags })
   return {
+    ...(prepared.flags.length ? { integrityFlags: prepared.flags } : {}),
     score,
     strengths: Array.isArray(parsed.strengths) ? parsed.strengths.filter((s): s is string => typeof s === 'string') : [],
     improvements: Array.isArray(parsed.improvements) ? parsed.improvements.filter((i): i is string => typeof i === 'string') : [],

@@ -13,7 +13,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
-import { getAPIUser, type APIUser } from '@/lib/route-auth'
+import { admin2faRequiredError, getAPIUser, type APIUser } from '@/lib/route-auth'
 import { deriveServerKey, isTenantActive } from '@/lib/session'
 import { writeAuditLog } from '@/lib/db/misc'
 import { newId, nowIso } from '@/lib/db/ids'
@@ -249,6 +249,8 @@ export async function requireAts(
 ): Promise<{ actor: AtsActor } | { error: string; status: number }> {
   const user = await getAPIUser()
   if (!user) return { error: 'Unauthorized', status: 401 }
+  const tfa = admin2faRequiredError(user) // SEC-029
+  if (tfa) return tfa
   const actor = await resolveActorFor(user, tenantId)
   if (!actor) return { error: "You're not on this organization's hiring team", status: 403 }
   if (roles.length && !roles.includes(actor.role)) return { error: "Your hiring role can't do this", status: 403 }

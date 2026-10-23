@@ -2,8 +2,9 @@
  * Signals ingest (server only): enabled feeds (least recently run first) →
  * newest items → dedupe by source URL → AI research / draft / humanise →
  * `signal_drafts`. Items from TRUSTED feeds are published at once (owner's
- * decision) unless the AI pass failed or the source text tripped the prompt
- * guard; everything else waits for an admin.
+ * decision) unless the AI pass failed, the source text tripped the prompt
+ * guard or the fact verifier (lib/signals/verify) found a number, name or
+ * claim the fact pack / source text doesn't back; everything else waits for an admin.
  *
  * AI spend is capped (lib/signals/settings: daily count + monthly cost). Each
  * feed is isolated: one failing feed is recorded on its state row and the run
@@ -14,6 +15,7 @@ import type { SignalDraftDoc } from '@/lib/db/signal-drafts'
 import { newSignalId } from '@/lib/db/signal-drafts'
 import { effectiveFeeds } from './feeds'
 import { aiBudget, dayKey, monthKey, shouldAutoPublish } from './settings'
+import { verifySignalDraft } from './verify'
 import type { RssItem } from './rss'
 import type { SignalDraftResult } from './rewrite'
 
@@ -85,6 +87,10 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
         const sourceUrls = (rewritten?.source_urls?.length ? rewritten.source_urls : [item.link])
           .map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
         const ts = new Date().toISOString()
+        // AGT-031: fact verifier — the AI draft may only state what the fact pack / source text says.
+        const factCheck = rewritten
+          ? verifySignalDraft(rewritten, { facts: rewritten.facts, sourceTitle: item.title, sourceSummary: item.summary, pageTitle: page.title, pageDescription: page.description }, new Date(ts))
+          : undefined
         const doc: SignalDraftDoc = {
           id: newSignalId(),
           title: rewritten?.title || item.title,
@@ -105,6 +111,7 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
           trusted: feed.trusted,
           ai_rewritten: Boolean(rewritten),
           flags,
+          ...(factCheck ? { fact_check: factCheck } : {}),
           created_at: ts,
           updated_at: ts,
         }
@@ -112,7 +119,7 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
         rep.created++
         created++
         rep.ids.push(doc.id)
-        if (shouldAutoPublish({ trusted: feed.trusted, autoPublishTrusted: settings.auto_publish_trusted, aiRewritten: Boolean(rewritten), flagged: flags.length > 0 })) {
+        if (shouldAutoPublish({ trusted: feed.trusted, autoPublishTrusted: settings.auto_publish_trusted, aiRewritten: Boolean(rewritten), flagged: flags.length > 0, factsVerified: factCheck?.ok === true })) {
           await publishDraft(doc, { by: 'signals-bot', auto: true })
           rep.published++
         }

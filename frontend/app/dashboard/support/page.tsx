@@ -18,6 +18,7 @@ import { useToast } from '@/lib/toast-context'
 import { PageHeader } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n/client'
+import { SupportAssistant } from '@/components/support/support-assistant'
 
 type Ticket = { id: string; subject: string; message: string; category: string; status: string; user_email?: string; created_at: string; updated_at: string }
 
@@ -196,6 +197,8 @@ export default function SupportPage() {
           actions={<Button onClick={() => setShowForm(true)} data-tour="support-new"><Plus className="h-4 w-4 mr-2" />{tr('account.newTicket')}</Button>}
         />
       </div>
+
+      <SupportAssistant onTicketCreated={fetchTickets} />
 
       {showForm && (
         <Card className="rounded-3xl border-border/70 p-6 space-y-4">

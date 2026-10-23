@@ -6,6 +6,7 @@ import { getBuyerOrder } from '@/lib/marketplace/orders'
 import { buildInvoiceHtml } from '@/lib/marketplace/invoice'
 import { sellersCol } from '@/lib/marketplace/db'
 import { sellerInvoiceGstin } from '@/lib/marketplace/sellers'
+import { PRINT_PAGE_CSP } from '@/lib/csp/print-page'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,5 +28,5 @@ export async function GET(_req: Request, { params }: IdRouteContext) {
     address: process.env.MKT_INVOICE_ADDRESS || undefined,
     gstin: process.env.MKT_INVOICE_GSTIN || null,
   })
-  return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex' } })
+  return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex', 'Content-Security-Policy': PRINT_PAGE_CSP } })
 }

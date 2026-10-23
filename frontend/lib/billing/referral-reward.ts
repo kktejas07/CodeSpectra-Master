@@ -6,8 +6,10 @@
  *     due 30 days after that order's period start (or at its end if shorter);
  *   - at the due date the order must still be paid (not refunded) and the
  *     referee's plan still live;
- *   - abuse: no reward when the two accounts share a device fingerprint, a
- *     sign-up / checkout IP, or a payment fingerprint (card / UPI / wallet).
+ *   - abuse: no reward when the two accounts share a device fingerprint or a
+ *     payment fingerprint (card / UPI / wallet). A shared sign-up / checkout IP
+ *     alone is NOT abuse (CORE-037: campus / hostel Wi-Fi puts hundreds of
+ *     students behind one address) — such a reward goes to admin review.
  * Reward: a free month on the referrer's plan, or a credit in the referee's
  * order currency (admin setting).
  */
@@ -48,7 +50,7 @@ export function referralAbuse(s: AbuseSignals): 'same_device' | 'same_ip' | 'sam
   return null
 }
 
-export type RewardOutcome = 'wait' | 'grant' | 'void_refunded' | 'void_lapsed' | 'void_abuse' | 'void_cap'
+export type RewardOutcome = 'wait' | 'grant' | 'review' | 'void_refunded' | 'void_lapsed' | 'void_abuse' | 'void_cap'
 
 export function decideReferralReward(input: {
   dueAt: string
@@ -60,11 +62,13 @@ export function decideReferralReward(input: {
   settings: Pick<ReferralRewardSettings, 'yearly_cap'>
 }): RewardOutcome {
   if (input.orderStatus === 'refunded') return 'void_refunded'
-  if (input.abuse) return 'void_abuse'
+  // Same device / same payment instrument = the same person. A shared IP only is ambiguous.
+  if (input.abuse && input.abuse !== 'same_ip') return 'void_abuse'
   if (Date.parse(input.dueAt) > input.now.getTime()) return 'wait'
   if (input.orderStatus !== 'paid') return 'void_refunded'
   if (!input.refereePlanLive) return 'void_lapsed'
   if (input.rewardsThisYear >= input.settings.yearly_cap) return 'void_cap'
+  if (input.abuse === 'same_ip') return 'review'
   return 'grant'
 }
 
@@ -79,4 +83,11 @@ export function paymentFingerprintSource(entity: Record<string, unknown> | null 
   if (entity.wallet && entity.contact) return `wallet:${String(entity.wallet)}:${String(entity.contact)}`
   if (entity.bank && entity.contact) return `bank:${String(entity.bank)}:${String(entity.contact)}`
   return null
+}
+
+/** Admin review list (CORE-037): a***@college.edu — enough to see a shared campus, not the address. */
+export function maskEmail(e: string): string {
+  const [local, domain] = String(e || '').split('@')
+  if (!local || !domain) return ''
+  return `${local.slice(0, 1)}***@${domain}`
 }

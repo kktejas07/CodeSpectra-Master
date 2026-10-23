@@ -10,6 +10,7 @@
 import { ImageResponse } from 'next/og'
 import { verifyOg } from '@/lib/seo/og-sign'
 import { limitRequest } from '@/lib/rate-limit'
+import { ogCardText } from '@/lib/seo/og-text'
 
 export const runtime = 'nodejs'
 
@@ -38,8 +39,10 @@ export async function GET(req: Request) {
   const signed = verifyOg({ title: p.get('title') || '', kind: p.get('kind') || '', sub: p.get('sub') || '' }, p.get('s'))
   const rawKind = signed ? p.get('kind') || 'page' : 'page'
   const kind = KIND_LABEL[rawKind] ? rawKind : 'page'
-  const title = (signed ? clip(p.get('title'), 110) : '') || DEFAULT_TITLE
-  const sub = signed ? clip(p.get('sub'), 120) : ''
+  // SEO-030: no Indic font / shaping in satori — older signed links with a Hindi or Telugu title get the Latin card.
+  const card = ogCardText({ title: (signed ? clip(p.get('title'), 110) : '') || DEFAULT_TITLE, subtitle: signed ? clip(p.get('sub'), 120) : '', fallbackTitle: DEFAULT_TITLE })
+  const title = card.title
+  const sub = card.subtitle || ''
   const size = title.length > 70 ? 56 : title.length > 40 ? 66 : 76
   return new ImageResponse(
     (

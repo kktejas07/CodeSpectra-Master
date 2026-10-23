@@ -5,24 +5,49 @@
 
 export const RRF_K = 60
 
+/**
+ * RAG-020: per-list weights for hybrid fusion, tuned on the offline golden set
+ * (lib/rag/eval). Keyword ranks count more than vector ranks: on short paraphrased
+ * questions the lexical list is the more reliable one, the vector list mostly
+ * breaks ties and rescues pure paraphrases. Offline golden set (2026-10-23, 140 questions):
+ * k 60 / 1:1 → s@3 0.869, s@5 0.902, MRR 0.851; k 10 / 1:1.5 → s@3 0.885, s@5 0.918, MRR 0.840.
+ * The local embedder is only a proxy: confirm changes with the weekly live eval.
+ * Ops can override with RAG_RRF_K / RAG_RRF_VECTOR_WEIGHT / RAG_RRF_KEYWORD_WEIGHT.
+ */
+export const FUSION_DEFAULTS = { k: 10, vector: 1, keyword: 1.5 }
+
+/** Fusion knobs from the environment, clamped; defaults when unset or invalid. Pure given `env`. */
+export function fusionConfig(env: Record<string, string | undefined> = process.env): { k: number; vector: number; keyword: number } {
+  const num = (v: string | undefined, min: number, max: number, def: number) => {
+    const n = v === undefined || v.trim() === '' ? NaN : Number(v)
+    return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def
+  }
+  return {
+    k: num(env.RAG_RRF_K, 1, 1000, FUSION_DEFAULTS.k),
+    vector: num(env.RAG_RRF_VECTOR_WEIGHT, 0, 10, FUSION_DEFAULTS.vector),
+    keyword: num(env.RAG_RRF_KEYWORD_WEIGHT, 0, 10, FUSION_DEFAULTS.keyword),
+  }
+}
+
 export interface RankedId {
   id: string
 }
 
 /**
- * Reciprocal rank fusion: score(d) = Σ_lists 1 / (k + rank_d), rank from 1.
- * Ties keep the order of first appearance (vector list first).
+ * Reciprocal rank fusion: score(d) = Σ_lists w_list / (k + rank_d), rank from 1
+ * (weights default to 1). Ties keep the order of first appearance (vector list first).
  */
-export function reciprocalRankFusion(lists: ReadonlyArray<ReadonlyArray<string>>, k = RRF_K): { id: string; score: number }[] {
+export function reciprocalRankFusion(lists: ReadonlyArray<ReadonlyArray<string>>, k = RRF_K, weights?: readonly number[]): { id: string; score: number }[] {
   const scores = new Map<string, number>()
   const order: string[] = []
-  for (const list of lists) {
+  for (const [li, list] of lists.entries()) {
+    const w = weights?.[li] ?? 1
     const seen = new Set<string>()
     list.forEach((id, i) => {
       if (seen.has(id)) return // a list counts each id once (its best rank)
       seen.add(id)
       if (!scores.has(id)) order.push(id)
-      scores.set(id, (scores.get(id) ?? 0) + 1 / (k + i + 1))
+      scores.set(id, (scores.get(id) ?? 0) + w / (k + i + 1))
     })
   }
   return order

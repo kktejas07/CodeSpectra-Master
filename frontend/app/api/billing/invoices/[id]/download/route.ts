@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { getUserInvoice } from '@/lib/billing/invoice'
+import { PRINT_BUTTON_SCRIPT_TAG, PRINT_PAGE_CSP } from '@/lib/csp/print-page'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -70,13 +71,14 @@ td{padding:10px 0;border-bottom:1px solid #e5e7eb;vertical-align:top}td:first-ch
 .print{margin-top:24px}@media print{.print{display:none}}</style></head><body>
 <h1>${inv.invoiceNumber && inv.currency === 'INR' ? 'Tax invoice' : 'CodeSpectra receipt'}</h1><p>${inv.status === 'refunded' ? 'This payment was refunded.' : 'Keep this for your records.'}</p>
 <table>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
-<button class="print" onclick="window.print()">Print or save as PDF</button>
+<button class="print" type="button" data-print>Print or save as PDF</button>
+${PRINT_BUTTON_SCRIPT_TAG}
 </body></html>`
     return new NextResponse(html, {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'private, no-store',
-        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'",
+        'Content-Security-Policy': PRINT_PAGE_CSP, // SEC-024: hash-only script, no inline handlers
       },
     })
   } catch (error) {

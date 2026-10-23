@@ -229,14 +229,8 @@ export function startSchedulerLoop(): void {
       }
       // Automations, platform jobs and hiring sweeps first; heavy content jobs (events-feed pull,
       // Learn AI drafts and digests) run in their own background lane.
+      // (The knowledge index tick runs inside it too — AUTO-084 — so /api/cron/tick gets it.)
       await runAtsMinuteSweeps(new Date(), { heavyInBackground: true })
-      // Knowledge index queue + nightly sweep (lib/rag/ingest.ts). Never throws.
-      try {
-        const { runKnowledgeTick } = await import('./rag/ingest')
-        await runKnowledgeTick()
-      } catch (e) {
-        console.error('[scheduler] knowledge tick error:', e)
-      }
     } finally {
       running = false
     }
@@ -342,7 +336,7 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
   // Platform jobs (quiet-hours flush, exam auto-close, trial/grace expiry,
   // digests + other scheduled cron routes) — lib/platform-cron.ts. Own claims.
   try {
-    report.platform = await (await import('./platform-cron')).runPlatformCron(now)
+    report.platform = await (await import('./platform-cron')).runPlatformCron(now, { longInBackground: opts.heavyInBackground })
   } catch (e) {
     report.failed.push('platform')
     console.error('[scheduler] platform cron error:', e)
@@ -414,9 +408,19 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     // claimed per link + ISO week. Once per UTC hour each.
     await job('wa-practice', `${iso.slice(0, 13)}wp`, async () => (await import('./wa-practice/service')).runPracticeTick(now), { leaseMs: 15 * 60_000 })
     await job('guardian-reports', `${iso.slice(0, 13)}gr`, async () => (await import('./guardian/service')).runGuardianReports(now), { leaseMs: 20 * 60_000 })
+    // AUTO-084: knowledge index (lib/rag/ingest.ts) — queue, nightly sweep, pgvector outbox/backfill,
+    // weekly copilot eval. Here (not only the in-process loop) so serverless /api/cron/tick runs it,
+    // with a DB lease (one replica even without Redis) and a heartbeat.
+    await job('knowledge', minute, async () => (await import('./rag/ingest')).runKnowledgeTick(), { leaseMs: 5 * 60_000 })
+    // Wave 15 assistants (lib/assistants/tick.ts): revenue scan, org onboarding, weekly placement report,
+    // mentor follow-ups. Checked hourly; each loop claims its own window + heartbeat (assistant-*).
+    await (await import('./assistants/tick')).runAssistantsTick(now).catch((e) => console.error('[scheduler] assistants error:', e))
+    // Hiring agents (lib/agent/hiring-loops/tick.ts): sourcer, interview scheduler, assessment author,
+    // integrity reviewer. Each claims its own window + heartbeat; they only draft proposals unless an org enabled auto-send.
+    await (await import('./agent/hiring-loops/tick')).runHiringLoopsTick(now).catch((e) => console.error('[scheduler] hiring agents error:', e))
   }
   if (opts.heavyInBackground) {
-    report.background = ['learn', 'events-feed', 'news-digest', 'content-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports']
+    report.background = ['learn', 'events-feed', 'news-digest', 'content-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports', 'knowledge']
     void heavy().catch((e) => console.error('[scheduler] content lane error:', e))
   } else {
     await heavy()

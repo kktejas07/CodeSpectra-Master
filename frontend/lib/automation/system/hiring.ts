@@ -9,7 +9,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { interviewSessions } from '@/lib/db/interviews'
 import { sendAutomationEmail, tenantAdminUsers } from '../mailer'
 import { claimOnce } from '../store'
-import { configValue, getSystemSettings } from '../settings'
+import { configValue, getSystemSettings, isAutomationEnabled } from '../settings'
 import { hiringNudgeFor, hoursLeftLabel, reminderWindow } from './rules'
 import type { SystemAutomation } from './types'
 
@@ -21,6 +21,8 @@ export async function runHiringNudges(now = new Date()): Promise<{ recruitersNot
   const idleDays = configValue(settings.config, 'hiring_idle_days')
   const jobs = (await db.collection('ats_jobs').find({ status: { $in: ['open', 'on_hold'] } }, { projection: { _id: 0, id: 1, tenant_id: 1, title: 1, pipeline: 1, recruiter_ids: 1, hiring_manager_ids: 1 } }).limit(2000).toArray()) as Doc[]
   const day = now.toISOString().slice(0, 10)
+  // W15: while "Offer follow-ups and expiry" is on it owns offer reminders (one owner per reminder).
+  const offerFollowUpsOn = await isAutomationEnabled('offer-follow-ups', false).catch(() => false)
   let recruitersNotified = 0
   let candidatesReminded = 0
   for (const job of jobs) {
@@ -40,6 +42,7 @@ export async function runHiringNudges(now = new Date()): Promise<{ recruitersNot
         counts.idle++
         if ((now.getTime() - Date.parse(entered)) / 86_400_000 >= idleDays * 2) counts.long_idle++
       }
+      if (nudge === 'offer_pending' && offerFollowUpsOn) continue
       if (nudge === 'offer_pending' || nudge === 'assessment_pending') {
         if (!(await claimOnce(`hiring-cand:${stageKey}:${nudge}`))) continue
         const cand = (await db.collection('ats_candidates').findOne({ id: app.candidate_id, tenant_id: job.tenant_id }, { projection: { email: 1, name: 1 } })) as Doc | null

@@ -21,6 +21,7 @@ import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { eventTypeDef } from '@/lib/automation/event-types'
 import { useAdminT } from '@/lib/i18n/admin'
+import { AutomationNudges } from '@/components/admin/automation-nudges'
 
 interface AutomationRow {
   id: string
@@ -65,6 +66,9 @@ interface Data {
   dead_letters: { id: string; kind: string; ref: string; error: string; created_at: string; retried_at?: string; detail?: Record<string, unknown> }[]
   config: Record<string, unknown>
 }
+
+/** W15 automations that send through the shared nudge sender (run log + frequency cap). */
+const NUDGE_IDS = new Set(['invite-ladder', 're-engagement', 'checkout-recovery', 'renewal-nudges', 'cert-renewal', 'drive-reminders', 'offer-follow-ups', 'bgv-chaser', 'mentor-sessions', 'employer-weekly-report', 'cohort-at-risk', 'learner-follow-ups'])
 
 const STATE_LABEL: Record<JobRow['state'], string> = { ok: 'Healthy', failing: 'Failing', stale: 'Stopped', never: 'Not run yet' }
 const STATE_ORDER: Record<JobRow['state'], number> = { failing: 0, stale: 1, never: 2, ok: 3 }
@@ -253,6 +257,8 @@ export default function AutomationsPage() {
               </ul>
             </Section>
           ))}
+
+          <AutomationNudges automations={data.items.filter((i) => NUDGE_IDS.has(i.id)).map((i) => ({ id: i.id, title: i.title }))} />
 
           <Section title="Alerts and settings">
             <Panel className="space-y-4 p-4">

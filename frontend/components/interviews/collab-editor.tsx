@@ -186,7 +186,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
         onChange={(e) => handleChange(e.target.value)}
         readOnly={readOnly}
         aria-label={t('career.sharedCodeEditor')}
-        className="w-full min-h-[400px] bg-zinc-950 p-4 text-sm font-mono text-zinc-100 caret-zinc-100 outline-none resize-y leading-relaxed placeholder:text-zinc-500"
+        className="w-full min-h-[400px] bg-zinc-950 p-4 text-sm font-mono text-zinc-100 caret-zinc-100 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring resize-y leading-relaxed placeholder:text-zinc-500"
         spellCheck={false}
         placeholder="// Start coding…"
         style={{ tabSize: 2 }}

@@ -399,6 +399,31 @@ export function duePrompt(e: WaPracticeEnrollment, now: Date, s: PracticeSetting
   return { kind: mock ? 'mock' : 'daily', day, week }
 }
 
+export const DEFAULT_PRACTICE_TZ = 'Asia/Kolkata'
+
+/**
+ * AUTO-082: the Mongo filter for enrolments whose local send hour is NOW, so
+ * an hourly run reads only rows that are due (no 5,000-row cap, no paging gaps).
+ * `timezones` are the distinct values stored on active rows; rows without one
+ * use the same default as duePrompt.
+ */
+export function dueEnrollmentFilter(timezones: Array<string | null | undefined>, now: Date): Record<string, unknown> {
+  const or: Record<string, unknown>[] = []
+  const seen = new Set<string>()
+  for (const raw of timezones) {
+    const stored = typeof raw === 'string' ? raw : ''
+    const tz = stored || DEFAULT_PRACTICE_TZ
+    if (seen.has(stored)) continue
+    seen.add(stored)
+    const { h } = localHourMinute(now, tz)
+    const day = localDayOf(now, tz)
+    const tzMatch = stored ? { timezone: stored } : { timezone: { $in: [null, ''] } }
+    or.push({ ...tzMatch, send_hour: h, last_daily_day: { $ne: day } })
+  }
+  if (!or.length) return { _id: { $exists: false } }
+  return { status: 'active', confirmed: { $ne: null }, $or: or }
+}
+
 /** Meta lets us send free-form / interactive messages only within 24 h of the person's last message. */
 export function inSession(lastInboundAt: string | null | undefined, now: Date): boolean {
   if (!lastInboundAt) return false

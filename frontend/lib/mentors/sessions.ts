@@ -138,7 +138,8 @@ export async function rescheduleSession(userId: string, bookingId: string, newSt
   try {
     const r = await col.updateOne(
       { id: b.id, status: 'booked', start: b.start } as never,
-      { $set: { start: newStart, end: newEnd, active_slot: slotKey(product.id, newStart), reminder_sent_at: null, updated_at: nowIso() } },
+      // AUTO-081: unset (not null) so the 24-hour reminder sweep picks the new time up.
+      { $set: { start: newStart, end: newEnd, active_slot: slotKey(product.id, newStart), updated_at: nowIso() }, $unset: { reminder_sent_at: '' } },
     )
     if (!r.modifiedCount) throw new MktError(409, 'This session changed while you were rescheduling. Reload and try again.')
   } catch (e) {
@@ -272,6 +273,16 @@ export async function openDispute(userId: string, bookingId: string, reasonRaw: 
 
 export const sessionRoomName = (bookingId: string) => `mkt-session-${bookingId}`
 
+/** First join per side (collection mentor_session_joins, unique booking + role). Never throws. */
+async function recordSessionJoin(bookingId: string, role: SessionRole, now: number): Promise<void> {
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const c = (await getMongoDb()).collection('mentor_session_joins')
+    await c.createIndex({ booking_id: 1, role: 1 }, { unique: true, name: 'msj_booking_role' }).catch(() => {})
+    await c.updateOne({ booking_id: bookingId, role }, { $setOnInsert: { booking_id: bookingId, role, at: new Date(now).toISOString() } }, { upsert: true })
+  } catch { /* best-effort */ }
+}
+
 export async function sessionVideoToken(user: { id: string; name?: string | null; email?: string | null }, bookingId: string, now = Date.now()): Promise<{ token: string; url: string; title: string } | { error: string; status: number }> {
   const v = await getSession(user.id, bookingId, now)
   if (!v.built_in_video) return { error: 'This session uses an external meeting link.', status: 409 }
@@ -282,5 +293,7 @@ export async function sessionVideoToken(user: { id: string; name?: string | null
   const ttl = Math.max(600, Math.ceil((Date.parse(v.end) + JOIN_LATE_MS - now) / 1000))
   // Identity is the signed-in account and its role in this booking — never from the request body.
   const token = await mintLivekitToken(cfg, sessionRoomName(v.id), `${v.role}:${user.id}`, (user.name || (v.role === 'mentor' ? v.mentor.name : 'Learner')).slice(0, 100), Math.min(ttl, 4 * 3600))
+  // W15-AUTO-09: first join per side, so the no-show follow-up knows who came (lib/automation/system/nudges-learning).
+  void recordSessionJoin(v.id, v.role, now)
   return { token, url: cfg.url, title: v.title }
 }

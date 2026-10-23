@@ -13,6 +13,9 @@ import { HeroIllustration, PageHero } from '@/components/landing/page-hero'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ThreadView } from '@/components/community/thread-view'
 import { buildMetadata } from '@/lib/seo/metadata'
+import { JsonLd } from '@/components/seo/json-ld'
+import { breadcrumbJsonLd, discussionForumPostingJsonLd, validJsonLd } from '@/lib/seo/jsonld'
+import { getSiteOrigin } from '@/lib/seo/settings'
 import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { communityT, type LooseT } from '@/lib/community/i18n-server'
@@ -141,8 +144,20 @@ export async function ThreadPage({ id, locale }: { id: string; locale: Locale })
   const th = isThreadId(id) ? await threadCached(id) : null
   if (!th) notFound()
   const t = await communityT(locale)
+  const site = await getSiteOrigin()
+  const path = `/community/t/${th.id}`
+  // SEO-036: DiscussionForumPosting (dropped for locked solution write-ups, which have no public text).
+  const schema = validJsonLd([
+    discussionForumPostingJsonLd({
+      site, path, headline: th.title, text: th.body, author: th.author_name, datePublished: th.created_at, dateModified: th.last_activity_at,
+      inLanguage: th.lang || undefined, upvotes: th.score,
+      replies: th.replies.map((r) => ({ text: r.body, author: r.author_name, datePublished: r.created_at })),
+    }),
+    breadcrumbJsonLd([{ name: t('forumTitle'), path: '/community' }, { name: th.category.name, path: `/community/c/${th.category.slug}` }, { name: th.title, path }], site),
+  ])
   return (
     <PublicPageWrapper>
+      <JsonLd data={schema} />
       <div className="mx-auto w-full min-w-0 max-w-[1000px] space-y-4 px-4 py-10 sm:px-6 lg:px-8">
         <nav aria-label={t('breadcrumbs')} className="text-sm text-cs-ink-soft">
           <Link href={localizedPath('/community', locale)} className="hover:text-cs-ink">{t('forumTitle')}</Link> / <Link href={localizedPath(`/community/c/${th.category.slug}`, locale)} className="hover:text-cs-ink">{th.category.name}</Link>

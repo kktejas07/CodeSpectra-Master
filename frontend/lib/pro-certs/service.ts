@@ -24,7 +24,7 @@ import { DEFAULT_DOMAINS, domainBankFilter } from '@/lib/question-bot/domains'
 import { normalizeSections } from '@/lib/exam-sections'
 import { attempts, credentials, exposure, isDup, orders, programs } from './db'
 import {
-  addMonths, attemptEligibility, credentialIdFrom, discountedPrice, credentialState, decideOutcome, isProCredentialId, priceFor,
+  addMonths, attemptEligibility, duplicateAttemptFor, credentialIdFrom, discountedPrice, credentialState, decideOutcome, isProCredentialId, priceFor,
   publicProgram, publishProblems, renewedExpiry, scorePercent, selectQuestions, sectionQuestionCount, type Eligibility, type PoolItem,
 } from './pure'
 import {
@@ -206,6 +206,10 @@ async function memberDiscountPct(userId: string): Promise<number> {
 export async function checkout(user: { id: string; email: string }, slug: string, currency: CertCurrency): Promise<{ redirect_url: string; order_id: string }> {
   const p = await getProgramBySlug(slug)
   if (!p || p.status !== 'published') throw new ProCertError(404, 'pro_cert_not_found', 'Certification not found.')
+  // CORE-040: an earlier checkout for this program may have been paid in another tab —
+  // settle it first (then eligibility sees its attempt), and close the payment page of
+  // any still-unpaid one so a learner can't pay twice for one attempt.
+  await replaceOpenCheckouts(user.id, p.id)
   const [rows, cred] = await Promise.all([
     (await attempts()).find({ user_id: user.id, program_id: p.id }, { projection: { _id: 0, status: 1, created_at: 1, decided_at: 1 } }).limit(100).toArray() as Promise<AttemptDoc[]>,
     latestCredential(user.id, p.id),
@@ -254,16 +258,67 @@ export function eligibilityMessage(reason: string, date = ''): string {
   }
 }
 
+/**
+ * CORE-040: before a new checkout, settle the user's open checkouts for the
+ * program (one may have been paid in another tab) and cancel the unpaid ones,
+ * closing their payment pages. A late payment on a cancelled order is still
+ * settled (settleOrder) and refunded if it would be a second attempt.
+ */
+async function replaceOpenCheckouts(userId: string, programId: string): Promise<void> {
+  const col = await orders()
+  const open = (await col.find(
+    { user_id: userId, program_id: programId, status: 'pending', created_at: { $gt: new Date(Date.now() - 2 * DAY).toISOString() } },
+    { projection: { _id: 0 } },
+  ).limit(10).toArray()) as CertOrderDoc[]
+  if (!open.length) return
+  const { closePaymentPage } = await import('./payments')
+  for (const o of open) {
+    const st = o.payment.ref ? await settleOrder(o.id).catch(() => 'pending' as const) : 'pending'
+    if (st !== 'pending') continue
+    const c = await col.updateOne({ id: o.id, status: 'pending' }, { $set: { status: 'cancelled', updated_at: nowIso() } })
+    if (c.modifiedCount === 1) await closePaymentPage(o)
+  }
+}
+
+/** CORE-040: a second payment for one attempt — no attempt, refund it (once), admin sees `refund.ok === false`. */
+async function settleDuplicate(order: CertOrderDoc, attemptId: string): Promise<void> {
+  const col = await orders()
+  const now = nowIso()
+  const claim = await col.updateOne(
+    { id: order.id, status: 'paid', attempt_id: null, refund: null } as never,
+    { $set: { duplicate: { attempt_id: attemptId, at: now }, refund: { ok: false, ref: null, at: now, error: 'in_progress' }, updated_at: now } },
+  )
+  if (claim.modifiedCount !== 1) return
+  try {
+    const { refundOrder } = await import('./payments')
+    const r = await refundOrder({ ...order, status: 'paid' })
+    await col.updateOne({ id: order.id }, { $set: { refund: { ok: r.ok, ref: r.ref, at: nowIso(), ...(r.ok ? {} : { error: 'gateway_declined' }) }, ...(r.ok ? { status: 'refunded' } : {}), updated_at: nowIso() } })
+    if (!r.ok) console.error('[pro-certs] duplicate payment refund declined — needs an admin', { order: order.id })
+  } catch (e) {
+    await col.updateOne({ id: order.id }, { $set: { refund: { ok: false, ref: null, at: nowIso(), error: String((e as Error)?.message || 'refund_failed').slice(0, 160) }, updated_at: nowIso() } })
+    console.error('[pro-certs] duplicate payment refund failed — needs an admin', { order: order.id })
+  }
+}
+
 // ─── Settlement ──────────────────────────────────────────────────────────────
 
 async function markPaid(order: CertOrderDoc, paid: { amount: number; currency: string; txn: string; intent: string | null }): Promise<void> {
   const now = nowIso()
-  const r = await (await orders()).updateOne(
-    { id: order.id, status: 'pending' },
+  await (await orders()).updateOne(
+    // A replaced ('cancelled') order paid from an old tab is still a real payment.
+    { id: order.id, status: { $in: ['pending', 'cancelled'] } },
     { $set: { status: 'paid', paid_at: now, updated_at: now, 'payment.paid_amount': paid.amount, 'payment.txn': paid.txn, 'payment.intent': paid.intent } },
   )
   const fresh = (await (await orders()).findOne({ id: order.id }, { projection: { _id: 0 } })) as CertOrderDoc | null
-  if (fresh && fresh.status === 'paid' && (r.modifiedCount === 1 || !fresh.attempt_id)) await createAttemptForOrder(fresh)
+  if (!fresh || fresh.status !== 'paid' || fresh.duplicate) return
+  if (fresh.attempt_id) return
+  // CORE-040: an attempt from another order is already open → this payment is a duplicate.
+  // ponytail: two orders settling in the same instant can both pass this check; the
+  // checkout-side replace makes that need two payment pages paid within milliseconds.
+  const open = (await (await attempts()).find({ user_id: fresh.user_id, program_id: fresh.program_id, status: { $in: ['ready', 'in_review'] } }, { projection: { _id: 0, id: 1, order_id: 1, status: 1 } }).limit(10).toArray()) as AttemptDoc[]
+  const dup = duplicateAttemptFor(fresh.id, open)
+  if (dup) { await settleDuplicate(fresh, dup); return }
+  await createAttemptForOrder(fresh)
 }
 
 /** Read the gateway and settle. Returns the order status after settling. */
@@ -271,10 +326,10 @@ export async function settleOrder(orderId: string): Promise<CertOrderDoc['status
   const order = (await (await orders()).findOne({ id: orderId }, { projection: { _id: 0 } })) as CertOrderDoc | null
   if (!order) return 'unknown'
   if (order.status === 'paid') {
-    if (!order.attempt_id) await createAttemptForOrder(order)
+    if (!order.attempt_id && !order.duplicate) await markPaid(order, { amount: order.payment.paid_amount ?? order.amount, currency: order.currency, txn: order.payment.txn || '', intent: order.payment.intent })
     return 'paid'
   }
-  if (order.status !== 'pending') return order.status
+  if (order.status !== 'pending' && order.status !== 'cancelled') return order.status
   const { fetchGatewayState } = await import('./payments')
   const st = await fetchGatewayState(order)
   if (st.state === 'paid') {
@@ -287,10 +342,11 @@ export async function settleOrder(orderId: string): Promise<CertOrderDoc['status
     return 'paid'
   }
   if (st.state === 'failed') {
+    if (order.status === 'cancelled') return 'cancelled'
     await (await orders()).updateOne({ id: order.id, status: 'pending' }, { $set: { status: 'failed', updated_at: nowIso() } })
     return 'failed'
   }
-  return 'pending'
+  return order.status === 'cancelled' ? 'cancelled' : 'pending'
 }
 
 export async function settleByRef(ref: string): Promise<CertOrderDoc['status'] | 'unknown'> {
@@ -574,6 +630,15 @@ export async function issueCredential(a: AttemptDoc, p: ProgramDoc): Promise<Cre
   await revalidatePassportForUser(a.user_id)
   const { notifyCredentialIssued } = await import('./notify')
   await notifyCredentialIssued(doc).catch(() => null)
+  // AUTO-089 / AUTO-088: the certificate follow-up (LinkedIn email, XP) and workflows see proctored credentials.
+  void import('@/lib/automation/events').then(async ({ emit }) => {
+    const verify = `/verify/${encodeURIComponent(id)}`
+    await emit('certificate.issued', { user_id: a.user_id, title: p.title, verify_url: verify, issued_at: issuedAt }, { idempotencyKey: `certificate.issued:pcert:${id}` })
+    await emit('pro_cert.passed', {
+      user_id: a.user_id, credential_id: id, program_id: p.id, program_slug: p.slug, program_title: p.title, level: p.level,
+      score_pct: a.score_pct ?? 0, expires_at: expiresAt, verify_url: verify, renewal: !!prev,
+    }, { idempotencyKey: `pro_cert.passed:${id}` })
+  }).catch((e) => console.error('[automation] emit failed:', e))
   return doc
 }
 
@@ -638,11 +703,12 @@ export async function runProCertSweep(now = new Date()): Promise<{ finalized: nu
     }
   }
   // 3. Pending orders the webhook never confirmed (10 min – 2 days old).
-  const pend = (await (await orders()).find({ status: 'pending', 'payment.ref': { $ne: null }, created_at: { $lt: new Date(now.getTime() - 10 * 60_000).toISOString(), $gt: new Date(now.getTime() - 2 * DAY).toISOString() } }, { projection: { _id: 0, id: 1 } }).limit(50).toArray())
+  const pend = (await (await orders()).find({ status: { $in: ['pending', 'cancelled'] }, 'payment.ref': { $ne: null }, created_at: { $lt: new Date(now.getTime() - 10 * 60_000).toISOString(), $gt: new Date(now.getTime() - 2 * DAY).toISOString() } }, { projection: { _id: 0, id: 1 } }).limit(50).toArray())
   for (const o of pend) if ((await settleOrder(String(o.id)).catch(() => 'pending')) === 'paid') out.settled++
   // 4. Paid orders without an attempt.
-  const orphan = (await (await orders()).find({ status: 'paid', attempt_id: null }, { projection: { _id: 0 } }).limit(20).toArray()) as CertOrderDoc[]
-  for (const o of orphan) await createAttemptForOrder(o).catch((e) => console.error('[pro-certs] attempt for paid order failed:', (e as Error)?.message))
+  // (markPaid re-checks for an already-open attempt — CORE-040 — so a duplicate payment is refunded, not turned into a second attempt.)
+  const orphan = (await (await orders()).find({ status: 'paid', attempt_id: null, duplicate: null } as never, { projection: { _id: 0 } }).limit(20).toArray()) as CertOrderDoc[]
+  for (const o of orphan) await markPaid(o, { amount: o.payment.paid_amount ?? o.amount, currency: o.currency, txn: o.payment.txn || '', intent: o.payment.intent }).catch((e) => console.error('[pro-certs] attempt for paid order failed:', (e as Error)?.message))
   // 5. Expiry reminders (60 days before), once per credential.
   const soon = (await (await credentials()).find({ status: 'active', reminder_sent_at: null, expires_at: { $lt: new Date(now.getTime() + 60 * DAY).toISOString(), $gt: now.toISOString() } }, { projection: { _id: 0 } }).limit(100).toArray()) as CredentialDoc[]
   if (soon.length) {

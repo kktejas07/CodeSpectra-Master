@@ -12,7 +12,7 @@ import { JsonLd } from '@/components/seo/json-ld'
 import { FaqList } from '@/components/seo/faq-list'
 import { jobs } from '@/lib/db/content'
 import { buildMetadata } from '@/lib/seo/metadata'
-import { breadcrumbJsonLd, employmentType, jobPostingJsonLd, jobValidThrough, parseJobLocation, type QA } from '@/lib/seo/jsonld'
+import { breadcrumbJsonLd, employmentType, jobPostingJsonLd, jobValidThrough, parseJobLocation, validateJsonLd, type QA } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { formatDate } from '@/lib/format-datetime'
 import { JobDetailClient, type JobPosting } from './job-detail-client'
@@ -98,11 +98,16 @@ export default async function JobPage({ params }: { params: Params }) {
     ...(job.skills.length ? [{ q: 'Which skills are required?', a: job.skills.join(', ') + '.' }] : []),
   ]
 
+  // SEO-035: an invalid JobPosting (no country for a remote / city-only post) is a
+  // Search Console error, so it is left out; the admin SEO health panel lists it.
+  const posting = jobPostingJsonLd(job, site)
+  const postingOk = validateJsonLd(posting).length === 0
+
   return (
     <PublicPageWrapper>
       <JsonLd
         data={[
-          jobPostingJsonLd(job, site),
+          ...(postingOk ? [posting] : []),
           breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Jobs', path: '/jobs' }, { name: job.title, path: `/jobs/${job.id}` }], site),
         ]}
       />

@@ -60,6 +60,7 @@ export const APP_INTENTIONALLY_ENGLISH: ReadonlySet<string> = new Set([
   "market.ifsc",
   "market.mystore10",
   "market.phonepe",
+  "market.razorpay",
   "market.sku",
   "market.tinTaxIdLast4",
   "practice.bash",

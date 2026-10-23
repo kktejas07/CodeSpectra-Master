@@ -101,7 +101,7 @@ async function releaseSubmission(db: Db, exam: Doc, sub: Doc): Promise<void> {
   const p = max > 0 ? Math.max(0, Math.min(100, Math.round((Number(sub.score) / max) * 100))) : null
   const isPass = p !== null && p >= cutoff
   const ts = nowIso()
-  const r = await db.collection('exam_submissions').updateOne({ id: sub.id, score_released: { $ne: true } }, { $set: { released_at: ts, score_released: true, passed: isPass, cutoff, released_by: 'automation' } })
+  const r = await db.collection('exam_submissions').updateOne({ id: sub.id, score_released: { $ne: true }, integrity_hold: { $ne: true } }, { $set: { released_at: ts, score_released: true, passed: isPass, cutoff, released_by: 'automation' } })
   if (!r.modifiedCount) return
   try {
     const cert = await issueExamCertificate(db, exam, { ...sub, score_released: true, released_at: ts }, cutoff)

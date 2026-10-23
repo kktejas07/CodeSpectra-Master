@@ -98,6 +98,14 @@ Built in `frontend/lib/csp/policy.ts`, sent by `frontend/proxy.ts` on every HTML
 
 **Rollout.** `CSP_ENFORCE` unset or `0` (default): the previous permissive policy stays enforced, and the strict policy goes out as `Content-Security-Policy-Report-Only`. `CSP_ENFORCE=1`: the strict policy is enforced and the legacy one is dropped. Flip it once the report log is clean for a week. Roll back by unsetting it, no rebuild needed (the proxy reads it per request).
 
+**Enforce readiness (SEC-024, audit 5, needs the owner to flip).** Our own code was checked against the strict policy:
+- Inline `<script>`: only the three pre-hydration scripts (hashed, `lib/csp/inline-scripts.ts`) and JSON-LD data blocks (`type="application/ld+json"`, not executed, not subject to `script-src`). No `next/script` inline code.
+- No `eval` / `new Function` / string `setTimeout` in app code; no `javascript:` URLs.
+- Inline event-handler attributes: the two printable documents (`/api/billing/invoices/<id>/download`, `/api/marketplace/orders/<id>/invoice`) used `onclick="window.print()"`. They now carry `data-print` and one hashed script, under their own tight policy (`lib/csp/print-page.ts`: `default-src 'none'`, script by hash only). API routes are outside the proxy's page CSP, so this is their only policy.
+- Scripts our code inserts (Razorpay, Turnstile, Monaco, analytics) are trusted through `'strict-dynamic'`; WASM (face-api, zk prover) through `'wasm-unsafe-eval'`.
+
+Remaining risk is third-party code we can't grep (CDN-injected beacons, browser extensions — extensions show up in reports and are harmless). To enforce: watch `[csp]` log lines for a week with `CSP_ENFORCE` unset; if only extension / beacon noise appears, set `CSP_ENFORCE=1` in production and keep watching for a day. Rollback: unset it (no rebuild).
+
 **Reports.** `POST /api/csp-report` accepts both report formats. It is CSRF-exempt (browsers send reports without cookies), rate-limited to 30 per minute per IP, and caps bodies at 64 KB. It always returns 204 and logs one `[csp] …` line per violation. Logged fields: directive, blocked origin, and document and source URL as origin + path. Query strings, fragments, script samples, the user agent and the IP are dropped, and opaque path segments (tokens, ids) become `:id`.
 
 **Third-party script inventory** (only these origins are allowed):

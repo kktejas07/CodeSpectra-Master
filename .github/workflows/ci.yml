@@ -203,11 +203,37 @@ jobs:
           for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
           npx playwright test e2e/ci-smoke.spec.ts || (echo '--- server log ---'; tail -n 200 /tmp/next-e2e.log; exit 1)
         timeout-minutes: 8
+      # SEO-039: axe (no critical) + a Tab-only pass on the signed-in candidate
+      # screens, as a seeded candidate with a throwaway password.
+      - name: Candidate accessibility (axe + keyboard)
+        env:
+          NODE_ENV: production
+          CI: '1'
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB_NAME: codespectra_e2e
+          NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
+          SKIP_AUTO_INDEXES: '1'
+          CRON_SECRET: ci-cron-secret
+          BASE_URL: http://127.0.0.1:3000
+          E2E_CANDIDATE_EMAIL: demo@codespectra.com
+        run: |
+          export E2E_CANDIDATE_PASSWORD="Ci-$(openssl rand -hex 12)!"
+          export SEED_DEMO_PASS="$E2E_CANDIDATE_PASSWORD" SEED_SUPERADMIN_PASS="Ci-$(openssl rand -hex 12)!" SEED_ADMIN_PASS="Ci-$(openssl rand -hex 12)!" SEED_QA_PASS="Ci-$(openssl rand -hex 12)!"
+          NODE_ENV=development npx tsx scripts/seed-dev-users.ts
+          if ! curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login; then
+            export SESSION_SECRET="$(openssl rand -hex 32)"
+            export SECRETS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+            npx next start -p 3000 -H 127.0.0.1 >> /tmp/next-e2e.log 2>&1 &
+            for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
+          fi
+          npx playwright test e2e/a11y-candidate.spec.ts --reporter=github,list || (echo '--- server log ---'; tail -n 200 /tmp/next-e2e.log; exit 1)
+        timeout-minutes: 8
       # Wave 5: crawl every public page of the built app at 360/390/768/1280 px.
       # Fails on horizontal overflow, broken internal links, missing/duplicate
       # titles, positive tabindex or 5xx (console errors are reported only).
       # Wave 10: --axe adds axe-core (WCAG 2.1 A/AA) serious/critical findings to the
-      # report and a ::warning annotation — reported only, not gating yet.
+      # report and a ::warning annotation. SEO-039: critical violations now fail the
+      # job (--axe-gate critical); switch to `serious` once that backlog is zero.
       - name: Public site QA crawl
         env:
           NODE_ENV: production
@@ -223,7 +249,7 @@ jobs:
             npx next start -p 3000 -H 127.0.0.1 >> /tmp/next-e2e.log 2>&1 &
             for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
           fi
-          node scripts/qa/crawl.mjs --base http://127.0.0.1:3000 --max-pages 150 --out qa-crawl-report.json --strict --axe
+          node scripts/qa/crawl.mjs --base http://127.0.0.1:3000 --max-pages 150 --out qa-crawl-report.json --strict --axe --axe-gate critical
         timeout-minutes: 15
       - name: Upload QA crawl report
         if: always()

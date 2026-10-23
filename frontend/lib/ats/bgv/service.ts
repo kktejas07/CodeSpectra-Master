@@ -227,6 +227,11 @@ export async function createCaseForStage(
     if (existing && OPEN.includes(existing.status) && !existing.purged_at) await sendInitialInvite(existing, ctx)
     return existing
   }
+  // AUTO-088: workflows can react to a background check starting (one event per case).
+  void import('@/lib/automation/events').then(({ emit }) => emit('bgv.started', {
+    case_id: doc.id, application_id: doc.application_id, candidate_name: doc.candidate_name ?? null, candidate_email: doc.candidate_email ?? null,
+    job_title: doc.job_title ?? null, region: doc.region ?? null,
+  }, { tenantId: doc.tenant_id, idempotencyKey: `bgv.started:${doc.id}` })).catch((e) => console.error('[automation] emit failed:', e))
   await sendInitialInvite(doc, ctx)
   return doc
 }

@@ -39,9 +39,14 @@ export async function PATCH(req: Request, { params }: IdRouteContext) {
     const { updateLicenceSettings, getLicence } = await import('@/lib/billing/licences')
     const existing = await getLicence(id, g.superadmin ? null : g.orgId)
     if (!existing) return NextResponse.json(apiErrorFor('not_found'), { status: 404 })
-    const licence = await updateLicenceSettings(id, existing.org_id, parsed.data)
+    const licence = await updateLicenceSettings(id, existing.org_id, parsed.data, { superadmin: g.superadmin })
     return NextResponse.json({ licence })
   } catch (e) {
+    // SEC-033: free-mail / shared-suffix domain → 400 with the domain named.
+    const d = e as { code?: unknown; domain?: unknown }
+    if (typeof d?.code === 'string' && d.code.startsWith('licence_domain_')) {
+      return NextResponse.json(apiErrorFor(d.code as Parameters<typeof apiErrorFor>[0], { domain: String(d.domain ?? '') }), { status: 400 })
+    }
     console.error('[licences/id] PATCH', (e as Error)?.message)
     return NextResponse.json(apiErrorFor('server_error_retry'), { status: 500 })
   }

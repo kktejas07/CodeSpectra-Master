@@ -23,7 +23,8 @@ import { FORMATS } from '@/lib/contests/formats'
 import type { ContestDoc, ContestPhase, ContestRubricCriterion } from '@/lib/contests/types'
 import { ConfigEditor } from '@/components/contests/config-editor'
 import { JudgingTab } from '@/components/contests/judging'
-import { FormatIcon, LeaderboardTable, PhaseBadge, jsonApi, type BoardRow } from '@/components/contests/shared'
+import { FormatIcon, PhaseBadge, jsonApi } from '@/components/contests/shared'
+import { LeaderboardTable, type BoardRow } from '@/components/contests/leaderboard'
 import { useAdminT } from '@/lib/i18n/admin'
 
 interface Loaded { contest: ContestDoc; editor_config: Record<string, unknown> | null; staff: boolean; phase: ContestPhase }

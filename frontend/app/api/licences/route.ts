@@ -3,6 +3,7 @@ import { licenceGate } from '@/lib/billing/licence-access'
 import { licencePurchaseSchema } from '@/lib/billing/licence-rules'
 import { limitRequest } from '@/lib/rate-limit'
 import { apiErrorFor } from '@/lib/api-errors'
+import { nativeCheckoutBlock } from '@/lib/billing/native-checkout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,6 +35,8 @@ export async function GET(req: Request) {
  * (its billing profile) and activates the licence when paid.
  */
 export async function POST(req: Request) {
+  const blocked = nativeCheckoutBlock(req) // CORE-038
+  if (blocked) return blocked
   const g = await licenceGate(new URL(req.url).searchParams.get('org'))
   if (!g.ok) return NextResponse.json({ error: g.error, code: g.code }, { status: g.status })
   if (!g.orgId) return NextResponse.json({ error: 'Choose an organisation.', code: 'licence_org_required' }, { status: 400 })

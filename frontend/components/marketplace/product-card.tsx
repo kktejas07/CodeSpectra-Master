@@ -35,7 +35,7 @@ export function ProductCard({ p, labels = ENGLISH }: { p: Card; labels?: Product
       <div className="relative aspect-[4/3] overflow-hidden bg-cs-paper">
         {p.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.image} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:group-hover:scale-100" />
+          <img src={p.image} alt="" width={640} height={480} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:group-hover:scale-100" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-cs-ink-soft"><Icon className="h-10 w-10" aria-hidden /></div>
         )}

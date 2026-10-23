@@ -7,14 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import {
-  GoogleAuthProvider,
-  GithubAuthProvider,
-  signInWithPopup,
-  getAuth,
-  signOut as firebaseSignOut,
-} from 'firebase/auth'
-import { getFirebaseAuth, prefetchFirebaseConfig, setFirebaseConfig } from './firebase'
+import type { Auth } from 'firebase/auth'
 import { csrfFetch } from './csrf-fetch'
 import { getVisitorId, withFingerprint } from './fingerprint'
 
@@ -36,6 +29,44 @@ interface LastLoginInfo {
 }
 
 const LAST_LOGIN_KEY = 'cs_last_login'
+
+/**
+ * SEO-032: the Firebase SDK (~100 KB gz) is loaded on demand, never in the
+ * root bundle. Public pages only load it for a visitor who has a session,
+ * a Firebase sign-in saved in this browser (silent refresh) or is on the
+ * sign-in / app pages; the sign-in actions import it when clicked.
+ */
+const loadFirebaseAuth = () => import('firebase/auth')
+const loadFirebaseApp = () => import('./firebase')
+let firebaseLoaded = false
+
+async function firebaseAuthInstance(): Promise<Auth | null> {
+  const fb = await loadFirebaseApp()
+  firebaseLoaded = true
+  const cfg = await fb.prefetchFirebaseConfig()
+  if (cfg) fb.setFirebaseConfig(cfg)
+  return fb.getFirebaseAuth()
+}
+
+/** Pure (tests/auth-lazy-firebase.test.ts): should this page start the Firebase token sync now? */
+export function needsFirebaseSync(o: { hasSession: boolean; pathname: string; savedFirebaseLogin: boolean }): boolean {
+  if (o.hasSession || o.savedFirebaseLogin) return true
+  return o.pathname.startsWith('/dashboard') || o.pathname.startsWith('/auth')
+}
+
+/** A Firebase user persisted in this browser (IndexedDB, or the localStorage fallback). */
+async function hasSavedFirebaseLogin(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  try {
+    if (Object.keys(window.localStorage).some((k) => k.startsWith('firebase:authUser:'))) return true
+  } catch { /* storage blocked */ }
+  try {
+    const dbs = typeof indexedDB !== 'undefined' && 'databases' in indexedDB ? await indexedDB.databases() : []
+    return dbs.some((d) => d.name === 'firebaseLocalStorageDb')
+  } catch {
+    return false
+  }
+}
 
 export function getLastLogin(): LastLoginInfo | null {
   if (typeof window === 'undefined') return null
@@ -167,11 +198,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [sessionExpired, pendingOAuth2fa])
 
-  // Immediate session check — don't wait for Firebase
+  // Immediate session check — don't wait for Firebase. Its answer decides
+  // whether the Firebase SDK is needed on this page at all (SEO-032).
+  const [firebaseWanted, setFirebaseWanted] = useState(false)
   useEffect(() => {
+    let cancelled = false
+    const decide = async (hasSession: boolean) => {
+      const want = needsFirebaseSync({ hasSession, pathname: window.location.pathname, savedFirebaseLogin: hasSession ? false : await hasSavedFirebaseLogin() })
+      if (!cancelled && want) setFirebaseWanted(true)
+    }
     fetch('/api/auth/session', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
+        void decide(!!data?.user)
         if (data?.user) {
           setUser(toAuthUser({
             uid: data.user.uid,
@@ -186,20 +225,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false)
       })
-      .catch(() => { setLoading(false) })
+      .catch(() => { void decide(false); setLoading(false) })
+    return () => { cancelled = true }
   }, [])
 
   // Sync Firebase token → session cookie (silent refresh)
   useEffect(() => {
+    if (!firebaseWanted) return
     let unsub: (() => void) | null = null
     let cancelled = false
 
     const init = async () => {
       try {
-        const cfg = await prefetchFirebaseConfig()
-        if (cfg) setFirebaseConfig(cfg)
-        const a = getFirebaseAuth()
+        const a = await firebaseAuthInstance()
         if (!a) { if (!cancelled) setLoading(false); return }
+        const { signOut: firebaseSignOut } = await loadFirebaseAuth()
+        if (cancelled) return
 
         // Listen for token changes (fires on every token refresh — keeps session alive)
         unsub = a.onIdTokenChanged(async (fbUser) => {
@@ -285,7 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true
       unsub?.()
     }
-  }, [])
+  }, [firebaseWanted])
 
   // Session heartbeat — keep the server session alive every 5 minutes
   useEffect(() => {
@@ -293,7 +334,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(async () => {
       if (isImpersonating()) return
       try {
-        const a = getFirebaseAuth()
+        if (!firebaseLoaded) return
+        const a = (await loadFirebaseApp()).getFirebaseAuth()
         if (!a?.currentUser) return
         const r = await exchangeOAuthSession(a.currentUser, undefined, true)
         if (!('ok' in r) && !('ignored' in r)) {
@@ -350,7 +392,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reportFingerprint(json.user.id)
   }
 
-  const finishOAuthSignIn = async (auth: ReturnType<typeof getAuth>, fbUser: Parameters<typeof toAuthUser>[0] & { getIdToken: (force?: boolean) => Promise<string> }, method: 'google' | 'github') => {
+  const finishOAuthSignIn = async (auth: Auth, fbUser: Parameters<typeof toAuthUser>[0] & { getIdToken: (force?: boolean) => Promise<string> }, method: 'google' | 'github') => {
     setSessionExpired(false)
     const r = await exchangeOAuthSession(fbUser, method)
     if ('twoFactorRequired' in r) {
@@ -358,7 +400,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw { twoFactorRequired: true, message: 'Two-factor code required' }
     }
     if ('error' in r || 'ignored' in r) {
-      try { await firebaseSignOut(auth) } catch {}
+      try { await (await loadFirebaseAuth()).signOut(auth) } catch {}
       setUser(null)
       throw new Error('error' in r ? r.error : 'Sign-in didn’t complete. Try again.')
     }
@@ -368,8 +410,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reportFingerprint(fbUser.uid)
   }
 
+  /** Firebase for a popup sign-in: config fetched, app initialised (the token sync starts too). */
+  const popupAuth = async () => {
+    const [fb, auth] = await Promise.all([loadFirebaseAuth(), firebaseAuthInstance()])
+    setFirebaseWanted(true)
+    return { fb, auth: auth ?? fb.getAuth() }
+  }
+
   const signInWithGoogleFn = async () => {
-    const auth = getAuth()
+    const { fb: { GoogleAuthProvider, signInWithPopup }, auth } = await popupAuth()
     const provider = new GoogleAuthProvider()
     provider.addScope('email'); provider.addScope('profile')
     const cred = await signInWithPopup(auth, provider)
@@ -377,7 +426,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signInWithGithubFn = async () => {
-    const auth = getAuth()
+    const { fb: { GithubAuthProvider, signInWithPopup }, auth } = await popupAuth()
     const provider = new GithubAuthProvider()
     provider.addScope('user:email')
     const cred = await signInWithPopup(auth, provider)
@@ -387,7 +436,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOutFn = async () => {
     // PWA: drop this device's app push + offline practice data while the session still exists.
     await import('@/lib/pwa/sign-out').then((m) => m.pwaSignOutCleanup()).catch(() => undefined)
-    try { await firebaseSignOut(getAuth()) } catch {}
+    // Only when Firebase ran on this page or a Firebase login is saved in this browser.
+    try {
+      if (firebaseLoaded || (await hasSavedFirebaseLogin())) {
+        const a = await firebaseAuthInstance()
+        if (a) await (await loadFirebaseAuth()).signOut(a)
+      }
+    } catch {}
     await csrfFetch('/api/auth/session', { method: 'DELETE' })
     setUser(null)
     setSessionExpired(false)

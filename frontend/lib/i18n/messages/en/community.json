@@ -1,4 +1,12 @@
 {
+  "err_lti_launch_taken": "This activity link was already opened with another account. Open the activity again from your course.",
+  "err_lti_account_mismatch": "Your course account is linked to a different CodeSpectra account. Sign in with that account, or ask your teacher for help.",
+  "err_lti_platform_unsafe_url": "The login, token and key set URLs must be public https:// addresses.",
+  "resendGrades": "Resend grades",
+  "resendingGrades": "Resending…",
+  "resendGradesDone": "{sent} grades sent, {failed} still failing",
+  "resendGradesFailed": "Couldn’t resend grades. Try again.",
+  "gradeLinkPending": "{count} grades waiting to be sent (retried automatically)",
   "cohortsTitle": "Cohort courses",
   "cohortsLead": "Learn with a group on fixed dates: live sessions with mentors, weekly assignments and a certificate when you finish.",
   "myCohorts": "My cohorts",

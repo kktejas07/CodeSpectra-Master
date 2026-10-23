@@ -44,6 +44,7 @@ import { CompareCandidates } from '@/components/assessment/CompareCandidates'
 import { ExtendedAnswerView, TraitScoresPanel, hasExtendedView, useAnswerFiles } from '@/components/assessment/ExtendedAnswerView'
 import { HiringOutcomePanel, OutcomeBadge, OutcomeBulkDialog } from '@/components/assessment/HiringOutcome'
 import { OUTCOME_LABELS, isOutcomeStatus } from '@/lib/hiring-outcomes'
+import { useAdminT } from '@/lib/i18n/admin'
 
 
 interface CandidateResult {
@@ -57,6 +58,7 @@ interface CandidateResult {
   submittedAt: string | null
   invitedAt: string | null
   inviteToken?: string | null
+  reminderCount?: number
   proctoringFlags: number
   idPhoto?: string | null
   facePhoto?: string | null
@@ -340,6 +342,7 @@ export default function ExamResultsPage() {
   const router = useRouter()
   const params = useParams()
   
+  const { t: tx } = useAdminT()
   const [exam, setExam] = useState<Exam | null>(null)
   const [results, setResults] = useState<CandidateResult[]>([])
   const [loading, setLoading] = useState(true)
@@ -1337,6 +1340,7 @@ export default function ExamResultsPage() {
           <div>
             <div className="text-sm">{fmtDate(row.invitedAt)}</div>
             <div className="text-xs text-muted-foreground">{fmtTime(row.invitedAt)}</div>
+            {!!row.reminderCount && !row.submittedAt && <div className="text-xs text-muted-foreground">{tx('automations.nudges.remindedTimes', { count: row.reminderCount })}</div>}
           </div>
         ) : <span className="text-xs text-muted-foreground">--</span>
       ),

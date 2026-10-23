@@ -46,6 +46,26 @@ export const LOCALIZED_PATHS = [
 /** Sections whose detail pages are localized too (/companies/<slug>). */
 export const LOCALIZED_PREFIXES = ['/companies/', '/certifications/', '/community/c/', '/community/t/', '/digest/'] as const
 
+/**
+ * SEO-034: pages whose /hi and /te copies translate only the chrome — the
+ * body stays English (legal text by design, user-written forum threads). The
+ * copies still exist for navigation, but they canonicalise to the English URL
+ * and carry no hreflang, so search engines see one page, not three
+ * near-duplicates. The sitemap lists the English URL only.
+ */
+export const ENGLISH_BODY_PATHS = ['/privacy', '/terms', '/cookies'] as const
+export const ENGLISH_BODY_PREFIXES = ['/community/c/', '/community/t/'] as const
+
+export function isEnglishBodyPath(path: string): boolean {
+  const p = cleanPath(splitLocalePath(path).path)
+  return (ENGLISH_BODY_PATHS as readonly string[]).includes(p) || ENGLISH_BODY_PREFIXES.some((pre) => p.startsWith(pre))
+}
+
+/** Canonical URL of `path` shown in `locale`: the localized URL, or English for English-body pages. */
+export function canonicalLocalePath(path: string, locale: Locale): string {
+  return isEnglishBodyPath(path) ? splitLocalePath(path).path : localizedPath(path, locale)
+}
+
 /** hreflang codes per locale (+ x-default → English). */
 export const HREFLANG: Record<Locale, string> = { en: 'en', hi: 'hi', te: 'te' }
 
@@ -102,7 +122,7 @@ export function switchLocaleHref(currentPath: string, target: Locale): string {
  */
 export function hreflangAlternates(path: string): Record<string, string> | null {
   const base = cleanPath(splitLocalePath(path).path)
-  if (!isLocalizedPath(base)) return null
+  if (!isLocalizedPath(base) || isEnglishBodyPath(base)) return null
   const out: Record<string, string> = {}
   for (const l of LOCALES) out[HREFLANG[l]] = localizedPath(base, l)
   out['x-default'] = base

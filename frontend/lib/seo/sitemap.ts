@@ -11,9 +11,9 @@
  */
 import { escapeHtml } from '@/lib/safe-html'
 import { PUBLIC_ROUTES } from './public-routes'
-import { PREFIXED_LOCALES, isLocalizedPath, localizedPath, sitemapAlternates } from '@/lib/i18n/public-paths'
+import { PREFIXED_LOCALES, isEnglishBodyPath, isLocalizedPath, localizedPath, sitemapAlternates } from '@/lib/i18n/public-paths'
 
-export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'digest', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
+export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'digest', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare', 'contests', 'certifications', 'community', 'leagues', 'newsletter'] as const
 export type SitemapType = (typeof SITEMAP_TYPES)[number]
 
 export interface SitemapEntry {
@@ -59,12 +59,12 @@ export function buildUrlsetXml(entries: SitemapEntry[], site: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>\n${rows.join('\n')}\n</urlset>\n`
 }
 
-/** Adds the /hi/… and /te/… copy after every page that has translations (same lastmod / priority). */
+/** Adds the /hi/… and /te/… copy after every page that has translations (same lastmod / priority); English-body pages (SEO-034) stay English only. */
 export function withLocalizedEntries(entries: SitemapEntry[]): SitemapEntry[] {
   const out: SitemapEntry[] = []
   for (const e of entries) {
     out.push(e)
-    if (isLocalizedPath(e.path)) for (const l of PREFIXED_LOCALES) out.push({ ...e, path: localizedPath(e.path, l) })
+    if (isLocalizedPath(e.path) && !isEnglishBodyPath(e.path)) for (const l of PREFIXED_LOCALES) out.push({ ...e, path: localizedPath(e.path, l) })
   }
   return out
 }
@@ -198,6 +198,45 @@ export async function loadSitemapEntries(type: SitemapType): Promise<SitemapEntr
         const pub = s.comparisons.filter((c) => c.published)
         if (!pub.length) return []
         return [{ path: '/compare', lastmod: latestLastmod(pub.map((c) => ({ path: '', lastmod: c.updated_at }))), changefreq: 'monthly', priority: 0.5 }, ...pub.map((c) => ({ path: `/compare/${c.slug}`, lastmod: c.updated_at, changefreq: 'monthly' as const, priority: 0.5 }))]
+      })
+    // SEO-028: sections added since wave 9 (published / public items only).
+    case 'contests':
+      return safe(async () => {
+        const { contestsCol } = await import('@/lib/contests/store')
+        const rows = await (await contestsCol()).find({ status: { $in: ['published', 'closed'] }, visibility: 'public' }, { projection: { _id: 0, slug: 1, updated_at: 1, status: 1 } }).sort({ 'schedule.starts_at': -1 }).limit(5000).toArray()
+        return rows.filter((c) => c.slug).map((c) => ({ path: `/contests/${c.slug}`, lastmod: c.updated_at, changefreq: c.status === 'closed' ? 'monthly' as const : 'daily' as const, priority: 0.6 }))
+      })
+    case 'certifications':
+      return safe(async () => {
+        const { loadPublishedPrograms } = await import('@/lib/pro-certs/service')
+        return withLocalizedEntries((await loadPublishedPrograms()).map((p) => ({ path: `/certifications/${p.slug}`, lastmod: p.updated_at, changefreq: 'monthly' as const, priority: 0.6 })))
+      })
+    case 'community':
+      // Threads are user-written English, so only the unprefixed URL is listed (SEO-034).
+      return safe(async () => {
+        const { categoriesCol, threadsCol } = await import('@/lib/community/db')
+        const cats = await (await categoriesCol()).find({ members_only: false }, { projection: { _id: 0, id: 1, slug: 1, updated_at: 1 } }).limit(500).toArray()
+        const ids = cats.map((c) => c.id)
+        // Solution write-ups are locked for non-solvers (title only), so they stay out.
+        const threads = await (await threadsCol()).find({ status: 'visible', category_id: { $in: ids }, kind: { $ne: 'solution' } }, { projection: { _id: 0, id: 1, last_activity_at: 1 } }).sort({ last_activity_at: -1 }).limit(MAX_URLS - cats.length).toArray()
+        return [
+          ...cats.map((c) => ({ path: `/community/c/${c.slug}`, lastmod: (c as { updated_at?: string }).updated_at ?? null, changefreq: 'daily' as const, priority: 0.5 })),
+          ...threads.map((t) => ({ path: `/community/t/${t.id}`, lastmod: t.last_activity_at, changefreq: 'weekly' as const, priority: 0.4 })),
+        ]
+      })
+    case 'leagues':
+      return safe(async () => {
+        const { leaguesOverviewCached } = await import('@/lib/leagues/public')
+        const o = await leaguesOverviewCached(null)
+        const lastmod = o.boards?.computed_at ?? null
+        return (o.boards?.colleges ?? []).filter((c) => c.slug).map((c) => ({ path: `/leagues/colleges/${c.slug}`, lastmod, changefreq: 'weekly' as const, priority: 0.4 }))
+      })
+    case 'newsletter':
+      return safe(async () => {
+        const { emailCampaigns } = await import('@/lib/db/email-campaigns')
+        // Same issues the /newsletter archive lists.
+        const rows = await (await emailCampaigns()).find({ status: { $in: ['completed', 'sending'] } }).sort({ completed_at: -1, created_at: -1 }).limit(500).project({ _id: 0, id: 1, campaign_id: 1, completed_at: 1, created_at: 1 }).toArray()
+        return rows.filter((c) => c.id || c.campaign_id).map((c) => ({ path: `/newsletter/${c.id || c.campaign_id}`, lastmod: (c.completed_at || c.created_at) as string, changefreq: 'yearly' as const, priority: 0.3 }))
       })
   }
 }

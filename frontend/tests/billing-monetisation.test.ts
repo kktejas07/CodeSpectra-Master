@@ -173,7 +173,12 @@ describe('referral rewards', () => {
     expect(decideReferralReward({ ...b, orderStatus: 'refunded' })).toBe('void_refunded')
     expect(decideReferralReward({ ...b, refereePlanLive: false })).toBe('void_lapsed')
     expect(decideReferralReward({ ...b, rewardsThisYear: 2 })).toBe('void_cap')
-    expect(decideReferralReward({ ...b, abuse: 'same_ip' })).toBe('void_abuse')
+    // CORE-037: a shared IP alone (campus Wi-Fi) goes to admin review; device / payment still void.
+    expect(decideReferralReward({ ...b, abuse: 'same_ip' })).toBe('review')
+    expect(decideReferralReward({ ...b, abuse: 'same_device' })).toBe('void_abuse')
+    expect(decideReferralReward({ ...b, abuse: 'same_payment' })).toBe('void_abuse')
+    expect(decideReferralReward({ ...b, abuse: 'same_ip', rewardsThisYear: 2 })).toBe('void_cap')
+    expect(decideReferralReward({ ...b, abuse: 'same_ip', now: new Date('2026-09-20T00:00:00Z') })).toBe('wait')
   })
   it('abuse checks: same device, payment instrument or IP', () => {
     const none = { deviceIds: [], ips: [], paymentFingerprints: [] }

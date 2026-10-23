@@ -176,14 +176,17 @@ async function sendInviteEmail(to: string, name: string, college: string, token:
   if (await isUnsubscribed(to, 'engagement')) return false
   const { appendUnsubscribeFooter } = await import('@/lib/notifications-delivery')
   const link = `${getAppOrigin()}/dashboard/campus?invite=${encodeURIComponent(token)}`
-  const html = appendUnsubscribeFooter(`<div style="font-family:sans-serif;padding:24px;max-width:520px;color:#0f1729">
-    <h2 style="margin:0 0 8px">${esc(college)} invited you to CodeSpectra</h2>
-    <p style="color:#4b5563;margin:0 0 16px">Hi ${esc(name)}, your placement office uses CodeSpectra for placement drives, practice tests and readiness tracking. Join with this link to see drives you're eligible for.</p>
-    <a href="${esc(link)}" style="display:inline-block;background:#2F5BE7;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Join your college</a>
-    <p style="color:#6b7280;font-size:13px;margin-top:16px">The link works for ${INVITE_TTL_DAYS} days. If you weren't expecting this, you can ignore it.</p>
-  </div>`, unsubscribeUrl(to, 'engagement'))
+  // SEO-033: in the student's language when the address already has an account.
+  const [{ emailTemplatesFor }, { localeForEmail }] = await Promise.all([import('@/lib/email-templates'), import('@/lib/i18n/recipient')])
+  const msg = emailTemplatesFor(await localeForEmail(to)).notice({
+    key: 'campusInvite',
+    params: { college: esc(college), name: esc(name), days: INVITE_TTL_DAYS },
+    subjectParams: { college, name, days: INVITE_TTL_DAYS },
+    buttonUrl: esc(link),
+  })
+  const html = appendUnsubscribeFooter(msg.html, unsubscribeUrl(to, 'engagement'))
   const { sendEmail } = await import('@/lib/send-email')
-  const r = await sendEmail(to, { subject: `Join ${college} on CodeSpectra`, html }, undefined, { category: 'campus_invite', headers: listUnsubscribeHeaders(to, 'engagement') })
+  const r = await sendEmail(to, { subject: msg.subject, html }, undefined, { category: 'campus_invite', headers: listUnsubscribeHeaders(to, 'engagement') })
   return !!r?.success || !!r?.queued
 }
 

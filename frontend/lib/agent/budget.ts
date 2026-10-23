@@ -120,5 +120,14 @@ export function budgetState(used: { day: number; month: number }, limits: { dail
   return { ok: true, remaining, daily, monthly }
 }
 
+/**
+ * AGT-028: the platform-wide AI money hard stop (Admin -> AI spend) also pauses the copilot when
+ * 'admin_agent' is on the non-critical list and the monthly budget is used up. Pure.
+ */
+export const PLATFORM_HARD_STOP_REASON = 'The platform\'s monthly AI budget is used up, so the copilot is paused until next month or until a superadmin raises the budget.'
+export function withPlatformHardStop(state: BudgetState, blocked: boolean): BudgetState {
+  return blocked ? { ...state, ok: false, remaining: 0, reason: PLATFORM_HARD_STOP_REASON } : state
+}
+
 export const dayKey = (d: Date) => d.toISOString().slice(0, 10)
 export const monthKey = (d: Date) => d.toISOString().slice(0, 7)

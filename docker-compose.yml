@@ -1,9 +1,9 @@
 services:
   piston:
-    # ponytail: intentionally :latest — ghcr.io/engineer-man/piston publishes no
-    # verifiable versioned tags (only `latest` on the package page as of 2026-09-06).
-    # SEC-023: pin by digest in production, e.g.
-    # PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<digest> (docker buildx imagetools inspect …)
+    # SEC-023: pin the code runner by digest in .env so a changed upstream image is
+    # never pulled silently:  PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<64 hex>
+    # (scripts/pin-piston-image.sh resolves + writes it). Unset → falls back to the
+    # floating :latest tag and Admin → System shows "Piston image not pinned".
     image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}
     container_name: codespectra-piston
     cap_add:
@@ -15,6 +15,13 @@ services:
       - "2000"
     volumes:
       - piston-data:/piston
+    # SEC-023: no egress. `sandbox` is an internal network (no route out), so
+    # untrusted code can't reach the internet or the other services. Running code
+    # needs no internet; only installing a runtime does (one-off, see
+    # docs/devops/01-Deployment-Guide.md). To turn the isolation off, set
+    # `internal: false` on the sandbox network at the bottom of this file.
+    networks:
+      - sandbox
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:2000/api/v2/runtimes"]
@@ -44,6 +51,8 @@ services:
     # Runtime-only secrets (never build args — they would be baked into the image).
     environment:
       - PISTON_URL=http://piston:2000/api/v2
+      # SEC-023: lets Admin → System warn when the runner image isn't digest-pinned.
+      - PISTON_IMAGE=${PISTON_IMAGE:-}
       - DIDIT_API_KEY=${DIDIT_API_KEY:-}
       - DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET:-}
       - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:-}
@@ -61,6 +70,10 @@ services:
       # Override with your proxy/overlay subnet — docs/devops/06-Reverse-Proxy.md.
       - TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS:-172.16.0.0/12,127.0.0.1}
       - TRUST_CF_CONNECTING_IP=${TRUST_CF_CONNECTING_IP:-false}
+    # default = normal app network; sandbox = the only path to Piston.
+    networks:
+      - default
+      - sandbox
     depends_on:
       piston:
         condition: service_healthy
@@ -114,6 +127,10 @@ services:
     # must equal the frontend's — the backend refuses /internal/* without it.
     env_file:
       - ./backend/.env
+    # backend/core/sandbox/runner_client.py also calls Piston (PISTON_URL).
+    networks:
+      - default
+      - sandbox
     depends_on:
       frontend:
         condition: service_healthy
@@ -142,6 +159,12 @@ services:
       - "127.0.0.1:7880:7880"
       - "127.0.0.1:50000-50010:50000-50010/udp"
     restart: unless-stopped
+
+networks:
+  default: {}
+  # SEC-023: internal = no external connectivity for anything on it.
+  sandbox:
+    internal: true
 
 volumes:
   piston-data:

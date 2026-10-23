@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { handleCheckoutRequest } from '@/lib/billing-checkout'
+import { nativeCheckoutBlock } from '@/lib/billing/native-checkout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,5 +11,7 @@ export const dynamic = 'force-dynamic'
  * code 'free_plan'; enterprise / contact-sales plans → 409 code 'contact_sales'.
  */
 export async function POST(req: NextRequest) {
+  const blocked = nativeCheckoutBlock(req) // CORE-038
+  if (blocked) return blocked
   return handleCheckoutRequest(req)
 }

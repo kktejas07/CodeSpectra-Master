@@ -91,3 +91,10 @@
 .driver-hint {
   --driver-hint-color: hsl(var(--primary));
 }
+
+/* Keyboard users need to see which tour button has focus (a11y CI check). */
+.cs-tour-popover .driver-popover-close-btn:focus-visible,
+.cs-tour-popover .driver-popover-footer-btn:focus-visible {
+  outline: 2px solid hsl(var(--ring, var(--primary)));
+  outline-offset: 2px;
+}

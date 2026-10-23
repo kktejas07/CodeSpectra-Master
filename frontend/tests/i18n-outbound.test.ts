@@ -198,3 +198,52 @@ function listFiles(dir: string, out: string[] = []): string[] {
   }
   return out
 }
+
+// SEO-033: account / security / invite notices go out in the recipient's language.
+describe('notice emails', () => {
+  const NOTICES: [string, Record<string, string | number>, { code?: string; buttonUrl?: string }][] = [
+    ['faceCode', {}, { code: '123456' }],
+    ['signinSecured', { via: 'Google', url: 'https://x/f' }, {}],
+    ['emailChange', {}, { code: '123456' }],
+    ['emailChanged', { email: 'a@x.in', url: 'https://x/u' }, {}],
+    ['phoneVerify', { phone: '+91 98765' }, { code: '123456' }],
+    ['interviewScheduled', { title: 'SDE', role: 'Backend', type: 'technical', when: '1 Nov', minutes: 45 }, { buttonUrl: 'https://x/live' }],
+    ['campusInvite', { college: 'VNR', name: 'Asha', days: 14 }, { buttonUrl: 'https://x/j' }],
+    ['newsletterConfirm', {}, { buttonUrl: 'https://x/c' }],
+    ['kycReminder', { name: 'Asha' }, {}],
+    ['kycReverify', { name: 'Asha' }, {}],
+  ]
+  for (const l of ['hi', 'te'] as const) {
+    it(`renders every notice in ${l} with values, button and code`, () => {
+      for (const [key, params, extra] of NOTICES) {
+        const out = emailTemplatesFor(l).notice({ key, params, ...extra })
+        expect(SCRIPT[l].test(out.subject), `${l} ${key} subject`).toBe(true)
+        expect(SCRIPT[l].test(out.html), `${l} ${key} body`).toBe(true)
+        expect(out.html).toContain(`lang="${l}"`)
+        expect(out.html).not.toMatch(/\{\w+\}/)
+        if (extra.code) expect(out.html).toContain(extra.code)
+        if (extra.buttonUrl) expect(out.html).toContain(`href="${extra.buttonUrl}"`)
+      }
+    })
+  }
+
+  it('English keeps the old wording and the ATS defaults match the catalog', async () => {
+    expect(emailTemplatesFor('en').notice({ key: 'faceCode', code: '1' }).subject).toBe('Your CodeSpectra sign-in code')
+    expect(emailTemplatesFor('en').notice({ key: 'campusInvite', params: { college: 'VNR', name: 'A', days: 7 } }).subject).toBe('Join VNR on CodeSpectra')
+    const { DEFAULT_OFFER, DEFAULT_REJECTION } = await import('@/lib/ats/notify')
+    expect(OUTBOUND_CATALOGS.email.en['atsDefault.rejection.body']).toBe(DEFAULT_REJECTION.body)
+    expect(OUTBOUND_CATALOGS.email.en['atsDefault.offer.subject']).toBe(DEFAULT_OFFER.subject)
+  })
+
+  it('no new sendEmail call with a hard-coded English subject', () => {
+    // Ratchet: these still build English text inline; new senders must use email.json + emailTemplatesFor(recipient locale).
+    const ALLOWED = new Set(['lib/db/certifications.ts'])
+    const found = new Set<string>()
+    for (const f of ['app', 'lib'].flatMap((d) => listFiles(path.join(ROOT, d)))) {
+      const s = fs.readFileSync(f, 'utf8')
+      if (!s.includes('sendEmail(')) continue
+      for (const m of s.matchAll(/sendEmail\(/g)) if (/subject:\s*['`"][A-Z][a-z]/.test(s.slice(m.index, m.index + 500))) found.add(path.relative(ROOT, f))
+    }
+    expect([...found].filter((f) => !ALLOWED.has(f))).toEqual([])
+  })
+})

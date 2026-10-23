@@ -23,6 +23,7 @@ import { activatePaidOrder, ensureBillingIndexes, orderPlanSnapshot, type Resolv
 import { graceDays, graceEndsAt } from '@/lib/billing-lifecycle'
 import { addInterval } from './proration'
 import { logger } from '@/lib/logger'
+import { gatewayRenewalAt } from '@/lib/billing/gateway-bonus'
 
 /** Billing cycles a subscription runs before Razorpay completes it (renew by checkout after). */
 export const TOTAL_COUNT = { month: 120, year: 10 } as const
@@ -267,16 +268,19 @@ export async function syncRazorpaySubscriptionEvent(event: string, entities: Ent
  */
 export async function sweepRazorpayCancellations(now = new Date()): Promise<number> {
   const subs = await billingSubscriptions()
+  const lead = new Date(now.getTime() + CANCEL_LEAD_MS).toISOString()
+  // CORE-036: with referral bonus days the next Razorpay charge is ends_at − bonus, not ends_at.
   const due = await subs
     .find({
       status: 'active', billing_mode: 'razorpay_subscription', cancel_at_period_end: true,
-      razorpay_cancelled_at: { $exists: false }, ends_at: { $lte: new Date(now.getTime() + CANCEL_LEAD_MS).toISOString() },
-    } as never, { projection: { _id: 0, id: 1, razorpay_subscription_id: 1 } })
+      razorpay_cancelled_at: { $exists: false }, $or: [{ ends_at: { $lte: lead } }, { gateway_bonus_days: { $gt: 0 } }],
+    } as never, { projection: { _id: 0, id: 1, razorpay_subscription_id: 1, ends_at: 1, gateway_bonus_days: 1 } })
     .limit(500)
     .toArray()
   let n = 0
   for (const s of due) {
     if (!s.razorpay_subscription_id) continue
+    if (gatewayRenewalAt(s.ends_at, s.gateway_bonus_days) > lead) continue
     try {
       await cancelRazorpaySubscription(s.razorpay_subscription_id, false)
       await subs.updateOne({ id: s.id }, { $set: { razorpay_cancelled_at: now.toISOString() } as never })

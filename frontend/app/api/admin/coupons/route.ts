@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
-import { billingCoupons, newId, nowIso } from '@/lib/db/billing'
+import { billingCoupons, nowIso } from '@/lib/db/billing'
 import { validateCouponInput } from '@/lib/billing-lifecycle'
 import { validateCouponRestrictions } from '@/lib/billing/coupon-eligibility'
 import { auditAdmin } from '@/lib/admin-audit'
@@ -43,38 +43,11 @@ export async function POST(req: NextRequest) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const body = ((await req.json().catch(() => null)) || {}) as Record<string, unknown>
-    const parsed = validateCouponInput(body, false)
-    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
-    const v = parsed.value
-    const extra = validateCouponRestrictions(body)
-    if (!extra.ok) return NextResponse.json({ error: extra.error }, { status: 400 })
-
-    const couponsCol = await billingCoupons()
-    if (await couponsCol.findOne({ code: v.code! })) {
-      return NextResponse.json({ error: 'Coupon code already exists' }, { status: 400 })
-    }
-    const coupon = {
-      id: newId(),
-      code: v.code!,
-      discount_type: v.discount_type!,
-      discount_value: v.discount_value!,
-      max_uses: v.max_uses ?? 0,
-      current_uses: 0,
-      valid_until: v.valid_until || undefined,
-      active: true,
-      trial_duration_days: v.trial_duration_days ?? undefined,
-      ...(v.discount_type === 'flat' ? { currency: v.currency } : {}),
-      applies_to: v.applies_to ?? 'all',
-      marketplace_funding: v.marketplace_funding ?? 'platform_items_only',
-      seller_id: null,
-      per_user_limit: extra.value.per_user_limit ?? 1,
-      plan_ids: extra.value.plan_ids ?? [],
-      first_purchase_only: extra.value.first_purchase_only ?? false,
-      starts_at: extra.value.starts_at ?? null,
-      created_by: gate.user.id,
-      created_at: nowIso(),
-    }
-    await couponsCol.insertOne(coupon)
+    // Same validation + insert as the copilot's create_coupon (lib/billing/coupon-admin).
+    const { createCoupon } = await import('@/lib/billing/coupon-admin')
+    const created = await createCoupon(gate.user.id, body)
+    if (!created.ok) return NextResponse.json({ error: created.error }, { status: created.status })
+    const coupon = created.coupon as typeof created.coupon & { discount_type: string; discount_value: number }
     await auditAdmin(gate.user, 'admin.coupon.create', 'coupon', `coupon/${coupon.id}`, `${coupon.code} ${coupon.discount_type} ${coupon.discount_value}`)
     return NextResponse.json({ coupon })
   } catch (error) {

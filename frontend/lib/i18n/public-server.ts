@@ -35,7 +35,6 @@ import hiPublicPages from './messages/hi/publicPages.json'
 import hiLearn from './messages/hi/learn.json'
 import hiCommon from './messages/hi/common.json'
 import hiErrors from './messages/hi/errors.json'
-import hiApiErrors from './messages/hi/apiErrors.json'
 
 import teSeo from './messages/te/seo.json'
 import teLanding from './messages/te/landing.json'
@@ -48,7 +47,6 @@ import tePublicPages from './messages/te/publicPages.json'
 import teLearn from './messages/te/learn.json'
 import teCommon from './messages/te/common.json'
 import teErrors from './messages/te/errors.json'
-import teApiErrors from './messages/te/apiErrors.json'
 
 const EN = { seo: enSeo, landing: enLanding, marketing: enMarketing, faq: enFaq, legal: enLegal, hubs: enHubs, public: enPublic, publicPages: enPublicPages, learn: enLearn, common: enCommon }
 type Tables = Record<keyof typeof EN, Record<string, string>>
@@ -105,14 +103,28 @@ export function publicT(locale: Locale): PublicTranslator {
   return t
 }
 
+/** Page-level client namespaces (SEO-031): sent only by the pages whose client components read them. */
+export type PublicPageNamespace = 'publicPages' | 'learn'
+
 /**
- * Catalogs handed to the client provider on /hi/… and /te/… pages: only what
- * public client components read (not the signed-in app's namespaces).
+ * Catalogs handed to the client provider on every /hi/… and /te/… page:
+ * only the shared chrome (header, footer, not-found, cart, notify box) —
+ * `common`, `public`, `errors`. SEO-031: page copy (`publicPages`, `learn`)
+ * is added by the pages that need it (publicPageMessages +
+ * components/i18n/public-page-i18n.tsx), and the 460-key `apiErrors`
+ * catalog loads on demand in useApiError — so a hub page no longer
+ * serialises ~125 KB of strings into its payload.
  */
 export function publicClientMessages(locale: Locale): Messages {
   if (locale === 'en') return {}
   const t = BY_LOCALE[locale]
-  // errors / apiErrors: localized API error text on public forms (lib/i18n/use-api-error.ts).
-  const errs = locale === 'hi' ? { errors: hiErrors, apiErrors: hiApiErrors } : { errors: teErrors, apiErrors: teApiErrors }
-  return { common: t.common, public: t.public, publicPages: t.publicPages, learn: t.learn, ...errs } as Messages
+  const errors = locale === 'hi' ? hiErrors : teErrors
+  return { common: t.common, public: t.public, errors } as Messages
+}
+
+/** Extra namespaces for one page (merged into the layout's provider). */
+export function publicPageMessages(locale: Locale, ns: readonly PublicPageNamespace[]): Messages {
+  if (locale === 'en') return {}
+  const t = BY_LOCALE[locale]
+  return Object.fromEntries(ns.map((n) => [n, t[n]])) as Messages
 }

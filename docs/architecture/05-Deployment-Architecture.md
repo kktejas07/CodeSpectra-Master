@@ -51,7 +51,7 @@ Defined in `docker-compose.yml` with three services:
 
 | Service | Image | Port | Dependencies | Health Check |
 |---------|-------|------|--------------|--------------|
-| `piston` | `ghcr.io/engineer-man/piston:latest` | `2000:2000` | None | `curl -f http://localhost:2000/api/v2/runtimes` (30s interval, 60s start period) |
+| `piston` | `$PISTON_IMAGE` (ghcr.io/engineer-man/piston@sha256:…, digest-pinned) | `2000:2000` | None | `curl -f http://localhost:2000/api/v2/runtimes` (30s interval, 60s start period) |
 | `frontend` | Custom Dockerfile (`./frontend/Dockerfile`) | `3000:80` | piston (condition: service_healthy) | None |
 | `backend` | Custom Dockerfile (`./backend/Dockerfile`) | `8001:8000` | frontend | None |
 
@@ -73,7 +73,7 @@ Defined in `docker-compose.yml` with three services:
 - Has no health check configured
 
 #### Piston Container (codespectra-piston)
-- Image: `ghcr.io/engineer-man/piston:latest`
+- Image: `$PISTON_IMAGE` (ghcr.io/engineer-man/piston@sha256:…, digest-pinned)
 - Runs in privileged mode (required for container-in-container code isolation)
 - Persistent volume: `piston-data:/piston` for cached runtimes and packages
 - Exposes port 2000

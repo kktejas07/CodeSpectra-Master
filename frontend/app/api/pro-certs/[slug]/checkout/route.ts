@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { errorJson, json } from '@/lib/pro-certs/http'
+import { nativeCheckoutBlock } from '@/lib/billing/native-checkout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,8 @@ export const dynamic = 'force-dynamic'
 const Body = z.object({ currency: z.enum(['INR', 'USD']) }).strict()
 
 export async function POST(req: Request, ctx: { params: Promise<{ slug: string }> }) {
+  const blocked = nativeCheckoutBlock(req) // CORE-038
+  if (blocked) return blocked
   const g = await requireAuth()
   if ('error' in g) return json({ error: g.error, code: 'unauthorized' }, g.status)
   const rl = await rateLimitRedis(`pro-cert-checkout:${g.user.id}`, 10, 10 * 60_000)

@@ -137,27 +137,49 @@ export async function emitInactivitySignals(now = new Date()): Promise<number> {
   return n
 }
 
-export async function runReengagement(now = new Date()): Promise<{ emailed: number }> {
-  let emailed = 0
+/**
+ * W15-AUTO-02: the come-back email names one thing from the learner's study plan
+ * (their weakest area's next item) and their best streak; at 30 days it offers to
+ * rebuild the plan. People without a plan get the generic note. Goes through the
+ * shared nudge sender (once, shared frequency cap, unsubscribe, run log).
+ */
+export async function runReengagement(now = new Date()): Promise<Record<string, number>> {
+  const [{ deliverNudge, tally }, { nudgeMail }, { pickForLearner }, { plansCol }, { getUserStreak }] = await Promise.all([
+    import('../nudges/deliver'), import('../nudges/text'), import('../nudges/rules'), import('@/lib/study-plan/db'), import('@/lib/activity-streak'),
+  ])
+  const plans = await plansCol()
+  const outcomes: Awaited<ReturnType<typeof deliverNudge>>[] = []
+  let personalised = 0
   for (const { user: u, uid, days, last } of await inactiveUsers(now)) {
-    if (!(await claimOnce(`inactive:${uid}:${days}:${last.slice(0, 10)}`))) continue
-    const out = await sendAutomationEmail({
-      to: String(u.email), userId: uid, category: 'engagement',
-      dedupe: { kind: 're-engagement', ref: `${uid}:${days}:${last}` },
-      subject: days >= 30 ? 'We saved your progress — come back anytime' : 'Today’s coding challenge is waiting',
-      heading: days >= 30 ? `It’s been a while, ${nameOf(u)}` : `Ready for a quick one, ${nameOf(u)}?`,
-      bodyText: days >= 30
-        ? 'Your problems, certificates and progress are still here. New practice problems and events were added while you were away.'
-        : 'A ten-minute problem is the easiest way to keep your skills sharp. Today’s challenge is ready.',
-      cta: { label: 'Solve today’s challenge', url: '/dashboard/arena' },
-      reason: 'You got this email because you have a CodeSpectra account and haven’t signed in for a while.',
-      i18n: days >= 30
-        ? { subject: { key: 'auto.back.subjectLong' }, heading: { key: 'auto.back.headingLong', params: { name: nameOf(u) } }, body: { key: 'auto.back.bodyLong' }, cta: { key: 'auto.back.cta' }, reason: { key: 'auto.back.reason' } }
-        : { subject: { key: 'auto.back.subject' }, heading: { key: 'auto.back.heading', params: { name: nameOf(u) } }, body: { key: 'auto.back.body' }, cta: { key: 'auto.back.cta' }, reason: { key: 'auto.back.reason' } },
-    })
-    if (out === 'sent' || out === 'deferred' || out === 'queued') emailed++
+    const plan = (await plans.findOne({ user_id: uid, status: 'active' }, { projection: { _id: 0, status: 1, weak_areas: 1, week: 1 } }).catch(() => null)) as never
+    const pick = days < 30 ? pickForLearner(plan) : null
+    const best = (await getUserStreak(uid).catch(() => null))?.longest ?? 0
+    const streak = best >= 2 ? [{ key: 'auto.nudge.comeBack.streak', params: { days: best } }] : []
+    const dedupe = { kind: 're-engagement' as const, ref: `${uid}:${days}:${last}` }
+    const name = u.fullName || u.name ? nameOf(u) : null
+    const email = pick
+      ? nudgeMail({ id: 'comeBack', category: 'engagement', params: { title: pick.title.slice(0, 120), area: pick.area || '' }, name, bodyKey: pick.area ? 'auto.nudge.comeBack.body' : 'auto.nudge.comeBack.bodyNoArea', extra: streak, cta: { url: pick.href }, dedupe })
+      : days >= 30 && plan
+        ? nudgeMail({ id: 'comeBackRebuild', category: 'engagement', name, extra: streak, cta: { url: '/dashboard/study-plan' }, dedupe })
+        : {
+            category: 'engagement' as const, dedupe,
+            subject: days >= 30 ? 'We saved your progress — come back anytime' : 'Today’s coding challenge is waiting',
+            heading: days >= 30 ? `It’s been a while, ${nameOf(u)}` : `Ready for a quick one, ${nameOf(u)}?`,
+            bodyText: days >= 30
+              ? 'Your problems, certificates and progress are still here. New practice problems and events were added while you were away.'
+              : 'A ten-minute problem is the easiest way to keep your skills sharp. Today’s challenge is ready.',
+            cta: { label: 'Solve today’s challenge', url: '/dashboard/arena' },
+            reason: 'You got this email because you have a CodeSpectra account and haven’t signed in for a while.',
+            i18n: days >= 30
+              ? { subject: { key: 'auto.back.subjectLong' }, heading: { key: 'auto.back.headingLong', params: { name: nameOf(u) } }, body: { key: 'auto.back.bodyLong' }, cta: { key: 'auto.back.cta' }, reason: { key: 'auto.back.reason' } }
+              : { subject: { key: 'auto.back.subject' }, heading: { key: 'auto.back.heading', params: { name: nameOf(u) } }, body: { key: 'auto.back.body' }, cta: { key: 'auto.back.cta' }, reason: { key: 'auto.back.reason' } },
+          }
+    const o = await deliverNudge({ automationId: 're-engagement', key: `${uid}:${days}:${last.slice(0, 10)}`, now, to: { userId: uid, email: String(u.email) }, email })
+    outcomes.push(o)
+    if (o === 'sent' && pick) personalised++
   }
-  return { emailed }
+  const t = tally(outcomes)
+  return { emailed: t.sent, personalised, capped: t.capped, skipped: t.skipped }
 }
 
 export async function runStreakSaver(now = new Date()): Promise<{ nudged: number }> {
@@ -265,7 +287,7 @@ export const ENGAGEMENT_AUTOMATIONS: SystemAutomation[] = [
   {
     id: 're-engagement',
     title: 'Re-engagement emails',
-    description: 'Daily: invites people back after 7, 14 and 30 days without signing in (once each). The user.inactive event for workflows comes from “Event signals”, so it keeps flowing when this is off.',
+    description: 'Daily: invites people back after 7, 14 and 30 days without signing in (once each) with one pick from their study plan’s weakest area and their best streak; at 30 days offers to rebuild the plan. Counts toward the shared nudge cap. The user.inactive event for workflows comes from “Event signals”, so it keeps flowing when this is off.',
     group: 'Engagement',
     refs: ['AU-12'],
     cadence: { kind: 'daily', hourUtc: 4 },

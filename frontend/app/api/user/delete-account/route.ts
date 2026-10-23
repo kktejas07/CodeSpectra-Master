@@ -8,26 +8,9 @@ import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { purgeAccountData } from '@/lib/account-purge'
 
 export const runtime = 'nodejs'
-
-/**
- * Personal data removed with the account. Assessment, hackathon and billing
- * records stay with the organisations / ledgers that own them.
- */
-const CASCADE: Array<{ collection: string; field: string }> = [
-  { collection: 'user_sessions', field: 'user_id' },
-  { collection: 'notifications', field: 'user_id' },
-  { collection: 'notification_preferences', field: 'user_id' },
-  { collection: 'user_extended_profiles', field: 'userId' },
-  { collection: 'email_change_otps', field: 'userId' },
-  { collection: 'id_card_tokens', field: 'user_id' },
-  { collection: 'user_ai_settings', field: 'user_id' },
-  { collection: 'device_fingerprints', field: 'user_id' },
-  // Skill passport + talent-search opt-in and the invites sent to this learner.
-  { collection: 'skill_passports', field: 'user_id' },
-  { collection: 'talent_invites', field: 'learner_id' },
-]
 
 /**
  * POST /api/user/delete-account — permanently delete the signed-in account.
@@ -74,7 +57,9 @@ export async function POST(request: NextRequest) {
     await revokeAllUserSessions(uid)
     await import('@/lib/agent/schedule-guard').then((m) => m.disableSchedulesCreatedBy(uid)).catch(() => 0)
 
-    await Promise.allSettled(CASCADE.map(({ collection, field }) => db.collection(collection).deleteMany({ [field]: uid })))
+    // AUTO-085: personal data goes; money / community records are anonymised (lib/account-purge.ts).
+    const purge = await purgeAccountData(db, uid)
+    if (purge.failed.length) console.error('[DeleteAccount] purge incomplete, nightly scrub will retry:', purge.failed.join(','))
     // SEC-027: ID photos, selfies and KYC records go with the account.
     const { purgeUserIdentityData } = await import('@/lib/identity-media')
     await purgeUserIdentityData(uid).catch((e) => console.error('[DeleteAccount] identity purge failed:', (e as Error)?.message))

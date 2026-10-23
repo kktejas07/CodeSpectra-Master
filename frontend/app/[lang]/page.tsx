@@ -1,5 +1,6 @@
 import { LandingView, landingMetadata } from '@/app/landing-view'
 import { langOf, type LangParams } from '@/lib/i18n/public-page'
+import { PublicPageI18n } from '@/components/i18n/public-page-i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,5 +9,6 @@ export async function generateMetadata({ params }: { params: LangParams }) {
 }
 
 export default async function LocalizedHome({ params }: { params: LangParams }) {
-  return <LandingView locale={await langOf(params)} />
+  const locale = await langOf(params)
+  return <PublicPageI18n locale={locale} ns={['learn']}><LandingView locale={locale} /></PublicPageI18n>
 }

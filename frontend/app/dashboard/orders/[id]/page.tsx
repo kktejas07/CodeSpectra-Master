@@ -220,7 +220,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <div className="flex justify-between border-t border-border pt-2 font-semibold"><dt>{t('market.total')}</dt><dd className="tabular-nums">{formatMinor(order.grand_total, c)}</dd></div>
             {order.payment.refunded_total > 0 && <Row k="Refunded" v={`−${formatMinor(order.payment.refunded_total, c)}`} />}
           </dl>
-          <p className="text-xs text-muted-foreground">{t('market.paidWithValue', { value: order.payment.gateway === 'phonepe' ? t('market.phonepe') : t('market.cardStripe') })}{order.payment.paid_at ? t('market.onValue', { value: when(order.payment.paid_at) }) : ''}.</p>
+          <p className="text-xs text-muted-foreground">{t('market.paidWithValue', { value: order.payment.gateway === 'phonepe' ? t('market.phonepe') : order.payment.gateway === 'razorpay' ? t('market.razorpay') : t('market.cardStripe') })}{order.payment.paid_at ? t('market.onValue', { value: when(order.payment.paid_at) }) : ''}.</p>
         </Panel>
         {(order.shipping_address || order.refunds.length > 0) && (
           <Panel className="space-y-3 p-5 text-sm">

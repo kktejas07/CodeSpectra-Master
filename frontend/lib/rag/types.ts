@@ -8,7 +8,7 @@ export type { KnowledgeChunk, KnowledgeSourceType, KnowledgeVisibility }
 export const KNOWLEDGE_SOURCE_TYPES: readonly KnowledgeSourceType[] = [
   'problem', 'question', 'course', 'doc', 'test', 'test_result_summary',
   'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'marketplace_product', 'external_event',
-  'ats_job', 'ats_application', 'news', 'digest',
+  'ats_job', 'ats_application', 'news', 'digest', 'contest',
 ]
 
 /** Types that carry candidate data or answer keys: staff (admins) only, never public. */
@@ -16,7 +16,7 @@ export const STAFF_ONLY_TYPES: ReadonlySet<KnowledgeSourceType> = new Set(['resu
 
 /** Types a tenant admin may reindex for their own organisation. */
 export const TENANT_TYPES: readonly KnowledgeSourceType[] = [
-  'test', 'test_result_summary', 'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'ats_job', 'ats_application',
+  'test', 'test_result_summary', 'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'ats_job', 'ats_application', 'contest',
 ]
 
 export const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
@@ -37,6 +37,7 @@ export const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
   ats_application: 'Applicant',
   news: 'Tech news',
   digest: 'Daily digest',
+  contest: 'Contest',
 }
 
 export function isKnowledgeSourceType(v: unknown): v is KnowledgeSourceType {

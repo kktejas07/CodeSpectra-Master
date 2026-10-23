@@ -418,6 +418,8 @@ export function employmentType(jobType: string | null | undefined): string[] {
 }
 
 const IN_CITIES = /\b(hyderabad|bengaluru|bangalore|chennai|pune|mumbai|delhi|new delhi|noida|gurgaon|gurugram|kolkata|ahmedabad|kochi|jaipur|coimbatore|vizag|visakhapatnam|indore|chandigarh|trivandrum|thiruvananthapuram|mysuru|mysore)\b/i
+// SEO-035: well-known US metros written without a state ("New York", "San Francisco").
+const US_CITIES = /\b(new york( city)?|nyc|san francisco|san jose|los angeles|seattle|chicago|boston|austin|dallas|houston|atlanta|denver|miami|washington,? d\.?c\.?|philadelphia|phoenix|san diego|portland|princeton|jersey city|newark|raleigh|charlotte|pittsburgh|detroit|minneapolis|salt lake city|las vegas|sunnyvale|mountain view|palo alto|redmond|menlo park|santa clara|cupertino|irvine)\b/i
 const US_STATE = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/
 const COUNTRIES: [RegExp, string][] = [
   [/\bindia\b/i, 'IN'], [/\b(united states|usa|u\.s\.a?\.?)\b/i, 'US'], [/\b(united kingdom|uk|england)\b/i, 'GB'],
@@ -435,9 +437,10 @@ export function parseJobLocation(raw: string | null | undefined, jobType?: strin
   for (const [re, cc] of COUNTRIES) if (re.test(s)) countries.add(cc)
   if (IN_CITIES.test(s)) countries.add('IN')
   const st = s.match(US_STATE)
-  if (st) countries.add('US')
-  const cleaned = s.replace(/\(.*?\)/g, ' ').replace(/\bremote\b|hybrid|on-?site/gi, ' ').split(/[/|;]/)[0]
-  const parts = cleaned.split(',').map((x) => x.trim()).filter(Boolean)
+  if (st || US_CITIES.test(s)) countries.add('US')
+  // "Hybrid - Pune" → "Pune"; "Anywhere" / "Work from home" are not cities.
+  const cleaned = s.replace(/\(.*?\)/g, ' ').replace(/\bremote\b|hybrid|on-?site|anywhere|work from home|\bwfh\b/gi, ' ').split(/[/|;]/)[0]
+  const parts = cleaned.split(',').map((x) => x.replace(/^[\s\-–—:·•.]+|[\s\-–—:·•.]+$/g, '').trim()).filter(Boolean)
   const city = parts[0] && !COUNTRIES.some(([re]) => re.test(parts[0])) ? parts[0] : null
   const region = st ? st[1] : parts.length > 2 ? parts[1] : null
   return { remote, city, region, countries: [...countries] }
@@ -506,6 +509,84 @@ export function jobPostingJsonLd(job: JobInput, site: string, now = new Date()):
 }
 
 // ---------------------------------------------------------------------------
+// SEO-036: forum threads, mentors
+// ---------------------------------------------------------------------------
+
+/** A forum thread (questions and discussions): DiscussionForumPosting with its visible replies as comments. */
+export function discussionForumPostingJsonLd(args: {
+  site: string
+  path: string
+  headline: string
+  text: string | null
+  author: string
+  datePublished: string
+  dateModified?: string | null
+  inLanguage?: string
+  replies: { text: string; author: string; datePublished: string; upvotes?: number }[]
+  upvotes?: number
+}): JsonLdObject {
+  const url = absoluteUrl(args.path, args.site)
+  return compact({
+    '@context': CTX,
+    '@type': 'DiscussionForumPosting',
+    mainEntityOfPage: url,
+    url,
+    headline: args.headline,
+    text: args.text ? args.text.slice(0, 5000) : undefined,
+    author: { '@type': 'Person', name: args.author },
+    datePublished: args.datePublished,
+    dateModified: args.dateModified || undefined,
+    inLanguage: args.inLanguage,
+    interactionStatistic: [
+      { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CommentAction', userInteractionCount: args.replies.length },
+      ...(typeof args.upvotes === 'number' ? [{ '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: Math.max(0, args.upvotes) }] : []),
+    ],
+    comment: args.replies.slice(0, 50).map((r) => compact({
+      '@type': 'Comment',
+      text: r.text.slice(0, 2000),
+      author: { '@type': 'Person', name: r.author },
+      datePublished: r.datePublished,
+    })),
+  })
+}
+
+/** A mentor profile: Person with the bookable session types as Service offers (prices in minor units). */
+export function mentorJsonLd(args: {
+  site: string
+  path: string
+  name: string
+  headline: string
+  image?: string | null
+  skills: string[]
+  sameAs?: string[]
+  offers: { name: string; description?: string; price: number; currency: string }[]
+}): JsonLdObject {
+  const url = absoluteUrl(args.path, args.site)
+  return compact({
+    '@context': CTX,
+    '@type': 'Person',
+    name: args.name,
+    description: args.headline,
+    url,
+    image: args.image ? absoluteUrl(args.image, args.site) : undefined,
+    knowsAbout: args.skills.length ? args.skills.slice(0, 20) : undefined,
+    sameAs: args.sameAs?.filter(Boolean).length ? args.sameAs.filter(Boolean) : undefined,
+    makesOffer: args.offers.slice(0, 10).map((o) => ({
+      '@type': 'Offer',
+      price: (o.price / 100).toFixed(2),
+      priceCurrency: o.currency,
+      url,
+      itemOffered: compact({ '@type': 'Service', name: o.name, description: o.description ? o.description.slice(0, 300) : undefined, provider: { '@type': 'Person', name: args.name } }),
+    })),
+  })
+}
+
+/** Drops blocks that fail validateJsonLd (an invalid block is a Search Console error, not a rich result). */
+export function validJsonLd(list: Array<JsonLdObject | null | undefined>): JsonLdObject[] {
+  return list.filter((o): o is JsonLdObject => !!o && validateJsonLd(o).length === 0)
+}
+
+// ---------------------------------------------------------------------------
 // Validation (tests + admin health panel)
 // ---------------------------------------------------------------------------
 
@@ -529,6 +610,8 @@ export const REQUIRED_FIELDS: Record<string, string[]> = {
   JobPosting: ['title', 'description', 'datePosted', 'validThrough', 'employmentType', 'hiringOrganization.name'],
   SoftwareApplication: ['name', 'offers', 'applicationCategory'],
   Course: ['name', 'description', 'provider'],
+  DiscussionForumPosting: ['headline', 'author.name', 'datePublished', 'text'],
+  Person: ['name'],
   HowTo: ['name', 'step'],
   WebPage: ['name', 'url'],
 }

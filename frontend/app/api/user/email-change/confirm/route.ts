@@ -79,12 +79,13 @@ export async function POST(req: NextRequest) {
       })
       const origin = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'
       const { sendEmail } = await import('@/lib/send-email')
-      await sendEmail(oldEmail, {
-        subject: 'Your CodeSpectra sign-in email was changed',
-        html:
-          `<p>The sign-in email of your CodeSpectra account was just changed to <strong>${email.replace(/[<>&"]/g, '')}</strong>, and other sessions were signed out.</p>` +
-          `<p>If this wasn't you, <a href="${origin}/api/user/email-change/undo?token=${undo}">put your old email back and secure the account</a> (link valid 7 days).</p>`,
-      }, undefined, { category: 'transactional' })
+      const { emailTemplatesFor } = await import('@/lib/email-templates')
+      const { localeForUser } = await import('@/lib/i18n/recipient')
+      // SEO-033: in the account owner's language.
+      await sendEmail(oldEmail, emailTemplatesFor(await localeForUser(user.id)).notice({
+        key: 'emailChanged',
+        params: { email: email.replace(/[<>&"]/g, ''), url: `${origin}/api/user/email-change/undo?token=${undo}` },
+      }), undefined, { category: 'transactional' })
     } catch (e) {
       console.error('[email-change] old-address notice failed:', (e as Error)?.message)
     }

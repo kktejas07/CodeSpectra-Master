@@ -240,39 +240,46 @@
    "match score"
   ]
  },
- "components/marketplace/buy-box.tsx": {
-  "why": "public marketplace",
+ "components/contests/config-editor.tsx": {
+  "why": "organiser-only settings editor on the admin contest page (admin pages stay English; field labels come from lib/contests/formats)",
   "text": [
-   "Buy now",
-   "Loading times…",
-   "No free times in these two weeks — try the next ones.",
-   "Only",
-   "Option",
-   "Pick a time",
-   "Quantity",
-   "Times in",
-   "aria-label=\"Dates\"",
-   "aria-label=\"Earlier dates\"",
-   "aria-label=\"Later dates\"",
-   "aria-label=\"Start time\"",
-   "left"
+   "hidden from entrants",
+   "label rows stored. Paste or load a new file to replace them.",
+   "aria-label=\"Load labels CSV\"",
+   "placeholder=\"id,target\"",
+   "Settings",
+   "Remove",
+   "Add"
   ]
  },
- "components/marketplace/product-extras.tsx": {
-  "why": "public marketplace",
+ "components/contests/contest-detail.tsx": {
+  "why": "example team code format",
   "text": [
-   "Bought this?",
-   "Copy link",
-   "Post review",
-   "Review",
-   "Share",
-   "Sign in",
-   "Title",
-   "Write a review",
-   "aria-label=\"Rating\"",
-   "placeholder=\"Title (optional)\"",
-   "placeholder=\"What did you like? What could be better?\"",
-   "to leave a review."
+   "placeholder=\"ABCD1234\""
+  ]
+ },
+ "components/hackathons/event-step-indicator.tsx": {
+  "why": "only on admin hackathon create / edit pages (admin pages stay English)",
+  "text": [
+   "Step",
+   "of"
+  ]
+ },
+ "components/hackathons/not-event-staff.tsx": {
+  "why": "only on admin hackathon pages (admin pages stay English)",
+  "text": [
+   "title=\"You can't manage this event\"",
+   "description=\"It belongs to another organization. You can manage events your organization created.\"",
+   "actionLabel=\"Back to your events\""
+  ]
+ },
+ "components/hackathons/tenant-filter.tsx": {
+  "why": "superadmin-only filter on admin hackathon / codeathon lists (admin pages stay English)",
+  "text": [
+   "Organization",
+   "placeholder=\"All organizations\"",
+   "All organizations",
+   "Platform events (no organization)"
   ]
  },
  "components/marketplace/seller/coupons.tsx": {

@@ -24,7 +24,7 @@ import { normalizeEmail } from './outbox'
 import { outboundT, renderOutbound, type OutboundText } from '@/lib/i18n/outbound'
 import type { Locale } from '@/lib/i18n/config'
 
-export type MailCategory = 'transactional' | 'engagement' | 'billing' | 'security' | 'hiring' | 'assessment' | 'events'
+export type MailCategory = 'transactional' | 'engagement' | 'billing' | 'security' | 'hiring' | 'assessment' | 'events' | 'reports'
 
 /** Categories that are account-critical: unsubscribes don't stop them (prefs link still shown). */
 const CRITICAL: ReadonlySet<MailCategory> = new Set(['billing', 'security'])
@@ -37,6 +37,7 @@ export const CATEGORY_LABEL: Record<MailCategory, string> = {
   hiring: 'hiring updates',
   assessment: 'test and results emails',
   events: 'event reminders',
+  reports: 'weekly reports',
 }
 
 // ─── Unsubscribe tokens ─────────────────────────────────────────────────────
@@ -220,7 +221,7 @@ export function localizeMail<T extends Pick<AutomationMail, 'subject' | 'heading
 }
 
 /** Messages that both a built-in automation and a template can send. */
-export const DEDUPE_KINDS = ['plan-expiry', 'dunning', 'onboard-verify', 're-engagement', 'checkout', 'cert-follow', 'interview-reminder'] as const
+export const DEDUPE_KINDS = ['plan-expiry', 'dunning', 'onboard-verify', 're-engagement', 'checkout', 'cert-follow', 'interview-reminder', 'invite-ladder', 'offer-followup', 'drive-reminder', 'cohort-at-risk', 'talent-invite-reminder', 'licence-renewal'] as const
 export type DedupeKind = (typeof DEDUPE_KINDS)[number]
 
 export function isDedupeKind(v: unknown): v is DedupeKind {

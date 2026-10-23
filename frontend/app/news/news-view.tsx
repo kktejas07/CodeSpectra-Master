@@ -79,7 +79,7 @@ function NewsItem({ n, t }: { n: NewsCard; t: PublicTranslator }) {
       {n.cover_image && (
         <div className="h-36 w-full overflow-hidden bg-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={n.cover_image} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+          <img src={n.cover_image} alt="" width={640} height={288} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
         </div>
       )}
       <div className="flex flex-1 flex-col gap-2 p-5">

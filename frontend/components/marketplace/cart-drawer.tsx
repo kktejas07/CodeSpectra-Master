@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useCart } from './use-cart'
 import { CartLines, SavedLines, Totals } from './cart-lines'
 import { useT } from '@/lib/i18n/client'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 
 /** Cart button with item count; opens a side drawer. Listens for `mkt:open-cart`. */
 export function CartDrawerButton({ className }: { className?: string }) {
@@ -20,8 +21,9 @@ export function CartDrawerButton({ className }: { className?: string }) {
     return () => window.removeEventListener('mkt:open-cart', on)
   }, [])
   const count = cart?.count ?? 0
+  // CORE-038: no cart in the phone apps.
   return (
-    <>
+    <NativePurchaseGate fallback={null}>
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -63,6 +65,6 @@ export function CartDrawerButton({ className }: { className?: string }) {
           )}
         </SheetContent>
       </Sheet>
-    </>
+    </NativePurchaseGate>
   )
 }

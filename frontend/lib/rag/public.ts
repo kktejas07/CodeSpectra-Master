@@ -3,6 +3,7 @@
  * search through "Ask about events & news" — the public catalogue only.
  *
  *   daily digests · tech news · events feed · Learn posts + docs / FAQ / legal (`doc`)
+ *   · platform hackathons, codeathons and hosted contests (published + public only)
  *
  * The filter is built here from constants — nothing from the request can
  * widen it: requested types are intersected with PUBLIC_ASK_TYPES, and every
@@ -12,7 +13,9 @@
 import type { KnowledgeSourceType } from '@/lib/agent/contract'
 import { PLATFORM_TENANT_KEY, STAFF_ONLY_TYPES } from './types'
 
-export const PUBLIC_ASK_TYPES: readonly KnowledgeSourceType[] = ['digest', 'news', 'external_event', 'doc']
+// RAG-022: platform hackathons / codeathons / hosted contests too — still only rows that are platform-wide AND
+// visibility 'public' (published, non-draft, public listing), so organisation and draft events never match.
+export const PUBLIC_ASK_TYPES: readonly KnowledgeSourceType[] = ['digest', 'news', 'external_event', 'doc', 'hackathon', 'codeathon', 'contest']
 
 /** Requested types ∩ public types (empty / unknown → all public types). Pure. */
 export function publicTypes(requested?: readonly unknown[] | null): KnowledgeSourceType[] {

@@ -54,8 +54,12 @@ describe('licence seats', () => {
     await db.current.collection('tenants').insertOne({ id: 'org3', name: 'Acme', kind: 'company' })
     const { issueManualLicence, updateLicenceSettings, licenceSeatFor, getLicence } = await import('@/lib/billing/licences')
     const lic = (await issueManualLicence({ orgId: 'org3', seats: 1, currency: 'USD', endsAt: future(30), actorId: 'admin' }))!
+    // SEC-033: an org admin's own domain waits for approval; a superadmin's save approves it.
     await updateLicenceSettings(lic.id, 'org3', { email_domains: ['@Acme.io', 'not a domain'], auto_assign: true })
     expect((await getLicence(lic.id))!.email_domains).toEqual(['acme.io'])
+    expect(await licenceSeatFor('d0', 'dev0@acme.io')).toBeNull()
+    await expect(updateLicenceSettings(lic.id, 'org3', { email_domains: ['gmail.com'] })).rejects.toThrow()
+    await updateLicenceSettings(lic.id, 'org3', { email_domains: ['acme.io'] }, { superadmin: true })
 
     expect((await licenceSeatFor('d1', 'dev@eng.acme.io'))?.id).toBe(lic.id)
     expect(await licenceSeatFor('d2', 'ops@acme.io')).toBeNull() // full

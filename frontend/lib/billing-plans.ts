@@ -40,6 +40,7 @@ import {
 } from '@/lib/billing-plan-mode'
 import { graceExpired, trialDaysForCoupon } from '@/lib/billing-lifecycle'
 import { DEFAULT_PRO_PRICES, isBillingCurrency, priceFor, type PlanPrices } from '@/lib/billing/plan-prices'
+import { withGatewayBonus } from '@/lib/billing/gateway-bonus'
 
 export interface ResolvedPlan {
   /** Canonical id stored on the order and the subscription. */
@@ -340,7 +341,12 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
     // A same-cycle upgrade (lib/billing/proration.ts) keeps the period end it was priced for.
     const keepEnd = !gw && order.keep_period_end && Date.parse(order.keep_period_end) > now.getTime() ? order.keep_period_end : null
     const start = gw ? new Date(gw.periodStart) : keepEnd ? now : extendsCurrent ? new Date(existing!.ends_at) : now
-    const endsAt = gw ? gw.periodEnd : keepEnd ?? new Date(start.getTime() + (durationDays ?? 0) * DAY_MS).toISOString()
+    // CORE-036: a Razorpay subscription can't move its charge date, so free days granted on it
+    // (referral reward) ride on top of every period end Razorpay reports.
+    const sameRazorpaySub = !!razorpay && !!existing && existing.razorpay_subscription_id === razorpay.subscriptionId
+    const endsAt = gw
+      ? (sameRazorpaySub ? withGatewayBonus(gw.periodEnd, existing!.gateway_bonus_days) : gw.periodEnd)
+      : keepEnd ?? new Date(start.getTime() + (durationDays ?? 0) * DAY_MS).toISOString()
     const ts = nowIso()
     const keepStart = stripe
       ? !!existing && existing.stripe_subscription_id === stripe.subscriptionId
@@ -359,6 +365,8 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
     // Paid orders clear any trial marker so the trial-expiry job can never end
     // a paid period; any order also undoes a pending "cancel at period end".
     const trialFields = trialDays ? { trial_ends_at: endsAt, trial_order_id: order.id } : {}
+    // The bonus belongs to one Razorpay subscription; any other mode / subscription drops it.
+    const keepsBonus = 'razorpay_subscription_id' in modeFields && !!existing?.razorpay_subscription_id && existing.razorpay_subscription_id === modeFields.razorpay_subscription_id
     let subId: string
     if (existing) {
       subId = existing.id
@@ -386,6 +394,8 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
             ended_reason: '',
             ...(stripe ? {} : { stripe_subscription_id: '' }),
             ...(modeFields.billing_mode === 'razorpay_subscription' ? {} : { razorpay_subscription_id: '' }),
+            // A different gateway subscription starts without the old one's bonus days.
+            ...(keepsBonus ? {} : { gateway_bonus_days: '' }),
           },
         } as never,
       )
@@ -440,6 +450,13 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
       { id: order.id },
       { $set: { subscription_id: subId, period_start: start.toISOString(), period_end: endsAt, updated_at: ts } },
     )
+    // AUTO-088: a plan started (new, switched or re-activated — not a renewal of the same period chain).
+    if (!keepStart) {
+      void import('@/lib/automation/events').then(({ emit }) => emit('subscription.started', {
+        user_id: order.user_id, subscription_id: subId, plan_id: order.plan_id, plan_name: order.plan_name ?? null,
+        ends_at: endsAt, trial: !!trialDays, previous_plan_id: existing && existing.plan_id !== order.plan_id ? existing.plan_id : null,
+      }, { idempotencyKey: `subscription.started:${order.id}` })).catch((e) => console.error('[automation] emit failed:', e))
+    }
 
   }
 
@@ -581,6 +598,10 @@ export async function cancelAtPeriodEnd(userId: string): Promise<{ ends_at: stri
     { $set: { cancel_at_period_end: true, cancelled_at: ts, updated_at: ts } },
     { returnDocument: 'after' },
   )
+  // AUTO-088: one event per subscription period (repeat clicks are duplicates).
+  if (sub) void import('@/lib/automation/events').then(({ emit }) => emit('subscription.cancelled', {
+    user_id: userId, subscription_id: sub.id, plan_id: sub.plan_id, access_until: sub.ends_at, cancelled_at: ts,
+  }, { idempotencyKey: `subscription.cancelled:${sub.id}:${sub.ends_at}` })).catch((e) => console.error('[automation] emit failed:', e))
   return sub ? { ends_at: sub.ends_at } : null
 }
 

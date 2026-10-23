@@ -16,6 +16,7 @@ import { parseRepoUrl } from '@/lib/hackathons/repo-audit'
 import { certificateKindFor, codeathonCertificateWording, publicName, releaseXp } from '@/lib/codeathon-results'
 import { logger } from '@/lib/logger'
 import { revalidateContent } from '@/lib/cache/revalidate'
+import { knowledgeOnContestChange } from '@/lib/rag/hooks'
 import { ok, fail, type ServiceResult, type ServiceUser } from '@/lib/services/result'
 import { contestPhase, sanitizeCommon, parseFormat, slugify, splitConfig } from './config'
 import { FORMATS, rankDirection } from './formats'
@@ -177,6 +178,7 @@ export async function createContest(user: ServiceUser, body: Record<string, unkn
   await (await contestsCol()).insertOne({ ...doc })
   await (await secretsCol()).insertOne({ ...secret })
   await notifyNewJudges(doc, doc.judging.judges)
+  knowledgeOnContestChange(doc.id, doc.tenant_id)
   return ok(doc, 201)
 }
 
@@ -214,6 +216,7 @@ export async function updateContest(user: ServiceUser, idOrSlug: string, body: R
   const next = clean(await col.findOne({ id: cur.id }))!
   await notifyNewJudges(next, addedJudges(next.judging.judges, cur.judging?.judges))
   if (cur.status !== 'draft') await revalidateContent('contests', cur.slug)
+  knowledgeOnContestChange(cur.id, cur.tenant_id)
   return ok(next)
 }
 
@@ -241,6 +244,7 @@ export async function setContestStatus(user: ServiceUser, idOrSlug: string, acti
   }
   // /contests is ISR: show (or drop) the contest now.
   await revalidateContent('contests', c.slug)
+  knowledgeOnContestChange(c.id, c.tenant_id)
   return ok(clean(await col.findOne({ id: c.id }))!)
 }
 
@@ -306,6 +310,7 @@ export async function releaseContestResults(user: ServiceUser, idOrSlug: string,
     { $setOnInsert: { contest_id: c.id, released_at: now, released_by: user.id, ranked_count: ranked, standings: standings.slice(0, 5000) } },
     { upsert: true },
   )
+  knowledgeOnContestChange(c.id, c.tenant_id)
 
   const { awardXp } = await import('@/lib/db/leaderboard')
   const { issueCodeathonCertificate } = await import('@/lib/db/certifications')

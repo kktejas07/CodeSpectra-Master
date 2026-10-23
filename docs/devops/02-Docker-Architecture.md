@@ -126,7 +126,7 @@ graph LR
 |-----------|-----------|--------------|---------------|
 | **frontend** | `node:22-alpine` | ~500MB (with node_modules) | `./frontend` |
 | **backend** | `python:3.12-slim` | ~200MB | `./backend` |
-| **piston** | `ghcr.io/engineer-man/piston:latest` | ~1.5GB (with runtimes) | Pre-built image |
+| **piston** | `ghcr.io/engineer-man/piston@sha256:…` (PISTON_IMAGE, digest-pinned) | ~1.5GB (with runtimes) | Pre-built image |
 
 ---
 
