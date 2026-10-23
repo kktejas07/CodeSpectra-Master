@@ -44,7 +44,11 @@ export const LOCALIZED_PATHS = [
 ] as const
 
 /** Sections whose detail pages are localized too (/companies/<slug>). */
-export const LOCALIZED_PREFIXES = ['/companies/', '/certifications/', '/community/c/', '/community/t/', '/digest/'] as const
+export const LOCALIZED_PREFIXES = [
+  '/companies/', '/certifications/', '/community/c/', '/community/t/', '/digest/',
+  // SEO-047: detail pages linked from the /hi and /te hubs.
+  '/mentors/', '/leagues/colleges/', '/events/', '/news/', '/marketplace/p/', '/marketplace/s/',
+] as const
 
 /**
  * SEO-034: pages whose /hi and /te copies translate only the chrome — the
@@ -54,7 +58,8 @@ export const LOCALIZED_PREFIXES = ['/companies/', '/certifications/', '/communit
  * near-duplicates. The sitemap lists the English URL only.
  */
 export const ENGLISH_BODY_PATHS = ['/privacy', '/terms', '/cookies'] as const
-export const ENGLISH_BODY_PREFIXES = ['/community/c/', '/community/t/'] as const
+// SEO-047: mentor profiles, news articles, organiser event listings and seller items stay as written (English).
+export const ENGLISH_BODY_PREFIXES = ['/community/c/', '/community/t/', '/mentors/', '/events/', '/news/', '/marketplace/p/', '/marketplace/s/'] as const
 
 export function isEnglishBodyPath(path: string): boolean {
   const p = cleanPath(splitLocalePath(path).path)

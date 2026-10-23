@@ -6,6 +6,11 @@
  *  - a Tab-only pass: focus moves forward, never lands on hidden elements and
  *    every stop shows a visible focus indicator.
  *
+ * The real test screen is covered too: scripts/seed-a11y-assessment.ts seeds a
+ * published assessment with one question of every type (/assessment/<A11Y_EXAM_ID>);
+ * after the start screen the spec starts it (best effort) and checks the
+ * question screen as well. Admin screens: e2e/a11y-admin.spec.ts.
+ *
  * Runs only when E2E_CANDIDATE_EMAIL / E2E_CANDIDATE_PASSWORD are set (CI seeds
  * them with a throwaway password):
  *   BASE_URL=http://127.0.0.1:3000 E2E_CANDIDATE_EMAIL=… E2E_CANDIDATE_PASSWORD=… npx playwright test e2e/a11y-candidate.spec.ts
@@ -13,9 +18,12 @@
 import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
+/** Same id as scripts/fixtures/a11y-assessment.ts (A11Y_EXAM_ID; checked in tests/seo-audit6-fixes.test.ts). */
+const A11Y_EXAM_ID = 'a11y-all-question-types'
+
 const EMAIL = process.env.E2E_CANDIDATE_EMAIL || ''
 const PASSWORD = process.env.E2E_CANDIDATE_PASSWORD || ''
-const PAGES = (process.env.E2E_A11Y_PAGES || '/dashboard,/assessment/demo/cad').split(',').map((p) => p.trim()).filter(Boolean)
+const PAGES = (process.env.E2E_A11Y_PAGES || `/dashboard,/assessment/demo/cad,/assessment/${A11Y_EXAM_ID}`).split(',').map((p) => p.trim()).filter(Boolean)
 
 test.skip(!EMAIL || !PASSWORD, 'set E2E_CANDIDATE_EMAIL / E2E_CANDIDATE_PASSWORD (seeded candidate) to run')
 test.describe.configure({ mode: 'serial' })
@@ -23,6 +31,14 @@ test.describe.configure({ mode: 'serial' })
 async function signIn(page: Page) {
   const res = await page.request.post('/api/auth/login', { data: { email: EMAIL, password: PASSWORD } })
   expect(res.status(), `sign-in: ${await res.text().catch(() => '')}`).toBe(200)
+}
+
+async function expectNoCritical(page: Page, label: string) {
+  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+  const critical = axe.violations.filter((v) => v.impact === 'critical')
+  const serious = axe.violations.filter((v) => v.impact === 'serious')
+  if (serious.length) console.warn(`[a11y] ${label} serious:`, serious.map((v) => `${v.id} ×${v.nodes.length}`).join(', '))
+  expect(critical.map((v) => `${v.id}: ${v.help} (${v.nodes[0]?.target?.[0] ?? ''})`), label).toEqual([])
 }
 
 async function tabPass(page: Page, stops = 40) {
@@ -58,11 +74,19 @@ for (const path of PAGES) {
     await page.waitForTimeout(1500)
     expect(res?.status() ?? 0).toBeLessThan(400)
     await expect(page).not.toHaveURL(/\/auth\/login/)
-    const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
-    const critical = axe.violations.filter((v) => v.impact === 'critical')
-    const serious = axe.violations.filter((v) => v.impact === 'serious')
-    if (serious.length) console.warn(`[a11y] ${path} serious:`, serious.map((v) => `${v.id} ×${v.nodes.length}`).join(', '))
-    expect(critical.map((v) => `${v.id}: ${v.help} (${v.nodes[0]?.target?.[0] ?? ''})`)).toEqual([])
+    await expectNoCritical(page, path)
+    // Test screen: get past the start / consent step to the questions (best effort —
+    // the start screen itself was checked above).
+    if (path.startsWith('/assessment/') && !path.includes('/demo/')) {
+      const consent = page.getByRole('checkbox').first()
+      if (await consent.isVisible().catch(() => false)) await consent.check().catch(() => {})
+      const start = page.getByRole('button', { name: /start|begin|continue/i }).first()
+      if (await start.isVisible().catch(() => false)) {
+        await start.click().catch(() => {})
+        await page.waitForTimeout(2500)
+        await expectNoCritical(page, `${path} (questions)`)
+      }
+    }
     const kb = await tabPass(page)
     expect(kb.stops, 'Tab reaches interactive elements').toBeGreaterThan(0)
     expect(kb.problems).toEqual([])

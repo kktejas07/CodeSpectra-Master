@@ -12,9 +12,24 @@ import { useT } from '@/lib/i18n/client'
 import { Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import type { MentorMatch, MatchReason } from '@/lib/assistants/mentors/match'
+import { localizedPath } from '@/lib/i18n/public-paths'
+
+/** SEO-047: stored mentor languages ("hindi", "te") → the name in the reader's language. */
+const LANGUAGE_CODES: Record<string, string> = { english: 'en', hindi: 'hi', telugu: 'te', tamil: 'ta', kannada: 'kn', malayalam: 'ml', marathi: 'mr', bengali: 'bn', gujarati: 'gu', punjabi: 'pa', urdu: 'ur', odia: 'or' }
+export function languageName(value: string, locale: string): string {
+  const v = value.trim().toLowerCase()
+  const code = LANGUAGE_CODES[v] ?? (/^[a-z]{2,3}$/.test(v) ? v : null)
+  if (code) {
+    try {
+      const name = new Intl.DisplayNames([locale], { type: 'language' }).of(code)
+      if (name && name.toLowerCase() !== code) return name
+    } catch { /* old browser: fall through */ }
+  }
+  return value ? value[0].toUpperCase() + value.slice(1) : value
+}
 
 export function MentorMatches() {
-  const { t, fmt } = useT()
+  const { t, fmt, locale } = useT()
   const [data, setData] = useState<{ enabled: boolean; matches: MentorMatch[] } | null | 'error'>(null)
 
   useEffect(() => {
@@ -33,7 +48,7 @@ export function MentorMatches() {
     switch (r.kind) {
       case 'skill': return t('dashboard.mmReasonSkill', { value: r.value })
       case 'company': return t('dashboard.mmReasonCompany', { value: r.value })
-      case 'language': return t('dashboard.mmReasonLanguage', { value: r.value })
+      case 'language': return t('dashboard.mmReasonLanguage', { value: languageName(String(r.value), locale) })
       case 'timezone': return t('dashboard.mmReasonTimezone')
       case 'rating': return t('dashboard.mmReasonRating', { value: fmt.number(r.value) })
     }
@@ -46,7 +61,7 @@ export function MentorMatches() {
           <h2 id="mentor-matches-title" className="text-lg font-semibold text-foreground">{t('dashboard.mmTitle')}</h2>
           <p className="text-sm text-muted-foreground">{t('dashboard.mmDesc')}</p>
         </div>
-        <Link href="/mentors" className="text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:underline">{t('dashboard.mmBrowse')}</Link>
+        <Link href={localizedPath('/mentors', locale)} className="text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:underline">{t('dashboard.mmBrowse')}</Link>
       </div>
       {data.matches.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('dashboard.mmEmpty')}</p>
@@ -65,7 +80,7 @@ export function MentorMatches() {
                 </div>
               </div>
               {m.rating.count > 0 && (
-                <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground"><Star className="h-3.5 w-3.5 fill-current text-amber-500" aria-hidden />{t('dashboard.mmRating', { value: fmt.number(m.rating.avg, { maximumFractionDigits: 1 }), n: m.rating.count })}</p>
+                <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground"><Star className="h-3.5 w-3.5 fill-current text-amber-500" aria-hidden />{t('dashboard.mmRating', { value: fmt.number(m.rating.avg, { maximumFractionDigits: 1 }), count: m.rating.count })}</p>
               )}
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {m.reasons.slice(0, 3).map((r, i) => <li key={i} className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground">{reason(r)}</li>)}
@@ -75,7 +90,7 @@ export function MentorMatches() {
               )}
               <div className="mt-auto pt-3">
                 <Button asChild variant="outline" size="sm" className="w-full rounded-full">
-                  <Link href={`/mentors/${encodeURIComponent(m.slug)}`}>{t('dashboard.mmBook')}</Link>
+                  <Link href={localizedPath(`/mentors/${encodeURIComponent(m.slug)}`, locale)}>{t('dashboard.mmBook')}</Link>
                 </Button>
               </div>
             </li>

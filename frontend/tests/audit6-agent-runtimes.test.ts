@@ -12,9 +12,11 @@
  *   RAG hooks            unpublished sources leave the index at once (RAG-024)
  * plus the pure pieces of AGT-035 / 037 / 039.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import type { MemoryDb as MemoryDbT } from '@/lib/rag/eval/memory-mongo'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMock = Mock<(...a: any[]) => any>
 const h = vi.hoisted(() => ({
   db: null as unknown,
   profiles: new Map<string, Record<string, unknown>>(),
@@ -23,11 +25,11 @@ const h = vi.hoisted(() => ({
   budgetBlocks: false,
   featureMicros: 0 as number | null,
   actions: [] as Array<Record<string, unknown>>,
-  confirm: null as unknown as ReturnType<typeof import('vitest').vi.fn>,
-  notify: null as unknown as ReturnType<typeof import('vitest').vi.fn>,
-  backend: null as unknown as ReturnType<typeof import('vitest').vi.fn>,
-  search: null as unknown as ReturnType<typeof import('vitest').vi.fn>,
-  facts: null as unknown as ReturnType<typeof import('vitest').vi.fn>,
+  confirm: null as unknown as AnyMock,
+  notify: null as unknown as AnyMock,
+  backend: null as unknown as AnyMock,
+  search: null as unknown as AnyMock,
+  facts: null as unknown as AnyMock,
 }))
 
 vi.mock('@/lib/mongodb', () => ({ getMongoDb: async () => h.db, getMongoClient: async () => ({}) }))
@@ -68,7 +70,7 @@ vi.mock('@/lib/agent/tools', () => ({
   }),
 }))
 vi.mock('@/lib/agent/actions', () => ({ confirmAction: (...a: unknown[]) => h.confirm(...a) }))
-vi.mock('@/lib/agent/tools/ledger', () => ({ ledgerEntryForAction: () => null }))
+vi.mock('@/lib/agent/tools/ledger', () => ({ ledgerEntryForAction: () => null, LEDGER_COLLECTION: 'agent_tool_executions' }))
 vi.mock('@/lib/agent/http', () => ({ auditAgent: async () => undefined }))
 vi.mock('@/lib/notifications', () => ({ notify: (...a: unknown[]) => h.notify(...a), notifySuperAdmins: async () => 0 }))
 vi.mock('@/lib/automation/events', () => ({ emit: async () => undefined }))
@@ -251,7 +253,7 @@ describe('interview scheduler pure logic (AGT-035)', () => {
 // ─── Agent loop findings ────────────────────────────────────────────────────
 
 describe('agent-loop findings: claim, decide, stale apply (AGT-042)', () => {
-  const finding = (key: string) => ({ key, kind: 'forum_spam', severity: 'warning' as const, target: { type: 'thread', id: key, label: 'x', url: '/community/t/x' }, proposal: { action: 'forum_hide' as const, args: { target_type: 'thread', target_id: key } } })
+  const finding = (key: string) => ({ key, kind: 'forum_spam', severity: 'warning' as const, target: { type: 'thread' as const, id: key, label: 'x', url: '/community/t/x' }, proposal: { action: 'forum_hide' as const, args: { target_type: 'thread', target_id: key } } })
 
   it('applies once on a double click; a decided finding is not re-opened by the next run', async () => {
     const { upsertFindings, findingsCol } = await import('@/lib/agent-loops/store')

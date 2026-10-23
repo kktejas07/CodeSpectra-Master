@@ -11,6 +11,7 @@ import type { KnowledgeHit } from '@/lib/agent/contract'
 import { publicCitations, publicHits } from '@/lib/public-ask/policy'
 import { loadAnswer, recordRun, saveAnswer, takeAiSlot, userRef } from '../store'
 import { loadFacts, type SupportUser } from './context'
+import { renderFact } from './facts'
 import {
   SUPPORT_SYSTEM, cleanSupportAnswer, pickContexts, shouldOfferEscalation, supportUserMessage, trimHistory, wantsHuman,
   type SupportAsk, type SupportFallback,
@@ -41,6 +42,8 @@ export async function askSupport(user: SupportUser, body: SupportAsk, now = new 
     loadFacts(user, contexts),
   ])
   const results = publicCitations(hits)
+  // SEO-045: English lines for the model; the fallback card shows the user's language.
+  const factsEn = loaded.facts.map((f) => renderFact(f, 'en'))
   const history = trimHistory(body.history)
   const { scanUntrusted } = await import('@/lib/ai/untrusted-input')
   // Every history turn comes from the browser, "assistant" ones included: scan them all (AGT-040).
@@ -59,7 +62,7 @@ export async function askSupport(user: SupportUser, body: SupportAsk, now = new 
         const [{ backendComplete }, { platformModelOverrides, extractJson }] = await Promise.all([import('@/lib/ai/backend'), import('@/lib/interviews/ai-mock-engine')])
         const res = await backendComplete({
           systemMessage: SUPPORT_SYSTEM,
-          userMessage: supportUserMessage({ q: body.q, locale: body.locale, hits, facts: loaded.facts, history }),
+          userMessage: supportUserMessage({ q: body.q, locale: body.locale, hits, facts: factsEn, history }),
           modelRole: 'fast', responseFormat: 'json', feature: SUPPORT_FEATURE, userId: user.id,
           // Answers carry the user's own records: never share them through the semantic cache.
           cache: false,
@@ -84,7 +87,7 @@ export async function askSupport(user: SupportUser, body: SupportAsk, now = new 
   const answerId = answer ? await saveAnswer(user.id, body.q, answer.text) : null
   return {
     mode: answer ? 'ai' : 'fallback', fallback, answer: answer?.text ?? null,
-    facts: answer ? [] : loaded.facts.slice(0, 8), cited: answer?.cited ?? [], results, escalate, answer_id: answerId,
+    facts: answer ? [] : loaded.facts.slice(0, 8).map((f) => renderFact(f, body.locale)), cited: answer?.cited ?? [], results, escalate, answer_id: answerId,
   }
 }
 
