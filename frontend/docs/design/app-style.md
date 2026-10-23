@@ -47,3 +47,16 @@ for colours is `app/globals.css`; building blocks are in
 - Visible focus on every control, labels on inputs, `aria-label` on icon-only
   buttons, `alt` on images (empty alt for decoration), 44 px touch targets
   on primary actions.
+
+## Bento cards (`components/bento`)
+- `BentoGrid cols={4|6}`: 1 column on phones, 2 on tablets, 4 or 6 on desktop.
+  Cards take `span` (desktop columns), `smSpan` (tablet) and `rows`.
+- Anatomy: card (28px radius, 8px padding) → `BentoWell` (20px, dot-grid stage
+  for a visual) → `BentoBody` (icon + title row, text, tags, `BentoAction` pill).
+- Variants: `BentoStat` (big number, delta, sparkline or `visual`),
+  `BentoFeature`, `BentoList`, `BentoChart`, `BentoCta`, `BentoProof`, `BentoMedia`;
+  `BentoSkeleton` / `BentoEmpty` for loading and empty cards.
+- One `tone="brand"` card per grid at most; `tint` for a recommendation.
+- Every card that loads data shows a skeleton, an empty state that says what to
+  do next, and an error line. Proof cards show counted numbers only.
+- Server-safe (no hooks): use them in server components on public pages.

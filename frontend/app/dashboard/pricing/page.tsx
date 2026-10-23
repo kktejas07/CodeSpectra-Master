@@ -1,5 +1,6 @@
 'use client'
 
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -519,7 +520,7 @@ export default function PricingPage() {
         </div>
       }
     >
-      <PricingContent />
+      <NativePurchaseGate><PricingContent /></NativePurchaseGate>
     </Suspense>
   )
 }

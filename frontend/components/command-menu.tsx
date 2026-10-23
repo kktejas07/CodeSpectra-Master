@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Search, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Star, Settings,
+  Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Star, Settings,
   Users, Lock, Plug, Gauge, Globe2, Shield, FileText, Building2,
   CreditCard, Bell, Database, Sparkles, Bot, Briefcase, Flame, MessageSquare,
   Camera, Layers, UserPlus, Award, ScanSearch, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import {
   CommandDialog,
   CommandEmpty,
@@ -259,7 +260,7 @@ export function CommandMenu({
           compact && 'lg:px-2 lg:py-2.5 lg:justify-center'
         )}
       >
-        <Search aria-hidden className="w-4 h-4 shrink-0 opacity-80" />
+        <AnimatedIcon name="search" className="opacity-80" />
         <span
           className={cn(
             'truncate text-left text-muted-foreground',

@@ -9,7 +9,6 @@ import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRi
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
-import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-widget'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
@@ -17,7 +16,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
 import { useTour } from '@/components/tour/tour-context'
 import { WELCOME_TOUR_STEPS, autoPlayPageTour, startPageHints, type TourHint } from '@/lib/tour-driver'
-import { BentoGrid, Panel, StatCard } from '@/components/app/page-kit'
+import { Panel } from '@/components/app/page-kit'
+import { LearnerBento } from '@/components/dashboard/learner-bento'
 import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
@@ -159,8 +159,6 @@ export default function DashboardPage() {
   }, [statsReloadKey])
 
   if (!gate.ready) return null
-  // Skeleton dash until the numbers arrive, so a slow load never reads as "0".
-  const statValue = (n: number) => (statsLoaded ? n : <span className="text-muted-foreground" aria-label={tr('dash.loading')}>—</span>)
 
   const firstName = (fbUser?.displayName || '').trim().split(/\s+/)[0] || ''
 
@@ -212,14 +210,7 @@ export default function DashboardPage() {
           <Button size="sm" variant="outline" onClick={() => setStatsReloadKey((k) => k + 1)}>{tr('common.tryAgain')}</Button>
         </div>
       ) : null}
-      <BentoGrid className="[&:not(:has(>[data-hint=daily-challenge]>*))]:lg:grid-cols-3">
-        <StatCard label={tr('dash.codeScans')} value={statValue(stats.scans)} icon={<Activity />} />
-        <StatCard label={tr('dash.challenges')} value={statValue(stats.challenges)} icon={<Code />} />
-        <StatCard label={tr('dash.fixesApplied')} value={statValue(stats.fixes)} icon={<CheckCircle />} />
-        <div data-hint="daily-challenge" className="min-w-0">
-          <DailyChallengeWidget />
-        </div>
-      </BentoGrid>
+      <LearnerBento stats={{ ...stats, loaded: statsLoaded, failed: statsFailed }} />
       </div>
 
       <div data-hint="contribution-graph">

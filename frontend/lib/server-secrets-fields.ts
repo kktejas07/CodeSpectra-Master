@@ -93,6 +93,8 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'webpush_vapid_private_key',
   // Android app: Play Integrity verification (lib/mobile/play-integrity.ts)
   'play_integrity_service_account_json',
+  // iOS app: DeviceCheck .p8 key (lib/mobile/app-attest.ts)
+  'apple_devicecheck_private_key',
 ]
 
 export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
@@ -142,6 +144,12 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   // Android app: allowed package names + signing-cert SHA-256 (base64url), comma-separated
   'android_package_names',
   'android_cert_sha256',
+  // iOS app: team id, bundle ids, App Attest dev env opt-in, root CA override, DeviceCheck key id
+  'apple_team_id',
+  'ios_bundle_ids',
+  'ios_app_attest_allow_development',
+  'apple_app_attest_root_ca_pem',
+  'apple_devicecheck_key_id',
   'phonepe_merchant_id',
   'phonepe_salt_index',
   'upstash_redis_rest_url',

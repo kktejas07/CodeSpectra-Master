@@ -36,7 +36,7 @@ const hasCur = (p: PublicPlan, c: Cur) => !!(p.prices?.[c]?.month || p.prices?.[
  * footer); the pricing FAQ comes from the server in the page's language.
  * Plan names, descriptions and features are admin-entered and stay as written.
  */
-export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan[] | null; faqs: { q: string; a: string }[] }) {
+export function PricingClient({ initialPlans, faqs, features }: { initialPlans: PublicPlan[] | null; faqs: { q: string; a: string }[]; /** Server-rendered feature grid, shown between the plans and the FAQ. */ features?: React.ReactNode }) {
   const { t, rich, locale } = useT()
   const apiError = useApiError()
   const lp = useLocalizedHref()
@@ -249,6 +249,8 @@ export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan
         {activeCur === 'INR' ? (
           <p className="-mt-12 text-center text-sm text-cs-ink-soft">{t('publicPages.pricingInclGst')}</p>
         ) : null}
+
+        {features}
 
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">

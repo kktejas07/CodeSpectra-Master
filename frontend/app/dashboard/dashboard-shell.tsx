@@ -35,14 +35,11 @@ import {
   BookOpen,
   BarChart3,
   Settings,
-  LogOut,
   Star,
   Award,
   Bell,
   Users,
   User,
-  Menu,
-  X,
   CreditCard,
   LifeBuoy,
   ChevronsLeft,
@@ -134,6 +131,7 @@ import { DashboardPwa } from '@/components/pwa/dashboard-pwa'
 import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
@@ -1111,7 +1109,7 @@ export default function DashboardLayout({
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/settings" className="flex cursor-pointer items-center gap-2">
-                    <Settings className="h-4 w-4 opacity-70" />
+                    <AnimatedIcon name="settings" className="opacity-70" />
                     {t('nav.settings')}
                   </Link>
                 </DropdownMenuItem>
@@ -1195,7 +1193,7 @@ export default function DashboardLayout({
                 title={t('nav.signOut')}
                 aria-label={t('nav.signOut')}
               >
-                <LogOut className="h-4 w-4 shrink-0" />
+                <AnimatedIcon name="logout" />
               </button>
             </div>
           </div>
@@ -1240,7 +1238,7 @@ export default function DashboardLayout({
               className="flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 hover:bg-muted lg:hidden"
               aria-label={sidebarOpen ? t('nav.closeMenu') : t('nav.openMenu')}
             >
-              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <AnimatedIcon name={sidebarOpen ? 'close' : 'menu'} size={20} />
             </button>
             {/* Tour guide button */}
             <button

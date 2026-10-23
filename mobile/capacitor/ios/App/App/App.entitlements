@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push (APNs). Distribution signing switches this to production. -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Universal Links + password autofill: frontend/public/.well-known/apple-app-site-association -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:codespectra.ai</string>
+		<string>webcredentials:codespectra.ai</string>
+	</array>
+	<!-- App Attest: omitted key = development for Xcode runs; TestFlight / App Store always use production. -->
+</dict>
+</plist>

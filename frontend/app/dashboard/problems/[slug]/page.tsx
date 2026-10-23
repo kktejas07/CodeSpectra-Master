@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Loader2, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Play, Send, Sparkles, XCircle, Sun, Moon, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
@@ -608,13 +609,13 @@ export default function ProblemDetailPage() {
 
        {/* Functional Timer */}
        <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-muted/50 px-3 py-1.5 rounded-md border border-border/50">
-         <Timer className="h-4 w-4 text-primary" />
+         <AnimatedIcon name="clock" className="text-primary" hover={false} trigger={timerRunning} />
          <span className="text-foreground tabular-nums">{formatTimer(timerSeconds)}</span>
          <button onClick={timerRunning ? stopTimer : startTimer} aria-label={timerRunning ? tr('practice.pauseTimer') : tr('practice.startTimer')} className="ml-1 p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
            {timerRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
          </button>
          <button onClick={resetTimer} aria-label={tr('practice.resetTimer')} className="p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
-           <RotateCcw className="h-3 w-3" />
+           <AnimatedIcon name="refresh" size={12} />
          </button>
        </div>
 
@@ -842,7 +843,7 @@ export default function ProblemDetailPage() {
                </select>
              </div>
              <div className="flex items-center gap-2">
-                <Button aria-label={editorExpanded ? tr('practice.showProblemStatement') : tr('practice.expandEditor')} aria-pressed={editorExpanded} onClick={() => setEditorExpanded((v) => !v)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Maximize2 className="h-4 w-4" aria-hidden /></Button>
+                <Button aria-label={editorExpanded ? tr('practice.showProblemStatement') : tr('practice.expandEditor')} aria-pressed={editorExpanded} onClick={() => setEditorExpanded((v) => !v)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><AnimatedIcon name={editorExpanded ? 'full-screen-exit' : 'full-screen'} /></Button>
              </div>
            </div>
 
@@ -877,7 +878,7 @@ export default function ProblemDetailPage() {
                     <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" />{' '}{tr('practice.aiAnalysis')}</button>
                  </div>
                  <div className="flex items-center text-muted-foreground gap-2 pr-2">
-                    <button type="button" aria-label={outputExpanded ? tr('practice.shrinkPanel') : tr('practice.expandPanel')} aria-pressed={outputExpanded} onClick={() => setOutputExpanded((v) => !v)} className="p-1 hover:bg-muted rounded"><Maximize2 className="h-3.5 w-3.5" aria-hidden /></button>
+                    <button type="button" aria-label={outputExpanded ? tr('practice.shrinkPanel') : tr('practice.expandPanel')} aria-pressed={outputExpanded} onClick={() => setOutputExpanded((v) => !v)} className="p-1 hover:bg-muted rounded"><AnimatedIcon name={outputExpanded ? 'full-screen-exit' : 'full-screen'} size={14} /></button>
                  </div>
               </div>
 

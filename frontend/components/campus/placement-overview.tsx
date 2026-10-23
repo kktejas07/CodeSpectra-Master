@@ -3,7 +3,7 @@
 /** Placement statistics per graduation year (placement team only). */
 import { useEffect, useState } from 'react'
 import { Award, Percent, TrendingUp, Users } from 'lucide-react'
-import { Panel, Section, StatCard } from '@/components/app/page-kit'
+import { BarRows, BentoBody, BentoCard, BentoChart, BentoGrid, BentoIcon, BentoStat, BentoTitle, Meter } from '@/components/bento'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
@@ -45,32 +45,40 @@ export function PlacementOverview({ onGoto }: { onGoto: (tab: string) => void })
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('career.graduationYear')}>
         {years.map((y) => (
-          <Button key={y.year} size="sm" variant={y.year === s.year ? 'default' : 'outline'} aria-pressed={y.year === s.year} onClick={() => setYear(y.year)}>{t('career.classOfYear', { year: y.year })}</Button>
+          <Button key={y.year} size="sm" variant={y.year === s.year ? 'default' : 'outline'} aria-pressed={y.year === s.year} onClick={() => setYear(y.year)}>{t('career.classOfYear', { year: String(y.year) })}</Button>
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label={t('career.students')} value={s.students} icon={<Users aria-hidden />} />
-        <StatCard label={t('career.placed')} value={`${s.placed_pct}%`} hint={t('career.placedOfStudents', { placed: s.placed, students: s.students })} icon={<Percent aria-hidden />} />
-        <StatCard label={t('career.medianCtc')} value={mixed ? '—' : money(s.median_ctc_minor, s.currency ?? 'INR')} hint={mixed ? t('career.offersAreInMoreThanOne89d') : t('career.bestOfferPerPlacedStudent')} icon={<TrendingUp aria-hidden />} />
-        <StatCard label={t('career.highestCtc')} value={mixed ? '—' : money(s.max_ctc_minor, s.currency ?? 'INR')} hint={t('career.offersOffersRecorded', { offers: s.offers })} icon={<Award aria-hidden />} />
-      </div>
-      <Section title={t('career.byDepartment')}>
-        <Panel className="overflow-x-auto p-0">
-          <table className="w-full min-w-[480px] text-sm">
-            <thead><tr className="border-b border-border text-left text-muted-foreground"><th className="px-5 py-3 font-medium">{t('career.department')}</th><th className="px-5 py-3 font-medium">{t('career.students')}</th><th className="px-5 py-3 font-medium">{t('career.placed')}</th><th className="px-5 py-3 font-medium">{t('career.placed2')}</th></tr></thead>
-            <tbody>
-              {s.by_department.map((d) => (
-                <tr key={d.department_id ?? 'none'} className="border-b border-border/60 last:border-0">
-                  <td className="px-5 py-3 text-foreground">{deptName(college, d.department_id)}</td>
-                  <td className="px-5 py-3 tabular-nums">{d.students}</td>
-                  <td className="px-5 py-3 tabular-nums">{d.placed}</td>
-                  <td className="px-5 py-3 tabular-nums">{d.placed_pct}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Panel>
-      </Section>
+      <BentoGrid cols={4}>
+        <BentoCard span={2} smSpan={2} rows={2} tone="brand">
+          <BentoBody className="pt-3">
+            <div className="flex items-center gap-2.5">
+              <BentoIcon><Percent aria-hidden /></BentoIcon>
+              <BentoTitle className="text-[15px] font-medium text-primary-foreground/85">{t('career.placed')}</BentoTitle>
+            </div>
+            <div className="my-auto flex flex-wrap items-center gap-6 py-6">
+              <Meter value={s.placed_pct} size={132} className="text-primary-foreground [&_div]:text-primary-foreground">
+                <span className="bento-num text-5xl">{s.placed_pct}%</span>
+              </Meter>
+              <p className="max-w-[24ch] text-sm leading-relaxed text-primary-foreground/85">{t('career.placedOfStudents', { placed: s.placed, students: s.students })}</p>
+            </div>
+          </BentoBody>
+        </BentoCard>
+        <BentoStat title={t('career.students')} icon={<Users aria-hidden />} value={s.students} />
+        <BentoStat title={t('career.medianCtc')} icon={<TrendingUp aria-hidden />} value={<span className="text-4xl">{mixed ? '—' : money(s.median_ctc_minor, s.currency ?? 'INR')}</span>} hint={mixed ? t('career.offersAreInMoreThanOne89d') : t('career.bestOfferPerPlacedStudent')} />
+        <BentoStat span={2} smSpan={2} title={t('career.highestCtc')} icon={<Award aria-hidden />} value={<span className="text-4xl">{mixed ? '—' : money(s.max_ctc_minor, s.currency ?? 'INR')}</span>} hint={t('career.offersOffersRecorded', { offers: s.offers })} />
+        <BentoChart
+          span={4}
+          title={t('career.byDepartment')}
+          chart={
+            <BarRows
+                max={100}
+                format={(n) => `${n}%`}
+                rows={s.by_department.map((d) => ({ label: deptName(college, d.department_id), value: d.placed_pct, hint: t('career.placedOfStudents', { placed: d.placed, students: d.students }) }))}
+                className="sm:columns-2 sm:gap-8 [&>li]:break-inside-avoid [&>li]:pb-2.5"
+              />
+          }
+        />
+      </BentoGrid>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-# CodeSpectra Android app (Capacitor)
+# CodeSpectra Android + iOS app (Capacitor)
 
 A native Android shell around the live web app. The WebView loads the site
 (`server.url`), so every web release ships to the app instantly; the shell adds
@@ -102,3 +102,57 @@ Pinned versions: Capacitor 8.5.3 and plugins are exact in `package.json` +
 - **Payment pages** of other hosts (PhonePe / Razorpay / Stripe) open in the
   browser. See the Play billing note in `docs/PLAY_STORE.md`.
 - The shell identifies itself with `CodeSpectraAndroid/1` in the user agent.
+
+## iOS
+
+`ios/` was generated with `npx cap add ios --packagemanager SPM` (Capacitor
+iOS **8.5.3**, same as Android; no CocoaPods). Plugins come in through
+`ios/App/CapApp-SPM/Package.swift` (managed by `cap sync`, don't edit);
+Firebase Messaging **11.15.0** is a Swift package on the App target. Needs
+macOS + Xcode 16+; nothing here was compiled on Linux — the first Mac /
+CI build is the compile check.
+
+```bash
+cd mobile/capacitor
+npm ci && npx cap sync ios
+npx cap open ios                       # Xcode: pick your team, run on a device
+```
+
+| Capability | Native side (`ios/App/App/`) | Web / server side |
+| --- | --- | --- |
+| Push (APNs via FCM) | `AppDelegate`: Firebase turns the APNs token into an FCM token → push plugin `registration` | `registerNativePush()` → `POST /api/notifications/push-token {platform:'ios'}`; server sends FCM as for Android (+ `apns` sound); tap → `data.link` opened by the bridge |
+| Face ID / Touch ID unlock | `@aparajita/capacitor-biometric-auth` (LocalAuthentication) + `@aparajita/capacitor-secure-storage` (Keychain, *when unlocked, this device only*); `NSFaceIDUsageDescription` | same `/api/mobile/session` flow as Android |
+| Universal Links | `App.entitlements` (`applinks:` / `webcredentials:codespectra.ai`), `SceneDelegate` → `CodeSpectraViewController.open` (same-host only, `DeepLinks.swift`) | `public/.well-known/apple-app-site-association` (`TEAMID` placeholder), `application/json` header in `next.config.mjs` |
+| Proctored lockdown | `CodeSpectraNativePlugin`: Guided Access request / instructions + state (`lock_task_exit` / `lock_task_declined`), `UIScreen.isCaptured` (recording / mirroring → `screen_recording` + cover), `userDidTakeScreenshotNotification` (`screenshot`), external screens, background / focus loss, app-switcher cover | unchanged `IntegrityMonitor` → `/api/integrity/events` + `/api/proctor/events` (`meta.source: ios`) |
+| Device integrity | App Attest (attest once, then assertions); DeviceCheck when App Attest is unsupported | `POST /api/mobile/integrity {platform:'ios'}` → `lib/mobile/app-attest.ts` (chain to Apple's App Attestation root, nonce, App ID, counter; DeviceCheck server API) → `mobile_device_trust` |
+| Purchases | `CS_IAP_ENABLED` build setting (default `NO`) | purchase buttons hidden in the app — [`docs/IN_APP_PURCHASES.md`](docs/IN_APP_PURCHASES.md) |
+| Files, status bar, offline | share sheet (`shareFile`), status bar follows theme, `www/offline.html` | — |
+
+Limits: iOS can't block screenshots (they are reported) and can't force
+single-app mode outside supervised (MDM) devices — Guided Access is requested
+and its absence is reported, not enforced. Google sign-in opens in Safari as
+on Android. There are no dev / staging flavours on iOS yet (prod URL only).
+
+CI: `.github/workflows/ios.yml` (manual; simulator build always, TestFlight
+via fastlane when secrets exist). Store listing: [`docs/APP_STORE.md`](docs/APP_STORE.md).
+
+### iOS owner setup (once)
+
+1. **Team id** — Apple Developer → Membership → Team ID: GitHub secret
+   `APPLE_TEAM_ID`, Admin → server secrets `apple_team_id`, and replace
+   `TEAMID` in `frontend/public/.well-known/apple-app-site-association`.
+2. **Identifier** `ai.codespectra.app` with Push Notifications, Associated
+   Domains, App Attest.
+3. **APNs key** (.p8) → upload in Firebase (Cloud Messaging → Apple app
+   configuration); add the iOS app in Firebase and save
+   `GoogleService-Info.plist` base64 as `IOS_GOOGLE_SERVICE_INFO_PLIST_B64`.
+4. **App Store Connect API key** (Users and Access → Integrations, App
+   Manager): `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_B64`.
+5. **Signing** — fastlane match (`MATCH_GIT_URL`, `MATCH_PASSWORD`,
+   `MATCH_GIT_BASIC_AUTHORIZATION`; run `fastlane match appstore` once on a
+   Mac) **or** manual: an *Apple Distribution* certificate (.p12) + an App Store
+   provisioning profile → `IOS_DIST_CERT_P12_B64`, `IOS_DIST_CERT_PASSWORD`,
+   `IOS_PROVISION_PROFILE_B64`, `IOS_PROVISION_PROFILE_NAME`.
+6. **DeviceCheck** (optional fallback) — a key with DeviceCheck enabled →
+   `apple_devicecheck_key_id` + `apple_devicecheck_private_key`. Set
+   `ios_app_attest_allow_development=1` only while testing Xcode builds.

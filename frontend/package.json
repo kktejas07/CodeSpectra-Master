@@ -86,6 +86,7 @@
     "livekit-client": "^2.22.2",
     "livekit-server-sdk": "^2.18.0",
     "lottie-react": "^3.1.0",
+    "lottie-web": "5.13.0",
     "lucide-react": "^1.31.0",
     "mermaid": "^12.1.0",
     "mongodb": "^7.7.0",

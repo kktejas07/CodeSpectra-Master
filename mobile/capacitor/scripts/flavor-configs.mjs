@@ -10,6 +10,9 @@
  *
  *   CS_DEV_URL      (default https://dev.codespectra.ai)
  *   CS_STAGING_URL  (default https://staging.codespectra.ai)
+ *   CS_IAP_ENABLED  "1" only once Google Play Billing is integrated: adds
+ *                   `CSIAP/1` to the user agent so the web app shows purchase
+ *                   buttons (docs/IN_APP_PURCHASES.md). Default: hidden.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -40,6 +43,17 @@ export function configFor(baseConfig, url) {
   return cfg
 }
 
+export const IAP_UA = 'CSIAP/1'
+
+/** Tag the shell's user agent when in-app purchase is enabled for this build. */
+export function withIap(cfg, enabled) {
+  const out = structuredClone(cfg)
+  const ua = (out.android?.appendUserAgent || 'CodeSpectraAndroid/1').split(' ').filter((t) => t && t !== IAP_UA)
+  if (enabled) ua.push(IAP_UA)
+  out.android = { ...(out.android || {}), appendUserAgent: ua.join(' ') }
+  return out
+}
+
 export function offlineFor(html, url) {
   return html.split(PLACEHOLDER).join(assertOrigin(url))
 }
@@ -50,7 +64,9 @@ function main() {
   const mainAssets = path.join(appSrc, 'main', 'assets')
   const cfgPath = path.join(mainAssets, 'capacitor.config.json')
   if (!fs.existsSync(cfgPath)) throw new Error('Run `npx cap sync android` first')
-  const base = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
+  const iap = process.env.CS_IAP_ENABLED === '1'
+  const base = withIap(JSON.parse(fs.readFileSync(cfgPath, 'utf8')), iap)
+  fs.writeFileSync(cfgPath, JSON.stringify(base, null, 2) + '\n')
   const urls = flavourUrls(process.env, base.server?.url)
   const offlinePath = path.join(mainAssets, 'public', 'offline.html')
   const offlineTpl = fs.readFileSync(path.join(root, 'www', 'offline.html'), 'utf8')
@@ -63,7 +79,7 @@ function main() {
     fs.writeFileSync(path.join(dir, 'capacitor.config.json'), JSON.stringify(configFor(base, urls[flavour]), null, 2) + '\n')
     fs.writeFileSync(path.join(dir, 'public', 'offline.html'), offlineFor(offlineTpl, urls[flavour]))
   }
-  process.stdout.write(`flavour configs: ${Object.entries(urls).map(([k, v]) => `${k}=${v}`).join(' ')}\n`)
+  process.stdout.write(`flavour configs: ${Object.entries(urls).map(([k, v]) => `${k}=${v}`).join(' ')} iap=${iap ? 'on' : 'off'}\n`)
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) main()

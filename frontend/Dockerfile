@@ -61,7 +61,10 @@ RUN test -d docs/public || (echo "ERROR: docs/public missing — run scripts/syn
 RUN chmod +x scripts/docker-entrypoint.sh \
   && npx patch-package \
   && node scripts/ensure-anon-aadhaar-types.cjs
-RUN yarn build
+# The app outgrew Node's default heap (CI build aborted with exit 134).
+# Override with --build-arg NODE_BUILD_HEAP_MB=… on smaller build hosts.
+ARG NODE_BUILD_HEAP_MB=6144
+RUN NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_HEAP_MB} yarn build
 # ponytail: busybox wget is the probe (no curl in node:22-alpine). Compose
 # healthcheck overrides this when deployed via compose; this covers plain builds.
 HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s CMD wget -q -O- http://localhost:80/api/health >/dev/null 2>&1 || exit 1

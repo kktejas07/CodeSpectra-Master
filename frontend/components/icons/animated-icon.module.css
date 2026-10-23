@@ -1,0 +1,65 @@
+/* Animated icon (components/icons/AnimatedIcon.tsx). Box size comes from the
+   inline width/height, so swapping still → player never shifts layout. */
+.root {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+/* Still frame: the SVG is an alpha mask over currentColor, so it follows the
+   text colour in light and dark without any JS. */
+.still,
+.stage {
+  position: absolute;
+  inset: 0;
+}
+
+.still {
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.stage {
+  visibility: hidden;
+}
+
+.root[data-ready] .still {
+  visibility: hidden;
+}
+
+.root[data-ready] .stage {
+  visibility: visible;
+}
+
+/* Lottie writes literal colours as SVG presentation attributes; any CSS rule
+   beats those, so the player recolours to currentColor too. */
+/* !important: Button and friends size every descendant svg (`[&_svg]:size-4`). */
+.stage :global(svg) {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.stage :global([stroke]:not([stroke='none'])) {
+  stroke: currentColor;
+}
+
+.stage :global([fill]:not([fill='none'])) {
+  fill: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-ready] .still {
+    visibility: visible;
+  }
+  .root[data-ready] .stage {
+    visibility: hidden;
+  }
+}

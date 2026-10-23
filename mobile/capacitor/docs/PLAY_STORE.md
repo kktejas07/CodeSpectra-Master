@@ -85,8 +85,10 @@ programme (alternative billing next to Play Billing, reduced service fee).
 The web checkout (PhonePe / Razorpay / Stripe) opening from the app does not
 qualify on its own. Options:
 
-1. Hide purchase / upgrade buttons in the app (the shell's user agent
-   contains `CodeSpectraAndroid`) and sell only on the web — simplest.
+1. Hide purchase / upgrade buttons in the app and sell only on the web —
+   simplest. **This is what the app does by default** (see
+   [`IN_APP_PURCHASES.md`](IN_APP_PURCHASES.md); `CS_IAP_ENABLED=1` turns
+   purchase buttons back on once Play Billing exists).
 2. Enrol in User Choice Billing (India) and add Play Billing next to the
    existing gateways.
 3. Integrate Play Billing for subscriptions everywhere.

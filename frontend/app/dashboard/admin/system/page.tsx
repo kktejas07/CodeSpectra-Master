@@ -14,12 +14,12 @@ import { Badge } from '@/components/ui/badge'
 import { DASHBOARD_ROUTES } from '@/lib/rbac'
 import { AnalyticsDashboard, type AnalyticsDashboardProps } from '@/components/admin/analytics-dashboard'
 import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
+import { AdminOverviewBento } from '@/components/admin/admin-overview-bento'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { BentoGrid, StatCard } from '@/components/app/page-kit'
 import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary, Illustration } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -159,6 +159,7 @@ export default function SystemAdminDashboard() {
   const { startTour, setTourSeen } = useTour()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, superadmins: 0, admins: 0 })
+  const [metricsLoaded, setMetricsLoaded] = useState(false)
   const [charts, setCharts] = useState<AnalyticsDashboardProps>(emptyCharts)
   const [summary, setSummary] =
     useState<NonNullable<AnalyticsDashboardProps['summary']> | undefined>()
@@ -176,7 +177,9 @@ export default function SystemAdminDashboard() {
   } | null>(null)
 
   const fetchMetrics = useCallback(async () => {
-    const res = await fetch('/api/admin/metrics', { credentials: 'include' })
+    const res = await fetch('/api/admin/metrics', { credentials: 'include' }).catch(() => null)
+    setMetricsLoaded(true)
+    if (!res) return
     const json = await res.json().catch(() => ({}))
     if (res.ok) {
       setStats({
@@ -362,12 +365,7 @@ export default function SystemAdminDashboard() {
         />
       </div>
 
-      <BentoGrid>
-        <Kpi label="Total users" value={stats.totalUsers} icon={Users} />
-        <Kpi label="Active (15m)" value={stats.activeUsers} icon={Activity} />
-        <Kpi label="Platform admins" value={stats.superadmins} icon={Shield} />
-        <Kpi label="Org admins" value={stats.admins} icon={BarChart3} />
-      </BentoGrid>
+      <AdminOverviewBento totalUsers={stats.totalUsers} usersLoaded={metricsLoaded} proctorHref="/dashboard/admin/proctor" />
 
       {/* Server Health */}
       {server && (
@@ -821,18 +819,6 @@ export default function SystemAdminDashboard() {
       <AuditLogsViewer />
     </div>
   )
-}
-
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: number
-  icon: React.ComponentType<{ className?: string }>
-}) {
-  return <StatCard label={label} value={value} icon={<Icon />} />
 }
 
 function QL({

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { ResultsSheet } from '@/components/landing/results-sheet'
 import { LandingHero } from '@/components/landing/landing-hero'
-import { BentoGrid } from '@/components/landing/bento-grid'
+import { ProductBento } from '@/components/landing/product-bento'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { DeviceShowcase } from '@/components/visuals'
 import { UpcomingEventsStrip } from '@/components/events-feed/upcoming-strip'
@@ -133,7 +133,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
         </div>
       </section>
 
-      {/* Platform bento — every capability as one animated grid */}
+      {/* Platform bento — every product area, counted from the code (server-rendered, no client JS) */}
       <section className="border-b border-cs-grid">
         <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
           <div className="mb-12 grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end lg:gap-16">
@@ -142,7 +142,7 @@ export async function LandingView({ locale }: { locale: Locale }) {
               {t('landing.platformLead')} <strong className="font-semibold text-cs-ink">{t('landing.platformLeadStrong')}</strong>{t('landing.platformLeadEnd')}
             </p>
           </div>
-          <BentoGrid />
+          <ProductBento locale={locale} />
         </div>
       </section>
 

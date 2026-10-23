@@ -18,6 +18,7 @@ import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT } from '@/lib/i18n/public-server'
 import { localizeFaqs, publicPageMetadata, seoCopy } from '@/lib/i18n/public-page'
 import { PricingClient, type PublicPlan } from './pricing-client'
+import { PricingFeatureBento } from '@/components/landing/product-bento'
 
 export const pricingMetadata = (locale: Locale) => publicPageMetadata('/pricing', locale)
 
@@ -60,7 +61,19 @@ export async function PricingView({ locale }: { locale: Locale }) {
           breadcrumbJsonLd([{ name: t('marketing.crumbHome'), path: lp('/') }, { name: t('public.navPricing'), path: lp('/pricing') }], site),
         ]}
       />
-      <PricingClient initialPlans={plans} faqs={faqs} />
+      <PricingClient
+        initialPlans={plans}
+        faqs={faqs}
+        features={
+          <section aria-labelledby="pricing-features" className="mb-24">
+            <div className="mb-8 grid gap-3 lg:grid-cols-[1.1fr_1fr] lg:items-end lg:gap-12">
+              <h2 id="pricing-features" className="cs-heading text-3xl sm:text-4xl">{t('marketing.pFeaturesTitle')}</h2>
+              <p className="max-w-[52ch] text-base leading-relaxed text-cs-ink-soft">{t('marketing.pFeaturesLead')}</p>
+            </div>
+            <PricingFeatureBento locale={locale} />
+          </section>
+        }
+      />
       <div className="mx-auto max-w-4xl px-4 pb-16 sm:px-6 lg:px-8">
         <AnswerSummary
           label={t('marketing.pSummaryLabel')}
