@@ -9,7 +9,7 @@ export const CHANNELS = ['email', 'whatsapp'] as const
 export type Channel = (typeof CHANNELS)[number]
 
 /** Add a topic here when a new feature needs opt-in notifications. */
-export const TOPICS = ['events', 'blog', 'news'] as const
+export const TOPICS = ['events', 'blog', 'news', 'digest'] as const
 export type Topic = (typeof TOPICS)[number]
 
 export const EVENT_KINDS = [

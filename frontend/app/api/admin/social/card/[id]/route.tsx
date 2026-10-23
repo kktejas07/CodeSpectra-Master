@@ -28,7 +28,7 @@ const ACCENT = '#8aa8ff'
 
 const KIND: Record<SocialItemType, string> = {
   event: 'Coding event', news: 'Tech news', learn: 'CodeSpectra Learn', contest: 'Contest', hackathon: 'Hackathon', codeathon: 'Codeathon',
-  certification: 'Certification', company_test: 'Company practice test', roundup: 'Weekly roundup',
+  certification: 'Certification', company_test: 'Company practice test', roundup: 'Weekly roundup', digest: 'Daily digest',
 }
 const FACT_LABEL: Record<string, string> = { starts: 'Starts', ends: 'Ends', deadline: 'Register by', prize: 'Prizes', mode: 'Mode', city: 'City', organiser: 'By', company: 'Company', level: 'Level', duration: 'Duration' }
 

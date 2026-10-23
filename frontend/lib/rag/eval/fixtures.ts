@@ -353,6 +353,33 @@ const FEED_EVENTS: Doc[] = [
     themes: ['web3'], description_summary: 'Hidden by an admin as spam.', status: 'hidden', source: 'rss', internal: false },
 ]
 
+// ─── Tech news + daily digests (public: published only) ─────────────────────
+
+const NEWS_POSTS: Doc[] = [
+  { id: 'np_open_weights', slug: 'open-weights-reasoning-model-released', title: 'A new open-weights reasoning model is released for local use', status: 'published', tags: ['signals', 'techcrunch-ai', 'news:ai'],
+    excerpt: 'An AI lab published the weights of a mid-size reasoning model under a permissive licence, with a quantised build that runs on a laptop GPU.',
+    body: '<p>The release includes evaluation results on maths and coding benchmarks and a model card describing training data and safety testing.</p>', source_note: 'Based on public reporting (techcrunch-ai).', published_at: '2026-10-21T06:00:00.000Z' },
+  { id: 'np_k8s_release', slug: 'kubernetes-release-sidecar-containers-stable', title: 'Kubernetes promotes sidecar containers to stable', status: 'published', tags: ['signals', 'kubernetes-blog', 'news:cloud'],
+    excerpt: 'The latest Kubernetes release makes native sidecar containers generally available and deprecates an older in-tree storage driver.',
+    body: '<p>Cluster operators should check pod specs that relied on init-container ordering before upgrading.</p>', source_note: 'Based on public reporting (kubernetes-blog).', published_at: '2026-10-20T09:00:00.000Z' },
+  { id: 'np_draft_leak', slug: 'unreleased-chip-rumour', title: 'Unverified rumour about a quantum laptop chip', status: 'draft', tags: ['signals', 'news:industry'],
+    excerpt: 'Draft that an admin has not approved: quantum laptop chip rumour.', body: '<p>Draft.</p>', published_at: null },
+]
+
+const DIGESTS: Doc[] = [
+  { id: 'dg_2026-10-20', date: '2026-10-20', status: 'published', items: [
+    { key: 'event:ef_climate', rank: 1, category: 'hackathon', title: 'Global Climate Tech Hack 2026', url: 'https://codespectra.ai/events/ef_climate', starts_at: '2026-11-14T09:00:00.000Z', deadline: '2026-11-10T23:59:00.000Z', prize_text: '$25,000 in prizes', mode: 'online', source_name: 'Devpost',
+      summaries: { en: { text: 'Open hackathon building carbon tracking tools; registration open now.', ai: false } } },
+    { key: 'event:ef_blr_ctf', rank: 2, category: 'ctf', title: 'Bengaluru Capture the Flag Night', url: 'https://codespectra.ai/events/ef_blr_ctf', starts_at: '2026-12-05T13:30:00.000Z', deadline: '2026-12-01T18:30:00.000Z', mode: 'in_person', city: 'Bengaluru', source_name: 'Partner',
+      summaries: { en: { text: 'In-person CTF with web, reversing and crypto challenges.', ai: false } } },
+    { key: 'news:np_open_weights', rank: 3, category: 'news', topic: 'ai', title: 'A new open-weights reasoning model is released for local use', url: 'https://codespectra.ai/news/open-weights-reasoning-model-released', source_name: 'TechCrunch AI',
+      summaries: { en: { text: 'Laptop-friendly open model weights with a permissive licence.', ai: false } } },
+  ] },
+  { id: 'dg_2026-10-19', date: '2026-10-19', status: 'review', items: [
+    { key: 'event:ef_secret', rank: 1, category: 'hackathon', title: 'Moonbase robotics buildathon waiting for review', url: 'https://codespectra.ai/events/ef_secret', source_name: 'Unknown', summaries: { en: { text: 'Robotics buildathon on the moon base, not yet approved.', ai: false } } },
+  ] },
+]
+
 export const SYNTHETIC_OWNERS: Record<string, { tenant: string | null; adminOnly: boolean }> = (() => {
   const out: Record<string, { tenant: string | null; adminOnly: boolean }> = {}
   for (const e of EXAMS) {
@@ -379,6 +406,8 @@ export const SYNTHETIC_OWNERS: Record<string, { tenant: string | null; adminOnly
   for (const u of UPLOADS) out[`upload:${u.id}`] = { tenant: (u.tenant_id as string | null) ?? null, adminOnly: !u.tenant_id }
   for (const p of MKT_PRODUCTS) out[`marketplace_product:${p.id}`] = { tenant: null, adminOnly: false }
   for (const e of FEED_EVENTS) out[`external_event:${e.id}`] = { tenant: null, adminOnly: false }
+  for (const p of NEWS_POSTS) out[`news:${p.id}`] = { tenant: null, adminOnly: false }
+  for (const d of DIGESTS) out[`digest:${d.id}`] = { tenant: null, adminOnly: false }
   return out
 })()
 
@@ -407,4 +436,6 @@ export async function seedEvalCorpus(db: InsertableDb, problems: readonly Doc[])
   await put('mkt_sellers', MKT_SELLERS)
   await put('mkt_products', MKT_PRODUCTS)
   await put('events_feed', FEED_EVENTS)
+  await put('blog_posts', NEWS_POSTS)
+  await put('daily_digests', DIGESTS)
 }

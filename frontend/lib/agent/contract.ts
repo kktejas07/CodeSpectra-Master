@@ -48,6 +48,8 @@ export type KnowledgeSourceType =
   | 'external_event' // events feed: published external hackathons / contests (public)
   | 'ats_job' // hiring pipeline job: title, JD, requirements, pipeline — tenant scoped
   | 'ats_application' // applicant: stage, match summary, résumé highlights (PII-minimised) — tenant scoped, staff only
+  | 'news' // published tech news posts (/news, Signals) (public)
+  | 'digest' // published daily digests (/digest/<date>) with their items (public)
 
 export type KnowledgeVisibility = 'public' | 'platform_admin' | 'tenant'
 

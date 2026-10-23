@@ -121,6 +121,7 @@ export function PublicPageWrapper({
     { href: lp('/marketplace'), label: t('public.navMarketplace') },
     { href: lp('/learn'), label: t('public.navLearn') },
     { href: lp('/news'), label: t('public.navNews') },
+    { href: lp('/digest'), label: t('public.navDigest') },
     { href: '/docs', label: t('public.navDocs') },
   ]
   const footLink = 'text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200'

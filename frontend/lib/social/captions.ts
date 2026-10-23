@@ -18,6 +18,7 @@ const TYPE_TAGS: Record<SocialQueueDoc['type'], string[]> = {
   event: ['#Hackathon', '#CodingEvents'], news: ['#TechNews'], learn: ['#LearnToCode', '#Programming'], contest: ['#CodingContest', '#CompetitiveProgramming'],
   hackathon: ['#Hackathon'], codeathon: ['#Codeathon', '#Coding'], certification: ['#Certification', '#Skills'], company_test: ['#PlacementPrep', '#InterviewPrep'],
   roundup: ['#ThisWeekInTech', '#CodingEvents'],
+  digest: ['#DailyDigest', '#TechNews', '#Hackathon'],
 }
 
 /** 3–5 hashtags from the item's type and its own tags (pure). */
@@ -51,7 +52,7 @@ Return JSON only:
 
 const TYPE_WORD: Record<SocialQueueDoc['type'], string> = {
   event: 'coding event', news: 'tech news story', learn: 'learning article', contest: 'CodeSpectra contest', hackathon: 'CodeSpectra hackathon',
-  codeathon: 'CodeSpectra codeathon', certification: 'CodeSpectra certification', company_test: 'company practice test', roundup: 'weekly roundup',
+  codeathon: 'CodeSpectra codeathon', certification: 'CodeSpectra certification', company_test: 'company practice test', roundup: 'weekly roundup', digest: 'daily digest',
 }
 
 /** Facts block for the prompt (pure). */
@@ -115,19 +116,19 @@ export function cleanCaptions(json: unknown, it: Item, link: string): Partial<Re
 const L: Record<CaptionLang, Record<string, string>> = {
   en: {
     event: 'New on the events board', news: 'In the news', learn: 'New on CodeSpectra Learn', contest: 'New contest on CodeSpectra', hackathon: 'New hackathon on CodeSpectra',
-    codeathon: 'New codeathon on CodeSpectra', certification: 'New certification on CodeSpectra', company_test: 'New company practice test', roundup: 'This week on CodeSpectra',
+    codeathon: 'New codeathon on CodeSpectra', certification: 'New certification on CodeSpectra', company_test: 'New company practice test', roundup: 'This week on CodeSpectra', digest: 'Today’s CodeSpectra digest',
     starts: 'Starts', ends: 'Ends', deadline: 'Register by', prize: 'Prizes', mode: 'Mode', city: 'City', organiser: 'By', company: 'Company', level: 'Level', duration: 'Duration',
     cta_event: 'Details and registration at the link.', cta_read: 'Read it at the link.', cta_try: 'Try it at the link.', cta_roundup: 'All of it at the link.',
   },
   hi: {
     event: 'इवेंट बोर्ड पर नया', news: 'टेक खबर', learn: 'CodeSpectra Learn पर नया', contest: 'CodeSpectra पर नया contest', hackathon: 'CodeSpectra पर नया hackathon',
-    codeathon: 'CodeSpectra पर नया codeathon', certification: 'CodeSpectra पर नया certification', company_test: 'नया company practice test', roundup: 'इस हफ्ते CodeSpectra पर',
+    codeathon: 'CodeSpectra पर नया codeathon', certification: 'CodeSpectra पर नया certification', company_test: 'नया company practice test', roundup: 'इस हफ्ते CodeSpectra पर', digest: 'आज का CodeSpectra डाइजेस्ट',
     starts: 'शुरू', ends: 'खत्म', deadline: 'रजिस्टर करें', prize: 'इनाम', mode: 'मोड', city: 'शहर', organiser: 'आयोजक', company: 'कंपनी', level: 'स्तर', duration: 'समय',
     cta_event: 'पूरी जानकारी और रजिस्ट्रेशन लिंक पर।', cta_read: 'लिंक पर पढ़ें।', cta_try: 'लिंक पर आज़माएँ।', cta_roundup: 'सब कुछ लिंक पर।',
   },
   te: {
     event: 'ఈవెంట్స్ బోర్డ్‌లో కొత్తది', news: 'టెక్ వార్త', learn: 'CodeSpectra Learn లో కొత్తది', contest: 'CodeSpectra లో కొత్త contest', hackathon: 'CodeSpectra లో కొత్త hackathon',
-    codeathon: 'CodeSpectra లో కొత్త codeathon', certification: 'CodeSpectra లో కొత్త certification', company_test: 'కొత్త company practice test', roundup: 'ఈ వారం CodeSpectra లో',
+    codeathon: 'CodeSpectra లో కొత్త codeathon', certification: 'CodeSpectra లో కొత్త certification', company_test: 'కొత్త company practice test', roundup: 'ఈ వారం CodeSpectra లో', digest: 'ఈ రోజు CodeSpectra డైజెస్ట్',
     starts: 'ప్రారంభం', ends: 'ముగింపు', deadline: 'రిజిస్టర్ చివరి తేదీ', prize: 'బహుమతులు', mode: 'విధానం', city: 'నగరం', organiser: 'నిర్వాహకులు', company: 'కంపెనీ', level: 'స్థాయి', duration: 'సమయం',
     cta_event: 'వివరాలు, రిజిస్ట్రేషన్ లింక్‌లో.', cta_read: 'లింక్‌లో చదవండి.', cta_try: 'లింక్‌లో ప్రయత్నించండి.', cta_roundup: 'అన్నీ లింక్‌లో.',
   },
@@ -139,7 +140,7 @@ export function templateCaptions(it: Item, lang: CaptionLang, link: string): Rec
   const head = `${t[it.type]}: ${it.title}`
   const facts = factLines(it.facts).filter((f) => ['starts', 'deadline', 'prize', 'mode', 'city', 'company', 'level', 'duration'].includes(f.key)).slice(0, 3)
   const factLine = facts.map((f) => `${t[f.key]}: ${f.value}`).join(' · ')
-  const cta = it.type === 'roundup' ? t.cta_roundup : ['news', 'learn'].includes(it.type) ? t.cta_read : ['certification', 'company_test'].includes(it.type) ? t.cta_try : t.cta_event
+  const cta = it.type === 'roundup' || it.type === 'digest' ? t.cta_roundup : ['news', 'learn'].includes(it.type) ? t.cta_read : ['certification', 'company_test'].includes(it.type) ? t.cta_try : t.cta_event
   const tags = hashtagsForItem(it)
   const list = (it.facts.items || []).slice(0, 5).map((i) => `• ${i.title}`)
   const summary = it.summary ? it.summary.slice(0, 220) : ''

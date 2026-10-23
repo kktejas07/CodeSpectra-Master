@@ -70,7 +70,7 @@ async function sendEmailConfirmation(sub: SubscriberDoc): Promise<boolean> {
   if (!lim.ok) return true // answer the same way; never let the form spam an inbox
   const token = await signConfirmToken({ id: sub.id, n: sub.token_nonce, e: sub.email, r: sub.pending.requested_at })
   const link = `${getAppOrigin()}/subscriptions/confirm?t=${encodeURIComponent(token)}`
-  const topics = sub.pending.topics.map((t) => (t === 'events' ? 'hackathons and coding events' : t === 'blog' ? 'new articles' : t === 'news' ? 'the daily tech news digest' : t)).join(', ')
+  const topics = sub.pending.topics.map((t) => (t === 'events' ? 'hackathons and coding events' : t === 'blog' ? 'new articles' : t === 'news' ? 'the daily tech news digest' : t === 'digest' ? 'the daily digest of events, news and posts' : t)).join(', ')
   const outcome = await sendSubscriberEmail(sub, {
     type: 'confirm', ref: sub.pending.requested_at, topic: null, allowPending: true,
     subject: 'Confirm your CodeSpectra updates',

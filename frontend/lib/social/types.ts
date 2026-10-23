@@ -6,7 +6,7 @@
  * the networks' official share pages. Nothing is ever posted automatically.
  */
 
-export const SOCIAL_ITEM_TYPES = ['event', 'news', 'learn', 'contest', 'hackathon', 'codeathon', 'certification', 'company_test', 'roundup'] as const
+export const SOCIAL_ITEM_TYPES = ['event', 'news', 'learn', 'contest', 'hackathon', 'codeathon', 'certification', 'company_test', 'roundup', 'digest'] as const
 export type SocialItemType = (typeof SOCIAL_ITEM_TYPES)[number]
 
 export const SOCIAL_PLATFORMS = ['linkedin', 'x', 'instagram', 'whatsapp', 'telegram', 'facebook'] as const
@@ -50,7 +50,7 @@ export interface SocialFacts {
   duration_min?: number | null
   company?: string | null
   tags?: string[]
-  /** Roundup only: the items it lists. */
+  /** Roundup / digest only: the items it lists. */
   items?: { id: string; title: string; type: SocialItemType; url: string }[]
 }
 

@@ -18,7 +18,7 @@ const SOURCE_LABEL: Record<string, string> = {
   problem: 'Problem', question: 'Question', course: 'Course', doc: 'Help', test: 'Test',
   test_result_summary: 'Results', hackathon: 'Hackathon', codeathon: 'Codeathon', upload: 'Upload',
   resume: 'Résumé', attempt_summary: 'Attempt', marketplace_product: 'Marketplace', external_event: 'Event',
-  ats_job: 'Job', ats_application: 'Applicant',
+  ats_job: 'Job', ats_application: 'Applicant', news: 'News', digest: 'Digest',
 }
 
 export function UserBubble({ text }: { text: string }) {

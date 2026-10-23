@@ -25,6 +25,8 @@ import { getQuestionCoverageTool } from './read/question-bot'
 import { getIntegrityReportTool } from './read/integrity'
 import { listPlacementDrivesTool, getBatchReadinessTool } from './read/campus'
 import { runQuestionBotTool } from './write/question-bot'
+import { getDigestTool } from './read/digest'
+import { runDailyDigestTool } from './write/digest'
 import { getStudyPlanTool } from './read/study-plan'
 import { regenerateStudyPlanTool } from './write/study-plan'
 import { buildCompanyTestTool } from './write/company-tests'
@@ -82,6 +84,8 @@ export const ALL_TOOLS: AnyTool[] = [
   createWorkflowFromTemplateTool, setWorkflowEnabledTool, rerunWorkflowRunTool, scheduleAgentTaskTool,
   updateCodeathonTool, publishCodeathonTool, updateProblemTool, publishProblemTool, addQuestionsToBankTool,
   runQuestionBotTool,
+  // daily digest (lib/digest)
+  getDigestTool, runDailyDigestTool,
   getStudyPlanTool, regenerateStudyPlanTool,
   startMockInterviewTool,
 ]

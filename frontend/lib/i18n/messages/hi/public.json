@@ -332,5 +332,8 @@
   "offlineErrLanguage": "एक भाषा चुनें",
   "offlineErrEmpty": "जमा करने से पहले कुछ कोड लिखें",
   "offlineErrTooLong": "आपका कोड 50,000 अक्षरों से ज़्यादा है",
-  "offlineErrQueueFull": "भेजे जाने के इंतज़ार में बहुत सारे जवाब हैं। पहले ऑनलाइन होकर उन्हें भेजें।"
+  "offlineErrQueueFull": "भेजे जाने के इंतज़ार में बहुत सारे जवाब हैं। पहले ऑनलाइन होकर उन्हें भेजें।",
+  "navDigest": "डाइजेस्ट",
+  "notifyDigestTitle": "डेली डाइजेस्ट पाएँ",
+  "notifyDigestBody": "आज के बेहतरीन hackathons, contests और टेक खबरें, दिन में एक बार ईमेल या WhatsApp पर। अपनी मर्ज़ी से जुड़ें, कभी भी बंद करें।"
 }

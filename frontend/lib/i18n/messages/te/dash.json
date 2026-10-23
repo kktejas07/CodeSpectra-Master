@@ -656,5 +656,19 @@
   "bentoNoTestsText": "కంపెనీ ప్రాక్టీస్ టెస్టులు ప్రచురించగానే ఇక్కడ కనిపిస్తాయి.",
   "bentoProblemsSolved": "సాల్వ్ చేసిన ప్రశ్నలు",
   "bentoSolvedHint": "{scans} కోడ్ స్కాన్‌లు, {fixes} సవరణలు",
-  "bentoXp": "సంపాదించిన XP"
+  "bentoXp": "సంపాదించిన XP",
+  "bentoDigest": "ఈ రోజు డైజెస్ట్",
+  "bentoDigestAll": "డైజెస్ట్ తెరవండి ({count})",
+  "bentoNoDigestTitle": "ఈ రోజు ఇంకా డైజెస్ట్ లేదు",
+  "bentoNoDigestText": "ప్రతి ఉదయం బెస్ట్ ఓపెన్ hackathons, contests, టెక్ వార్తలు ఇక్కడ వస్తాయి.",
+  "bentoNoDigestAction": "పాత డైజెస్ట్‌లు చూడండి",
+  "digestCategory:hackathon": "హ్యాకథాన్",
+  "digestCategory:ctf": "క్యాప్చర్ ది ఫ్లాగ్",
+  "digestCategory:datathon": "డేటాథాన్",
+  "digestCategory:conference": "కాన్ఫరెన్స్",
+  "digestCategory:contest": "కాంటెస్ట్",
+  "digestCategory:codeathon": "కోడింగ్ రౌండ్",
+  "digestCategory:news": "టెక్ వార్త",
+  "digestCategory:learn": "లెర్న్",
+  "digestCategory:platform": "CodeSpectra లో కొత్తది"
 }

@@ -160,6 +160,13 @@ export const GOLDEN_QUESTIONS: GoldenQuestion[] = [
   synth({ id: 'ev-02', type: 'external_event', query: 'security CTF happening in Bangalore', expect: ['external_event:ef_blr_ctf'] }),
   synth({ id: 'ev-03', type: 'external_event', as: 'tenant_b', query: 'rated competitive programming contest this week', expect: ['external_event:ef_weekly_round'] }),
   synth({ id: 'ev-04', type: 'external_event', as: 'tenant_a', kind: 'acl_negative', query: 'crypto airdrop buildathon', expect: [], forbid: ['external_event:ef_hidden_spam'] }),
+  // ── Tech news + daily digests (public) ──────────────────────────────────
+  synth({ id: 'nw-01', type: 'news', as: 'tenant_a', query: 'latest AI news about open model weights you can run on a laptop', expect: ['news:np_open_weights', 'digest:dg_2026-10-20'] }),
+  synth({ id: 'nw-02', type: 'news', query: 'kubernetes release notes about sidecar containers going stable', expect: ['news:np_k8s_release'] }),
+  synth({ id: 'nw-03', type: 'news', as: 'tenant_b', kind: 'acl_negative', query: 'quantum laptop chip rumour', expect: [], forbid: ['news:np_draft_leak'] }),
+  synth({ id: 'dg-01', type: 'digest', query: 'which hackathons and CTFs are open for registration this week according to the daily digest', expect: ['digest:dg_2026-10-20', 'external_event:ef_climate', 'external_event:ef_blr_ctf'] }),
+  synth({ id: 'dg-02', type: 'digest', as: 'tenant_a', kind: 'keyword', query: 'daily digest 2026-10-20 picks', expect: ['digest:dg_2026-10-20'] }),
+  synth({ id: 'dg-03', type: 'digest', as: 'tenant_a', kind: 'acl_negative', query: 'moonbase robotics buildathon', expect: [], forbid: ['digest:dg_2026-10-19'] }),
   synth({ id: 'acl-01', type: 'hackathon', as: 'tenant_a', kind: 'acl_negative', query: 'Globex green energy hackathon sustainability judging', expect: [], forbid: ['hackathon:globex-h-green'] }),
   synth({ id: 'acl-02', type: 'upload', as: 'tenant_a', kind: 'acl_negative', query: 'candidate data retention policy 180 days', expect: [], forbid: ['upload:globex-policy-retention'] }),
   synth({ id: 'acl-03', type: 'attempt_summary', as: 'tenant_b', kind: 'acl_negative', query: 'Priya Raman score integrity flags Kubernetes', expect: [], forbid: ['attempt_summary:acme-t-backend:u-priya', 'resume:acme:u-priya'] }),

@@ -656,5 +656,19 @@
   "bentoNoTestsText": "Company practice tests appear here once they're published.",
   "bentoProblemsSolved": "Problems solved",
   "bentoSolvedHint": "{scans} code scans and {fixes} fixes",
-  "bentoXp": "XP earned"
+  "bentoXp": "XP earned",
+  "bentoDigest": "Today’s digest",
+  "bentoDigestAll": "Open the digest ({count})",
+  "bentoNoDigestTitle": "No digest yet today",
+  "bentoNoDigestText": "Every morning the best open hackathons, contests and tech news land here.",
+  "bentoNoDigestAction": "See past digests",
+  "digestCategory:hackathon": "Hackathon",
+  "digestCategory:ctf": "Capture the flag",
+  "digestCategory:datathon": "Datathon",
+  "digestCategory:conference": "Conference",
+  "digestCategory:contest": "Contest",
+  "digestCategory:codeathon": "Coding round",
+  "digestCategory:news": "Tech news",
+  "digestCategory:learn": "Learn",
+  "digestCategory:platform": "New on CodeSpectra"
 }

@@ -8,7 +8,7 @@ export type { KnowledgeChunk, KnowledgeSourceType, KnowledgeVisibility }
 export const KNOWLEDGE_SOURCE_TYPES: readonly KnowledgeSourceType[] = [
   'problem', 'question', 'course', 'doc', 'test', 'test_result_summary',
   'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'marketplace_product', 'external_event',
-  'ats_job', 'ats_application',
+  'ats_job', 'ats_application', 'news', 'digest',
 ]
 
 /** Types that carry candidate data or answer keys: staff (admins) only, never public. */
@@ -35,6 +35,8 @@ export const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
   external_event: 'Events feed',
   ats_job: 'Job',
   ats_application: 'Applicant',
+  news: 'Tech news',
+  digest: 'Daily digest',
 }
 
 export function isKnowledgeSourceType(v: unknown): v is KnowledgeSourceType {

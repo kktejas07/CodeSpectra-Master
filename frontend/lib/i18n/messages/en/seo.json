@@ -38,5 +38,7 @@
   "title:/marketplace": "Marketplace: books, courses and mock interviews",
   "description:/marketplace": "Buy books, courses, e-books and templates, or book mentoring and mock interviews with CodeSpectra and approved sellers.",
   "title:/certifications": "Proctored certifications",
-  "description:/certifications": "Earn a proctored CodeSpectra certification: verifiable online, valid for a fixed period and easy to add to LinkedIn."
+  "description:/certifications": "Earn a proctored CodeSpectra certification: verifiable online, valid for a fixed period and easy to add to LinkedIn.",
+  "title:/digest": "Daily digest: hackathons, contests, tech news",
+  "description:/digest": "A daily digest for developers and students: open hackathons, coding contests, tech news and Learn posts, picked by score and checked before publishing."
 }

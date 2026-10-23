@@ -42,6 +42,18 @@ export function knowledgeOnExternalEvent(eventIds: unknown): void {
   if (ids.length) void enqueueKnowledge(ids.map((id) => ({ type: 'external_event' as const, id, tenantId: null })))
 }
 
+/** Tech news post published / edited / unpublished (the loader keeps published 'signals' posts only). */
+export function knowledgeOnNewsPost(postIds: unknown): void {
+  const ids = (Array.isArray(postIds) ? postIds : [postIds]).filter((x): x is string => typeof x === 'string' && !!x)
+  if (ids.length) void enqueueKnowledge(ids.map((id) => ({ type: 'news' as const, id, tenantId: null })))
+}
+
+/** Daily digest published / re-run / unpublished (lib/digest/service). */
+export function knowledgeOnDigest(digestId: unknown): void {
+  if (typeof digestId !== 'string' || !/^dg_\d{4}-\d{2}-\d{2}$/.test(digestId)) return
+  void enqueueKnowledge({ type: 'digest', id: digestId, tenantId: null })
+}
+
 /** Learn hub post published / edited / unpublished (the loader drops non-published posts). */
 export function knowledgeOnLearnPost(postId: unknown): void {
   if (typeof postId !== 'string' || !postId) return

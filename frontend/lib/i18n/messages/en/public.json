@@ -332,5 +332,8 @@
   "offlineErrLanguage": "Pick a language",
   "offlineErrEmpty": "Write some code before submitting",
   "offlineErrTooLong": "Your code is over 50,000 characters",
-  "offlineErrQueueFull": "Too many answers waiting to sync. Go online to send them first."
+  "offlineErrQueueFull": "Too many answers waiting to sync. Go online to send them first.",
+  "navDigest": "Digest",
+  "notifyDigestTitle": "Get the daily digest",
+  "notifyDigestBody": "Today’s best hackathons, contests and tech news, once a day by email or WhatsApp. Opt in, stop any time."
 }

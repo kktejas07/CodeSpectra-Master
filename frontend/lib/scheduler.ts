@@ -385,6 +385,12 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     const nd = await import('./signals/digest')
     const newsDay = await nd.newsDigestDue(now).catch(() => null)
     if (newsDay) await job('news-digest', newsDay, async () => nd.runNewsDigest(now, newsDay), { maxAttempts: 3, retryAfterMs: 10 * 60_000, leaseMs: 20 * 60_000 })
+    // Daily digest (lib/digest/service.ts): curator + verifier agents pick the top N (default 25) events,
+    // news, Learn posts and contests, publish /digest/<date> and notify subscribers. Bootstrap: the
+    // first tick with no digest yet publishes one at once; then daily from 08:00 Asia/Kolkata. One per date.
+    const dd = await import('./digest/service')
+    const digestDay = await dd.dailyDigestDue(now).catch(() => null)
+    if (digestDay) await job('content-digest', `digest:${digestDay.date}`, async () => { const r = await dd.runDailyDigest({ trigger: digestDay.trigger, now, date: digestDay.date }); if (!r.ok) throw new Error(r.message); return r.status }, { maxAttempts: 3, retryAfterMs: 15 * 60_000, leaseMs: 30 * 60_000 })
     // Analytics (lib/analytics/rollup.ts): mirror the automation outbox into analytics events,
     // rebuild today's / yesterday's daily rollups, backfill missing days. Once per 15 minutes.
     await job('analytics', `${iso.slice(0, 13)}q${Math.floor(now.getUTCMinutes() / 15)}`, async () => (await import('./analytics/rollup')).runAnalyticsTick(now), { leaseMs: 10 * 60_000 })
@@ -410,7 +416,7 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     await job('guardian-reports', `${iso.slice(0, 13)}gr`, async () => (await import('./guardian/service')).runGuardianReports(now), { leaseMs: 20 * 60_000 })
   }
   if (opts.heavyInBackground) {
-    report.background = ['learn', 'events-feed', 'news-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports']
+    report.background = ['learn', 'events-feed', 'news-digest', 'content-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports']
     void heavy().catch((e) => console.error('[scheduler] content lane error:', e))
   } else {
     await heavy()
