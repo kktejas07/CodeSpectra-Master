@@ -256,5 +256,9 @@
   "waPractice.dailyPreview": "మీ రోజువారీ {domain} ప్రశ్న సిద్ధంగా ఉంది. “ప్రశ్న పొందండి” నొక్కండి.",
   "waPractice.mockPreview": "మీ వారపు {domain} మినీ మాక్ ({count} ప్రశ్నలు) సిద్ధంగా ఉంది.",
   "guardian.verifyPreview": "మీ CodeSpectra సంరక్షకుల ధృవీకరణ కోడ్ {code}. దీన్ని ఎవరితోనూ పంచుకోవద్దు.",
-  "guardian.invitePreview": "{name} తమ వారపు CodeSpectra పురోగతి నివేదిక పొందడానికి మిమ్మల్ని ఆహ్వానించారు."
+  "guardian.invitePreview": "{name} తమ వారపు CodeSpectra పురోగతి నివేదిక పొందడానికి మిమ్మల్ని ఆహ్వానించారు.",
+  "aiBudget.title": "AI ఖర్చు నెలవారీ బడ్జెట్‌లో {pct}%కి చేరింది",
+  "aiBudget.message": "{month}లో {budget} USD లో {spent} USD ఖర్చయింది.",
+  "aiBudget.stopped": "అత్యవసరం కాని AI ఫీచర్లు వచ్చే నెల వరకు లేదా బడ్జెట్ పెంచే వరకు ఆగాయి.",
+  "aiBudget.notStopped": "AI ఫీచర్లు నడుస్తూనే ఉంటాయి; అత్యవసరం కాని వాటిని ఆపడానికి హార్డ్ స్టాప్ ఆన్ చేయండి."
 }

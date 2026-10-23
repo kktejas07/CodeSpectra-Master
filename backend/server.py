@@ -56,6 +56,12 @@ app = FastAPI(
     openapi_url="/openapi.json" if _DOCS else None,
 )
 
+# AI cost tracking: model usage of each /internal/* request → `x-ai-usage` header
+# (priced and recorded by Next.js lib/ai/backend.ts; counts only, no prompts).
+from core.ai_usage import AiUsageHeaderMiddleware
+
+app.add_middleware(AiUsageHeaderMiddleware)
+
 
 _scheduler_task = None
 

@@ -202,7 +202,10 @@ export async function usageSoFar(now: Date): Promise<{ writtenToday: number; spe
     col.aggregate<{ n: number }>([{ $match: { day: dayKey(now) } }, { $group: { _id: null, n: { $sum: '$inserted' } } }]).toArray(),
     col.aggregate<{ usd: number }>([{ $match: { month: monthKey(now) } }, { $group: { _id: null, usd: { $sum: '$cost_usd' } } }]).toArray(),
   ])
-  return { writtenToday: today[0]?.n ?? 0, spentThisMonth: Math.round((month[0]?.usd ?? 0) * 1e4) / 1e4 }
+  // Cap source: the bot's own ledger or the platform-recorded cost, whichever is higher (lib/ai/spend capSpendUsd).
+  const { capSpendFor } = await import('@/lib/ai/usage-record')
+  const spent = await capSpendFor(['question-bot'], month[0]?.usd ?? 0, now)
+  return { writtenToday: today[0]?.n ?? 0, spentThisMonth: Math.round(spent * 1e4) / 1e4 }
 }
 
 export async function startRunDoc(run: Omit<BotRunDoc, 'id'> & { id?: string }): Promise<BotRunDoc> {

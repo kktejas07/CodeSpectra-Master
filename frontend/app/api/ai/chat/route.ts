@@ -205,6 +205,19 @@ export async function POST(req: NextRequest): Promise<Response> {
         }
         // Persist usage tracking (fire-and-forget).
         if (usage) {
+          // Priced platform record (lib/ai/usage-record): counts only, no text.
+          const u = usage as Record<string, unknown>
+          void import('@/lib/ai/cost-tracking').then(({ logAiUsage }) => logAiUsage({
+            userId: user.id,
+            feature: 'chat',
+            provider: String(u.provider || providerOverride || 'unknown'),
+            model: String(u.model || modelOverride || 'unknown'),
+            promptTokens: Number(u.input_tokens) || Math.ceil((Number(u.input_chars) || 0) / 4),
+            completionTokens: Number(u.output_tokens) || Math.ceil((Number(u.output_chars) || 0) / 4),
+            tokensEstimated: u.estimated !== false,
+            latencyMs: 0,
+            ok: true,
+          }), () => undefined)
           getMongoDb().then(db =>
             db.collection('ai_usage_logs').insertOne({
               id: newId(),

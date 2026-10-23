@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { apiErrorFor } from '@/lib/api-errors'
-import { denseSeries, utcDayKeys, type AdminOverview } from '@/lib/admin/overview'
+import { denseSeries, utcDayKeys, type AdminAiSpend, type AdminOverview } from '@/lib/admin/overview'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 /**
  * GET /api/admin/overview — the extra numbers on the admin home bento that no
  * other endpoint returns: tests started, integrity attempts awaiting review,
- * AI calls and sign-ups per day. Counts only (no user data). Superadmin only.
+ * AI calls and spend this month, sign-ups per day. Counts and money only (no user data). Superadmin only.
  * Users total comes from /api/admin/metrics, MRR from /api/admin/billing/metrics.
  */
 export async function GET() {
@@ -49,12 +49,25 @@ export async function GET() {
         { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, n: { $sum: 1 } } },
       ]).toArray(),
     ])
+    // AI spend this month (recorded per-call cost; old rows estimated). Its own failure never fails the card set.
+    const spend: AdminAiSpend | null = await import('@/lib/ai/spend-report').then(({ monthSpend }) => monthSpend(now)).then((m) => ({
+      month: m.month,
+      micros: m.micros,
+      estimated_micros: m.estimatedMicros,
+      last_month_to_date_micros: m.lastMonthToDateMicros,
+      trend_pct: m.trendPct,
+      top: m.top,
+      unpriced_calls: m.unpricedCalls,
+      usd_inr_rate: m.usdInrRate,
+      usd_inr_rate_updated_at: m.usdInrRateUpdatedAt,
+      budget: { usd: m.budget.usd, level: m.budget.level },
+    }), (e: unknown) => { console.error('[admin/overview] spend', (e as Error)?.message); return null })
     const tests = denseSeries(testRows, days14)
     const ai = aiTotals[0] ?? { requests: 0, failed: 0, tokens: 0 }
     const body: AdminOverview = {
       tests: { today: tests[tests.length - 1] ?? 0, by_day: tests },
       flags: { open: flagsOpen },
-      ai: { requests: ai.requests, failed: ai.failed, tokens: ai.tokens, by_day: denseSeries(aiRows, days30) },
+      ai: { requests: ai.requests, failed: ai.failed, tokens: ai.tokens, by_day: denseSeries(aiRows, days30), spend },
       signups: { by_day: denseSeries(signupRows, days14) },
     }
     return NextResponse.json(body, { headers: { 'Cache-Control': 'private, no-store' } })

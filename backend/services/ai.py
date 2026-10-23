@@ -137,7 +137,12 @@ async def handle_chat(
                     usage = ev.usage or {}
                     break
             if usage:
-                yield f"data: {json.dumps({'usage': usage})}\n\n".encode()
+                # Streams finish after the response headers, so the chat SSE
+                # carries its own priced-usage entry (core/ai_usage).
+                from core.ai_usage import usage_entry
+
+                entry = usage_entry(getattr(chat, "provider", ""), getattr(chat, "model", ""), usage)
+                yield f"data: {json.dumps({'usage': {**usage, **entry}})}\n\n".encode()
             yield b"data: [DONE]\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n".encode()
@@ -243,10 +248,14 @@ async def handle_complete(request: Request, req: CompleteReq) -> dict[str, Any]:
     raw = "".join(buf).strip()
     if "API Error" in raw or "Insufficient credits" in raw:
         raise HTTPException(status_code=402, detail=raw[:500])
+    from core.ai_usage import _USAGE, summed
+
+    usage = summed(_USAGE.get() or [])
+    extra = {"usage": usage, "provider": getattr(chat, "provider", None), "model": getattr(chat, "model", None)} if usage else {}
     if req.response_format == "json":
         parsed = parse_json_response(raw)
-        return {"ok": True, "raw": raw, "json": parsed}
-    return {"ok": True, "text": raw}
+        return {"ok": True, "raw": raw, "json": parsed, **extra}
+    return {"ok": True, "text": raw, **extra}
 
 
 # ── Smart Hints ────────────────────────────────────────────────

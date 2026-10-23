@@ -155,6 +155,7 @@ export async function embedTexts(
         output_tokens: 0,
         latency_ms: Date.now() - started,
         success: true,
+        kind: 'embedding',
       })
       return { model: b.model, dims, vectors }
     } catch (e) {
@@ -162,7 +163,7 @@ export async function embedTexts(
       console.error(`[rag/embed] ${b.model} via ${auth.provider} failed:`, msg.slice(0, 300))
       void trackAiUsage({
         user_id: opts.userId, feature: opts.feature ?? 'rag_embed', provider: auth.provider, model: b.model,
-        latency_ms: Date.now() - started, success: false, error: msg.slice(0, 200),
+        latency_ms: Date.now() - started, success: false, error: msg.slice(0, 200), kind: 'embedding',
       })
     }
   }

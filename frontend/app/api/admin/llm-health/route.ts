@@ -90,6 +90,8 @@ async function probeOne(
       }),
     })
     const latencyMs = Date.now() - start
+    // Probe tokens are real spend too: price them under "admin_test" (x-ai-usage header).
+    await import('@/lib/ai/backend').then(({ recordHeaderUsage }) => recordHeaderUsage(res, 'admin_test', undefined, latencyMs), () => undefined)
     if (res.ok) return { ok: true, error: '', latencyMs }
     const text = await res.text().catch(() => '')
     return { ok: false, error: text.slice(0, 200) || `HTTP ${res.status}`, status: res.status, latencyMs }

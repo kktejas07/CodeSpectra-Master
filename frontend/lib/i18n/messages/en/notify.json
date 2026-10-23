@@ -256,5 +256,9 @@
   "waPractice.dailyPreview": "Your daily {domain} question is ready. Tap “Get a question”.",
   "waPractice.mockPreview": "Your weekly {domain} mini mock ({count} questions) is ready.",
   "guardian.verifyPreview": "Your CodeSpectra guardian verification code is {code}. Don’t share it with anyone.",
-  "guardian.invitePreview": "{name} invited you to get their weekly CodeSpectra progress report."
+  "guardian.invitePreview": "{name} invited you to get their weekly CodeSpectra progress report.",
+  "aiBudget.title": "AI spend reached {pct}% of the monthly budget",
+  "aiBudget.message": "{spent} USD of {budget} USD used in {month}.",
+  "aiBudget.stopped": "Non-critical AI features are paused until next month or until the budget is raised.",
+  "aiBudget.notStopped": "AI features keep running; turn on the hard stop to pause non-critical ones."
 }

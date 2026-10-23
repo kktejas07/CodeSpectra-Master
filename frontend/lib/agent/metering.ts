@@ -13,7 +13,7 @@
  * Free / unknown models still cost tokens (the token term), so a free model
  * can't be used to drain the platform; expensive models cost more credits.
  */
-import { AI_COST_RATES } from '@/lib/db/analytics'
+import { getActivePriceBook, resolvePrice } from '@/lib/ai/pricing'
 
 export interface UsageEntry {
   provider: string
@@ -31,16 +31,10 @@ export interface MeterConfig {
 
 export const DEFAULT_METER: MeterConfig = { tokensPerCredit: 20_000, usdPerCredit: 0.005 }
 
-/** Models served free by their provider (still metered by tokens). */
-const FREE_MODEL_RE = /(:free\b|-free\b|\bfree$)/i
-
+/** Price per 1M tokens from the shared price book (free-tier ids → 0; unknown → the book's fallback). */
 export function priceFor(model: string): { input: number; output: number } {
-  const m = (model || '').toLowerCase()
-  if (FREE_MODEL_RE.test(m)) return { input: 0, output: 0 }
-  // Longest matching key wins ("gpt-4o-mini" before "gpt-4o").
-  const key = Object.keys(AI_COST_RATES).filter((k) => m.includes(k)).sort((a, b) => b.length - a.length)[0]
-  // Unknown model: price it like a mid-range model rather than free.
-  return key ? AI_COST_RATES[key] : { input: 1.0, output: 4.0 }
+  const p = resolvePrice(getActivePriceBook(), '', model || '', 'chat').price
+  return { input: p.inputPer1M ?? 0, output: p.outputPer1M ?? 0 }
 }
 
 export function costUsd(entries: readonly UsageEntry[]): number {

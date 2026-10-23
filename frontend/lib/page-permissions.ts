@@ -62,6 +62,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   // AI & Generation Tools
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
+  '/dashboard/admin/ai-usage',
   '/dashboard/admin/question-generator',
   '/dashboard/admin/question-bot',
   '/dashboard/admin/interview-sim',
@@ -398,6 +399,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/resources': 'Resources and ebooks',
   '/dashboard/admin/rag': 'RAG',
   '/dashboard/admin/ai-inventory': 'AI inventory',
+  '/dashboard/admin/ai-usage': 'AI spend',
   '/dashboard/admin/permissions': 'Permissions',
   '/dashboard/admin/plans': 'Plans & pricing',
   '/dashboard/admin/team': 'Team',

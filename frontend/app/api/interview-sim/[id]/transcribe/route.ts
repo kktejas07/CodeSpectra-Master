@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!audio.byteLength) return NextResponse.json({ error: 'No audio was sent.' }, { status: 400 })
     if (audio.byteLength > MAX_BYTES) return NextResponse.json({ error: 'That answer is too long to transcribe. Keep answers under three minutes.' }, { status: 413 })
     const { transcribeAudio } = await import('@/lib/ats/screening/transcribe')
-    const text = await transcribeAudio(key.key, audio, mime, lang)
+    const text = await transcribeAudio(key.key, audio, mime, lang, { feature: 'interview-sim-stt', userId: g.user.id })
     if (!text) return NextResponse.json({ error: 'We could not hear an answer. Try again closer to the microphone, or type it.' }, { status: 422 })
     return NextResponse.json({ text: text.slice(0, 6000) })
   } catch (e) {
