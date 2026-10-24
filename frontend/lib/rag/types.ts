@@ -8,8 +8,15 @@ export type { KnowledgeChunk, KnowledgeSourceType, KnowledgeVisibility }
 export const KNOWLEDGE_SOURCE_TYPES: readonly KnowledgeSourceType[] = [
   'problem', 'question', 'course', 'doc', 'test', 'test_result_summary',
   'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'marketplace_product', 'external_event',
-  'ats_job', 'ats_application', 'news', 'digest', 'contest',
+  'ats_job', 'ats_application', 'news', 'digest', 'contest', 'dev_doc',
 ]
+
+/**
+ * What a search without `types` covers: everything but dev_doc. Implementation
+ * docs are long and match almost any keyword (offline eval: success@5 93% → 86%
+ * with them in the default set), so they are searched only when asked for.
+ */
+export const DEFAULT_SEARCH_TYPES: readonly KnowledgeSourceType[] = KNOWLEDGE_SOURCE_TYPES.filter((t) => t !== 'dev_doc')
 
 /** Types that carry candidate data or answer keys: staff (admins) only, never public. */
 export const STAFF_ONLY_TYPES: ReadonlySet<KnowledgeSourceType> = new Set(['resume', 'attempt_summary', 'question', 'ats_application'])
@@ -38,6 +45,7 @@ export const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
   news: 'Tech news',
   digest: 'Daily digest',
   contest: 'Contest',
+  dev_doc: 'Platform internals',
 }
 
 export function isKnowledgeSourceType(v: unknown): v is KnowledgeSourceType {
@@ -92,7 +100,12 @@ export interface RagSourceDoc {
 }
 
 /** rag_chunks row: the contract chunk plus the string tenant key used for filtering. */
-export type RagChunkDoc = KnowledgeChunk & { tenant_key: string; section?: string[] }
+export type RagChunkDoc = KnowledgeChunk & {
+  tenant_key: string
+  section?: string[]
+  /** Contextual retrieval (./contextual): LLM-written situating context, embedded as `context + text`. `text` stays the display / keyword text. */
+  context?: string
+}
 
 export const PLATFORM_TENANT_KEY = '_platform'
 

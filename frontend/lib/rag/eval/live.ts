@@ -20,6 +20,7 @@ import { dominantEmbeddingModel } from '../ingest'
 import { searchKnowledge } from '../search'
 import { ragChunks, ragSources } from '../store'
 import { SOURCE_TYPE_LABELS, type KnowledgeSourceType } from '../types'
+import { ANSWER_TOP_K, CANDIDATE_TYPES, answerQualitySummary, runAnswerQuality, type AnswerInput, type AnswerQualityReport } from './answer-quality'
 import { GOLDEN_QUESTIONS, type EvalAs, type GoldenQuestion } from './golden'
 import { indexHealth, type IndexHealth } from './health'
 import { aggregate, oracleCanSee, plainSummary, type AggregateMetrics, type QuestionResult } from './metrics'
@@ -29,7 +30,7 @@ export const EVAL_RUNS_COLLECTION = 'rag_eval_runs'
 export const PROBE_TENANT = 'rag-eval-probe'
 const MAX_PROBE_TENANTS = 3
 const PROBES_PER_TENANT = 6
-const MASKED_TYPES = new Set<string>(['resume', 'attempt_summary', 'ats_application'])
+const MASKED_TYPES = CANDIDATE_TYPES // résumé, attempt summary, ATS application
 
 export interface EvalRunDoc {
   id: string
@@ -46,6 +47,8 @@ export interface EvalRunDoc {
   failed: { id: string; query: string; expect: string[]; returned: { key: string; type: string; title: string }[] }[]
   acl: { golden_leaks: number; probe_tenants: number; probe_queries: number; probe_leaks: number; leaked_sources: string[] }
   health: IndexHealth
+  /** LLM-judged answers built from the top hits; absent on older runs, null when disabled or nothing could be judged. */
+  answer_quality?: AnswerQualityReport | null
 }
 
 export type EvalRunSummary = Pick<EvalRunDoc, 'id' | 'at' | 'questions_run' | 'duration_ms'> & {
@@ -130,9 +133,18 @@ export async function runLiveEval(caller: AgentCaller): Promise<EvalRunDoc> {
 
   const callerFor = (as: EvalAs): AgentCaller =>
     as === 'superadmin' ? caller : { userId: caller.userId, role: 'tenant_admin', tenantId: PROBE_TENANT }
-  const deps: RunDeps = { search: searchKnowledge, callerFor, rowsById, limit: 10 }
+  // Top hits per positive question, in memory only, for the answer-quality step (never stored).
+  const answerInputs: AnswerInput[] = []
+  const onHits: RunDeps['onHits'] = (q, hits) => {
+    if (q.expect.length) answerInputs.push({ id: q.id, query: q.query, hits: hits.slice(0, ANSWER_TOP_K).map((h) => ({ type: h.source_type, title: h.title, snippet: h.snippet })) })
+  }
+  const deps: RunDeps = { search: searchKnowledge, callerFor, rowsById, limit: 10, onHits }
   const results: QuestionResult[] = await runQuestions(run, deps)
   const metrics = aggregate(results)
+  // After retrieval so its latency numbers stay honest; never fails the run.
+  // A question whose hits leaked is not answered: its snippets aren't the asker's to send anywhere.
+  const leaky = new Set(results.filter((r) => r.leaks.length).map((r) => r.id))
+  const answerQuality = await runAnswerQuality(answerInputs.filter((a) => !leaky.has(a.id)), { userId: caller.userId }).catch(() => null)
   const probes = await aclProbes(caller)
   const [available, corpusModel, health] = await Promise.all([availableEmbedModels(), dominantEmbeddingModel(), indexHealth()])
 
@@ -148,13 +160,16 @@ export async function runLiveEval(caller: AgentCaller): Promise<EvalRunDoc> {
     questions_run: run.length,
     skipped,
     metrics: rest,
-    summary: run.length ? plainSummary(metrics) : ['None of the golden questions could run: their sources are not indexed yet. Reindex everything, then try again.'],
+    summary: run.length
+      ? [...plainSummary(metrics), ...(answerQuality ? [answerQualitySummary(answerQuality)] : [])]
+      : ['None of the golden questions could run: their sources are not indexed yet. Reindex everything, then try again.'],
     failed: failed.slice(0, 30).map((f) => ({
       id: f.id, query: f.query, expect: f.expect,
       returned: f.returned.map((h) => ({ key: MASKED_TYPES.has(h.type) ? h.type : h.key, type: h.type, title: maskTitle(h.type, h.title) })),
     })),
     acl: { ...probes, golden_leaks: metrics.acl_leaks },
     health,
+    answer_quality: answerQuality,
   }
   await (await runsCol()).insertOne(doc)
   return doc

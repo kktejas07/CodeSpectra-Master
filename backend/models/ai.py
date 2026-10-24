@@ -31,7 +31,11 @@ class ChatStreamReq(BaseModel):
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
-    rag_enabled: bool = True
+    # Retired by default: the `embeddings` collection this searches is not kept up
+    # to date (its seed writes 1536-dim vectors; rag.py only reads 768-dim), so the
+    # Gemini call per chat bought nothing. Knowledge search lives in frontend
+    # lib/rag (searchKnowledge); send rag_enabled=true only to test this path.
+    rag_enabled: bool = False
 
 
 # ── Completion ─────────────────────────────────────────────────

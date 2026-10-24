@@ -4,14 +4,14 @@
  * Rules (lib/agent/contract.ts):
  *  - superadmin: everything; with `tenantId` → that tenant + platform-wide rows.
  *  - tenant_admin (must have a tenantId): their tenant's rows, plus platform rows
- *    whose visibility is 'public'. Never another tenant, never 'platform_admin'
+ *    whose visibility is 'public' or 'staff'. Never another tenant, never 'platform_admin'
  *    rows, never platform-wide staff-only rows (those are stored as platform_admin).
  *  - anything else: matches nothing.
  *
  * Filters use `tenant_key` (tenant id or '_platform') rather than null checks so
  * the same filter works in $match, $text and Atlas $vectorSearch.
  */
-import type { AgentCaller, KnowledgeSourceType } from '@/lib/agent/contract'
+import type { AgentCaller, KnowledgeSourceType, KnowledgeVisibility } from '@/lib/agent/contract'
 import { KNOWLEDGE_SOURCE_TYPES, PLATFORM_TENANT_KEY, STAFF_ONLY_TYPES, tenantKey } from './types'
 
 export type AclFilter = Record<string, unknown>
@@ -38,12 +38,12 @@ export function knowledgeAclFilter(
   if (caller.role === 'tenant_admin') {
     const tid = typeof caller.tenantId === 'string' ? caller.tenantId.trim() : ''
     if (!tid || !TENANT_ID_RE.test(tid)) return MATCH_NOTHING
-    // Platform rows a tenant admin may read: public, and never staff-only types.
+    // Platform rows a tenant admin may read: public or staff, and never staff-only types.
     const publicTypes = (types.length ? types : KNOWLEDGE_SOURCE_TYPES).filter((t) => !STAFF_ONLY_TYPES.has(t))
     return {
       $or: [
         { tenant_key: tenantKey(tid), visibility: { $in: ['tenant', 'public'] }, ...typeClause },
-        { tenant_key: PLATFORM_TENANT_KEY, visibility: 'public', source_type: { $in: publicTypes } },
+        { tenant_key: PLATFORM_TENANT_KEY, visibility: { $in: ['public', 'staff'] }, source_type: { $in: publicTypes } },
       ],
     }
   }
@@ -70,7 +70,7 @@ export function canSeeChunk(
   }
   if (caller.role !== 'tenant_admin' || !caller.tenantId) return false
   if (key === caller.tenantId) return row.visibility === 'tenant' || row.visibility === 'public'
-  return key === PLATFORM_TENANT_KEY && row.visibility === 'public'
+  return key === PLATFORM_TENANT_KEY && (row.visibility === 'public' || row.visibility === 'staff')
     && !STAFF_ONLY_TYPES.has(row.source_type as KnowledgeSourceType)
 }
 
@@ -81,9 +81,11 @@ export function canSeeChunk(
 export function effectiveVisibility(
   type: KnowledgeSourceType,
   tenantId: string | null,
-  visibility: 'public' | 'platform_admin' | 'tenant',
-): 'public' | 'platform_admin' | 'tenant' {
+  visibility: KnowledgeVisibility,
+): KnowledgeVisibility {
   if (STAFF_ONLY_TYPES.has(type)) return tenantId ? 'tenant' : 'platform_admin'
   if (visibility === 'tenant' && !tenantId) return 'platform_admin'
+  // 'staff' means platform-wide; on a tenant's own row the tenant scope already applies.
+  if (visibility === 'staff' && tenantId) return 'tenant'
   return visibility
 }

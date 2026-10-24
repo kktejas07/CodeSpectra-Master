@@ -3477,5 +3477,22 @@
   "problemsReview.requestFailed": "Request failed",
   "problemsReview.difficulty.easy": "Easy",
   "problemsReview.difficulty.medium": "Medium",
-  "problemsReview.difficulty.hard": "Hard"
+  "problemsReview.difficulty.hard": "Hard",
+  "knowledge.aq.title": "Answer quality",
+  "knowledge.aq.about_one": "For {count} question, an AI wrote an answer from only the top 5 results, then a second AI call checked it against them. Questions whose results include candidate data are left out.",
+  "knowledge.aq.about_other": "For {count} questions, an AI wrote an answer from only the top 5 results, then a second AI call checked it against them. Questions whose results include candidate data are left out.",
+  "knowledge.aq.faithfulness": "Faithfulness",
+  "knowledge.aq.faithfulnessHint": "Claims backed by the sources",
+  "knowledge.aq.relevance": "Relevance",
+  "knowledge.aq.relevanceHint": "How well answers address the question",
+  "knowledge.aq.unsupported": "Unsupported claims",
+  "knowledge.aq.unsupportedValue": "{n} of {total}",
+  "knowledge.aq.unsupportedSome": "Some answers said something the sources don’t",
+  "knowledge.aq.unsupportedNone": "Every answer stuck to the sources",
+  "knowledge.aq.scores": "Faithfulness {f} · relevance {r}",
+  "knowledge.aq.notSupported": "Not supported by the sources:",
+  "knowledge.aq.calls_one": "{count} AI call",
+  "knowledge.aq.calls_other": "{count} AI calls",
+  "knowledge.aq.skipped_one": "{count} question not scored ({reasons})",
+  "knowledge.aq.skipped_other": "{count} questions not scored ({reasons})"
 }

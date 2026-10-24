@@ -168,8 +168,106 @@ export async function markdownDocSource(id: string): Promise<ExtractedSource | n
   }
 }
 
+/**
+ * Implementation docs — source type dev_doc (repo docs/<folder>, mirrored into frontend/docs by
+ * scripts/sync-docs.cjs for Docker): indexed for the admin assistant only and
+ * never served on /docs (lib/docs serves public + user). Every folder under
+ * docs/ must be listed here or in DOC_FOLDERS_NOT_INDEXED — the coverage test
+ * (tests/rag-coverage.test.ts) fails otherwise. '.' = markdown files at the docs/ root.
+ *   staff           every admin (org admins too): how the platform is built.
+ *   platform_admin  superadmin only: threat model, OWASP checklist, audit
+ *                   findings, deployment runbooks, roadmap/competitor notes.
+ */
+export const INTERNAL_DOC_FOLDERS: Record<string, 'staff' | 'platform_admin'> = {
+  ai: 'staff',
+  api: 'staff',
+  architecture: 'staff',
+  compliance: 'staff',
+  database: 'staff',
+  decisions: 'staff',
+  developer: 'staff',
+  diagrams: 'staff',
+  flowcharts: 'staff',
+  testing: 'staff',
+  uml: 'staff',
+  '.': 'platform_admin',
+  audit: 'platform_admin',
+  devops: 'platform_admin',
+  reports: 'platform_admin',
+  roadmap: 'platform_admin',
+  security: 'platform_admin',
+  superpowers: 'platform_admin',
+}
+
+/** docs/ folders deliberately not in INTERNAL_DOC_FOLDERS, with the reason. */
+export const DOC_FOLDERS_NOT_INDEXED: Record<string, string> = {
+  public: 'indexed as public help docs (docs:public/…)',
+  user: 'indexed as public help docs (docs:user/…)',
+}
+
+const INTERNAL_ID_RE = /^docs:int\/([A-Za-z0-9_-]+|\.)\/((?:[A-Za-z0-9_-][A-Za-z0-9._-]*\/)*[A-Za-z0-9_-][A-Za-z0-9._-]*)$/
+
+async function internalDocsRoot(): Promise<string> {
+  return (await import('@/lib/docs')).resolveDocsRoot()
+}
+
+/** `docs:int/<folder>/<path without .md>` for every markdown file in the mapped folders. */
+export async function listInternalDocIds(root?: string): Promise<string[]> {
+  const base = root ?? (await internalDocsRoot())
+  const ids: string[] = []
+  const walk = (dir: string, rel: string, folder: string, recurse: boolean) => {
+    let entries: fs.Dirent[]
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return // folder not mirrored into this build
+    }
+    for (const e of entries) {
+      const r = rel ? `${rel}/${e.name}` : e.name
+      if (e.isDirectory() && recurse) walk(path.join(dir, e.name), r, folder, true)
+      else if (e.isFile() && e.name.endsWith('.md')) ids.push(`docs:int/${folder}/${r.slice(0, -3)}`)
+    }
+  }
+  for (const folder of Object.keys(INTERNAL_DOC_FOLDERS)) {
+    walk(folder === '.' ? base : path.join(base, folder), '', folder, folder !== '.')
+  }
+  return ids.sort()
+}
+
+export async function internalDocSource(id: string, root?: string): Promise<ExtractedSource | null> {
+  const m = INTERNAL_ID_RE.exec(id)
+  const visibility = m ? INTERNAL_DOC_FOLDERS[m[1]] : undefined
+  if (!m || !visibility || m[2].split('/').some((s) => s === '.' || s === '..')) return null
+  const base = root ?? (await internalDocsRoot())
+  const file = path.join(base, m[1] === '.' ? '' : m[1], `${m[2]}.md`)
+  let raw: string
+  try {
+    raw = fs.readFileSync(file, 'utf-8')
+  } catch {
+    return null
+  }
+  const { default: matter } = await import('gray-matter')
+  const { data, content } = matter(raw)
+  const h1 = /^#\s+(.+?)\s*#*\s*$/m.exec(content)?.[1]
+  const title = String(data.title || h1 || path.basename(m[2])).replace(/[`*_]/g, '').trim()
+  const text = stripDocPreamble(content, title)
+  if (!text.trim()) return null
+  return {
+    type: 'dev_doc',
+    source_id: id,
+    tenant_id: null,
+    visibility,
+    title,
+    url: null, // no in-app page; the hit's title + snippet carry the answer
+    text,
+    metadata: { kind: 'internal_docs', folder: m[1], path: `docs/${m[1] === '.' ? '' : `${m[1]}/`}${m[2]}.md` },
+    chunk: { splitOnSection: true },
+  }
+}
+
 export async function loadDoc(id: string): Promise<ExtractedSource | null> {
   if (id.startsWith('page:')) return pageSource(id)
+  if (id.startsWith('guide:')) return (await import('./guide')).guideSource(id)
   // Learn hub posts (lib/learn/rag.ts): published only, public.
   if (id.startsWith('learn:')) return (await import('@/lib/learn/rag')).loadLearnDoc(id)
   return markdownDocSource(id)
@@ -189,5 +287,6 @@ export async function listDocIds(): Promise<string[]> {
   } catch (e) {
     console.error('[rag/docs] learn posts unavailable:', e)
   }
-  return [...ids, ...Object.keys(DOC_PAGE_SOURCES), ...learn]
+  const { listGuideIds } = await import('./guide')
+  return [...ids, ...Object.keys(DOC_PAGE_SOURCES), ...learn, ...listGuideIds()]
 }

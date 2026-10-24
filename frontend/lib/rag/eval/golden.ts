@@ -27,11 +27,14 @@ export interface GoldenQuestion {
   expect: string[]
   all?: boolean
   forbid?: string[]
+  /** Search only these types, as the agent's search_knowledge tool would (dev_doc is never searched by default). */
+  types?: KnowledgeSourceType[]
 }
 
 const P = (id: string) => `problem:${id}`
 const D = (section: 'public' | 'user', slug: string) => `doc:docs:${section}/${slug}`
 const PAGE = (id: string) => `doc:page:${id}`
+const DEV = (pathNoExt: string) => `dev_doc:docs:int/${pathNoExt}`
 
 type Q = Omit<GoldenQuestion, 'fixture' | 'as' | 'kind'> & Partial<Pick<GoldenQuestion, 'as' | 'kind'>>
 const real = (q: Q): GoldenQuestion => ({ as: 'superadmin', kind: 'paraphrase', ...q, fixture: 'real' })
@@ -80,7 +83,7 @@ export const GOLDEN_QUESTIONS: GoldenQuestion[] = [
   real({ id: 'dc-12', type: 'doc', query: 'what gets recorded in the audit trail', expect: [D('user', 'admin-guide')] }),
   real({ id: 'dc-13', type: 'doc', query: 'shortcut to open the command palette', expect: [D('user', 'dashboard-guide')] }),
   real({ id: 'dc-14', type: 'doc', query: 'how many points are easy medium and hard questions worth', expect: [PAGE('faq')] }),
-  real({ id: 'dc-15', type: 'doc', query: 'what does the proctoring watch for during a test', expect: [PAGE('faq'), PAGE('terms')] }),
+  real({ id: 'dc-15', type: 'doc', query: 'what does the proctoring watch for during a test', expect: [PAGE('faq'), PAGE('terms'), 'doc:guide:admin-proctor'] }), // the proctor dashboard guide lists what is flagged
   real({ id: 'dc-16', type: 'doc', query: 'how long are assessment submissions kept', expect: [PAGE('privacy')] }),
   real({ id: 'dc-17', type: 'doc', query: 'do you respect DNT browser signals', expect: [PAGE('cookies')] }),
   real({ id: 'dc-18', type: 'doc', query: 'minimum age to use the service', expect: [PAGE('privacy')] }),
@@ -109,10 +112,10 @@ export const GOLDEN_QUESTIONS: GoldenQuestion[] = [
   real({ id: 'dc-43', type: 'doc', query: 'what does my parent see in the weekly progress report', expect: [D('user', 'guardian-reports-guide')] }),
   real({ id: 'dc-44', type: 'doc', query: 'draft captions for our LinkedIn and Instagram posts without auto posting', expect: [D('user', 'social-studio-guide')] }),
   real({ id: 'dc-45', type: 'doc', query: 'the model timed out during my prompt-a-thon run, did I lose a run', expect: [D('user', 'hosted-contests-guide')] }),
-  real({ id: 'dc-46', type: 'doc', query: 'invigilator control room add time pause or terminate a candidate', expect: [D('user', 'live-drives-guide')] }),
+  real({ id: 'dc-46', type: 'doc', query: 'invigilator control room add time pause or terminate a candidate', expect: [D('user', 'live-drives-guide'), 'doc:guide:live-drive-control'] }), // the in-app guide answers it too
   real({ id: 'dc-47', type: 'doc', query: 'why is a news article marked facts need checking', expect: [D('user', 'tech-news-guide')] }),
-  real({ id: 'dc-48', type: 'doc', query: 'forum moderator ban a member who posts spam', expect: [D('user', 'community-guide')] }),
-  real({ id: 'dc-49', type: 'doc', query: 'enrol in a live batch course with sessions assignments and a completion certificate', expect: [D('user', 'cohort-courses-guide')] }),
+  real({ id: 'dc-48', type: 'doc', query: 'forum moderator ban a member who posts spam', expect: [D('user', 'community-guide'), 'doc:guide:community-moderation'] }), // the in-app guide answers it too
+  real({ id: 'dc-49', type: 'doc', query: 'enrol in a live batch course with sessions assignments and a completion certificate', expect: [D('user', 'cohort-courses-guide'), 'doc:guide:cohorts'] }), // the in-app guide answers it too
   real({ id: 'dc-27', type: 'doc', kind: 'multi_hop', all: true, query: 'set the github webhook secret, then check deliveries in the audit logs', expect: [D('user', 'webhooks-guide'), D('user', 'admin-guide')] }),
   real({ id: 'dc-28', type: 'doc', kind: 'multi_hop', all: true, query: 'Pro plan scan limits and how to upgrade from the billing page', expect: [D('public', 'pricing'), D('user', 'billing-guide')] }),
   real({ id: 'dc-29', type: 'doc', as: 'tenant_b', query: 'do you honour do not track', expect: [PAGE('cookies')] }),
@@ -158,6 +161,20 @@ export const GOLDEN_QUESTIONS: GoldenQuestion[] = [
   synth({ id: 'hr-05', type: 'ats_application', as: 'tenant_a', kind: 'multi_hop', all: true, query: 'compare Ravi Kumar with the site reliability engineer job requirements', expect: ['ats_application:app-ravi', 'ats_job:acme-job-sre'] }),
   synth({ id: 'hr-06', type: 'ats_job', kind: 'keyword', query: 'Machine learning engineer demand forecasting', expect: ['ats_job:globex-job-ml'] }),
   synth({ id: 'acl-12', type: 'ats_application', as: 'tenant_b', kind: 'acl_negative', query: 'SRE applicants with Terraform Prometheus Kubernetes', expect: [], forbid: ['ats_application:app-ravi', 'ats_job:acme-job-sre'] }),
+  // ── In-app page guides (lib/rag/sources/guide.ts) ──
+  real({ id: 'gd-01', type: 'doc', query: 'confirm or reject the stage changes the pipeline suggested for applicants', expect: ['doc:guide:hiring-approvals'] }),
+  real({ id: 'gd-02', type: 'doc', query: 'which consent notice do we show for background verification in India versus the US', expect: ['doc:guide:hiring-bgv'] }),
+  real({ id: 'gd-03', type: 'doc', query: 'screen applicants over WhatsApp or a phone call only during outreach hours', expect: ['doc:guide:hiring-screening'] }),
+  real({ id: 'gd-04', type: 'doc', query: 'an outside client approving shortlisted candidates for their roles', expect: ['doc:guide:hiring-client-portal'] }),
+  real({ id: 'gd-05', type: 'doc', query: 'give a candidate extra time or pause their test during a live drive', expect: ['doc:guide:live-drive-control'] }),
+  real({ id: 'gd-06', type: 'doc', query: 'mentor marking the oldest ungraded cohort submissions with a rubric', expect: ['doc:guide:cohort-grading'] }),
+  // ── Implementation docs (dev_doc: admins only, searched when asked for) ──
+  real({ id: 'dv-01', type: 'dev_doc', types: ['dev_doc'], query: 'where do the knowledge chunk vectors live and how would we move them to postgres', expect: [DEV('devops/09-RAG-Vector-Store')] }),
+  real({ id: 'dv-02', type: 'dev_doc', types: ['dev_doc'], as: 'tenant_a', query: 'which fields does the stored user account record have', expect: [DEV('database/02-Data-Dictionary')] }),
+  real({ id: 'dv-03', type: 'dev_doc', types: ['dev_doc'], as: 'tenant_a', query: 'how does a chat message become the final prompt sent to the model', expect: [DEV('ai/02-Prompt-Pipeline')] }),
+  real({ id: 'dv-04', type: 'dev_doc', types: ['dev_doc'], query: 'which LLM handles which job and how is it picked', expect: [DEV('ai/03-Model-Selection')] }),
+  real({ id: 'dv-05', type: 'dev_doc', types: ['dev_doc'], as: 'tenant_a', query: 'how do the web app and the python service talk to each other', expect: [DEV('architecture/01-High-Level-Architecture')] }),
+  real({ id: 'acl-16', type: 'dev_doc', types: ['dev_doc'], as: 'tenant_a', kind: 'acl_negative', query: 'threat model for authentication bypass and spoofing', expect: [], forbid: [DEV('security/01-Threat-Model')] }),
   synth({ id: 'acl-13', type: 'ats_application', as: 'tenant_a', kind: 'acl_negative', query: 'Nina Rossi Vue Nuxt frontend applicant', expect: [], forbid: ['ats_application:app-nina'] }),
   synth({ id: 'acl-14', type: 'resume', as: 'tenant_a', kind: 'acl_negative', query: 'Lena Rust embedded firmware battery management', expect: [], forbid: ['resume:acme:u-lena'] }),
   synth({ id: 'acl-15', type: 'ats_job', as: 'tenant_a', kind: 'acl_negative', query: 'LightGBM MLflow demand forecasting machine learning job', expect: [], forbid: ['ats_job:globex-job-ml', 'ats_application:app-tom'] }),

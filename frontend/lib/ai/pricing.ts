@@ -120,6 +120,11 @@ export const SEED_PRICES: readonly ModelPrice[] = [
   { match: 'text-embedding-3-small', kind: 'embedding', inputPer1M: 0.02 },
   { match: 'text-embedding-3-large', kind: 'embedding', inputPer1M: 0.13 },
   { match: 'text-embedding-004', kind: 'embedding', inputPer1M: 0 },
+  // Rerankers (lib/rag/rerank) — priced like embeddings, per input token (query
+  // counted once per document). Estimates: Cohere bills ~$2 per 1k searches;
+  // one search ≈ 30 docs × ~500 tokens ≈ 15k tokens → ~$0.13/1M. Jina bills per token.
+  { match: 'rerank-v3.5', provider: 'cohere', kind: 'embedding', inputPer1M: 0.13 },
+  { match: 'jina-reranker-v2-base-multilingual', provider: 'jina', kind: 'embedding', inputPer1M: 0.05 },
   // Speech-to-text (Deepgram pre-recorded)
   { match: 'nova-2', provider: 'deepgram', kind: 'speech', perMinute: 0.0043 },
   { match: 'nova-3', provider: 'deepgram', kind: 'speech', perMinute: 0.0043 },

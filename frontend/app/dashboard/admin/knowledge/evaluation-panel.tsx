@@ -4,17 +4,20 @@
  * Knowledge page → "Search quality" (superadmin): run the golden-question
  * evaluation against the live index (POST /api/admin/knowledge/eval), show the
  * latest scores in plain words, the trend across runs, per-type results, the
- * questions that missed, the access check, and index health.
+ * questions that missed, the access check, LLM-judged answer quality (when
+ * the run has it), and index health.
  */
 import { useCallback, useEffect, useState } from 'react'
-import { Gauge, Loader2, PlayCircle, ShieldCheck, ShieldAlert, Target, ListOrdered, HeartPulse } from 'lucide-react'
+import { BadgeCheck, CircleAlert, Gauge, Loader2, MessageSquareQuote, PlayCircle, ShieldCheck, ShieldAlert, Target, ListOrdered, HeartPulse } from 'lucide-react'
 import { Panel, Section, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { SOURCE_TYPE_LABELS, type KnowledgeSourceType } from '@/lib/rag/types'
+import { GOLDEN_QUESTIONS } from '@/lib/rag/eval/golden'
 import { cn } from '@/lib/utils'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type K = '1' | '3' | '5' | '10'
 
@@ -51,6 +54,16 @@ interface Run {
   summary: string[]
   failed: { id: string; query: string; expect: string[]; returned: { key: string; type: string; title: string }[] }[]
   acl: { golden_leaks: number; probe_tenants: number; probe_queries: number; probe_leaks: number; leaked_sources: string[] }
+  /** Absent on runs before answer scoring existed; null when it was off or nothing could be judged. */
+  answer_quality?: {
+    judged: number
+    faithfulness: number
+    relevance: number
+    with_unsupported: number
+    questions: { id: string; faithfulness: number; relevance: number; unsupported_claims: string[] }[]
+    skipped: { id: string; reason: string }[]
+    llm_calls: number
+  } | null
 }
 
 interface Health {
@@ -66,6 +79,7 @@ interface Health {
 }
 
 const pct = (x: number) => `${Math.round(x * 100)}%`
+const goldenQuery = new Map(GOLDEN_QUESTIONS.map((q) => [q.id, q.query]))
 const typeLabel = (t: string) => SOURCE_TYPE_LABELS[t as KnowledgeSourceType] ?? t
 const when = (iso: string | null) => {
   if (!iso) return '—'
@@ -83,6 +97,49 @@ function Sparkline({ values }: { values: number[] }) {
       <line x1={pad} x2={w - pad} y1={h - pad} y2={h - pad} className="stroke-border" strokeWidth={1} />
       <polyline points={pts} fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
+  )
+}
+
+/** LLM-judged answer quality of the latest live run (lib/rag/eval/answer-quality). */
+function AnswerQuality({ aq }: { aq: NonNullable<Run['answer_quality']> }) {
+  const { t } = useAdminT()
+  const unsupported = aq.questions.filter((q) => q.unsupported_claims.length)
+  return (
+    <Panel className="space-y-4">
+      <div>
+        <p className="text-sm font-medium text-foreground">{t('knowledge.aq.title')}</p>
+        <p className="text-xs text-muted-foreground">{t('knowledge.aq.about', { count: aq.judged })}</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label={t('knowledge.aq.faithfulness')} value={pct(aq.faithfulness)} hint={t('knowledge.aq.faithfulnessHint')} icon={<BadgeCheck />} />
+        <StatCard label={t('knowledge.aq.relevance')} value={pct(aq.relevance)} hint={t('knowledge.aq.relevanceHint')} icon={<MessageSquareQuote />} />
+        <StatCard
+          label={t('knowledge.aq.unsupported')}
+          value={t('knowledge.aq.unsupportedValue', { n: aq.with_unsupported, total: aq.judged })}
+          hint={t(aq.with_unsupported ? 'knowledge.aq.unsupportedSome' : 'knowledge.aq.unsupportedNone')}
+          icon={<CircleAlert />}
+          className={aq.with_unsupported ? 'border-amber-500/40' : undefined}
+        />
+      </div>
+      {unsupported.length > 0 && (
+        <ul className="space-y-3">
+          {unsupported.map((q) => (
+            <li key={q.id} className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+              <p className="font-medium text-foreground">“{goldenQuery.get(q.id) ?? q.id}”</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t('knowledge.aq.scores', { f: pct(q.faithfulness), r: pct(q.relevance) })}</p>
+              <p className="mt-2 text-xs font-medium text-foreground">{t('knowledge.aq.notSupported')}</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">
+                {q.unsupported_claims.map((c, i) => <li key={i}>{c}</li>)}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {t('knowledge.aq.calls', { count: aq.llm_calls })}
+        {aq.skipped.length ? ` · ${t('knowledge.aq.skipped', { count: aq.skipped.length, reasons: [...new Set(aq.skipped.map((x) => x.reason))].join('; ') })}` : ''}
+      </p>
+    </Panel>
   )
 }
 
@@ -132,6 +189,7 @@ export function EvaluationPanel() {
   const n = m?.positives ?? 0
   const leaks = latest ? latest.acl.golden_leaks + latest.acl.probe_leaks : 0
   const trend = [...runs].reverse()
+  const aq = latest?.answer_quality
 
   return (
     <div className="space-y-8">
@@ -185,6 +243,8 @@ export function EvaluationPanel() {
                 {' · '}{latest.embedding.available.length ? `semantic search on (${latest.embedding.corpus_model ?? latest.embedding.available[0]})` : 'keyword search only — no embedding key'}
               </p>
             </Panel>
+
+            {aq && <AnswerQuality aq={aq} />}
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <Panel className="space-y-3">

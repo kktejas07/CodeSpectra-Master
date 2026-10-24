@@ -146,7 +146,7 @@ export function oracleCanSee(
   if (caller.role === 'superadmin') return !tenantId || owner === null || owner === tenantId
   if (caller.role !== 'tenant_admin' || !caller.tenantId) return false
   if (owner === caller.tenantId) return row.visibility === 'tenant' || row.visibility === 'public'
-  return owner === null && row.visibility === 'public' && !STAFF_ONLY.has(String(row.source_type))
+  return owner === null && (row.visibility === 'public' || row.visibility === 'staff') && !STAFF_ONLY.has(String(row.source_type))
 }
 
 /** Ground-truth check for fixtures whose owner we know regardless of what was stored. */

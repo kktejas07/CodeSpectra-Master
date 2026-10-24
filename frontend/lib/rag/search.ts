@@ -11,7 +11,9 @@
  *         queryable (detected once, re-checked every 10 minutes), else
  *       - in-process cosine over a prefiltered, capped candidate set.
  *  3. Keyword: $text (weights in store.ts CHUNK_TEXT_INDEX).
- *  4. Reciprocal rank fusion, one hit per source, highlighted snippet.
+ *  4. Reciprocal rank fusion, then a cross-encoder rerank of the fused head
+ *     when a Cohere / Jina key is set (lib/rag/rerank; RAG_RERANK=0 off),
+ *     one hit per source, highlighted snippet.
  *
  * ── Atlas Vector Search setup (optional) ───────────────────────────────────
  * Atlas cluster (M10+ or Flex/serverless with Search). The app tries to create
@@ -39,8 +41,9 @@ import { andFilters, canSeeChunk, knowledgeAclFilter, MATCH_NOTHING, type AclFil
 import { embedTexts, EMBED_MODELS, OPENAI_EMBED_MODEL } from './embed'
 import { cosine, dedupeBySource, fusionConfig, highlightSnippet, reciprocalRankFusion, vectorRescue, vectorRescueConfig } from './fusion'
 import { dominantEmbeddingModel } from './ingest'
+import { RERANK_MAX_DOC_CHARS, rerankRows } from './rerank'
 import { ragChunks } from './store'
-import type { RagChunkDoc } from './types'
+import { DEFAULT_SEARCH_TYPES, type RagChunkDoc } from './types'
 import { vectorReadStore, type VectorQuery, type VectorStore } from './vector-store'
 
 export const ATLAS_VECTOR_INDEX = process.env.RAG_ATLAS_VECTOR_INDEX || 'rag_chunks_vector'
@@ -232,7 +235,8 @@ export async function searchKnowledge(args: KnowledgeSearchArgs): Promise<Knowle
   const { caller } = args
   // tenantId narrowing is a superadmin-only option; tenant admins are always their own tenant.
   const tenantId = caller.role === 'superadmin' ? args.tenantId ?? null : null
-  const filter = knowledgeAclFilter(caller, { types: args.types, tenantId })
+  // dev_doc (implementation docs) only when asked for — lib/rag/types DEFAULT_SEARCH_TYPES.
+  const filter = knowledgeAclFilter(caller, { types: args.types?.length ? args.types : DEFAULT_SEARCH_TYPES, tenantId })
   if (filter === MATCH_NOTHING) return []
   return runSearch(filter, (row) => canSeeChunk(caller, row, tenantId), args.query, args.limit, caller.userId)
 }
@@ -281,7 +285,13 @@ async function runSearch(filter: AclFilter, rowOk: (row: RagChunkDoc) => boolean
     .filter((x): x is { f: { id: string; score: number }; row: RagChunkDoc } => !!x.row && rowOk(x.row))
     .map(({ f, row }) => ({ ...row, _score: f.score }))
 
-  return dedupeBySource(ranked).slice(0, limit).map((r) => ({
+  // Cross-encoder rerank of the ACL-filtered head (lib/rag/rerank) — before the
+  // per-source dedupe, so the best chunk of each source is the one kept. No key /
+  // failure → fused order. `score` stays the fused score (its scale is what callers
+  // and the admin "Try a search" view know); the rerank relevance rides along.
+  const reranked = await rerankRows(query, ranked, (r) => bodyOf(r.text).slice(0, RERANK_MAX_DOC_CHARS), { userId })
+
+  return dedupeBySource(reranked).slice(0, limit).map((r) => ({
     chunk_id: r.id,
     source_type: r.source_type,
     source_id: r.source_id,
@@ -290,5 +300,6 @@ async function runSearch(filter: AclFilter, rowOk: (row: RagChunkDoc) => boolean
     snippet: highlightSnippet(bodyOf(r.text), query),
     score: Math.round(r._score * 10_000) / 10_000,
     retrieval,
+    ...(r.rerankScore !== undefined ? { rerank_score: Math.round(r.rerankScore * 10_000) / 10_000 } : {}),
   }))
 }

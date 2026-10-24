@@ -5,7 +5,7 @@
 import type { Db } from 'mongodb'
 import type { ExtractedSource, KnowledgeSourceType } from '../types'
 import { listCourseIds, listProblemIds, listQuestionIds, loadCourse, loadProblem, loadQuestion } from './library'
-import { listDocIds, loadDoc } from './docs'
+import { internalDocSource, listDocIds, listInternalDocIds, loadDoc } from './docs'
 import { listAttemptIds, listResultSummaryIds, listTestIds, loadAttempt, loadResultSummary, loadTest } from './assessments'
 import { listEventIds, loadCodeathon, loadHackathon } from './events'
 import { listUploadIds, loadUpload } from './uploads'
@@ -26,6 +26,7 @@ export async function loadSource(db: Db, type: KnowledgeSourceType, id: string):
     case 'question': return loadQuestion(db, id)
     case 'course': return loadCourse(db, id)
     case 'doc': return loadDoc(id)
+    case 'dev_doc': return internalDocSource(id)
     case 'test': return loadTest(db, id)
     case 'test_result_summary': return loadResultSummary(db, id)
     case 'attempt_summary': return loadAttempt(db, id)
@@ -54,6 +55,7 @@ export async function listSourceIds(db: Db, type: KnowledgeSourceType, tenantId?
     case 'question': return tenantId ? [] : listQuestionIds(db, limit)
     case 'course': return tenantId ? [] : listCourseIds(db, limit)
     case 'doc': return tenantId ? [] : listDocIds()
+    case 'dev_doc': return tenantId ? [] : listInternalDocIds()
     case 'test': return listTestIds(db, limit, tenantId)
     case 'test_result_summary': return listResultSummaryIds(db, limit, tenantId)
     case 'attempt_summary': return listAttemptIds(db, limit, tenantId)

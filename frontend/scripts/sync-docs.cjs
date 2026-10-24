@@ -2,7 +2,10 @@
 /**
  * Keep frontend/docs in sync with repo-root docs/ for Docker builds.
  * Build context is frontend/, so markdown must live under frontend/docs.
- * Source of truth: ../docs/{public,user}
+ * Source of truth: ../docs — every folder and root .md file. public + user are
+ * served on /docs; the rest are indexed for the admin assistant only
+ * (lib/rag/sources/docs.ts INTERNAL_DOC_FOLDERS) and never served.
+ * Mirror-only entries (frontend/docs/design, i18n, …) are left alone.
  */
 const fs = require('fs')
 const path = require('path')
@@ -30,11 +33,15 @@ if (!fs.existsSync(rootDocs)) {
   process.exit(0)
 }
 
-for (const section of ['public', 'user']) {
-  const src = path.join(rootDocs, section)
-  if (!fs.existsSync(src)) continue
-  const dest = path.join(destDocs, section)
-  fs.rmSync(dest, { recursive: true, force: true })
-  copyDir(src, dest)
+fs.mkdirSync(destDocs, { recursive: true })
+for (const entry of fs.readdirSync(rootDocs, { withFileTypes: true })) {
+  const src = path.join(rootDocs, entry.name)
+  const dest = path.join(destDocs, entry.name)
+  if (entry.isDirectory()) {
+    fs.rmSync(dest, { recursive: true, force: true })
+    copyDir(src, dest)
+  } else if (entry.name.endsWith('.md')) {
+    fs.copyFileSync(src, dest)
+  }
 }
-console.log('[sync-docs] mirrored docs/public + docs/user → frontend/docs')
+console.log('[sync-docs] mirrored docs/ → frontend/docs')
