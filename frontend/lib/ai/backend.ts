@@ -18,6 +18,7 @@
 
 import { internalBackendUrl } from '@/lib/ai/internal-backend-url'
 import { estimateTokens, reportAiUsage } from '@/lib/ai/usage-meter'
+import { langfuseGeneration } from '@/lib/ai/langfuse'
 
 // AGT-027: INTERNAL_BACKEND_URL is required in production (no baked-in host).
 const backendBase = () => internalBackendUrl()
@@ -204,6 +205,32 @@ async function recordCompletion(
       ok,
       injectionFlags,
     })
+
+    // Langfuse observability — fire-and-forget, never fails the request.
+    void langfuseGeneration({
+      name: args.feature || 'unknown',
+      model,
+      userId: args.userId,
+      input: { system: args.systemMessage?.slice(0, 500), user: args.userMessage?.slice(0, 500) },
+      output: res?.text?.slice(0, 500) ?? (res?.json ? JSON.stringify(res.json).slice(0, 500) : undefined),
+      usage: { input: inputTokens, output: outputTokens, unit: 'TOKENS' },
+      latencyMs,
+      level: ok ? 'DEFAULT' : 'ERROR',
+      metadata: {
+        provider,
+        feature: args.feature ?? null,
+        cacheHit: opts.cacheHit ?? false,
+        costMicros: r.costMicros,
+        ...(injectionFlags.length ? { injectionFlags } : {}),
+      },
+      tags: [
+        `provider:${provider}`,
+        `feature:${args.feature || 'unknown'}`,
+        ...(opts.cacheHit ? ['cache-hit'] : []),
+        ...(injectionFlags.length ? ['injection-flagged'] : []),
+      ],
+    }).catch(() => { /* never fail */ })
+
     return { provider, model, inputTokens, outputTokens, costMicros: r.costMicros }
   } catch {
     // Telemetry must never fail the request.

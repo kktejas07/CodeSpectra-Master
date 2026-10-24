@@ -102,6 +102,7 @@ export type ServerSecretsRecord = {
   exa_api_key?: string
   langchain_api_key?: string
   langfuse_api_key?: string
+  mem0_api_key?: string
   notion_api_key?: string
   slack_api_key?: string
   stability_api_key?: string
