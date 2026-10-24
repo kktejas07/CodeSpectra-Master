@@ -957,6 +957,21 @@
   color: var(--cs-ink);
   font-stretch: 100%;
 }
+/* Dark mode: the brand blue on the dark paper (#080c14) was 3.4:1 — use the
+ * dark theme's lighter primary so small brand text stays >= 4.5:1. */
+.dark .cs-brand {
+  --primary: 225 100% 68%;
+  --primary-foreground: 220 40% 5%;
+  --ring: 225 100% 68%;
+}
+/* …except the always-light hero (.cs-light), which keeps the light-theme blue. */
+.dark .cs-brand .cs-light,
+.dark .cs-light .cs-brand,
+.dark .cs-brand.cs-light {
+  --primary: 226 79% 54%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 226 79% 54%;
+}
 /* Condensed display type: the width axis is the brand's voice. */
 .cs-display {
   font-stretch: 68%;
