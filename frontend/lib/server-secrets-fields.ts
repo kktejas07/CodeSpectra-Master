@@ -43,6 +43,7 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'exa_api_key',
   'langchain_api_key',
   'langfuse_api_key',
+  'mem0_api_key',
   'notion_api_key',
   'slack_api_key',
   'stability_api_key',

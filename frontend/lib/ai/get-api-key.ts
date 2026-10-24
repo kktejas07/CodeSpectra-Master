@@ -26,7 +26,7 @@ export type ProviderId =
   | 'cloudflare_workers' | 'sambanova' | 'nscale' | 'chutes'
   | 'modelscope' | 'langchain' | 'langfuse' | 'pinecone' | 'qdrant'
   | 'tavily' | 'firecrawl' | 'serper' | 'jina' | 'exa'
-  | 'notion' | 'slack' | 'google_knowledge' | 'browserbase'
+  | 'mem0' | 'notion' | 'slack' | 'google_knowledge' | 'browserbase'
   | 'brightdata' | 'scrapingbee' | 'custom'
 
 // Map provider names to secret key field names
@@ -63,6 +63,7 @@ const PROVIDER_SECRET_MAP: Record<ProviderId, string> = {
   modelscope: 'modelscope_api_key',
   langchain: 'langchain_api_key',
   langfuse: 'langfuse_api_key',
+  mem0: 'mem0_api_key',
   pinecone: 'pinecone_api_key',
   qdrant: 'qdrant_api_key',
   tavily: 'tavily_api_key',
