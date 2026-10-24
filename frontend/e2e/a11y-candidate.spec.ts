@@ -76,6 +76,12 @@ for (const path of PAGES) {
     await page.waitForTimeout(1500)
     expect(res?.status() ?? 0).toBeLessThan(400)
     await expect(page).not.toHaveURL(/\/auth\/login/)
+    // The test screen sends the candidate home when the exam can't be loaded;
+    // say why instead of silently checking the landing page.
+    if (path.startsWith('/assessment/') && !path.includes('/demo/') && new URL(page.url()).pathname !== path) {
+      const api = await page.request.get(`/api/exams/${path.split('/').pop()}`)
+      throw new Error(`${path} redirected to ${page.url()} — GET /api/exams → ${api.status()} ${(await api.text()).slice(0, 300)}`)
+    }
     await expectNoCritical(page, path)
     // Test screen: get past the start / consent step to the questions (best effort —
     // the start screen itself was checked above).

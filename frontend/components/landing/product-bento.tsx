@@ -48,7 +48,7 @@ function QuestionStack({ sample }: { sample: QuestionSample }) {
       <div className="relative w-[82%] max-w-[380px] rounded-2xl border border-border bg-card p-4 shadow-[0_12px_30px_-16px_rgba(15,23,41,0.35)]">
         <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
           <span>{sample.progress}</span>
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">{sample.points}</span>
+          <span className="rounded-full bg-primary px-2 py-0.5 text-primary-foreground">{sample.points}</span>
         </div>
         <p className="mt-2 text-sm font-semibold text-foreground">{sample.question}</p>
         <ul className="mt-3 space-y-1.5 text-xs">
