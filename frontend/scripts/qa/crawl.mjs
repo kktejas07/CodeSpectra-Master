@@ -174,7 +174,8 @@ function focusProbe() {
 async function main() {
   const t0 = Date.now()
   const browser = await launch()
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, ignoreHTTPSErrors: true })
+  // Reduced motion: axe must measure settled colours, not a fade-in halfway through.
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, ignoreHTTPSErrors: true, reducedMotion: 'reduce' })
   const report = { base: BASE, startedAt: new Date().toISOString(), pages: {}, brokenLinks: [], unverifiedLinks: [], summary: {} }
   const AxeBuilder = AXE ? (await import('@axe-core/playwright')).default : null
   const queue = ONLY ? String(ONLY).split(',').map((x) => x.trim()).filter(Boolean) : [...SEEDS]
@@ -261,7 +262,7 @@ async function main() {
           const r = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
           entry.axe = r.violations
             .filter((v) => v.impact === 'serious' || v.impact === 'critical')
-            .map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.length, targets: v.nodes.slice(0, 3).map((n) => String(n.target?.[0] ?? '').slice(0, 120)) }))
+            .map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.length, targets: v.nodes.slice(0, 3).map((n) => String(n.target?.[0] ?? '').slice(0, 120)), summary: String(v.nodes[0]?.failureSummary ?? '').replace(/\s+/g, ' ').slice(0, 220) }))
         } catch (err) {
           entry.axeError = String(err?.message || err).split('\n')[0].slice(0, 200)
         }
@@ -393,7 +394,7 @@ async function main() {
       for (const e of [...s.serverErrors, ...s.navErrors].slice(0, 10)) ann(`page error ${e.page} ${e.status ?? e.error}`)
       for (const t of titleIssues.slice(0, 10)) ann(`title ${t.issue}: ${t.title ?? t.page}${t.pages ? ' on ' + t.pages.join(', ') : ''}`)
       if (s.positiveTabindexPages) ann(`${s.positiveTabindexPages} pages use a positive tabindex`)
-      if (axeGating) for (const [p, e] of pages) for (const v of (e.axe || []).filter(axeGates).slice(0, 3)) ann(`axe ${v.impact} ${v.id} on ${p}: ${v.help} (${v.targets[0] ?? ''})`)
+      if (axeGating) for (const [p, e] of pages) for (const v of (e.axe || []).filter(axeGates).slice(0, 3)) ann(`axe ${v.impact} ${v.id} on ${p}: ${v.help} (${v.targets[0] ?? ''}) ${v.summary ?? ''}`)
     }
     console.error(`\nQA crawl failed: ${gating} gating finding(s).`)
     process.exit(1)
