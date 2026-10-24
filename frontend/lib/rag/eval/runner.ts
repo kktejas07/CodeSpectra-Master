@@ -16,6 +16,8 @@ export interface RunDeps {
   /** Known owners of fixture sources (offline). */
   owners?: Record<string, { tenant: string | null; adminOnly: boolean }>
   limit?: number
+  /** Sees each question's raw hits (snippets included) — kept in memory only, e.g. for answer quality. */
+  onHits?: (q: GoldenQuestion, hits: KnowledgeHit[]) => void
 }
 
 export const hitKey = (h: Pick<KnowledgeHit, 'source_type' | 'source_id'>) => `${h.source_type}:${h.source_id}`
@@ -23,8 +25,9 @@ export const hitKey = (h: Pick<KnowledgeHit, 'source_type' | 'source_id'>) => `$
 export async function runQuestion(q: GoldenQuestion, deps: RunDeps): Promise<QuestionResult> {
   const caller = deps.callerFor(q.as)
   const started = performance.now()
-  const hits = await deps.search({ caller, query: q.query, limit: deps.limit ?? 10 })
+  const hits = await deps.search({ caller, query: q.query, limit: deps.limit ?? 10, ...(q.types ? { types: q.types } : {}) })
   const latency = performance.now() - started
+  deps.onHits?.(q, hits)
   const rows = await deps.rowsById(hits.map((h) => h.chunk_id))
   const leaks: { key: string; reason: string }[] = []
   const forbid = new Set(q.forbid ?? [])

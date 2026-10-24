@@ -117,7 +117,7 @@ describe('knowledge ACL filter', () => {
     const f = knowledgeAclFilter(TA) as { $or: Array<Record<string, unknown>> }
     expect(f.$or[0]).toEqual({ tenant_key: 'acme', visibility: { $in: ['tenant', 'public'] } })
     expect(f.$or[1].tenant_key).toBe('_platform')
-    expect(f.$or[1].visibility).toBe('public')
+    expect(f.$or[1].visibility).toEqual({ $in: ['public', 'staff'] }) // staff = implementation docs, admins only
     const platformTypes = (f.$or[1].source_type as { $in: string[] }).$in
     expect(platformTypes).not.toContain('resume')
     expect(platformTypes).not.toContain('attempt_summary')

@@ -3477,5 +3477,22 @@
   "problemsReview.requestFailed": "अनुरोध विफल रहा",
   "problemsReview.difficulty.easy": "आसान",
   "problemsReview.difficulty.medium": "मध्यम",
-  "problemsReview.difficulty.hard": "कठिन"
+  "problemsReview.difficulty.hard": "कठिन",
+  "knowledge.aq.title": "उत्तर की गुणवत्ता",
+  "knowledge.aq.about_one": "{count} प्रश्न के लिए AI ने केवल शीर्ष 5 परिणामों से उत्तर लिखा, फिर दूसरी AI कॉल ने उसे उन्हीं से जाँचा। जिन प्रश्नों के परिणामों में उम्मीदवार का डेटा है, वे शामिल नहीं हैं।",
+  "knowledge.aq.about_other": "{count} प्रश्नों के लिए AI ने केवल शीर्ष 5 परिणामों से उत्तर लिखा, फिर दूसरी AI कॉल ने उसे उन्हीं से जाँचा। जिन प्रश्नों के परिणामों में उम्मीदवार का डेटा है, वे शामिल नहीं हैं।",
+  "knowledge.aq.faithfulness": "विश्वसनीयता",
+  "knowledge.aq.faithfulnessHint": "स्रोतों से समर्थित दावे",
+  "knowledge.aq.relevance": "प्रासंगिकता",
+  "knowledge.aq.relevanceHint": "उत्तर प्रश्न का कितना अच्छा जवाब देते हैं",
+  "knowledge.aq.unsupported": "असमर्थित दावे",
+  "knowledge.aq.unsupportedValue": "{total} में से {n}",
+  "knowledge.aq.unsupportedSome": "कुछ उत्तरों ने वह कहा जो स्रोतों में नहीं है",
+  "knowledge.aq.unsupportedNone": "हर उत्तर स्रोतों तक सीमित रहा",
+  "knowledge.aq.scores": "विश्वसनीयता {f} · प्रासंगिकता {r}",
+  "knowledge.aq.notSupported": "स्रोतों से समर्थित नहीं:",
+  "knowledge.aq.calls_one": "{count} AI कॉल",
+  "knowledge.aq.calls_other": "{count} AI कॉल",
+  "knowledge.aq.skipped_one": "{count} प्रश्न का स्कोर नहीं हुआ ({reasons})",
+  "knowledge.aq.skipped_other": "{count} प्रश्नों का स्कोर नहीं हुआ ({reasons})"
 }

@@ -18,7 +18,7 @@ import { eligibleQuestions } from '@/lib/rag/eval/live'
 import { capPerType } from '@/lib/rag/eval/offline'
 import { cosine } from '@/lib/rag/fusion'
 import { KNOWLEDGE_SOURCE_TYPES } from '@/lib/rag/types'
-import { jsxPageToMarkdown, listDocIds } from '@/lib/rag/sources/docs'
+import { jsxPageToMarkdown, listDocIds, listInternalDocIds } from '@/lib/rag/sources/docs'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { SEED_PROBLEMS_BULK } from '../scripts/seed-problems-bulk'
 import type { AgentCaller } from '@/lib/agent/contract'
@@ -162,7 +162,7 @@ describe('golden set', () => {
 
   it('points at sources that really exist', async () => {
     const problems = new Set([...SEED_PROBLEMS, ...SEED_PROBLEMS_BULK].map((p) => `problem:${p.id}`))
-    const docs = new Set((await listDocIds()).map((id) => `doc:${id}`))
+    const docs = new Set([...(await listDocIds()).map((id) => `doc:${id}`), ...(await listInternalDocIds()).map((id) => `dev_doc:${id}`)])
     for (const q of GOLDEN_QUESTIONS) {
       for (const k of [...q.expect, ...(q.forbid ?? [])]) {
         if (q.fixture === 'real') expect(problems.has(k) || docs.has(k), `${q.id} → ${k}`).toBe(true)

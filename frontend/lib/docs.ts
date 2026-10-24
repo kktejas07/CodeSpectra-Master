@@ -6,7 +6,7 @@ import type { DocMeta, DocPage, DocSection, ServeSection } from './docs-shared'
 export type { DocMeta, DocPage, DocSection, ServeSection }
 export { docHref, docDescription, flattenDocs, getAdjacentDocs } from './docs-shared'
 
-function resolveDocsRoot(): string {
+export function resolveDocsRoot(): string {
   const cwd = process.cwd()
   // Dev monorepo: frontend/ → ../docs (source of truth)
   // Docker: /app/docs (mirrored via scripts/sync-docs.cjs → frontend/docs)

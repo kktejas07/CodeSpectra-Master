@@ -3477,5 +3477,22 @@
   "problemsReview.requestFailed": "అభ్యర్థన విఫలమైంది",
   "problemsReview.difficulty.easy": "సులభం",
   "problemsReview.difficulty.medium": "మధ్యస్థం",
-  "problemsReview.difficulty.hard": "కష్టం"
+  "problemsReview.difficulty.hard": "కష్టం",
+  "knowledge.aq.title": "సమాధాన నాణ్యత",
+  "knowledge.aq.about_one": "{count} ప్రశ్నకు AI కేవలం మొదటి 5 ఫలితాల నుండి సమాధానం రాసింది, తర్వాత రెండో AI కాల్ దాన్ని వాటితో సరిచూసింది. అభ్యర్థి డేటా ఉన్న ఫలితాల ప్రశ్నలు వదిలివేయబడ్డాయి.",
+  "knowledge.aq.about_other": "{count} ప్రశ్నలకు AI కేవలం మొదటి 5 ఫలితాల నుండి సమాధానాలు రాసింది, తర్వాత రెండో AI కాల్ వాటిని ఆ ఫలితాలతో సరిచూసింది. అభ్యర్థి డేటా ఉన్న ఫలితాల ప్రశ్నలు వదిలివేయబడ్డాయి.",
+  "knowledge.aq.faithfulness": "విశ్వసనీయత",
+  "knowledge.aq.faithfulnessHint": "మూలాల మద్దతు ఉన్న వాదనలు",
+  "knowledge.aq.relevance": "సంబంధితత",
+  "knowledge.aq.relevanceHint": "సమాధానాలు ప్రశ్నకు ఎంత బాగా జవాబిస్తాయి",
+  "knowledge.aq.unsupported": "మద్దతు లేని వాదనలు",
+  "knowledge.aq.unsupportedValue": "{total}లో {n}",
+  "knowledge.aq.unsupportedSome": "కొన్ని సమాధానాలు మూలాల్లో లేనిది చెప్పాయి",
+  "knowledge.aq.unsupportedNone": "ప్రతి సమాధానం మూలాలకే పరిమితమైంది",
+  "knowledge.aq.scores": "విశ్వసనీయత {f} · సంబంధితత {r}",
+  "knowledge.aq.notSupported": "మూలాల మద్దతు లేనివి:",
+  "knowledge.aq.calls_one": "{count} AI కాల్",
+  "knowledge.aq.calls_other": "{count} AI కాల్స్",
+  "knowledge.aq.skipped_one": "{count} ప్రశ్నకు స్కోర్ ఇవ్వలేదు ({reasons})",
+  "knowledge.aq.skipped_other": "{count} ప్రశ్నలకు స్కోర్ ఇవ్వలేదు ({reasons})"
 }

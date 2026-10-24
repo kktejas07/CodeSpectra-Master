@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * Hand-written guide content for the dashboard Guide drawer (the `?` button).
  * One entry per tour id in TOUR_ID_FOR_PATHS. Each entry explains, Unstop-style:
@@ -137,24 +135,6 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: [
       'Tailor your resume per role from the Resumes page before applying.',
       'Follow up on long-pending applications via the company link.',
-    ],
-  },
-  quizzes: {
-    title: 'Quizzes',
-    about: 'Company-style mock quizzes for SDE, data, and analyst roles.',
-    features: [
-      {
-        title: 'Search and filter',
-        text: 'Find quizzes by company or role, or open All Filters by category and level.',
-      },
-      {
-        title: 'Quiz cards',
-        text: 'Each card shows questions, duration, and difficulty — pick one to start.',
-      },
-    ],
-    tips: [
-      'Attempt company quizzes before real interviews with those companies.',
-      'Review wrong answers right after finishing while context is fresh.',
     ],
   },
   'mock-tests': {
@@ -1974,5 +1954,970 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
       },
     ],
     tips: ['Test with a dry run before enabling — live workflows are hard to unwind.'],
+  },
+  // ── Hiring (ATS) — open to hiring-team members, organisation admins and superadmins ──
+  hiring: {
+    title: 'Hiring overview',
+    about:
+      'The recruiter home page: open roles, who is moving through the pipeline, and what is waiting for you. Only members of a hiring team (and organisation admins) can open the Hiring area.',
+    features: [
+      {
+        title: 'Headline numbers',
+        text: 'Open jobs, candidates in the pipeline, moves waiting for approval and interviews this week. Click a number to jump to that list.',
+      },
+      {
+        title: 'Funnel',
+        text: 'How many candidates reached each stage across your jobs, with the share that came through from the previous stage. Full analytics opens the Analytics page.',
+      },
+      {
+        title: 'Waiting for you',
+        text: 'The latest suggested moves that need your OK. Each row opens the candidate; See all opens Approvals.',
+      },
+      {
+        title: 'Interviews this week',
+        text: 'Scheduled interviews for the next seven days with mode, length and panel.',
+      },
+      {
+        title: 'Open jobs and New job',
+        text: 'Your open roles with status and active candidate count. New job (top right) starts the job editor.',
+      },
+    ],
+    tips: [
+      'Interviewers only see their own interviews — if the overview says it is for recruiters, use My interviews instead.',
+      'Ask your hiring admin for access if Hiring says you are not on a hiring team; pending invites arrive by email.',
+    ],
+  },
+  'hiring-jobs': {
+    title: 'Jobs',
+    about: 'Every role your team is hiring for. Each job has its own pipeline, screening rules and apply link.',
+    features: [
+      {
+        title: 'Status filter',
+        text: 'Switch between Open, Draft, On hold, Closed, Filled and All — each tab shows its count.',
+      },
+      {
+        title: 'Search and client filter',
+        text: 'Search by title, location or department. If you hire for clients, filter the list to one client.',
+      },
+      {
+        title: 'Job cards',
+        text: 'Client (or In-house), status, location, work mode, openings, a Public badge when the apply page is on, candidates per stage and how many moves wait for approval.',
+      },
+      {
+        title: 'New job',
+        text: 'Opens the job editor to describe the role, set screening and build the pipeline.',
+      },
+    ],
+    tips: ['Open a job card to see its pipeline board and add candidates.'],
+  },
+  'hiring-job-editor': {
+    title: 'Job editor',
+    about:
+      'Create or edit a job in three tabs: Details, Screening and Pipeline. You can change all of it later.',
+    features: [
+      {
+        title: 'Details',
+        text: 'Title, client (or in-house), department, location, work mode, job type, openings, experience and salary range, status, description and requirements. The Public apply page switch lists the job on the jobs board with a link anyone can apply through.',
+      },
+      {
+        title: 'Screening criteria',
+        text: 'Every résumé is scored against these: must-have and nice-to-have skills, keywords, years of experience, education, accepted locations, notice period, salary cap, an optional AI fit score, weights and a pass score.',
+      },
+      {
+        title: 'Pipeline',
+        text: 'Start from a template (Tech hiring, Campus, Staffing, India hiring, US hiring) or Add stage. Drag or use the arrow buttons to reorder. Open a stage to choose what happens on pass (move on automatically or wait for approval) and on fail (reject, hold or ask me to review), set a time limit and who gets notified.',
+      },
+      {
+        title: 'Stage settings',
+        text: 'Each stage type has its own options — e.g. the test for an assessment, questions and channels for a bot screen, panel and duration for interviews, checks for background verification, the compensation form for the HR round, and the offer template.',
+      },
+      {
+        title: 'Save or publish',
+        text: 'Save keeps your changes; Publish (or Save and publish) opens the job. If you remove a stage that still has candidates, pick where they move before saving.',
+      },
+    ],
+    tips: [
+      'Pipeline changes apply to new moves — candidates already in a stage stay where they are.',
+      'Read the suggestions under the pipeline; they flag common gaps before you publish.',
+    ],
+  },
+  'hiring-job': {
+    title: 'Job pipeline',
+    about: 'One job: its candidates by stage, bulk actions, new candidates and the job’s own analytics.',
+    features: [
+      {
+        title: 'Board and List views',
+        text: 'Board shows a column per stage — open a card, move it, reject it, or approve / decline a suggested move. List lets you select candidates to move, reject or rescreen together.',
+      },
+      {
+        title: 'Filters',
+        text: 'Search by name, email, skill or tag, set a minimum match score (50+, 70+, 85+), show only candidates waiting for approval, and include rejected candidates.',
+      },
+      {
+        title: 'Add candidates',
+        text: 'Copy the public apply link, drag in up to 200 résumés, import a CSV of up to 1,000 rows, add one candidate by hand (e.g. a referral), or pick good fits from your talent pool.',
+      },
+      {
+        title: 'Analytics tab',
+        text: 'The funnel and timing numbers for this job only.',
+      },
+      {
+        title: 'Edit job and Best matches',
+        text: 'Edit job reopens the editor; Best matches lists discoverable learners whose verified skills fit the role.',
+      },
+    ],
+    tips: [
+      'Moving a candidate by hand skips any approval for that step and sends the next stage’s messages.',
+      'Reject and hold reasons are kept in the history, not sent to the candidate.',
+    ],
+  },
+  'hiring-matches': {
+    title: 'Best matches',
+    about:
+      'Learners who chose to be discoverable, ranked for this job by verified skills and location. Invite them to apply.',
+    features: [
+      {
+        title: 'Match score',
+        text: 'A score out of 100 with the parts that made it up, the skills they have verified (with level) and the ones not shown yet.',
+      },
+      {
+        title: 'Invite to apply',
+        text: 'Sends a talent invite for this job. The button changes to Invited once it is sent.',
+      },
+    ],
+    tips: ['No matches? Add skills to the job — matching uses the skills the job lists.'],
+  },
+  'hiring-candidates': {
+    title: 'Candidates',
+    about: 'Everyone in your organisation’s talent pool, across all jobs.',
+    features: [
+      {
+        title: 'Search',
+        text: 'Find people by name, email, phone or skill.',
+      },
+      {
+        title: 'Source and tag filters',
+        text: 'Narrow to one source (how they came in) or one tag. Clicking a tag in the table filters by it.',
+      },
+      {
+        title: 'Candidate table',
+        text: 'Name and contact, top skills, tags, source and when they were added. Click a name to open the profile.',
+      },
+    ],
+    tips: ['Candidates appear here as they apply or as you upload résumés to a job.'],
+  },
+  'hiring-candidate': {
+    title: 'Candidate profile',
+    about: 'One candidate: contact details, tags, every job they are in, and the full record of the selected application.',
+    features: [
+      {
+        title: 'Contact and tags',
+        text: 'Email and phone links, plus tags you can add and save for filtering later.',
+      },
+      {
+        title: 'Applications',
+        text: 'Each job they are in with stage, status and match score — pick one to see its details.',
+      },
+      {
+        title: 'Actions',
+        text: 'Move, Hold, Reject or Reactivate. Depending on the stage you also get Schedule interview, Restart screening, Rescreen résumé, or Client approved / Client rejected. A suggested move shows Approve and Decline.',
+      },
+      {
+        title: 'Match, Stages, Timeline, Résumé',
+        text: 'The match score breakdown and missing must-haves, results per stage (including the HR round compensation form), the full history with comments, and the parsed résumé.',
+      },
+      {
+        title: 'Comments',
+        text: 'Add a note for the team. On client jobs you can switch on Share with the client.',
+      },
+    ],
+    tips: ['Add a reason when you reject or hold — it stays in the history for the rest of the team.'],
+  },
+  'hiring-approvals': {
+    title: 'Approvals',
+    about: 'Moves the pipeline suggested and is waiting for you to confirm.',
+    features: [
+      {
+        title: 'Approval list',
+        text: 'Each row shows the candidate, match score, job, the move (from → to) and why it was suggested.',
+      },
+      {
+        title: 'Approve or decline',
+        text: 'Decide one row at a time, or tick several (or Select all) and approve or decline them together.',
+      },
+      {
+        title: 'Filter by job',
+        text: 'When moves come from more than one job, narrow the list to one job.',
+      },
+    ],
+    tips: ['A stage set to “Wait for my approval” sends its passing candidates here.'],
+  },
+  'hiring-analytics': {
+    title: 'Hiring analytics',
+    about: 'Assessments, candidate and hiring funnels, time to hire and where candidates come from.',
+    features: [
+      {
+        title: 'Tabs',
+        text: 'Overview & assessments, Hiring pipeline, Funnel and time, Sources and offers, Test quality, Interviewers and On-the-job.',
+      },
+      {
+        title: 'Job and period filters',
+        text: 'Outside the overview, narrow to one job and to the last 30, 90, 180 or 365 days, or all time.',
+      },
+      {
+        title: 'Weekly email digest',
+        text: 'On the overview tab: every Monday hiring admins and recruiters get last week’s totals (no candidate details). Turn it on or off for the organisation, or stop it just for you.',
+      },
+    ],
+    tips: ['Compare sources over 90 days or more — short periods swing a lot.'],
+  },
+  'hiring-interviews': {
+    title: 'Interviews',
+    about: 'Your interviews, what still needs a scorecard, and what is waiting for a time.',
+    features: [
+      {
+        title: 'Upcoming / To score / Needs a time / Past',
+        text: 'Interviews grouped by what you need to do, each with a count.',
+      },
+      {
+        title: 'Whose interviews',
+        text: 'Recruiters and admins can switch between interviews they are on and everyone’s.',
+      },
+      {
+        title: 'Interview rows',
+        text: 'Candidate, job and stage, time (or the slot the candidate asked for), length, meeting type, status and whether your scorecard is in. Click to open the interview.',
+      },
+    ],
+    tips: ['After an interview starts, it moves to To score until you submit your scorecard.'],
+  },
+  'hiring-interview': {
+    title: 'Interview',
+    about: 'One interview: when and where, joining, scheduling and panel (recruiters), your scorecard and the panel’s feedback.',
+    features: [
+      {
+        title: 'Join',
+        text: 'Built-in video opens the interview room — it opens 15 minutes before the start. Zoom, Google Meet, Teams or a pasted link opens in a new tab. In-person interviews show the address and map link.',
+      },
+      {
+        title: 'Scheduling (recruiters)',
+        text: 'Book a time with the meeting type and length, or let the candidate pick a time themselves and copy their link. Later you can reschedule, mark completed, mark that the candidate didn’t show, or cancel.',
+      },
+      {
+        title: 'Interview panel',
+        text: 'Add or remove interviewers and save the panel. Only panel members can submit a scorecard.',
+      },
+      {
+        title: 'Your scorecard',
+        text: 'Rate each area from 1 to 5, give a recommendation and add notes. Other interviewers’ scores show after you submit.',
+      },
+      {
+        title: 'Candidate summary',
+        text: 'Match score, contact, skills and résumé, plus results from earlier steps (not shown to interviewers).',
+      },
+    ],
+    tips: ['Times are shown in the interview’s time zone; everyone gets an email with a calendar invite.'],
+  },
+  'hiring-interview-room': {
+    title: 'Interview room',
+    about: 'The built-in video room for the interview panel.',
+    features: [
+      {
+        title: 'Mic and camera',
+        text: 'Mute or unmute your microphone and turn your camera on or off from the buttons at the top.',
+      },
+      {
+        title: 'Leave',
+        text: 'Leaves the call and takes you back to the interview page, where you can submit your scorecard.',
+      },
+    ],
+    tips: ['Allow camera and microphone access in your browser when it asks.'],
+  },
+  'hiring-client-portal': {
+    title: 'Client portal',
+    about: 'For client reviewers invited by a hiring team: review shortlisted candidates for your roles.',
+    features: [
+      {
+        title: 'Your roles',
+        text: 'Each role shared with you, with candidates per stage and how many are waiting for your review.',
+      },
+      {
+        title: 'Candidate review',
+        text: 'Open a role to see shared candidates with their match, skills, stage results and résumé summary. Approve or Reject the ones waiting for you.',
+      },
+      {
+        title: 'Comments',
+        text: 'Share feedback with the hiring team on any candidate.',
+      },
+    ],
+    tips: [
+      'Add a comment before rejecting if you want the hiring team to know why.',
+      'Contact details stay with the hiring team unless they choose to share them.',
+    ],
+  },
+  'hiring-clients': {
+    title: 'Clients',
+    about: 'Companies you hire for. Link jobs to a client and invite their contacts to review candidates.',
+    features: [
+      {
+        title: 'New client',
+        text: 'Add the client’s name, an optional https logo link and contacts (name, email, optional phone).',
+      },
+      {
+        title: 'Edit or delete',
+        text: 'Use the pencil or bin on a client card. A client can be deleted once no jobs or team members are linked to it.',
+      },
+    ],
+    tips: [
+      'Hiring only for your own company? You can skip this page.',
+      'Invite client contacts as reviewers from the Team page.',
+    ],
+  },
+  'hiring-talent': {
+    title: 'Talent search',
+    about:
+      'Find learners who chose to be discoverable, by skills CodeSpectra verified, and invite them to a test, job or interview.',
+    features: [
+      {
+        title: 'Search',
+        text: 'Add up to five skills and a minimum level, plus country, city, graduation years and availability. Results show verified skills and a match score.',
+      },
+      {
+        title: 'Invite',
+        text: 'Invite someone to a job, a published test or an interview, with an optional message. Contact details unlock only if they accept.',
+      },
+      {
+        title: 'Sent invites',
+        text: 'Every invite with its status; withdraw one that is still open. A monthly invite allowance is shown.',
+      },
+    ],
+    tips: ['No results? Try fewer skills, a lower level or a wider location.'],
+  },
+  'hiring-team': {
+    title: 'Hiring team',
+    about:
+      'Invite recruiters, hiring managers, interviewers and client reviewers. Each person only sees what their role allows.',
+    features: [
+      {
+        title: 'Invite someone',
+        text: 'Email, optional name and role. Client reviewers (and hiring managers, optionally) are tied to a client.',
+      },
+      {
+        title: 'Roles',
+        text: 'Admin: everything including team and settings. Recruiter: create jobs, move candidates, approve, schedule. Hiring manager: their jobs. Interviewer: only their interviews and scorecards. Client: their company’s jobs at client-review stages.',
+      },
+      {
+        title: 'Members',
+        text: 'Change a role, resend an invite, disable / enable or remove someone.',
+      },
+      {
+        title: 'Access',
+        text: 'Choose whether recruiters see every job (off: only jobs they are assigned to) and whether clients see candidate contact details.',
+      },
+    ],
+    tips: ['Add a client under Clients before inviting its reviewers.'],
+  },
+  'hiring-settings': {
+    title: 'Hiring settings',
+    about: 'The settings hub for hiring admins — pick what to set up.',
+    features: [
+      {
+        title: 'Bot screening',
+        text: 'Providers, regional numbers, messages and timing for automated candidate screening.',
+      },
+      {
+        title: 'Background checks',
+        text: 'Region checklists, consent texts, vendors and retention for background verification.',
+      },
+      {
+        title: 'Integrations',
+        text: 'Connect the meeting apps your team interviews on.',
+      },
+    ],
+    tips: ['Only hiring admins can change these settings; others can view them.'],
+  },
+  'hiring-screening': {
+    title: 'Bot screening settings',
+    about:
+      'How candidates are screened on WhatsApp chat, WhatsApp calls or a regional phone number. Messages and calls only go out in your outreach hours, in the candidate’s local time.',
+    features: [
+      {
+        title: 'Connections',
+        text: 'Keys for WhatsApp (Meta), the voice bot (Vapi), Twilio and Exotel calling, and voice-note transcription. Channels that aren’t set up use a simulated provider.',
+      },
+      {
+        title: 'Numbers per region',
+        text: 'Pick WhatsApp and caller numbers by the candidate’s country; * is your default. Leave empty to use the platform’s numbers.',
+      },
+      {
+        title: 'Messages and timing',
+        text: 'WhatsApp chat and call template names and language, an optional voice agent SIP URI, outreach hours, and when to remind, retry a missed call or give up.',
+      },
+      {
+        title: 'Webhook URLs',
+        text: 'Copy the URLs to paste into Meta, Vapi, Twilio and Exotel.',
+      },
+      {
+        title: 'Test with my number',
+        text: 'Run the real flow on your phone with three sample questions; nothing is added to a pipeline. Unconfigured channels run a simulated test you reply to on screen.',
+      },
+    ],
+    tips: ['The bot only contacts candidates who agreed to WhatsApp messages or calls.'],
+  },
+  'hiring-bgv': {
+    title: 'Background check settings',
+    about: 'Region checklists, consent texts, vendors and retention for background verification.',
+    features: [
+      {
+        title: 'India and US checklists',
+        text: 'Default checks and critical checks per region. India uses a DPDP Act consent notice; the US uses the FCRA disclosure, written authorization and state notices.',
+      },
+      {
+        title: 'Consent versions',
+        text: 'Editing a consent text creates a new version; signed consents keep the version they signed.',
+      },
+      {
+        title: 'Vendors',
+        text: 'Optional Checkr (US) with API key, package, mode and webhook, plus India vendors (IDfy, AuthBridge). Without a vendor your team verifies each check by hand.',
+      },
+      {
+        title: 'Timing and retention',
+        text: 'Days to complete the form, reminder frequency and maximum reminders, the US adverse-action wait, and how long documents are kept after a check closes (then only the outcome is kept).',
+      },
+    ],
+    tips: ['Mark a check critical to fail the stage on any discrepancy in it.'],
+  },
+  'hiring-integrations': {
+    title: 'Hiring integrations',
+    about: 'Connect the meeting apps your team interviews on, and set self-scheduling hours.',
+    features: [
+      {
+        title: 'Meeting apps',
+        text: 'Zoom, Google Meet and Microsoft Teams, each with Connect, Reconnect or Disconnect. Built-in video always works and needs no setup.',
+      },
+      {
+        title: 'Self-scheduling',
+        text: 'Day start, day end and time zone. Candidates see free times inside these hours on weekdays, minus the panel’s calendar and other interviews.',
+      },
+    ],
+    tips: [
+      'Disconnecting keeps links on interviews already booked; new interviews can’t use the app until you reconnect.',
+      'Only hiring admins can connect or change meeting apps.',
+    ],
+  },
+
+  // ── Drives ──
+  drives: {
+    title: 'My hiring drives',
+    about: 'Live, proctored tests a college or company invited you to — and your result once it is published.',
+    features: [
+      {
+        title: 'Drive list',
+        text: 'Each drive shows the organiser, test, length, start time and your state (not started, in progress, paused, submitted, ended) or score.',
+      },
+      {
+        title: 'Before you start',
+        text: 'Open a drive to run the system check (browser, camera, microphone, network). The lobby opens before the start and Start unlocks for everyone at the same time.',
+      },
+      {
+        title: 'Taking the test',
+        text: 'Move between sections and questions; answers save automatically, even offline. Submit when done — you can’t change answers after submitting.',
+      },
+      {
+        title: 'Invigilator messages',
+        text: 'Announcements and warnings appear on screen. If an invigilator pauses your test, your clock stops and nothing is lost.',
+      },
+    ],
+    tips: [
+      'Run the system check early so you have time to fix problems.',
+      'If your connection drops, come back within the allowed minutes to continue; after that ask the invigilator to let you back in.',
+    ],
+  },
+  'live-drives': {
+    title: 'Live hiring drives',
+    about: 'Run one timed, proctored test for many candidates at once, and see the drives you invigilate.',
+    features: [
+      {
+        title: 'New drive',
+        text: 'Pick the college or company running it, name it, choose a company test and level, set the start time, duration, when the lobby opens and how late people may join, and optionally link a placement drive or job. It is saved as a draft.',
+      },
+      {
+        title: 'Drive list',
+        text: 'Each drive shows its status (Draft, Scheduled, Live, Ended), your role (Organiser or Invigilator), test, start time and candidate count.',
+      },
+    ],
+    tips: ['To run your own drives you need to be on a college placement team or a company hiring team.'],
+  },
+  'live-drive-control': {
+    title: 'Drive control room',
+    about: 'Watch a live drive, act on candidates, and — as organiser — set it up and publish results.',
+    features: [
+      {
+        title: 'Live',
+        text: 'Status counts, a candidate grid (search, filter by status or group) with answered count, flags and time left, and a stream of integrity flags. Organisers can send an announcement to everyone.',
+      },
+      {
+        title: 'Candidate actions',
+        text: 'Open a candidate to send a warning, add time, pause or resume, flag or unflag, let them back in, or end their test with a reason (kept in the audit log).',
+      },
+      {
+        title: 'Setup (organisers)',
+        text: 'Schedule, candidates (from the linked drive or job, or by email), invigilators and group size, integrity checks and drive rules. Schedule freezes the paper; you can move back to draft or end the drive.',
+      },
+      {
+        title: 'Results (organisers)',
+        text: 'Score submissions in batches, review the table, download CSV and publish. Passing candidates can be shortlisted in the linked placement drive or moved in the job pipeline. No-shows can be added to another drive.',
+      },
+    ],
+    tips: ['Invigilators only see their own groups; the Setup and Results tabs are for organisers.'],
+  },
+  'placement-drive': {
+    title: 'Placement drive',
+    about: 'One placement drive for your college: status, details, applicants and offers. For the college placement team.',
+    features: [
+      {
+        title: 'Status',
+        text: 'Open to students (eligible students are notified), Close applications, then Mark complete. Edit changes the drive until it is complete.',
+      },
+      {
+        title: 'Details',
+        text: 'Apply-by date, test date, CTC range and eligibility (CGPA, backlogs, departments, graduation years).',
+      },
+      {
+        title: 'Applicants',
+        text: 'Each student with department, batch, CGPA, company-test result and an application status you can change.',
+      },
+      {
+        title: 'Offers',
+        text: 'Record offer saves role, CTC and joining date and notifies the student. Track each offer as offered, accepted, declined or revoked.',
+      },
+    ],
+    tips: ['Open the drive so eligible students can apply — applications appear here.'],
+  },
+
+  // ── Cohorts ──
+  cohorts: {
+    title: 'Cohort courses',
+    about: 'Learn with a group on fixed dates: live sessions with mentors, weekly assignments and a certificate when you finish.',
+    features: [
+      {
+        title: 'My cohorts and Open for enrolment',
+        text: 'Cohorts you are in, and the ones you can join, with status, dates and seats taken.',
+      },
+      {
+        title: 'Cohort page',
+        text: 'Enrol (free or paid), see the overview, mentors and TAs, and the completion rule. Members get Sessions (join, add to calendar, recordings) and Assignments (submit code or files).',
+      },
+      {
+        title: 'Progress',
+        text: 'Learners see progress, attendance, assignments graded and average score, and what is still needed to finish.',
+      },
+      {
+        title: 'Manage (staff)',
+        text: 'Mentors, TAs and admins add sessions, mark attendance, create assignments with rubrics and tests, manage people and issue certificates.',
+      },
+      {
+        title: 'New cohort (admins)',
+        text: 'Organisation admins run a course as a dated cohort: seats, schedule, meeting type, who can join and the completion rule.',
+      },
+    ],
+    tips: [
+      'Your certificate lands in your skill passport when you meet the attendance and score rule.',
+      'Use Ask the cohort to post a question only members can see.',
+    ],
+  },
+  'cohort-grading': {
+    title: 'Grading queue',
+    about: 'For mentors and TAs: the oldest ungraded submissions across your cohorts.',
+    features: [
+      {
+        title: 'Queue',
+        text: 'Each submission with assignment, learner, cohort, when it came in and whether it was late.',
+      },
+      {
+        title: 'Grader',
+        text: 'See the code or download the file, autograder results, score each rubric line and write feedback. Save grade tells the learner.',
+      },
+    ],
+    tips: ['Files not yet virus-scanned are marked — take care before opening them.'],
+  },
+
+  // ── Community ──
+  community: {
+    title: 'My community',
+    about: 'Your threads, the ones you follow, your reputation and your study groups.',
+    features: [
+      {
+        title: 'Activity',
+        text: 'Reputation (from upvotes and accepted answers), post count, your threads (with Waiting for review if held) and threads you follow.',
+      },
+      {
+        title: 'New thread',
+        text: 'Pick a category and type (question, discussion or solution write-up), write in Markdown with preview, choose the language and add tags.',
+      },
+      {
+        title: 'Threads',
+        text: 'Vote, reply, follow, report, and accept an answer on your own question. Solution write-ups stay hidden until you have solved the problem.',
+      },
+      {
+        title: 'Study groups',
+        text: 'Join an open group, join with an invite code, or start one with a shared goal, size (2–12), visibility and target date. Each group has a chat and member list.',
+      },
+    ],
+    tips: [
+      'Be specific: what you tried, what you expected and what happened.',
+      'New accounts can’t post links for a few days, and some posts wait for a moderator.',
+    ],
+  },
+  'community-moderation': {
+    title: 'Community moderation',
+    about: 'For forum moderators: posts held by the filters and reports from members.',
+    features: [
+      {
+        title: 'Held posts',
+        text: 'Approve publishes a post, Hide hides it, Remove hides it for good (optionally pausing the author).',
+      },
+      {
+        title: 'Open reports',
+        text: 'Act on the reported post or Dismiss reports.',
+      },
+      {
+        title: 'Forum settings (superadmins)',
+        text: 'Moderators, rate limits, link rules for new accounts, word filters, AI moderation budget and reputation XP.',
+      },
+    ],
+    tips: ['Open the thread for context before removing a post.'],
+  },
+
+  // ── Practice ──
+  'company-tests': {
+    title: 'Company tests',
+    about: 'Practise each company’s real test pattern — timed sections, cut-offs and marking — at three levels.',
+    features: [
+      {
+        title: 'Search',
+        text: 'Find a test by company, test name or section.',
+      },
+      {
+        title: 'Test cards',
+        text: 'Questions, minutes, sections and the cut-off. Unverified patterns are based on commonly reported public information. Levels still being prepared show “coming soon”.',
+      },
+      {
+        title: 'Taking a test',
+        text: 'Each section has its own timer and closes when time is up; you can’t go back after submitting a section. Negative marking applies where the company uses it.',
+      },
+      {
+        title: 'Result and review',
+        text: 'Overall score and each section against its cut-off, then question-by-question review with correct answers. Your recent runs are listed so you can resume or retry.',
+      },
+    ],
+    tips: ['Practise at Easy, then Moderate and Tough — the cut-off is what matters.'],
+  },
+  'interview-sim': {
+    title: 'Mock interview',
+    about: 'Practise a real interview round with an AI interviewer, then get scored feedback, model answers and what to study next.',
+    features: [
+      {
+        title: 'Set up',
+        text: 'Pick a round (HR and behavioural, Technical concepts, Live coding, System design), role, level, optional company and hiring track, interview language and, for coding, the language.',
+      },
+      {
+        title: 'How you answer',
+        text: 'Type or speak your answers, and optionally record the session. Voice and recording need you to accept the microphone notice first.',
+      },
+      {
+        title: 'Your interviews',
+        text: 'Past rounds with readiness and score. Continue one in progress, view a report, retake it, or delete it with its recording.',
+      },
+    ],
+    tips: ['There is a daily limit — the setup shows how many interviews you have left today.'],
+  },
+  'interview-sim-session': {
+    title: 'Mock interview session',
+    about: 'The interview itself, and your report when it ends.',
+    features: [
+      {
+        title: 'Answering',
+        text: 'Type, or press Answer by voice and speak. Coding rounds have a code editor. The interviewer may ask a follow-up. End and get feedback stops early.',
+      },
+      {
+        title: 'Recording',
+        text: 'If you chose to record, start it when ready; it stops when the interview ends and is deleted automatically after the retention period.',
+      },
+      {
+        title: 'Report',
+        text: 'Overall score and readiness, strengths, what to work on, tips, speaking notes and a question-by-question review with a strong answer.',
+      },
+      {
+        title: 'Share and retake',
+        text: 'Share report creates a link that shows the report (not your answers); Stop sharing turns it off. Retake runs the same round again.',
+      },
+    ],
+    tips: ['Ctrl + Enter sends your answer.'],
+  },
+  'study-plan-practice': {
+    title: 'Study-plan practice set',
+    about: 'A practice set from your study plan, at the planned difficulty.',
+    features: [
+      {
+        title: 'Questions',
+        text: 'Answer as many as you like, then Check answers.',
+      },
+      {
+        title: 'Results',
+        text: 'Each question shows right or wrong with the answer and an explanation. Your plan uses the score to pick next week’s topics.',
+      },
+    ],
+    tips: ['Back to plan returns to your study plan.'],
+  },
+  leagues: {
+    title: 'Leagues',
+    about: 'Seasons across contests, codeathons, hackathons and the arena. Your college and your team climb the table with you.',
+    features: [
+      {
+        title: 'My teams',
+        text: 'Your team per season with its members and captain. Leave a team while its season is running.',
+      },
+      {
+        title: 'Create or join a team',
+        text: 'Create a team for an open season (you get a join code, shown once) or join one with a 10-character code.',
+      },
+      {
+        title: 'Badges',
+        text: 'Top finishers get a badge with their rank when a season is finalised.',
+      },
+    ],
+    tips: ['Team points use the best member result per event. League tables shows the standings.'],
+  },
+  passport: {
+    title: 'Skill passport',
+    about: 'Your skills, verified by results you earned here — tests, contests, courses and certificates. You decide who sees it.',
+    features: [
+      {
+        title: 'Verified skills and results',
+        text: 'Levels come from your results; proctored results count most. Hide any result you don’t want shown — hidden results stop counting on your shared passport.',
+      },
+      {
+        title: 'Sharing',
+        text: 'Private, Link only or Public. Set your handle, copy the verify link, show the QR code, download a PDF or add it to LinkedIn. Reset links if you need new ones.',
+      },
+      {
+        title: 'Let recruiters find you',
+        text: 'Turn on discovery with city, country, graduation year and availability. Companies see your shared summary, never your email or phone until you accept.',
+      },
+      {
+        title: 'Invites from recruiters',
+        text: 'Accept (shares your contact with that organisation only), decline, or block and report.',
+      },
+    ],
+    tips: ['Self-reported skills never change a level and are labelled if you show them.'],
+  },
+
+  // ── Marketplace ──
+  orders: {
+    title: 'My orders',
+    about: 'Purchases from the marketplace — downloads, bookings, deliveries, invoices and refunds.',
+    features: [
+      {
+        title: 'Order list',
+        text: 'Each order with its items, number, date, total and status. Show older orders loads more.',
+      },
+      {
+        title: 'Order details',
+        text: 'Download digital items, join or add sessions to your calendar, track parcels, and download the invoice.',
+      },
+      {
+        title: 'Cancel, refund, return',
+        text: 'Cancel an order or one item, request a refund, or return an item, with a reason. Refunds go back to your original payment method.',
+      },
+      {
+        title: 'Write a review',
+        text: 'Review items you bought from the order page.',
+      },
+    ],
+    tips: ['Unpaid orders hold items only for a short time — finish payment before it expires.'],
+  },
+  'mentor-session': {
+    title: 'Mentoring session',
+    about: 'One booked mentoring session, for the learner or the mentor.',
+    features: [
+      {
+        title: 'Join',
+        text: 'Built-in video opens 15 minutes before the start; otherwise the mentor’s meeting link appears here.',
+      },
+      {
+        title: 'Code for review',
+        text: 'For code-review sessions, attach one of your submissions or a repository link for the mentor.',
+      },
+      {
+        title: 'Reschedule',
+        text: 'Learners can pick a new time within the mentor’s reschedule policy.',
+      },
+      {
+        title: 'Report a problem',
+        text: 'After the start, send a dispute to the CodeSpectra team; the mentor is paid only after it is reviewed.',
+      },
+    ],
+    tips: ['Cancel, refund and review from the order page; mentors mark sessions done from Seller → Bookings.'],
+  },
+  seller: {
+    title: 'Seller dashboard',
+    about: 'Run your marketplace store: products, orders, bookings and earnings.',
+    features: [
+      {
+        title: 'Getting started',
+        text: 'No store yet? Apply to sell. While under review you can update your application; if it was not approved you can apply again.',
+      },
+      {
+        title: 'Tabs',
+        text: 'Overview, Analytics, Products, Orders, Bookings, Returns, Earnings, Payouts, Coupons, Reviews and Settings.',
+      },
+      {
+        title: 'View store',
+        text: 'Opens your public store page.',
+      },
+    ],
+    tips: ['Payouts unlock once your payout method is verified.'],
+  },
+  'seller-apply': {
+    title: 'Sell on CodeSpectra',
+    about: 'Apply for a seller account to list e-books, courses, merch or mentoring sessions. Every new seller is reviewed.',
+    features: [
+      {
+        title: 'Your store',
+        text: 'Store name, about text, contact email, optional logo and phone.',
+      },
+      {
+        title: 'Tax details',
+        text: 'India: PAN and optional GSTIN. United States: SSN or EIN with a W-9 certification.',
+      },
+      {
+        title: 'Payout method',
+        text: 'UPI or a bank account, or Stripe (connected after approval). Details are encrypted at rest.',
+      },
+      {
+        title: 'Terms',
+        text: 'Shows the commission and refund window; accept to send the application.',
+      },
+    ],
+    tips: ['Sending again while under review replaces your earlier application.'],
+  },
+  checkout: {
+    title: 'Checkout',
+    about: 'Review your plan, add a coupon or GST details, then pay securely.',
+    features: [
+      {
+        title: 'Plan options',
+        text: 'Switch between monthly and annual billing, and Indian rupee or US dollar.',
+      },
+      {
+        title: 'Coupon code',
+        text: 'Enter a code and Apply; the discount shows in the order summary.',
+      },
+      {
+        title: 'Invoice details',
+        text: 'Add billing details and an optional GSTIN to claim input tax credit.',
+      },
+      {
+        title: 'Order summary',
+        text: 'Price, discount, any account credit, GST and the total, then Pay.',
+      },
+    ],
+    tips: ['Reached checkout without a plan? Pick one on the pricing page first.'],
+  },
+  campus: {
+    title: 'Campus',
+    about: 'Placement drives from your college, your applications and your offers.',
+    features: [
+      {
+        title: 'Join your college',
+        text: 'Use the invite link from your placement office, or join here if you signed up with your college email. Otherwise verify with your roll number.',
+      },
+      {
+        title: 'Open drives',
+        text: 'Drives you can apply to now, with apply-by dates and eligibility. Apply, then take the company test from the drive card if there is one.',
+      },
+      {
+        title: 'My applications and offers',
+        text: 'Each drive you applied to with its next step (withdraw if needed), and offers with joining dates.',
+      },
+      {
+        title: 'For colleges',
+        text: 'Placement staff get a link to the placement console; an organisation admin can set the organisation up as a college here.',
+      },
+    ],
+    tips: ['You need a verified college account to apply to drives.'],
+  },
+  placement: {
+    title: 'Placement console',
+    about: 'For college placement teams: students, readiness and placement drives for your college.',
+    features: [
+      {
+        title: 'Overview',
+        text: 'Placement statistics by graduation year and department: students, placed, highest and median CTC.',
+      },
+      {
+        title: 'Students',
+        text: 'Search and filter by department, batch or status, edit records, resend invites, invite students by email or import a CSV (up to 5,000 students, 2 MB).',
+      },
+      {
+        title: 'Readiness',
+        text: 'A 0–100 score per student blending company-test practice, adaptive tests, contest placements and passport level, with top performers and weak areas by department and batch. Export CSV.',
+      },
+      {
+        title: 'Drives',
+        text: 'Create a drive for a visiting company — role, CTC, eligibility, dates and selection process (company test, the company’s job pipeline or its own form). It is saved as a draft until you open it.',
+      },
+      {
+        title: 'Assignments and Settings',
+        text: 'Practice tests assigned from the placement copilot and who finished them; departments, batches, email domains and placement officers.',
+      },
+    ],
+    tips: ['Start by adding departments and batches in Settings, then invite students.'],
+  },
+  'study-plan': {
+    title: 'Study plan',
+    about: 'A personalised weekly plan built from your own test results; it adapts every week.',
+    features: [
+      {
+        title: 'Set your goal',
+        text: 'Choose what you are preparing for (for example a company test or skills you pick), hours per week, how long, and extra subjects.',
+      },
+      {
+        title: 'Today and This week',
+        text: 'Your planned items — mark each done or not done. Practice sets open their own page and feed the plan.',
+      },
+      {
+        title: 'Where to focus',
+        text: 'Weak areas from your results, plus days left, time planned and your streak.',
+      },
+      {
+        title: 'Reminders',
+        text: 'Daily reminders by e-mail, or WhatsApp if you agreed to WhatsApp messages.',
+      },
+    ],
+    tips: ['Refresh plan after a test so next week uses your latest results.'],
+  },
+  'mentor-studio': {
+    title: 'Mentor studio',
+    about: 'Offer paid 1:1 sessions — mock interviews, code reviews, resume reviews and career guidance.',
+    features: [
+      {
+        title: 'Profile',
+        text: 'Headline, about, skills, companies, languages and LinkedIn. Send for verification — an admin checks new mentors — and choose whether to show in the mentor directory.',
+      },
+      {
+        title: 'Availability',
+        text: 'Weekly time windows, time zone, break between sessions, a daily limit and your reschedule policy.',
+      },
+      {
+        title: 'Session types',
+        text: 'Add a session type with its length, price and video option (built-in, or Zoom, Google Meet or Teams on your connected account). It goes live once the marketplace review approves it.',
+      },
+      {
+        title: 'Sessions',
+        text: 'Upcoming bookings with the learner’s attachments and a join button.',
+      },
+    ],
+    tips: ['You need a seller account first — payouts, refunds and marking sessions done live in the seller dashboard.'],
   },
 }

@@ -17,6 +17,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { scanPrompt } from '@/lib/ai/prompt-guard'
 import { acquireRedisLock, releaseRedisLock } from '@/lib/upstash-rate-limit'
 import { chunkText, contentHash } from './chunk'
+import { CONTEXTUAL_HASH_MARKER, contextualActive, generateChunkContexts } from './contextual'
 import { embedTexts, availableEmbedModels } from './embed'
 import { effectiveVisibility } from './acl'
 import { iterateSourceIds, loadSource } from './sources'
@@ -85,7 +86,12 @@ export async function indexSource(type: KnowledgeSourceType, sourceId: string, o
   const id = sourceKey(type, sourceId)
   const tenant = extracted.tenant_id
   const visibility = effectiveVisibility(type, tenant, extracted.visibility)
-  const hash = contentHash([extracted.title, extracted.url, tenant, visibility, extracted.text, ...(extracted.chunk ? [extracted.chunk] : [])])
+  // Contextual types carry a marker so enabling contexts re-indexes them once; other types keep their hashes (no mass re-embed).
+  const contextual = contextualActive(type)
+  const hash = contentHash([
+    extracted.title, extracted.url, tenant, visibility, extracted.text,
+    ...(extracted.chunk ? [extracted.chunk] : []), ...(contextual ? [CONTEXTUAL_HASH_MARKER] : []),
+  ])
   const existing = await sourcesCol.findOne({ id })
   const now = nowIso()
 
@@ -108,9 +114,18 @@ export async function indexSource(type: KnowledgeSourceType, sourceId: string, o
   const scan = scanPrompt(extracted.text)
   if (scan.flagged) console.warn(`[rag] ${id}: possible prompt injection in source text (${scan.reasons.slice(0, 3).join(', ')}) — indexed as data`)
 
+  // One LLM call per changed multi-chunk source; null → indexed exactly as without contexts.
+  // ponytail: a failed call is not retried until the content changes or a forced reindex
+  // (the hash already carries the marker). Ceiling: an outage during a sweep leaves those
+  // sources context-less — reindex the type to fill them in. Flagged (possible injection)
+  // sources and runs without an embedder skip the call: contexts only feed the vectors.
+  const contexts = contextual && models.length && !scan.flagged
+    ? await generateChunkContexts(extracted.title, extracted.text, chunks.map((c) => c.body))
+    : null
+
   const preferModels = [existing?.embedding_model, await dominantEmbeddingModel()].filter((m): m is string => !!m)
   const embedded = chunks.length && models.length
-    ? await embedTexts(chunks.map((c) => c.text), { preferModels, feature: 'rag_index' })
+    ? await embedTexts(chunks.map((c, i) => (contexts ? `${contexts[i]}\n\n${c.text}` : c.text)), { preferModels, feature: 'rag_index' })
     : null
 
   const rows: RagChunkDoc[] = chunks.map((c) => ({
@@ -123,7 +138,10 @@ export async function indexSource(type: KnowledgeSourceType, sourceId: string, o
     title: extracted.title,
     url: extracted.url,
     chunk_index: c.index,
+    // Keyword search ($text over title + text, store.ts) does not see `context` yet:
+    // adding it to the text index needs a drop / rebuild.
     text: c.text,
+    ...(contexts ? { context: contexts[c.index] } : {}),
     ...(embedded ? { embedding: embedded.vectors[c.index], embedding_model: embedded.model } : {}),
     content_hash: hash,
     section: c.section,

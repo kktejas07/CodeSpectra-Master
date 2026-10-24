@@ -36,7 +36,8 @@ export type KnowledgeSourceType =
   | 'problem' // coding problems library
   | 'question' // question bank items (answers never indexed into searchable text for non-staff; staff only here)
   | 'course'
-  | 'doc' // docs, FAQ, help, policies (public)
+  | 'doc' // docs, FAQ, help, policies, in-app page guides (public)
+  | 'dev_doc' // implementation docs (docs/architecture, api, database, …): admins only, searched only when requested
   | 'test' // assessment metadata (title, role, sections, settings) — tenant scoped
   | 'test_result_summary' // per-test aggregate results — tenant scoped
   | 'hackathon'
@@ -52,7 +53,13 @@ export type KnowledgeSourceType =
   | 'digest' // published daily digests (/digest/<date>) with their items (public)
   | 'contest' // hosted contests, all formats (/contests/<slug>): public when published + public + platform (RAG-022)
 
-export type KnowledgeVisibility = 'public' | 'platform_admin' | 'tenant'
+/**
+ * public: anyone the surface allows (incl. the public/support assistants).
+ * staff: platform-wide, any admin (superadmin + tenant_admin), never the public assistants —
+ *   e.g. implementation docs (architecture, API, database).
+ * platform_admin: superadmin only. tenant: that tenant's admins (+ superadmin).
+ */
+export type KnowledgeVisibility = 'public' | 'staff' | 'platform_admin' | 'tenant'
 
 export interface KnowledgeChunk {
   id: string
@@ -245,4 +252,6 @@ export interface ProposalBundle {
 /** ADDITION (RAG-011): how a hit was retrieved — 'keyword_only' when vector search was unavailable. */
 export interface KnowledgeHit {
   retrieval?: 'hybrid' | 'keyword_only'
+  /** Cross-encoder relevance (0–1) when lib/rag/rerank ordered this hit; `score` stays the fused score. */
+  rerank_score?: number
 }
