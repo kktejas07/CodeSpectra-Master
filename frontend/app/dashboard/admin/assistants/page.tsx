@@ -95,7 +95,7 @@ function AssistantCard({ row, onSaved }: { row: Row; onSaved: () => void }) {
               <Label htmlFor={`${row.id}-${f}`} className="text-sm">{td(`assistants.field_${f}`, f)}</Label>
               <p className="text-xs text-muted-foreground">{td(`assistants.hint_${row.id}_${f}`, td(`assistants.hint_${f}`, ''))}</p>
             </div>
-            <Switch id={`${row.id}-${f}`} checked={!!form[f]} disabled={busy !== null} onCheckedChange={(v) => { setForm((x) => ({ ...x, [f]: v })); void save({ [f]: v }) }} />
+            <Switch id={`${row.id}-${f}`} aria-label={t('agentLoops.enableAgent', { name: `${td(`assistants.name_${row.id}`, row.id)}: ${td(`assistants.field_${f}`, f)}` })} checked={!!form[f]} disabled={busy !== null} onCheckedChange={(v) => { setForm((x) => ({ ...x, [f]: v })); void save({ [f]: v }) }} />
           </div>
         ))}
       </div>
@@ -119,12 +119,12 @@ function AssistantCard({ row, onSaved }: { row: Row; onSaved: () => void }) {
         </span>
         <div className="flex flex-wrap gap-2">
           {row.job_id && (
-            <Button variant="outline" size="sm" disabled={busy !== null} onClick={runNow}>
+            <Button variant="outline" size="sm" disabled={busy !== null} onClick={runNow} aria-label={t('assistants.runNow')}>
               {busy === 'run' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <Play className="mr-1.5 h-4 w-4" aria-hidden />}{t('assistants.runNow')}
             </Button>
           )}
           {numbers.length > 0 && (
-            <Button size="sm" disabled={busy !== null} onClick={() => void save(Object.fromEntries(numbers.map((f) => [f, form[f]])) as Partial<AssistantSettings>)}>
+            <Button size="sm" disabled={busy !== null} onClick={() => void save(Object.fromEntries(numbers.map((f) => [f, form[f]])) as Partial<AssistantSettings>)} aria-label={t('assistants.save')}>
               {busy === 'save' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <Save className="mr-1.5 h-4 w-4" aria-hidden />}{t('assistants.save')}
             </Button>
           )}
@@ -186,7 +186,7 @@ export default function AssistantsAdminPage() {
         title={t('assistants.title')} description={t('assistants.description')} icon={<Bot />}
         actions={<div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild><Link href="/dashboard/admin/agent">{t('assistants.openCopilot')}</Link></Button>
-          <Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />{t('assistants.refresh')}</Button>
+          <Button variant="outline" onClick={() => void load()} aria-label={t('assistants.refresh')}><RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />{t('assistants.refresh')}</Button>
         </div>}
       />
       {error ? <EmptyState illustration="error" title={t('assistants.loadFailed')} description={error} actionLabel={t('assistants.retry')} onAction={() => void load()} />

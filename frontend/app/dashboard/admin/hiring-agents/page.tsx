@@ -167,7 +167,7 @@ function AgentCard({ a, q, onChanged, canEnableAutoSend }: { a: AgentRow; q: str
               </div>
             </div>
             {canEnableAutoSend && (
-              <Button size="sm" variant="outline" className="min-h-11 gap-1.5" disabled={busy !== null} onClick={() => void reauthorise()}>
+              <Button size="sm" variant="outline" className="min-h-11 gap-1.5" disabled={busy !== null} onClick={() => void reauthorise()} aria-label={L('autoSendReauthorise')}>
                 {busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />}
                 {L('autoSendReauthorise')}
               </Button>
@@ -183,7 +183,7 @@ function AgentCard({ a, q, onChanged, canEnableAutoSend }: { a: AgentRow; q: str
                   ? <p className="text-xs text-amber-700 dark:text-amber-300">{L('autoSendNeedsOwnerStep')}</p>
                   : form.auto_send[st] === true && a.auto_send_by?.[st]?.name && <p className="text-xs text-muted-foreground">{L('autoSendBy', { name: a.auto_send_by[st].name })}</p>}
               </div>
-              <Switch id={id(`auto-${st}`)} checked={form.auto_send[st] === true} disabled={busy !== null || (!canEnableAutoSend && form.auto_send[st] !== true)} onCheckedChange={(v) => { setForm((f) => ({ ...f, auto_send: { ...f.auto_send, [st]: v } })); void save({ auto_send: { [st]: v } }) }} />
+              <Switch id={id(`auto-${st}`)} aria-label={t('agentLoops.enableAgent', { name: L(`step.${st}`) })} checked={form.auto_send[st] === true} disabled={busy !== null || (!canEnableAutoSend && form.auto_send[st] !== true)} onCheckedChange={(v) => { setForm((f) => ({ ...f, auto_send: { ...f.auto_send, [st]: v } })); void save({ auto_send: { [st]: v } }) }} />
             </div>
           ))}
         </div>
@@ -214,7 +214,7 @@ function AgentCard({ a, q, onChanged, canEnableAutoSend }: { a: AgentRow; q: str
           ))}
           {a.loop === 'integrity' && (
             <div className="flex items-end gap-2 pb-2">
-              <Switch id={id('aisum')} checked={params.ai_summaries === true} onCheckedChange={(v) => setForm((f) => ({ ...f, params: { ...(f.params as object), ai_summaries: v } as never }))} />
+              <Switch id={id('aisum')} aria-label={t('agentLoops.enableAgent', { name: L('param.ai_summaries') })} checked={params.ai_summaries === true} onCheckedChange={(v) => setForm((f) => ({ ...f, params: { ...(f.params as object), ai_summaries: v } as never }))} />
               <Label htmlFor={id('aisum')} className="text-sm font-normal">{L('param.ai_summaries')}</Label>
             </div>
           )}
@@ -222,10 +222,10 @@ function AgentCard({ a, q, onChanged, canEnableAutoSend }: { a: AgentRow; q: str
       </fieldset>
 
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={() => void run()} disabled={busy !== null} className="gap-1.5">
+        <Button variant="outline" onClick={() => void run()} disabled={busy !== null} className="gap-1.5" aria-label={L('runNow')}>
           {busy === 'run' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}{L('runNow')}
         </Button>
-        <Button onClick={() => void save({ daily_item_cap: form.daily_item_cap, monthly_cost_cap_usd: form.monthly_cost_cap_usd, run_hour_utc: form.run_hour_utc, params: form.params })} disabled={busy !== null} className="gap-1.5">
+        <Button onClick={() => void save({ daily_item_cap: form.daily_item_cap, monthly_cost_cap_usd: form.monthly_cost_cap_usd, run_hour_utc: form.run_hour_utc, params: form.params })} disabled={busy !== null} className="gap-1.5" aria-label={L('save')}>
           {busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}{L('save')}
         </Button>
       </div>
@@ -261,8 +261,8 @@ function PendingList({ rows, onChanged }: { rows: PendingRow[]; onChanged: () =>
               {typeof p.preview.effect === 'string' && <p className="mt-1 text-xs text-muted-foreground">{p.preview.effect}</p>}
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => void act(p.id, 'cancel')} className="gap-1"><X className="h-3.5 w-3.5" aria-hidden />{L('cancel')}</Button>
-              <Button size="sm" disabled={busy === p.id} onClick={() => void act(p.id, 'confirm')} className="gap-1">
+              <Button size="sm" variant="outline" disabled={busy === p.id} onClick={() => void act(p.id, 'cancel')} className="gap-1" aria-label={L('cancel')}><X className="h-3.5 w-3.5" aria-hidden />{L('cancel')}</Button>
+              <Button size="sm" disabled={busy === p.id} onClick={() => void act(p.id, 'confirm')} className="gap-1" aria-label={L('confirm')}>
                 {busy === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Check className="h-3.5 w-3.5" aria-hidden />}{L('confirm')}
               </Button>
             </div>
@@ -306,7 +306,7 @@ function CasesList({ rows, q, onChanged }: { rows: CaseRow[]; q: string; onChang
             <div className="flex flex-wrap justify-end gap-2">
               <Button size="sm" variant="outline" asChild><Link href={c.target_kind === 'exam' ? `/dashboard/admin/assessments/${encodeURIComponent(c.target_id)}/integrity` : `/dashboard/admin/contests/${encodeURIComponent(c.target_id)}/integrity`}>{L('open')}</Link></Button>
               {c.target_kind === 'exam' && c.recommendation !== 'none' && (
-                <Button size="sm" disabled={busy === c.id} onClick={() => void draft(c.id)}>{busy === c.id && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />}{L('integrity.draft')}</Button>
+                <Button size="sm" disabled={busy === c.id} onClick={() => void draft(c.id)} aria-label={L('integrity.draft')}>{busy === c.id && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />}{L('integrity.draft')}</Button>
               )}
             </div>
           </Panel>
@@ -366,8 +366,8 @@ function AuthorForm({ q, requests, jobs, agentOn, onChanged }: { q: string; requ
             <div role="status" className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
               <p>{waiting ? L('author.offWaiting') : L('author.off')}</p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant="outline" disabled={starting !== null} onClick={() => void start('on')}>{starting === 'on' && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />}{L('author.switchOn')}</Button>
-                {waiting && <Button type="button" size="sm" disabled={starting !== null} onClick={() => void start('run')} className="gap-1">{starting === 'run' ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{L('author.runOnce')}</Button>}
+                <Button type="button" size="sm" variant="outline" disabled={starting !== null} onClick={() => void start('on')} aria-label={L('author.switchOn')}>{starting === 'on' && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" aria-hidden />}{L('author.switchOn')}</Button>
+                {waiting && <Button type="button" size="sm" disabled={starting !== null} onClick={() => void start('run')} className="gap-1" aria-label={L('author.runOnce')}>{starting === 'run' ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{L('author.runOnce')}</Button>}
               </div>
             </div>
           )}
@@ -391,7 +391,7 @@ function AuthorForm({ q, requests, jobs, agentOn, onChanged }: { q: string; requ
             <Input id="ha-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} className="mt-1" />
           </div>
           <div className="flex justify-end">
-            <Button type="submit" disabled={busy || (!jobId.trim() && jd.trim().length < 40)} className="gap-1.5">{busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}{L('author.queue')}</Button>
+            <Button type="submit" disabled={busy || (!jobId.trim() && jd.trim().length < 40)} className="gap-1.5" aria-label={L('author.queue')}>{busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}{L('author.queue')}</Button>
           </div>
         </form>
       </Panel>
@@ -424,7 +424,7 @@ function RunsLog({ runs }: { runs: RunRow[] }) {
     <ul className="divide-y divide-border rounded-lg border border-border">
       {runs.map((r) => (
         <li key={r.id}>
-          <button type="button" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left text-sm hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring">
+          <button type="button" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)} aria-label={L(`loop.${r.loop}.name`)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left text-sm hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring">
             <span className="font-medium text-foreground">{L(`loop.${r.loop}.name`)}</span>
             <span className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_TONE[r.status] ?? STATUS_TONE.skipped}`}>{L(`status.${r.status}`)}</span>
             <span className="text-muted-foreground">{L(`trigger.${r.trigger}`)} · {fmt.dateTime(r.started_at)}</span>
@@ -482,7 +482,7 @@ export default function HiringAgentsPage() {
         title={L('title')}
         description={L('subtitle')}
         icon={<Bot />}
-        actions={<Button variant="outline" size="sm" onClick={() => void load()} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />{L('retry')}</Button>}
+        actions={<Button variant="outline" size="sm" onClick={() => void load()} className="gap-1.5" aria-label={L('retry')}><RefreshCw className="h-3.5 w-3.5" aria-hidden />{L('retry')}</Button>}
       />
       {isSuper && (
         <div className="max-w-sm">
