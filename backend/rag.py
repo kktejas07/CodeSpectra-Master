@@ -4,8 +4,10 @@ Uses Gemini embedding API for text embeddings, stores in MongoDB with
 in-memory cosine-similarity search (works with any MongoDB deployment).
 """
 import asyncio
+import heapq
 import json
 import re
+from collections.abc import AsyncIterable
 from typing import Any
 
 import httpx
@@ -50,6 +52,63 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     if na == 0 or nb == 0:
         return 0.0
     return dot / (na * nb)
+
+
+# --- retrieval tuning ---
+
+# Minimum cosine similarity for a chunk to count as relevant.
+#   Current: 0.65 — inherited, never tuned against real queries.
+#   Recommended range for text-embedding-004: 0.60–0.75. Off-topic text
+#   usually scores below ~0.55 and close paraphrases above ~0.75; anything
+#   above 0.80 starts dropping relevant chunks.
+#   How to tune: from backend/, run
+#     python scripts/rag_eval.py --threshold 0.60 0.65 0.70 0.75
+#   then mark the "looks relevant" column for the 20 queries. Raise the value
+#   while off-topic chunks still get through; lower it while relevant queries
+#   come back empty (low_confidence=yes). Pick the lowest value where the
+#   chunks returned look right.
+#   ponytail: no value here has been checked against data yet. The
+#   `embeddings` collection was empty in every database checked so far.
+MIN_SIMILARITY = 0.65
+TOP_K = 5
+# Nothing clears MIN_SIMILARITY → still return the best few, flagged low-confidence.
+FALLBACK_K = 3
+
+
+async def rank_chunks(
+    query_emb: list[float],
+    docs: AsyncIterable[dict[str, Any]],
+    threshold: float = MIN_SIMILARITY,
+    k: int = TOP_K,
+    fallback_k: int = FALLBACK_K,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Score stored chunks against a query vector.
+
+    Returns (chunks, low_confidence): the top `k` chunks scoring above
+    `threshold`, or, when none do, the top `fallback_k` regardless of score
+    with low_confidence=True. Vectors of another dimension are skipped.
+    """
+    above: list[dict[str, Any]] = []
+    best: list[tuple[float, int, dict[str, Any]]] = []  # min-heap, size <= fallback_k
+    i = 0
+    async for doc in docs:  # streamed: only scored chunks are kept, not the vectors
+        i += 1
+        vec = doc.get("embedding")
+        if not vec or len(vec) != EMBEDDING_DIM:
+            continue
+        sim = cosine_similarity(query_emb, vec)
+        chunk = {"text": doc.get("text", ""), "source": doc.get("source", ""), "score": sim}
+        if sim > threshold:
+            above.append(chunk)
+        elif not above and fallback_k > 0:
+            heapq.heappush(best, (sim, i, chunk))
+            if len(best) > fallback_k:
+                heapq.heappop(best)
+    if above:
+        above.sort(key=lambda c: c["score"], reverse=True)
+        return above[:k], False
+    fallback = [c for _, _, c in sorted(best, reverse=True)]
+    return fallback, bool(fallback)
 
 
 # --- context building ---
