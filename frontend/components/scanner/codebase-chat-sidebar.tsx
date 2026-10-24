@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { MessageSquare, Send, Sparkles, Loader2, FileCode, Bot, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useT } from '@/lib/i18n/client'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface FileMetric {
   path: string
@@ -168,7 +169,7 @@ export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarP
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => isSubmitEnter(e) && handleSend()}
             placeholder={selectedPaths.size > 0 ? t('tools.askAboutAttachedFiles') : t('tools.selectFilesAboveToBegin')}
             disabled={loading}
             className="h-10"

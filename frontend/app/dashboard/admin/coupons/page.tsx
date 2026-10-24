@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Coupon {
   id: string
@@ -49,6 +50,7 @@ interface Coupon {
 }
 
 export default function CouponsAdminPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
 
@@ -204,7 +206,7 @@ export default function CouponsAdminPage() {
       cell: (r) => (
         <span className="flex flex-wrap items-center gap-1.5">
           {r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `${CURRENCY_MAP[r.currency || 'INR']}${r.discount_value} (${r.currency || 'INR'} orders only)`}
-          {r.currency_migrated_at && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400">Check currency</Badge>}
+          {r.currency_migrated_at && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400">{ta('couponAdm.checkCurrency')}</Badge>}
         </span>
       ) },
     { key: 'scope', header: 'Where', cell: (r) => (
@@ -215,16 +217,16 @@ export default function CouponsAdminPage() {
     ) },
     { key: 'usage', header: 'Usage', cell: (r) => <span className="tabular-nums">{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
     { key: 'status', header: 'Status',
-      cell: (r) => r.active ? <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">Active</Badge> : <Badge variant="secondary">Inactive</Badge> },
+      cell: (r) => r.active ? <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">{ta('couponAdm.active')}</Badge> : <Badge variant="secondary">{ta('couponAdm.inactive')}</Badge> },
     { key: 'expiry', header: 'Expiry', cell: (r) => <span className="text-muted-foreground text-xs">{r.valid_until ? formatDate(r.valid_until) : 'Never'}</span> },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title="View users" aria-label={`Who used ${r.code}`}><Users className="h-3.5 w-3.5" /></Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openEdit(r)} title="Edit" aria-label={`Edit ${r.code}`}><Pencil className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title={ta('couponAdm.viewUsers')} aria-label={`Who used ${r.code}`}><Users className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openEdit(r)} title={ta('couponAdm.edit')} aria-label={`Edit ${r.code}`}><Pencil className="h-3.5 w-3.5" /></Button>
         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleActive(r)} title={r.active ? 'Deactivate' : 'Activate'} aria-label={r.active ? `Deactivate ${r.code}` : `Activate ${r.code}`}>
           {r.active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
         </Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" title="Delete" aria-label={`Delete ${r.code}`} onClick={() => setConfirmDeleteCoupon({ id: r.id, code: r.code })}><Trash2 className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" title={ta('couponAdm.delete')} aria-label={`Delete ${r.code}`} onClick={() => setConfirmDeleteCoupon({ id: r.id, code: r.code })}><Trash2 className="h-3.5 w-3.5" /></Button>
       </div>
     )},
   ]
@@ -239,10 +241,10 @@ export default function CouponsAdminPage() {
     <div className="space-y-6">
       <PageHeader
         illustration="billing"
-        title="Coupons"
-        description="Create and manage discount codes and free-trial codes."
+        title={ta('couponAdm.coupons')}
+        description={ta('couponAdm.createAndManageDiscountCodesAnd')}
         icon={<Tag />}
-        actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> New coupon</Button>}
+        actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> {ta('couponAdm.newCoupon')}</Button>}
       />
 
       {notices.map((n) => (
@@ -251,9 +253,9 @@ export default function CouponsAdminPage() {
 
       {!loading && (
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard label="Coupons" value={coupons.length} icon={<Tag />} />
-          <StatCard label="Active" value={coupons.filter((c) => c.active).length} icon={<CheckCircle2 />} />
-          <StatCard label="Times redeemed" value={coupons.reduce((a, c) => a + (Number(c.current_uses) || 0), 0)} icon={<Ticket />} />
+          <StatCard label={ta('couponAdm.coupons')} value={coupons.length} icon={<Tag />} />
+          <StatCard label={ta('couponAdm.active')} value={coupons.filter((c) => c.active).length} icon={<CheckCircle2 />} />
+          <StatCard label={ta('couponAdm.timesRedeemed')} value={coupons.reduce((a, c) => a + (Number(c.current_uses) || 0), 0)} icon={<Ticket />} />
         </div>
       )}
 
@@ -265,93 +267,93 @@ export default function CouponsAdminPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="code" className="text-right">Code</Label>
+              <Label htmlFor="code" className="text-right">{ta('couponAdm.code')}</Label>
               <Input id="code" value={code} onChange={e => setCode(e.target.value)} className="col-span-3 uppercase" placeholder="SUMMER20" disabled={!!editCoupon} />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">Type</Label>
+              <Label htmlFor="type" className="text-right">{ta('couponAdm.type')}</Label>
               <Select value={type} onValueChange={(v: any) => setType(v)}>
-                <SelectTrigger aria-label="Type" className="col-span-3"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={ta('couponAdm.type')} className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="percentage">Percentage (%)</SelectItem>
-                  <SelectItem value="flat">Fixed amount</SelectItem>
-                  <SelectItem value="trial">Free trial (days)</SelectItem>
+                  <SelectItem value="percentage">{ta('couponAdm.percentage')}</SelectItem>
+                  <SelectItem value="flat">{ta('couponAdm.fixedAmount')}</SelectItem>
+                  <SelectItem value="trial">{ta('couponAdm.freeTrialDays')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {type !== 'trial' && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="value" className="text-right">Value</Label>
+              <Label htmlFor="value" className="text-right">{ta('couponAdm.value')}</Label>
               <Input id="value" type="number" value={value} onChange={e => setValue(e.target.value)} className="col-span-3" placeholder={type === 'percentage' ? "20" : "500"} />
             </div>)}
             {type === 'flat' && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="coupon-currency" className="text-right">Currency</Label>
+              <Label htmlFor="coupon-currency" className="text-right">{ta('couponAdm.currency')}</Label>
               <Select value={couponCurrency} onValueChange={(v: 'INR' | 'USD') => setCouponCurrency(v)}>
                 <SelectTrigger id="coupon-currency" className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="INR">INR (₹) — only INR orders</SelectItem>
-                  <SelectItem value="USD">USD ($) — only USD orders</SelectItem>
+                  <SelectItem value="INR">{ta('couponAdm.inrOnlyInrOrders')}</SelectItem>
+                  <SelectItem value="USD">{ta('couponAdm.usdOnlyUsdOrders')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>)}
             {type !== 'trial' && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="applies-to" className="text-right">Use on</Label>
+              <Label htmlFor="applies-to" className="text-right">{ta('couponAdm.useOn')}</Label>
               <Select value={appliesTo} onValueChange={(v: 'all' | 'plans' | 'marketplace') => setAppliesTo(v)}>
                 <SelectTrigger id="applies-to" className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Plans and marketplace</SelectItem>
-                  <SelectItem value="plans">Plans only</SelectItem>
-                  <SelectItem value="marketplace">Marketplace only</SelectItem>
+                  <SelectItem value="all">{ta('couponAdm.plansAndMarketplace')}</SelectItem>
+                  <SelectItem value="plans">{ta('couponAdm.plansOnly')}</SelectItem>
+                  <SelectItem value="marketplace">{ta('couponAdm.marketplaceOnly')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>)}
             {type !== 'trial' && appliesTo !== 'plans' && (
             <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="funding" className="text-right pt-2">Other sellers</Label>
+              <Label htmlFor="funding" className="text-right pt-2">{ta('couponAdm.otherSellers')}</Label>
               <div className="col-span-3 space-y-1">
                 <Select value={funding} onValueChange={(v: 'platform_items_only' | 'platform_funded') => setFunding(v)}>
                   <SelectTrigger id="funding"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="platform_items_only">Don&apos;t discount their items</SelectItem>
-                    <SelectItem value="platform_funded">Discount them — CodeSpectra pays</SelectItem>
+                    <SelectItem value="platform_items_only">{ta('couponAdm.donTDiscountTheirItems')}</SelectItem>
+                    <SelectItem value="platform_funded">{ta('couponAdm.discountThemCodespectraPays')}</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Sellers who opted in to platform promotions are always included and pay their share.</p>
+                <p className="text-xs text-muted-foreground">{ta('couponAdm.sellersWhoOptedInToPlatform')}</p>
               </div>
             </div>)}
             {type === 'trial' && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="days" className="text-right">Duration (days)</Label>
+              <Label htmlFor="days" className="text-right">{ta('couponAdm.durationDays')}</Label>
               <Input id="days" type="number" value={trialDays} onChange={e => setTrialDays(e.target.value)} className="col-span-3" placeholder="90" />
             </div>)}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="uses" className="text-right">Max uses</Label>
-              <Input id="uses" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="col-span-3" placeholder="Unlimited" />
+              <Label htmlFor="uses" className="text-right">{ta('couponAdm.maxUses')}</Label>
+              <Input id="uses" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="col-span-3" placeholder={ta('couponAdm.unlimited')} />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="per-user" className="text-right">Uses per person</Label>
+              <Label htmlFor="per-user" className="text-right">{ta('couponAdm.usesPerPerson')}</Label>
               <Input id="per-user" type="number" min={1} max={1000} value={perUser} onChange={e => setPerUser(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="plan-ids" className="text-right">Only for plans</Label>
-              <Input id="plan-ids" value={planIds} onChange={e => setPlanIds(e.target.value)} className="col-span-3" placeholder="Any plan (or e.g. pro)" />
+              <Label htmlFor="plan-ids" className="text-right">{ta('couponAdm.onlyForPlans')}</Label>
+              <Input id="plan-ids" value={planIds} onChange={e => setPlanIds(e.target.value)} className="col-span-3" placeholder={ta('couponAdm.anyPlanOrEGPro')} />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="first-only" className="text-right">First purchase only</Label>
+              <Label htmlFor="first-only" className="text-right">{ta('couponAdm.firstPurchaseOnly')}</Label>
               <div className="col-span-3 flex items-center gap-2">
                 <input id="first-only" type="checkbox" checked={firstOnly} onChange={e => setFirstOnly(e.target.checked)} className="h-4 w-4 accent-primary" />
-                <span className="text-sm text-muted-foreground">Only buyers who have never paid before</span>
+                <span className="text-sm text-muted-foreground">{ta('couponAdm.onlyBuyersWhoHaveNeverPaid')}</span>
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expiry" className="text-right">Expiry</Label>
+              <Label htmlFor="expiry" className="text-right">{ta('couponAdm.expiry')}</Label>
               <Input id="expiry" type="datetime-local" value={validUntil} onChange={e => setValidUntil(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{ta('couponAdm.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || !code || (type !== 'trial' && !value)}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {editCoupon ? 'Update' : 'Create'}
@@ -365,20 +367,18 @@ export default function CouponsAdminPage() {
       <Dialog open={!!viewRedemptions} onOpenChange={(o) => { if (!o) setViewRedemptions(null) }}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
-            <DialogTitle>Redemptions — {viewRedemptions?.code}</DialogTitle>
-            <DialogDescription>
-              Users who have used this coupon. {viewRedemptions?.current_uses} total uses.
-            </DialogDescription>
+            <DialogTitle>{ta('couponAdm.redemptions', { code: viewRedemptions?.code })}</DialogTitle>
+            <DialogDescription>{ta('couponAdm.usersWhoHaveUsedThisCoupon', { current_uses: viewRedemptions?.current_uses })}</DialogDescription>
           </DialogHeader>
           <div className="max-h-[400px] overflow-y-auto">
             {(viewRedemptions as any)?.redemptions && (viewRedemptions as any).redemptions.length > 0 ? (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                    <th className="py-2 pr-2">User</th>
-                    <th className="py-2 pr-2">Email</th>
-                    <th className="py-2 pr-2">Plan</th>
-                    <th className="py-2">Date</th>
+                    <th className="py-2 pr-2">{ta('couponAdm.user')}</th>
+                    <th className="py-2 pr-2">{ta('couponAdm.email')}</th>
+                    <th className="py-2 pr-2">{ta('couponAdm.plan')}</th>
+                    <th className="py-2">{ta('couponAdm.date')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -398,7 +398,7 @@ export default function CouponsAdminPage() {
                 </tbody>
               </table>
             ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">No redemptions recorded yet. Redemptions from new payments will appear here.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{ta('couponAdm.noRedemptionsRecordedYetRedemptionsFrom')}</p>
             )}
           </div>
         </DialogContent>
@@ -407,13 +407,11 @@ export default function CouponsAdminPage() {
       <AlertDialog open={!!confirmDeleteCoupon} onOpenChange={(open) => !open && setConfirmDeleteCoupon(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete coupon?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the coupon code "{confirmDeleteCoupon?.code}"? This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{ta('couponAdm.deleteCoupon')}</AlertDialogTitle>
+            <AlertDialogDescription>{ta('couponAdm.areYouSureYouWantTo', { code: confirmDeleteCoupon?.code })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{ta('couponAdm.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={async () => {
@@ -424,7 +422,7 @@ export default function CouponsAdminPage() {
                 }
               }}
             >
-              Delete
+              {ta('couponAdm.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

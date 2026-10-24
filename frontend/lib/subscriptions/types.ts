@@ -77,6 +77,8 @@ export interface SubscriberDoc {
   /** Rotating secret baked into every unsubscribe / manage link; rotate to revoke them all. */
   token_nonce: string
   source: string
+  /** SEO-054: language of the page they signed up on ('hi' / 'te'); unset = English. Emails and the manage page use it. */
+  locale?: 'en' | 'hi' | 'te' | null
   created_at: string
   updated_at: string
 }
@@ -114,6 +116,8 @@ export interface SubscribeInput {
   phone_country?: string | null
   timezone?: string | null
   source?: string
+  /** Page language at sign-up (SEO-054). */
+  locale?: string | null
 }
 
 /** Server-side facts the public body can't claim. */

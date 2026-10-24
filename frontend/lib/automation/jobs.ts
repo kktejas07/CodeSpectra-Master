@@ -6,9 +6,14 @@
  * schedule(type, key, runAt, payload) is idempotent on `key`. The scheduler
  * calls runDueJobs every minute; each job is claimed atomically, retried with
  * backoff, and dead-lettered (with an admin alert) after the last attempt.
+ *
+ * A handler that returns 'capped' (its message was held by the shared
+ * per-person limit) is not done: the job waits a few hours and tries again
+ * while it is young enough (heldRetryAt, AUTO-109), without using up an attempt.
  */
 import { backoffDelayMs, JOB_BACKOFF } from './backoff'
 import { col, deadLetter, isDuplicateKeyError, newId, nowIso } from './store'
+import { heldRetryAt } from '@/lib/messaging/budget-rules'
 
 export type JobHandler = (payload: Record<string, unknown>, job: JobDoc) => Promise<unknown>
 
@@ -88,7 +93,13 @@ export async function runDueJobs(now = new Date(), budgetMs = 25_000, onlyTypes?
     try {
       if (!fn) throw new Error(`No handler for job type ${job.type}`)
       const result = await fn(job.payload || {}, job)
-      await c.updateOne({ id: job.id }, { $set: { status: 'done', result: result ?? null, lease_until: null, updated_at: nowIso() } })
+      const retryAt = result === 'capped' ? heldRetryAt(job.created_at, new Date()) : null
+      if (retryAt) {
+        await c.updateOne({ id: job.id }, { $set: { status: 'pending', run_at: retryAt.toISOString(), result: 'capped', lease_until: null, updated_at: nowIso() }, $inc: { attempts: -1 } })
+        out.retried++
+        continue
+      }
+      await c.updateOne({ id: job.id }, { $set: { status: 'done', result: result === 'capped' ? 'capped_gave_up' : result ?? null, lease_until: null, updated_at: nowIso() } })
       out.done++
     } catch (e) {
       const error = (e instanceof Error ? e.message : String(e)).slice(0, 500)

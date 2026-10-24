@@ -25,6 +25,7 @@ import { formatDate, formatDateTime } from '@/lib/format-datetime'
 import { cn } from '@/lib/utils'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { BillingOps } from './billing-ops'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface PaymentRow {
   id: string
@@ -63,6 +64,7 @@ interface PlanOrder {
 }
 
 export default function AdminBillingPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const [stats, setStats] = useState<BillingStats | null>(null)
   const [plans, setPlans] = useState<PlanOrder[]>([])
@@ -171,8 +173,8 @@ export default function AdminBillingPage() {
     <div className="space-y-6">
       <PageHeader
         illustration="billing"
-        title="Billing analytics"
-        description="Subscriptions, recurring revenue and cancellations across all organizations."
+        title={ta('billAdm.billingAnalytics')}
+        description={ta('billAdm.subscriptionsRecurringRevenueAndCancella')}
         icon={<DollarSign />}
       />
 
@@ -181,19 +183,19 @@ export default function AdminBillingPage() {
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Active subscriptions" value={stats?.active_subscriptions || 0} icon={<Users />} />
+        <StatCard label={ta('billAdm.activeSubscriptions')} value={stats?.active_subscriptions || 0} icon={<Users />} />
         <Panel className="flex items-center gap-4 p-5">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
             <DollarSign className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">Total revenue</p>
+            <p className="text-sm font-medium text-muted-foreground">{ta('billAdm.totalRevenue')}</p>
             <p className="text-lg font-bold tabular-nums text-foreground">{fmt(stats?.usd_revenue_paise || 0)} <span className="text-xs font-normal text-muted-foreground">USD</span></p>
             <p className="text-lg font-bold tabular-nums text-foreground">{fmt(stats?.inr_revenue_paise || 0, 'INR')} <span className="text-xs font-normal text-muted-foreground">INR</span></p>
           </div>
         </Panel>
         <StatCard
-          label="Churn"
+          label={ta('billAdm.churn')}
           value={stats && (stats.active_subscriptions + stats.cancelled_subscriptions) > 0
             ? `${Math.round(stats.cancelled_subscriptions / (stats.active_subscriptions + stats.cancelled_subscriptions) * 100)}%`
             : '0%'}
@@ -204,11 +206,11 @@ export default function AdminBillingPage() {
 
       {/* Revenue Chart (bar chart) */}
       <Panel>
-        <h2 className="mb-4 text-base font-semibold text-foreground">Revenue, last 30 days</h2>
+        <h2 className="mb-4 text-base font-semibold text-foreground">{ta('billAdm.revenueLast30Days')}</h2>
         {statsError ? (
-          <EmptyState compact illustration="error" title="Couldn't load billing stats" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} />
+          <EmptyState compact illustration="error" title={ta('billAdm.couldnTLoadBillingStats')} description={ta('billAdm.checkYourConnectionAndTryAgain')} actionLabel={ta('billAdm.tryAgain')} onAction={() => void load()} />
         ) : revDays.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No revenue yet. Paid orders will show here day by day.</p>
+          <p className="text-sm text-muted-foreground">{ta('billAdm.noRevenueYetPaidOrdersWill')}</p>
         ) : (
           <div className="flex items-end gap-1 h-32">
             {revDays.map(([day, amount]) => (
@@ -228,17 +230,17 @@ export default function AdminBillingPage() {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Orders by Plan */}
         <Panel>
-          <h2 className="mb-4 text-base font-semibold text-foreground">Orders by plan</h2>
+          <h2 className="mb-4 text-base font-semibold text-foreground">{ta('billAdm.ordersByPlan')}</h2>
           {statsError ? (
-            <p className="text-sm text-muted-foreground">Couldn&apos;t load orders by plan. Check your connection and try again.</p>
+            <p className="text-sm text-muted-foreground">{ta('billAdm.couldnTLoadOrdersByPlan')}</p>
           ) : plans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No orders yet.</p>
+            <p className="text-sm text-muted-foreground">{ta('billAdm.noOrdersYet')}</p>
           ) : (
             <div className="space-y-2">
               {plans.map((p) => (
                 <div key={p._id} className="flex items-center justify-between text-sm">
                   <Badge variant="outline">{p._id || 'unknown'}</Badge>
-                  <span className="tabular-nums text-foreground">{p.count} orders · {fmt(p.total)}</span>
+                  <span className="tabular-nums text-foreground">{ta('billAdm.orders', { count: p.count, fmt: fmt(p.total) })}</span>
                 </div>
               ))}
             </div>
@@ -247,18 +249,18 @@ export default function AdminBillingPage() {
 
         {/* Subscription Status */}
         <Panel>
-          <h2 className="mb-4 text-base font-semibold text-foreground">Subscription status</h2>
+          <h2 className="mb-4 text-base font-semibold text-foreground">{ta('billAdm.subscriptionStatus')}</h2>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span>Active</span>
+              <span>{ta('billAdm.active')}</span>
               <span className="font-bold tabular-nums text-green-600 dark:text-green-400">{stats?.active_subscriptions || 0}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span>Cancelled</span>
+              <span>{ta('billAdm.cancelled')}</span>
               <span className="font-bold tabular-nums text-destructive">{stats?.cancelled_subscriptions || 0}</span>
             </div>
             <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
-              <span>Total</span>
+              <span>{ta('billAdm.total')}</span>
               <span className="font-bold tabular-nums">{stats?.total_subscriptions || 0}</span>
             </div>
           </div>
@@ -269,13 +271,13 @@ export default function AdminBillingPage() {
       <Panel>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Payments</h2>
+            <h2 className="text-base font-semibold text-foreground">{ta('billAdm.payments')}</h2>
             <p className="text-sm text-muted-foreground">
-              Issue refunds in the Razorpay dashboard first, then record them here. This does not move any money.
+              {ta('billAdm.issueRefundsInTheRazorpayDashboard')}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-full border border-border bg-card p-1" role="group" aria-label="Filter payments">
+            <div className="inline-flex rounded-full border border-border bg-card p-1" role="group" aria-label={ta('billAdm.filterPayments')}>
               {(['all', 'paid', 'refunded'] as const).map((f) => (
                 <button
                   key={f}
@@ -291,29 +293,29 @@ export default function AdminBillingPage() {
                 </button>
               ))}
             </div>
-            <Button variant="outline" size="sm" className="gap-1" onClick={() => void loadPayments()} aria-label="Refresh payments">
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => void loadPayments()} aria-label={ta('billAdm.refreshPayments')}>
               <RefreshCw className="h-4 w-4" aria-hidden />
             </Button>
           </div>
         </div>
 
         {payments === null ? (
-          <div className="flex justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" aria-label="Loading payments" /></div>
+          <div className="flex justify-center py-8 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" aria-label={ta('billAdm.loadingPayments')} /></div>
         ) : paymentsError ? (
-          <EmptyState compact illustration="error" title="We couldn't load payments" description="Check your connection and try again." actionLabel="Try again" onAction={() => void loadPayments()} />
+          <EmptyState compact illustration="error" title={ta('billAdm.weCouldnTLoadPayments')} description={ta('billAdm.checkYourConnectionAndTryAgain')} actionLabel={ta('billAdm.tryAgain')} onAction={() => void loadPayments()} />
         ) : payments.length === 0 ? (
-          <EmptyState compact illustration="billing" title="No payments yet" description="Paid and refunded orders will show here." />
+          <EmptyState compact illustration="billing" title={ta('billAdm.noPaymentsYet')} description={ta('billAdm.paidAndRefundedOrdersWillShow')} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead className="text-left text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="py-2 pr-3 font-medium">Date</th>
-                  <th className="py-2 pr-3 font-medium">Customer</th>
-                  <th className="py-2 pr-3 font-medium">Plan</th>
-                  <th className="py-2 pr-3 font-medium">Amount</th>
-                  <th className="py-2 pr-3 font-medium">Status</th>
-                  <th className="py-2 text-right font-medium">Action</th>
+                  <th className="py-2 pr-3 font-medium">{ta('billAdm.date')}</th>
+                  <th className="py-2 pr-3 font-medium">{ta('billAdm.customer')}</th>
+                  <th className="py-2 pr-3 font-medium">{ta('billAdm.plan')}</th>
+                  <th className="py-2 pr-3 font-medium">{ta('billAdm.amount')}</th>
+                  <th className="py-2 pr-3 font-medium">{ta('billAdm.status')}</th>
+                  <th className="py-2 text-right font-medium">{ta('billAdm.action')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -359,9 +361,9 @@ export default function AdminBillingPage() {
       <Dialog open={!!refundTarget} onOpenChange={(o) => { if (!o && !refunding) setRefundTarget(null) }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Mark payment as refunded?</DialogTitle>
+            <DialogTitle>{ta('billAdm.markPaymentAsRefunded')}</DialogTitle>
             <DialogDescription>
-              This only records a refund you already issued in Razorpay. It does not send money back.
+              {ta('billAdm.thisOnlyRecordsARefundYou')}
             </DialogDescription>
           </DialogHeader>
           {refundTarget ? (
@@ -378,34 +380,34 @@ export default function AdminBillingPage() {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="refund-note">Reason (required)</Label>
+                <Label htmlFor="refund-note">{ta('billAdm.reasonRequired')}</Label>
                 <Textarea
                   id="refund-note"
                   value={refundNote}
                   onChange={(e) => setRefundNote(e.target.value)}
                   maxLength={500}
                   rows={3}
-                  placeholder="For example: duplicate charge, refund rfnd_… issued on 12 Oct"
+                  placeholder={ta('billAdm.forExampleDuplicateChargeRefundRfnd')}
                 />
               </div>
               <div className="flex items-start gap-2">
                 <Checkbox id="refund-confirm" checked={refundConfirmed} onCheckedChange={(v) => setRefundConfirmed(v === true)} />
                 <Label htmlFor="refund-confirm" className="font-normal leading-snug">
-                  I issued this refund in the Razorpay dashboard.
+                  {ta('billAdm.iIssuedThisRefundInThe')}
                 </Label>
               </div>
               {refundError ? <p role="alert" className="text-destructive">{refundError}</p> : null}
             </div>
           ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRefundTarget(null)} disabled={refunding}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRefundTarget(null)} disabled={refunding}>{ta('billAdm.cancel')}</Button>
             <Button
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => void submitRefund()}
               disabled={refunding || refundNote.trim().length < 5 || !refundConfirmed}
             >
               {refunding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
-              Mark as refunded
+              {ta('billAdm.markAsRefunded')}
             </Button>
           </DialogFooter>
         </DialogContent>

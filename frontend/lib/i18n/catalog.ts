@@ -22,11 +22,11 @@ import events from './messages/en/events.json'
 import errors from './messages/en/errors.json'
 import publicMessages from './messages/en/public.json'
 import publicPages from './messages/en/publicPages.json'
-import apiErrors from './messages/en/apiErrors.json'
 import exam from './messages/en/exam.json'
 import type { AreaEnMessages, AreaNamespace } from './areas'
 
-export const EN_MESSAGES = { common, nav, auth, dashboard, assessment, learn, events, errors, apiErrors, public: publicMessages, publicPages, exam }
+// SEO-055: `apiErrors` is not bundled; lib/i18n/use-api-error.ts loads it on demand (see lib/i18n/api-error.ts).
+export const EN_MESSAGES = { common, nav, auth, dashboard, assessment, learn, events, errors, public: publicMessages, publicPages, exam }
 export type Namespace = keyof typeof EN_MESSAGES
 export const NAMESPACES = Object.keys(EN_MESSAGES) as Namespace[]
 

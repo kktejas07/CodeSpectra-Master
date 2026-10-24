@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
     if (!form) return json({ error: 'Send the résumés as multipart form data' }, 400)
     const files = form.getAll('files').filter((f): f is File => typeof f === 'object' && f !== null && 'arrayBuffer' in f)
     if (!files.length) return json({ error: 'Choose at least one résumé' }, 400)
-    if (files.length > MAX_BULK_FILES) return json({ error: `Upload up to ${MAX_BULK_FILES} résumés at a time` }, 400)
+    if (files.length > MAX_BULK_FILES) return json({ error: `Upload up to ${MAX_BULK_FILES} résumés at a time`, code: 'ats_bulk_resumes_max', params: { max: MAX_BULK_FILES } }, 400)
     const ai = form.get('ai') !== 'false'
 
     const results: FileResult[] = new Array(files.length)

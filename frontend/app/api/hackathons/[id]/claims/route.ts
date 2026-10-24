@@ -68,7 +68,7 @@ export async function POST(
   const existing = await claims.findOne({ hackathon_id: hk.id, team_id: team.id, problem_slug })
   if (existing && new Date(existing.expires_at).getTime() > Date.now()) {
     if (existing.user_id !== user.id) {
-      return NextResponse.json({ error: `Problem already claimed by ${existing.user_name}` }, { status: 409 })
+      return NextResponse.json({ error: `Problem already claimed by ${existing.user_name}`, code: 'hk_problem_claimed_by', params: { name: String(existing.user_name) } }, { status: 409 })
     }
   }
 

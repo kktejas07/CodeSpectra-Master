@@ -10,7 +10,7 @@ import { interviewSessions } from '@/lib/db/interviews'
 import { sendAutomationEmail, tenantAdminUsers } from '../mailer'
 import { claimOnce } from '../store'
 import { configValue, getSystemSettings, isAutomationEnabled } from '../settings'
-import { hiringNudgeFor, hoursLeftLabel, reminderWindow } from './rules'
+import { hiringNudgeFor, hoursLeftLabel, hoursLeftParts, reminderWindow } from './rules'
 import type { SystemAutomation } from './types'
 
 type Doc = Record<string, unknown>
@@ -59,6 +59,17 @@ export async function runHiringNudges(now = new Date()): Promise<{ recruitersNot
             ? `Hi ${String(cand.name || 'there')},\n\nYou have an offer for ${title}. Please open the offer email we sent and reply — the hiring team is waiting to hear from you.`
             : `Hi ${String(cand.name || 'there')},\n\nYou haven’t finished the assessment for ${title} yet. Use the link in your invitation email to take it before the deadline.`,
           reason: `You got this email because you applied for ${title}.`,
+          // SEO-054: the candidate's language when the address has an account with one.
+          i18n: (() => {
+            const tp = job.title ? String(job.title) : { t: 'auto.hiring.theRole' }
+            const offer = nudge === 'offer_pending'
+            return {
+              subject: { key: offer ? 'auto.hiring.offerSubject' : 'auto.hiring.assessSubject', params: { title: tp } },
+              heading: { key: offer ? 'auto.hiring.offerHeading' : 'auto.hiring.assessHeading' },
+              body: [cand.name ? { key: 'auto.hi', params: { name: String(cand.name) } } : { key: 'auto.hiNoName' }, { key: offer ? 'auto.hiring.offerBody' : 'auto.hiring.assessBody', params: { title: tp } }],
+              reason: { key: 'auto.hiring.reason', params: { title: tp } },
+            }
+          })(),
         })
         candidatesReminded++
       }
@@ -76,6 +87,11 @@ export async function runHiringNudges(now = new Date()): Promise<{ recruitersNot
       type: 'hiring.nudge',
       title: `${String(job.title || 'A job')}: candidates waiting`,
       message: lines.join('. ') + '.',
+      title_i18n: { key: 'hiring.nudge.title', params: { job: job.title ? String(job.title) : { t: 'hiring.nudge.aJob' } } },
+      message_i18n: [
+        ...(counts.sla_warning ? [{ key: 'hiring.nudge.sla', params: { count: counts.sla_warning } }] : []),
+        ...(counts.idle ? [{ key: 'hiring.nudge.idle', params: { count: counts.idle, days: idleDays } }] : []),
+      ],
       link: `/dashboard/hiring/jobs/${String(job.id)}`,
       icon: 'clock',
       skip_push: !counts.sla_warning,
@@ -102,10 +118,14 @@ export async function runStandaloneInterviewReminders(now = new Date()): Promise
     if (!win || !(await claimOnce(`iv-standalone:${String(iv.id)}:${String(iv.scheduled_at)}:${win}`))) continue
     const when = new Date(String(iv.scheduled_at)).toUTCString().replace(':00 GMT', ' UTC')
     const left = hoursLeftLabel(String(iv.scheduled_at), now)
+    const lp = hoursLeftParts(String(iv.scheduled_at), now)
+    const leftMail = { t: `auto.left.${lp.unit}`, params: { count: lp.count } }
+    const leftNote = { t: `time.left.${lp.unit}`, params: { count: lp.count } }
+    const ivTitle = iv.title ? `${String(iv.title)}${iv.role ? ` — ${String(iv.role)}` : ''}` : iv.role ? String(iv.role) : null
     const link = `/dashboard/interviews/${String(iv.id)}/live`
     for (const [uid, who] of [[iv.candidate_id, 'candidate'], [iv.interviewer_id, 'interviewer']] as const) {
       if (typeof uid !== 'string' || !uid) continue
-      await notify({ user_id: uid, type: 'interview.reminder', title: `Interview in ${left}: ${String(iv.title || '')}`.trim(), message: `Starts ${when}.`, title_i18n: { key: 'interview.reminder.title', params: { left, title: String(iv.title || '') } }, message_i18n: { key: 'interview.reminder.message', params: { when } }, link, icon: 'clock' })
+      await notify({ user_id: uid, type: 'interview.reminder', title: `Interview in ${left}: ${String(iv.title || '')}`.trim(), message: `Starts ${when}.`, title_i18n: { key: 'interview.reminder.title', params: { left: leftNote, title: String(iv.title || '') } }, message_i18n: { key: 'interview.reminder.message', params: { when } }, link, icon: 'clock' })
       const u = (await db.collection('user').findOne({ id: uid }, { projection: { email: 1, name: 1, fullName: 1 } })) as Doc | null
       if (!u?.email) continue
       await sendAutomationEmail({
@@ -117,6 +137,17 @@ export async function runStandaloneInterviewReminders(now = new Date()): Promise
         bodyText: `${String(iv.title || 'Interview')}${iv.role ? ` — ${String(iv.role)}` : ''}\nStarts: ${when}\nDuration: ${Number(iv.duration_minutes) || 60} minutes${who === 'candidate' ? '\n\nJoin a few minutes early and check your camera and microphone.' : ''}`,
         cta: { label: 'Open interview', url: link },
         reason: 'You got this email because you have an interview scheduled on CodeSpectra.',
+        // SEO-054: candidate and interviewer each get their own language.
+        i18n: {
+          subject: { key: 'auto.interview.subject', params: { left: leftMail } },
+          heading: { key: 'auto.interview.heading', params: { left: leftMail } },
+          body: [
+            { key: 'auto.interview.details', params: { title: ivTitle ?? { t: 'auto.interview.fallbackTitle' }, when, minutes: Number(iv.duration_minutes) || 60 } },
+            ...(who === 'candidate' ? [{ key: 'auto.interview.candidateTip' }] : []),
+          ],
+          cta: { key: 'auto.interview.cta' },
+          reason: { key: 'auto.interview.reason' },
+        },
       })
       reminders++
     }

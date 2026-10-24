@@ -52,3 +52,37 @@ export function orgSenderName(orgName: string | null | undefined): string {
 export function autoSentNote(grant: AutoSendGrant | null | undefined): string {
   return grant ? `auto-sent by the organisation (enabled by ${grant.user_id}${grant.name ? ` · ${grant.name}` : ''} at ${grant.at})` : 'auto-sent by the organisation'
 }
+
+/**
+ * AGT-047: steps whose auto-send switch is on but which will not auto-send —
+ * no recorded grant (turned on before grants existed) or the enabling admin
+ * is no longer allowed (lost access, or owes admin 2FA — AGT-049).
+ */
+export function stepsNeedingOwner(
+  autoSend: Record<string, boolean> | undefined,
+  by: AutoSendBy | undefined,
+  grantValid: (userId: string) => boolean,
+): string[] {
+  return Object.entries(autoSend ?? {})
+    .filter(([step, on]) => on === true && !(by?.[step] && grantValid(by[step].user_id)))
+    .map(([step]) => step)
+}
+
+/** AGT-047: one-click re-enable — stamp `actor` on exactly the steps that need it; other grants stay. */
+export function reauthoriseAutoSendBy(curBy: AutoSendBy | undefined, steps: readonly string[], actor: { id: string; name?: string | null }, now: Date): AutoSendBy {
+  const out: AutoSendBy = { ...(curBy ?? {}) }
+  for (const step of steps) out[step] = { user_id: actor.id, name: String(actor.name || '').slice(0, 120) || null, at: now.toISOString() }
+  return out
+}
+
+/**
+ * AGT-049: may a loop keep acting through this owner? Not when they lost
+ * admin rights for the organisation, nor while they owe admin two-factor
+ * (the same rule that locks them out of /api/admin).
+ */
+export type OwnerBlock = 'owner' | 'owner_2fa'
+export function ownerBlockReason(o: { authorised: boolean; twoFactorOwed: boolean }): OwnerBlock | null {
+  if (!o.authorised) return 'owner'
+  if (o.twoFactorOwed) return 'owner_2fa'
+  return null
+}

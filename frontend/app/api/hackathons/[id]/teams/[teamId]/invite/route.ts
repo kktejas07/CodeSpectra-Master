@@ -47,7 +47,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: 'This user is already on the team' }, { status: 409 })
   }
   if (team.members.length >= hk.max_per_team) {
-    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)` }, { status: 409 })
+    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)`, code: 'hk_team_full_max', params: { max: Number(hk.max_per_team) } }, { status: 409 })
   }
 
   const invitesCol = await hackathonInvites()

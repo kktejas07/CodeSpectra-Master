@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
   // AGT-024: AI calls here are rate limited and cost one AI credit (refunded on failure).
   const rate = await rateLimitAIRedis(request, gate.user.id)
-  if (!rate.ok) return NextResponse.json({ error: `Rate limit exceeded. Try again in ${rate.retryAfterSec}s.` }, { status: 429 })
+  if (!rate.ok) return NextResponse.json({ error: `Rate limit exceeded. Try again in ${rate.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rate.retryAfterSec } }, { status: 429 })
   const spent = await spendAiCredits(gate.user.id, 1).catch(() => null)
   if (!spent) return NextResponse.json({ error: 'Could not check your AI credits. Try again.' }, { status: 503 })
   if (!spent.ok) return NextResponse.json(outOfCredits({ cost: 1, balance: spent.balance }), { status: 402 })

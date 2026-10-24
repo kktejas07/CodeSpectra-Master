@@ -23,6 +23,7 @@ import { Illustration } from '@/components/illustrations/spot'
 import { UnlockPackButton } from '../unlock-pack-button'
 import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -1041,7 +1042,7 @@ export default function ProblemDetailPage() {
                     value={aiMentorMessage}
                     onChange={(e) => setAiMentorMessage(e.target.value)}
                     aria-label={tr('practice.askTheAiMentor')}
-                    onKeyDown={(e) => e.key === 'Enter' && askAiMentor()}
+                    onKeyDown={(e) => isSubmitEnter(e) && askAiMentor()}
                     placeholder={tr('practice.eGHowShouldIApproache96')}
                     className="flex-1 p-2 text-sm rounded-lg border border-input bg-background"
                   />

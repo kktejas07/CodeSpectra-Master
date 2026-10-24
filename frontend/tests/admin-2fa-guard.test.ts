@@ -36,6 +36,19 @@ const RAW_ROLE = /\brole\s*(===|!==)\s*['"](superadmin|tenant_admin)['"]|\[\s*['
 /** Lines that only narrow access (scoping / safety blocks) say so explicitly. */
 const ROLE_SCOPE_MARK = /role-scope:/
 
+/** A top-level declaration starts a new chunk (exported handler or helper). */
+const TOP_LEVEL = /^(export\s+)?(default\s+)?(async\s+)?function\b|^(export\s+)?(const|let)\s+\w+\s*[:=]/
+/** [start, end) line ranges, one per top-level function / const, so checks run per handler. */
+function topLevelChunks(lines: string[]): Array<[number, number]> {
+  const out: Array<[number, number]> = []
+  let start = 0
+  lines.forEach((l, i) => {
+    if (i > start && TOP_LEVEL.test(l)) { out.push([start, i]); start = i }
+  })
+  out.push([start, lines.length])
+  return out
+}
+
 /** /api/admin routes allowed without one of the gates above — with the reason. */
 const ADMIN_ROUTE_EXCEPTIONS: Record<string, string> = {
   'app/api/admin/impersonate/stop/route.ts': 'restores the admin session from the impersonator cookie; grants nothing',
@@ -53,20 +66,52 @@ describe('SEC-029: routes use 2FA-enforcing guards', () => {
     expect(missing, 'use requireSuperAdmin()/requireAdmin() (lib/route-auth) — they enforce admin 2FA').toEqual([])
   })
 
-  it('no route compares the admin role by hand without a 2FA-aware check', () => {
+  it('no handler compares the admin role by hand without a 2FA-aware check', () => {
+    // Checked per top-level function (each exported handler and each helper),
+    // not per file: a file whose POST uses requireAdmin() must not hide a
+    // PATCH that compares `user.role` by hand (audit-7 SEC-029).
     const offenders: string[] = []
     for (const f of all) {
-      const src = readFileSync(f, 'utf8')
-      if (TFA_AWARE.test(src)) continue
-      const lines = src.split('\n')
-      lines.forEach((l, i) => {
-        // The marker may sit on the line itself or on the comment line above it.
-        if (RAW_ROLE.test(l) && !ROLE_SCOPE_MARK.test(l) && !ROLE_SCOPE_MARK.test(lines[i - 1] || '')) {
-          offenders.push(`${rel(f)}:${i + 1}: ${l.trim()}`)
+      const lines = readFileSync(f, 'utf8').split('\n')
+      for (const [a, b] of topLevelChunks(lines)) {
+        if (TFA_AWARE.test(lines.slice(a, b).join('\n'))) continue
+        for (let i = a; i < b; i++) {
+          // The marker may sit on the line itself or on the comment line above it.
+          if (RAW_ROLE.test(lines[i]) && !ROLE_SCOPE_MARK.test(lines[i]) && !ROLE_SCOPE_MARK.test(lines[i - 1] || '')) {
+            offenders.push(`${rel(f)}:${i + 1}: ${lines[i].trim()}`)
+          }
         }
-      })
+      }
     }
-    expect(offenders, 'use isAdminCaller()/isSuperAdminCaller() or a shared guard; mark pure scoping with "// role-scope: <why>"').toEqual([])
+    expect(offenders, 'use isAdminCaller()/isSuperAdminCaller() or a shared guard in that handler; mark pure scoping with "// role-scope: <why>"').toEqual([])
+  })
+
+  it('splits a route file into one chunk per top-level function', () => {
+    const src = [
+      "import x from 'y'",
+      'export async function GET() {',
+      "  const g = await requireAdmin()",
+      '}',
+      'export async function PATCH() {',
+      "  if (user.role !== 'superadmin') return",
+      '}',
+    ]
+    const chunks = topLevelChunks(src).map(([a, b]) => src.slice(a, b).join('\n'))
+    const patch = chunks.find((c) => c.includes('PATCH'))!
+    expect(patch).not.toMatch(TFA_AWARE)
+    expect(patch).toMatch(RAW_ROLE)
+  })
+
+  it('the audit-7 handlers outside /api/admin use the 2FA-aware guards', () => {
+    const want: Record<string, RegExp> = {
+      'app/api/jobs/[id]/route.ts': /isSuperAdminCaller\(user\)[\s\S]*requireAdmin\(\)[\s\S]*requireAdmin\(\)/,
+      'app/api/jobs/route.ts': /isStaff = isAdminCaller\(user\)/,
+      'app/api/exams/[id]/links/route.ts': /(requireAdmin\(\)[\s\S]*){4}/,
+      'app/api/resources/ebooks/route.ts': /isSa = isSuperAdminCaller\(user\)/,
+      'app/api/resources/ebooks/[slug]/route.ts': /!isSuperAdminCaller\(user\)/,
+      'app/api/problems/route.ts': /export async function POST[\s\S]*?requireAdmin\(\)/,
+    }
+    for (const [f, re] of Object.entries(want)) expect(readFileSync(join(ROOT, f), 'utf8'), f).toMatch(re)
   })
 
   it('the routes from the audit no longer hand-check roles', () => {

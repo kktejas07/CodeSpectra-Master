@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { jobs } from '@/lib/db/content'
-import { requireAdmin, getAPIUser } from '@/lib/route-auth'
+import { requireAdmin, getAPIUser, isAdminCaller } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 
 const PUBLIC_JOB_PROJECTION = { _id: 0, created_by: 0, tenant_id: 0 } as const
@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
   try {
     const db = await getMongoDb()
     const { searchParams } = new URL(request.url)
-    const isStaff = user?.role === 'superadmin' || user?.role === 'tenant_admin'
+    // SEC-029: an admin who still owes 2FA gets the public list.
+    const isStaff = isAdminCaller(user)
 
     if (!isStaff) {
       const data = await db.collection('job_postings')
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
 
     const onlyActive = searchParams.get('active') !== 'false'
     const filter: Record<string, unknown> = onlyActive ? { is_active: true } : {}
+    // role-scope: a tenant admin sees only their tenant's posts
     if (user!.role === 'tenant_admin') {
       Object.assign(filter, user!.tenantId ? { tenant_id: user!.tenantId } : { _id: null })
     }

@@ -16,6 +16,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { CATEGORY_LABELS, type FluencyQuestion, type FluencyEvaluation, type CategoryBreakdown } from '@/lib/assessments/ai-fluency-types'
 import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface StoredSession {
   sessionId: string
@@ -282,7 +283,7 @@ export default function AiFluencySessionPage() {
             placeholder={tr('practice.typeYourAnswerHereBeThorough3f7')}
             className="w-full h-40 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              if (isSubmitEnter(e, { modifier: true })) {
                 e.preventDefault()
                 submitAnswer()
               }

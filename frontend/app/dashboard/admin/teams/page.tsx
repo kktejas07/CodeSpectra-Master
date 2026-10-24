@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Tenant {
   id: string
@@ -30,6 +31,7 @@ interface Team {
 }
 
 export default function TeamsManagement() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
 
   const [teams, setTeams] = useState<Team[]>([])
@@ -121,38 +123,38 @@ export default function TeamsManagement() {
         illustration="team"
         title={
           <>
-            Teams
+            {ta('teamsAdm.teams')}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label="About teams" />
+                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label={ta('teamsAdm.aboutTeams')} />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Manage organization teams</p>
+                  <p className="text-xs max-w-62.5">{ta('teamsAdm.manageOrganizationTeams')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </>
         }
-        description="Groups of people inside each organization, and who looks after them."
+        description={ta('teamsAdm.groupsOfPeopleInsideEachOrganization')}
         icon={<Users />}
         actions={
           <Button className="gap-2" onClick={openCreate}>
-            <Plus className="w-4 h-4" />Create team
+            <Plus className="w-4 h-4" />{ta('teamsAdm.createTeam')}
           </Button>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard label="Teams" value={safeTeams.length} icon={<Users />} />
-        <StatCard label="Members" value={safeTeams.reduce((acc, t) => acc + t.members, 0)} icon={<UserCheck />} />
-        <StatCard label="Active teams" value={safeTeams.filter(t => t.status === 'active').length} icon={<Activity />} />
+        <StatCard label={ta('teamsAdm.teams')} value={safeTeams.length} icon={<Users />} />
+        <StatCard label={ta('teamsAdm.members')} value={safeTeams.reduce((acc, t) => acc + t.members, 0)} icon={<UserCheck />} />
+        <StatCard label={ta('teamsAdm.activeTeams')} value={safeTeams.filter(t => t.status === 'active').length} icon={<Activity />} />
       </div>
 
       {loadError && safeTeams.length === 0 ? (
-        <EmptyState illustration="error" title="Couldn't load teams" description="Check your connection and try again." actionLabel="Try again" onAction={() => { setLoading(true); void loadTeams().finally(() => setLoading(false)) }} />
+        <EmptyState illustration="error" title={ta('teamsAdm.couldnTLoadTeams')} description={ta('teamsAdm.checkYourConnectionAndTryAgain')} actionLabel={ta('teamsAdm.tryAgain')} onAction={() => { setLoading(true); void loadTeams().finally(() => setLoading(false)) }} />
       ) : safeTeams.length === 0 ? (
-        <EmptyState illustration="team" title="No teams yet" description="Teams created inside an organization will show up here." />
+        <EmptyState illustration="team" title={ta('teamsAdm.noTeamsYet')} description={ta('teamsAdm.teamsCreatedInsideAnOrganizationWill')} />
       ) : (
         <Panel>
           <div className="relative mb-6">
@@ -161,20 +163,20 @@ export default function TeamsManagement() {
               type="search"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search by team, admin or status"
+              placeholder={ta('teamsAdm.searchByTeamAdminOrStatus')}
               className="pl-9"
-              aria-label="Search teams"
+              aria-label={ta('teamsAdm.searchTeams')}
             />
           </div>
           {visibleTeams.length === 0 && (
-            <EmptyState variant="search" title={`No teams match "${query.trim()}"`} description="Try a team name, admin or status." className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState variant="search" title={`No teams match "${query.trim()}"`} description={ta('teamsAdm.tryATeamNameAdminOr')} className="border-0 bg-transparent py-6 md:py-8" />
           )}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleTeams.map(team => (
               <div key={team.id} className="rounded-2xl border border-border/70 bg-card p-4">
                 <h3 className="font-semibold text-foreground">{team.name}</h3>
                 <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="tabular-nums">{team.members} members</span>
+                  <span className="tabular-nums">{ta('teamsAdm.members2', { members: team.members })}</span>
                   <span>Admin: {team.admin}</span>
                 </div>
                 <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${team.status === 'active' ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
@@ -190,15 +192,15 @@ export default function TeamsManagement() {
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleCreate} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Create team</DialogTitle>
-              <DialogDescription>The admin must already be a member of the organisation.</DialogDescription>
+              <DialogTitle>{ta('teamsAdm.createTeam')}</DialogTitle>
+              <DialogDescription>{ta('teamsAdm.theAdminMustAlreadyBeA')}</DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
-              <Label htmlFor="team-name">Team name</Label>
-              <Input id="team-name" value={formName} onChange={e => setFormName(e.target.value)} maxLength={80} placeholder="Platform engineering" autoFocus />
+              <Label htmlFor="team-name">{ta('teamsAdm.teamName')}</Label>
+              <Input id="team-name" value={formName} onChange={e => setFormName(e.target.value)} maxLength={80} placeholder={ta('teamsAdm.platformEngineering')} autoFocus />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="team-org">Organisation</Label>
+              <Label htmlFor="team-org">{ta('teamsAdm.organisation')}</Label>
               <Select value={formTenant} onValueChange={setFormTenant}>
                 <SelectTrigger id="team-org" className="w-full">
                   <SelectValue placeholder={tenantsLoaded ? (tenants.length ? 'Choose an organisation' : 'No organisations yet') : 'Loading organisations'} />
@@ -209,12 +211,12 @@ export default function TeamsManagement() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="team-admin">Admin email</Label>
+              <Label htmlFor="team-admin">{ta('teamsAdm.adminEmail')}</Label>
               <Input id="team-admin" type="email" value={formAdmin} onChange={e => setFormAdmin(e.target.value)} placeholder="name@company.com" autoComplete="off" />
             </div>
             {formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>{ta('teamsAdm.cancel')}</Button>
               <Button type="submit" disabled={creating} className="gap-2">
                 {creating && <Loader className="h-4 w-4 animate-spin" aria-hidden />}
                 {creating ? 'Creating' : 'Create team'}

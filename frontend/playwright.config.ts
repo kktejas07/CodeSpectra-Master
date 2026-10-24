@@ -9,6 +9,9 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     screenshot: 'only-on-failure',
     trace: 'off',
+    // Settled colours for axe: no fades mid-measurement (the app and the tour
+    // honour prefers-reduced-motion).
+    contextOptions: { reducedMotion: 'reduce' },
   },
   projects: [
     {

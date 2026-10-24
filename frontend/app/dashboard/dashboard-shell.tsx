@@ -515,6 +515,7 @@ export default function DashboardLayout({
       '/dashboard/admin/blog': Newspaper,
       '/dashboard/admin/learn': BookOpenText,
       '/dashboard/admin/signals': Radio,
+      '/dashboard/admin/problems': ShieldCheck,
       '/dashboard/admin/social': Share2,
       '/dashboard/admin/digest': Newspaper,
       '/dashboard/admin/resources': Library,

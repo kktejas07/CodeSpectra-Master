@@ -68,7 +68,7 @@ interface Data {
 }
 
 /** W15 automations that send through the shared nudge sender (run log + frequency cap). */
-const NUDGE_IDS = new Set(['invite-ladder', 're-engagement', 'checkout-recovery', 'renewal-nudges', 'cert-renewal', 'drive-reminders', 'offer-follow-ups', 'bgv-chaser', 'mentor-sessions', 'employer-weekly-report', 'cohort-at-risk', 'learner-follow-ups'])
+const NUDGE_IDS = new Set(['invite-ladder', 're-engagement', 'checkout-recovery', 'renewal-nudges', 'auto-renew-notice', 'cert-renewal', 'drive-reminders', 'offer-follow-ups', 'bgv-chaser', 'mentor-sessions', 'employer-weekly-report', 'cohort-at-risk', 'learner-follow-ups'])
 
 const STATE_LABEL: Record<JobRow['state'], string> = { ok: 'Healthy', failing: 'Failing', stale: 'Stopped', never: 'Not run yet' }
 const STATE_ORDER: Record<JobRow['state'], number> = { failing: 0, stale: 1, never: 2, ok: 3 }

@@ -239,6 +239,7 @@ jobs:
       # Wave 10: --axe adds axe-core (WCAG 2.1 A/AA) serious/critical findings to the
       # report and a ::warning annotation. SEO-039: critical violations now fail the
       # job (--axe-gate critical); switch to `serious` once that backlog is zero.
+      # SEO-056: serious colour-contrast findings fail too (critical,color-contrast).
       - name: Public site QA crawl
         env:
           NODE_ENV: production
@@ -254,7 +255,7 @@ jobs:
             npx next start -p 3000 -H 127.0.0.1 >> /tmp/next-e2e.log 2>&1 &
             for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
           fi
-          node scripts/qa/crawl.mjs --base http://127.0.0.1:3000 --max-pages 150 --out qa-crawl-report.json --strict --axe --axe-gate critical
+          node scripts/qa/crawl.mjs --base http://127.0.0.1:3000 --max-pages 150 --out qa-crawl-report.json --strict --axe --axe-gate critical,color-contrast
         timeout-minutes: 15
       - name: Upload QA crawl report
         if: always()

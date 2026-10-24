@@ -4,7 +4,7 @@
  * (resume a draft → re-send) can invoke it. Next.js forbids extra exports in
  * route modules, so this lives here instead.
  */
-import { emailCampaigns, newId, nowIso, type EmailCampaignDoc } from '@/lib/db/email-campaigns'
+import { emailCampaigns, nowIso, type EmailCampaignDoc } from '@/lib/db/email-campaigns'
 import { newsletterSubscribers } from '@/lib/db/newsletter'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -60,93 +60,64 @@ export async function executeCampaign(campaign: EmailCampaignDoc) {
       }
     }
 
-    // Push channel - send to all users with push tokens
-    if (campaign.channels.push) {
-      try {
-        const pushTokens = await db.collection('push_tokens').find({}).project({ token: 1, user_id: 1, _id: 0 }).toArray()
-        if (pushTokens.length > 0) {
-          const { adminAuth } = await import('@/lib/firebase-admin')
-          const auth = await adminAuth()
-          if (auth) {
-            const { getMessaging } = await import('firebase-admin/messaging')
-            const messaging = getMessaging()
-            // Batch send (max 500 per request)
-            const tokens = pushTokens.map(t => String(t.token)).filter(t => t.length >= 20)
-            for (let i = 0; i < tokens.length; i += 500) {
-              const batch = tokens.slice(i, i + 500)
-              try {
-                const response = await messaging.sendEachForMulticast({
-                  tokens: batch,
-                  notification: { title: campaign.subject, body: campaign.intro || 'New update from CodeSpectra' },
-                  data: { link: `/newsletter/${campaign.id}` },
-                })
-                pushOk += response.successCount
-                pushFail += response.failureCount
-              } catch {
-                pushFail += batch.length
-              }
-            }
+    // Push + in-app (AUTO-113): only accounts whose address is a subscribed newsletter address, through
+    // notify() (type 'newsletter', class 'marketing') — each person's push switch, quiet hours and the
+    // shared per-person limit apply, once per campaign. Never a broadcast to every token or every user.
+    // WhatsApp: only people who agreed to WhatsApp (AUTO-060), admitted as the same logical message.
+    const wantsBell = !!(campaign.channels.push || campaign.channels.in_app)
+    const wantsWa = !!campaign.channels.whatsapp
+    if (wantsBell || wantsWa) {
+      const subscribedUsers = new Set<string>()
+      const emails = subs.map((sub) => String(sub.email || '').trim().toLowerCase()).filter(Boolean)
+      for (let i = 0; i < emails.length; i += 1000) {
+        const rows = await db.collection('user').find({ email: { $in: emails.slice(i, i + 1000) } }).project({ id: 1, _id: 1 }).toArray().catch(() => [])
+        for (const u of rows) {
+          const uid = String(u.id || u._id || '')
+          if (uid && uid !== 'undefined') subscribedUsers.add(uid)
+        }
+      }
+      const link = `/newsletter/${campaign.id}`
+      const message = (campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 200) || 'New newsletter').slice(0, 300)
+      const budget = (channel: string) => ({ class: 'marketing' as const, topic: 'newsletter', object: String(campaign.id), source: 'newsletter', channel })
+
+      if (wantsBell) {
+        const { notify } = await import('@/lib/notifications')
+        for (const uid of subscribedUsers) {
+          let held = false
+          const n = await notify({
+            user_id: uid, type: 'newsletter', title: campaign.subject, message, link, icon: 'mail',
+            metadata: { campaignId: campaign.id, campaign_id: String(campaign.campaign_id || '') },
+            skip_push: !campaign.channels.push,
+            budget: budget('in_app'),
+            on_held: () => { held = true },
+          }).catch(() => null)
+          if (n) { inAppOk++; if (campaign.channels.push) pushOk++ }
+          else if (!held && campaign.channels.push) pushFail++
+        }
+      }
+
+      if (wantsWa) {
+        try {
+          // Consent: the WhatsApp preference switched on or an active WhatsApp subscription — and a newsletter subscriber.
+          const [prefRows, subRows] = await Promise.all([
+            db.collection('notification_preferences').find({ type: 'whatsapp', enabled: true }, { projection: { user_id: 1 } }).limit(50_000).toArray(),
+            db.collection('subscriptions').find({ whatsapp_status: 'active', user_id: { $type: 'string' } }, { projection: { user_id: 1 } }).limit(50_000).toArray(),
+          ])
+          const userIds = [...new Set([...prefRows, ...subRows].map((r) => String(r.user_id || '')).filter((u) => u && subscribedUsers.has(u)))]
+          const { sendWhatsAppToUser } = await import('@/lib/whatsapp-send')
+          const { admitMessage } = await import('@/lib/messaging/budget')
+          const text = (campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 300) || 'New update from CodeSpectra').slice(0, 900)
+          for (const uid of userIds) {
+            const a = await admitMessage({ userId: uid }, budget('whatsapp')).catch(() => null)
+            if (a && !a.ok) continue
+            const r = await sendWhatsAppToUser(uid, { kind: 'newsletter', title: String(campaign.subject || 'CodeSpectra update'), text }).catch(() => ({ sent: false, skipped: 'error' as const }))
+            if (a) await (r.sent ? a.commit() : a.release())
+            if (r.sent) whatsappOk++
+            else if (r.skipped === 'error') whatsappFail++
           }
+        } catch {
+          // WhatsApp is best-effort
         }
-      } catch {
-        pushFail = subs.length
-      }
-    }
-
-    // In-app channel - create notification for all subscribed users
-    if (campaign.channels.in_app) {
-      try {
-        // Keep _id — older user docs may lack `id`; projecting `_id:0` produced user_id="undefined"
-        const users = await db.collection('user').find({}).project({ id: 1, _id: 1 }).toArray()
-        const notifications = db.collection('notifications')
-        const link = `/newsletter/${campaign.id}`
-        const notifDocs = users
-          .map(u => {
-            const uid = String(u.id || u._id || '')
-            if (!uid || uid === 'undefined') return null
-            return {
-              id: newId(),
-              user_id: uid,
-              title: campaign.subject,
-              message: campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 200) || 'New newsletter',
-              type: 'newsletter',
-              is_read: false,
-              link,
-              icon: 'mail',
-              category: 'system',
-              metadata: { campaignId: campaign.id, campaign_id: campaign.campaign_id },
-              created_at: nowIso(),
-            }
-          })
-          .filter((d): d is NonNullable<typeof d> => d !== null)
-        if (notifDocs.length > 0) {
-          await notifications.insertMany(notifDocs)
-          inAppOk = notifDocs.length
-        }
-      } catch {
-        // In-app is best-effort
-      }
-    }
-
-    // WhatsApp channel — only people who agreed to WhatsApp (preference switched on or an active
-    // WhatsApp subscription), never everyone with a phone number (AUTO-060). lib/whatsapp-send checks
-    // consent and STOP opt-outs again per person and uses the approved newsletter template.
-    if (campaign.channels.whatsapp) {
-      try {
-        const [prefRows, subRows] = await Promise.all([
-          db.collection('notification_preferences').find({ type: 'whatsapp', enabled: true }, { projection: { user_id: 1 } }).limit(50_000).toArray(),
-          db.collection('subscriptions').find({ whatsapp_status: 'active', user_id: { $type: 'string' } }, { projection: { user_id: 1 } }).limit(50_000).toArray(),
-        ])
-        const userIds = [...new Set([...prefRows, ...subRows].map((r) => String(r.user_id || '')).filter(Boolean))]
-        const { sendWhatsAppToUser } = await import('@/lib/whatsapp-send')
-        const text = (campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 300) || 'New update from CodeSpectra').slice(0, 900)
-        for (const uid of userIds) {
-          const r = await sendWhatsAppToUser(uid, { kind: 'newsletter', title: String(campaign.subject || 'CodeSpectra update'), text })
-          if (r.sent) whatsappOk++
-          else if (r.skipped === 'error') whatsappFail++
-        }
-      } catch {
-        // WhatsApp is best-effort
       }
     }
 

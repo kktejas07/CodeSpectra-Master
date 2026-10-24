@@ -111,7 +111,7 @@ export async function POST(
   const teamCount = await teamsCol.countDocuments({ hackathon_id: hk.id })
   if (teamCount >= hk.num_teams) {
     return NextResponse.json(
-      { error: `event is full (${hk.num_teams} teams)` },
+      { error: `event is full (${hk.num_teams} teams)`, code: 'hk_event_full', params: { n: Number(hk.num_teams) } },
       { status: 409 },
     )
   }

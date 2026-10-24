@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const limit = await rateLimitRedis(`contact:${clientLimiterKeyFromRequest(req, null)}`, 5, 10 * 60 * 1000)
   if (!limit.ok) {
     return NextResponse.json(
-      { error: `Too many messages from this connection. Try again in ${Math.ceil(limit.retryAfterSec / 60)} minutes.` },
+      { error: `Too many messages from this connection. Try again in ${Math.ceil(limit.retryAfterSec / 60)} minutes.`, code: 'rate_limited_minutes', params: { minutes: Math.ceil(limit.retryAfterSec / 60) } },
       { status: 429, headers: { 'Retry-After': String(limit.retryAfterSec) } },
     )
   }

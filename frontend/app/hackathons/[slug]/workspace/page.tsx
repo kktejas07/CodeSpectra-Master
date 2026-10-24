@@ -58,6 +58,7 @@ const TOP_LANGUAGES = [
 
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Illustration } from "@/components/illustrations/spot"
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -861,7 +862,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   placeholder="teammate@example.com"
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && void sendEmailInvite()}
+                  onKeyDown={e => isSubmitEnter(e) && void sendEmailInvite()}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -1205,7 +1206,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 placeholder="e.g. PARADISE"
                 value={editTeamName}
                 onChange={e => setEditTeamName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && void handleRenameTeam()}
+                onKeyDown={e => isSubmitEnter(e) && void handleRenameTeam()}
               />
             </div>
             <p className="text-xs text-muted-foreground">

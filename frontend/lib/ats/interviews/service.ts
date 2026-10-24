@@ -16,7 +16,7 @@ import { isValidTimeZone } from './tz'
 import { getMeetingProvider, ProviderError, type MeetingInput } from './providers'
 import { isConnected, providerContext } from './integrations'
 import { validManualUrl } from './providers/manual'
-import { inviteToSchedule, noticeCandidate, noticePanel, notifySchedulers, panelLink, type NoticeKind } from './notify'
+import { inviteNoticeKey, inviteToSchedule, noticeCandidate, noticePanel, notifySchedulers, panelLink, type NoticeKind } from './notify'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -239,7 +239,17 @@ export async function createForStage(ctx: Pick<StageHandlerContext, 'app' | 'job
   const company = await companyName(ctx.job)
   if (cfg.self_schedule && ctx.candidate.email && panel.length) {
     if (await claimSend(doc.id, 'self_schedule_invite')) {
-      await inviteToSchedule(doc, ctx.candidate, await candidateLink(doc, 'sched'), company)
+      const delivery = await inviteToSchedule(doc, ctx.candidate, await candidateLink(doc, 'sched'), company)
+      // CORE-053: the recruiter must know when the "pick a time" e-mail did not go out (e.g. the candidate
+      // unsubscribed from hiring e-mails) — shown on the interview page with the link to share another way.
+      await col.updateOne({ id: doc.id }, { $set: { invite_delivery: { ...delivery, at: nowIso() } } }).catch(() => {})
+      const key = inviteNoticeKey(delivery)
+      if (key) {
+        const name = ctx.candidate.name || 'The candidate'
+        await notifySchedulers(doc, ctx.job.recruiter_ids || [], 'Invite e-mail not sent',
+          `${name} was not e-mailed the link to pick an interview time${delivery.email === 'unsubscribed' ? ' (they unsubscribed from hiring e-mails)' : ''}${delivery.whatsapp ? '; it went by WhatsApp' : ''}. Open the interview to copy the link and share it another way.`,
+          { title: { key: 'interview.inviteNotSentTitle' }, message: { key, params: { name } } })
+      }
     }
   } else if (await claimSend(doc.id, 'needs_schedule')) {
     const why = !panel.length ? ' Add interviewers to the panel first.' : cfg.self_schedule && !ctx.candidate.email ? ' The candidate has no email, so they can\'t pick a time themselves.' : ''

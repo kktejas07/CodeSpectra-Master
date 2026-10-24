@@ -36,7 +36,7 @@ export async function POST(req: Request): Promise<Response> {
   const message = typeof body?.message === 'string' ? body.message.trim() : ''
   if (!message) return NextResponse.json({ error: 'Type a message first.' }, { status: 400 })
   if (message.length > MAX_USER_MESSAGE_CHARS) {
-    return NextResponse.json({ error: `Messages can be up to ${MAX_USER_MESSAGE_CHARS} characters.` }, { status: 413 })
+    return NextResponse.json({ error: `Messages can be up to ${MAX_USER_MESSAGE_CHARS} characters.`, code: 'agent_message_max', params: { max: MAX_USER_MESSAGE_CHARS } }, { status: 413 })
   }
   const conversationId = typeof body?.conversationId === 'string' && body.conversationId ? body.conversationId : null
   const scope = parseScopeRequest(caller, body?.tenantId)

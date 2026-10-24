@@ -62,6 +62,8 @@ function Group({ id, title, lead, children }: { id: string; title: string; lead:
 export function FeaturesView({ locale }: { locale: Locale }) {
   const site = getSiteUrl()
   const t = publicT(locale)
+  // SEO-060: mock-up copy in the page language (landing.json showcase:*).
+  const sc = (en: string) => t.dyn(`landing.showcase:${en}`, en)
   const lp = (p: string) => localizedPath(p, locale)
   const route = seoCopy('/features', locale)
   const JUMP = [
@@ -91,7 +93,7 @@ export function FeaturesView({ locale }: { locale: Locale }) {
             <Link href={lp('/pricing')} className={btnSecondary}>{t('landing.seePricing')}</Link>
           </>
         }
-        art={<DeviceShowcase variant="analytics" compact />}
+        art={<DeviceShowcase tr={sc} variant="analytics" compact />}
       />
 
       {/* jump links */}
@@ -120,7 +122,7 @@ export function FeaturesView({ locale }: { locale: Locale }) {
             <BentoTitle>{t('marketing.fAnyRoleTitle')}</BentoTitle>
             <BentoBody>{t('marketing.fAnyRoleBody')}</BentoBody>
             <div className="mt-auto pt-6">
-              <DeviceShowcase variant="builder" compact />
+              <DeviceShowcase tr={sc} variant="builder" compact />
             </div>
           </BentoCard>
           <BentoCard className="sm:col-span-2">
@@ -153,7 +155,7 @@ export function FeaturesView({ locale }: { locale: Locale }) {
             <BentoTitle>{t('marketing.fProctorTitle')}</BentoTitle>
             <BentoBody>{t('marketing.fProctorBody')}</BentoBody>
             <div className="mt-auto pt-6">
-              <DeviceShowcase variant="proctor" compact />
+              <DeviceShowcase tr={sc} variant="proctor" compact />
             </div>
           </BentoCard>
           <BentoCard className="lg:col-span-2">
@@ -197,7 +199,7 @@ export function FeaturesView({ locale }: { locale: Locale }) {
             <BentoTitle>{t('marketing.fRankedTitle')}</BentoTitle>
             <BentoBody>{t('marketing.fRankedBody')}</BentoBody>
             <div className="mt-auto pt-6">
-              <DeviceShowcase variant="results" compact />
+              <DeviceShowcase tr={sc} variant="results" compact />
             </div>
           </BentoCard>
           <BentoCard className="sm:col-span-2">
@@ -249,7 +251,7 @@ export function FeaturesView({ locale }: { locale: Locale }) {
             <span className={`${btnPrimary} mt-auto self-start`}>{t('landing.startPractising')}</span>
           </BentoCard>
         </BentoShell>
-        <DeviceShowcase variant="certificate" compact className="hidden lg:sticky lg:top-32 lg:block" />
+        <DeviceShowcase tr={sc} variant="certificate" compact className="hidden lg:sticky lg:top-32 lg:block" />
         </div>
       </Group>
       <FaqSection title={t('marketing.fFaqTitle')} items={localizeFaqs(FEATURE_FAQS, t)} id="features-faq" inLanguage={locale} />

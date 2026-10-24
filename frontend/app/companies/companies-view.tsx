@@ -12,13 +12,15 @@ export const companiesMetadata = (locale: Locale) => publicPageMetadata('/compan
 
 export function CompaniesView({ locale }: { locale: Locale }) {
   const t = publicT(locale)
+  // SEO-060: mock-up copy in the page language (landing.json showcase:*).
+  const sc = (en: string) => t.dyn(`landing.showcase:${en}`, en)
   const industries = getIndustries()
   return (
     <PublicPageWrapper>
       <PageHero
         title={t('hubs.companiesTitle')}
         lead={t('hubs.companiesLead')}
-        art={<DeviceShowcase variant="candidate" compact />}
+        art={<DeviceShowcase tr={sc} variant="candidate" compact />}
       />
       <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <CompaniesDirectory

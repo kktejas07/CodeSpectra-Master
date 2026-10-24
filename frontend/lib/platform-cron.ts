@@ -130,6 +130,18 @@ export async function runPlatformCron(now: Date = new Date(), opts: { longInBack
     })
   } else report.skipped.push('exam-auto-close', 'quiet-hours-flush')
 
+  // ── one-time (SEC-037 follow-up): learner-published problems back to review. Done flag in one_time_jobs ──
+  {
+    const { learnerProblemSweepDone } = await import('./problems/learner-review')
+    if (!(await learnerProblemSweepDone().catch(() => true))) {
+      await run('learner-problems-review', dayWindow(minute), async () => {
+        const { runLearnerProblemSweep } = await import('./problems/learner-review')
+        const r = await runLearnerProblemSweep(now)
+        if (r.count > 0) logger.info(`[problems] Sent ${r.count} learner-published problem(s) back to review`)
+      }, { maxAttempts: 4, retryAfterMs: 10 * 60_000, leaseMs: 15 * 60_000 })
+    }
+  }
+
   // ── daily (trial + grace expiry, identity media) — from 00:05 UTC, retried if a run fails ──
   const day = dayWindow(minute)
   const afterWindow = minute.getUTCHours() > 0 || minute.getUTCMinutes() >= 5

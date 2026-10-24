@@ -191,7 +191,20 @@ export function resolveTourId(pathname: string): string | null {
   return best ? TOUR_ID_FOR_PATHS[best] : null
 }
 
-/** Prebuilt dashboard welcome tour (migrated from the old tour-hooks). */
+/**
+ * Dashboard welcome tour in the user's language (SEO-061): pass the page's
+ * translator; the English below is the fallback for callers without one.
+ */
+export function welcomeTourSteps(t: (key: 'dash.tourWelcomeHomeTitle' | 'dash.tourWelcomeHomeBody' | 'dash.tourWelcomeArenaTitle' | 'dash.tourWelcomeArenaBody' | 'dash.tourWelcomeScannerTitle' | 'dash.tourWelcomeScannerBody') => string): TourStep[] {
+  const [home, arena, scanner] = WELCOME_TOUR_STEPS
+  return [
+    { ...home, title: t('dash.tourWelcomeHomeTitle'), description: t('dash.tourWelcomeHomeBody') },
+    { ...arena, title: t('dash.tourWelcomeArenaTitle'), description: t('dash.tourWelcomeArenaBody') },
+    { ...scanner, title: t('dash.tourWelcomeScannerTitle'), description: t('dash.tourWelcomeScannerBody') },
+  ]
+}
+
+/** Prebuilt dashboard welcome tour, English (migrated from the old tour-hooks). */
 export const WELCOME_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="dashboard-overview"]',
@@ -263,6 +276,26 @@ function toDriveSteps(steps: TourStep[]): DriveStep[] {
   }))
 }
 
+/**
+ * SEO-061: button and progress labels in the user's language. The tour
+ * provider (components/tour/tour-context.tsx) sets them from the active
+ * catalog; they are applied before every drive() and to every hint, so a
+ * language switch mid-session takes effect on the next tour.
+ */
+export interface TourLabels { next: string; back: string; finish: string; progress: string; gotIt: string }
+export const ENGLISH_TOUR_LABELS: TourLabels = { next: 'Next', back: 'Back', finish: 'Finish', progress: '{{current}} of {{total}}', gotIt: 'Got it' }
+let labels: TourLabels = ENGLISH_TOUR_LABELS
+export function setTourLabels(next: Partial<TourLabels> | null) {
+  labels = { ...ENGLISH_TOUR_LABELS, ...(next ?? {}) }
+}
+export function getTourLabels(): TourLabels {
+  return labels
+}
+/** driver.js config fields for the current labels. */
+export function tourLabelConfig(l: TourLabels = labels) {
+  return { nextBtnText: l.next, prevBtnText: l.back, doneBtnText: l.finish, progressText: l.progress }
+}
+
 let instance: Driver | null = null
 let activeTourId: string | null = null
 // ponytail: registry of last-started steps per tour id, so replayTour works
@@ -287,16 +320,13 @@ async function getDriver(): Promise<Driver | null> {
     if (instance) return instance
     instance = driver({
       showProgress: true,
-      progressText: '{{current}} of {{total}}',
+      ...tourLabelConfig(),
       popoverClass: TOUR_POPOVER_CLASS,
       smoothScroll: true,
       allowKeyboardControl: true,
       allowClose: true,
       overlayClickBehavior: 'close',
       waitForElement: 3000,
-      nextBtnText: 'Next',
-      prevBtnText: 'Back',
-      doneBtnText: 'Finish',
       // driver.js marks every highlighted element aria-haspopup/aria-expanded,
       // which is invalid ARIA on plain containers (axe: aria-allowed-attr) and
       // confuses screen readers. Keep them only on elements that support them.
@@ -334,6 +364,8 @@ export function startPageTour(tourId: string, steps: TourStep[], opts: { replay?
       try { d.destroy() } finally { replaying = false }
     }
     activeTourId = tourId
+    // configure() replaces the whole config, so merge onto the current one.
+    d.setConfig({ ...d.getConfig(), ...tourLabelConfig() })
     d.setSteps(toDriveSteps(steps))
     d.drive()
   }).catch(() => { /* chunk failed to load (offline) — the tour just doesn't start */ })
@@ -420,7 +452,7 @@ async function getHints(): Promise<Hints | null> {
     if (hintsInstance) return hintsInstance
     hintsInstance = hints({
       popoverClass: TOUR_POPOVER_CLASS,
-      buttonText: 'Got it',
+      buttonText: labels.gotIt,
       onDismiss: (_el, hint) => {
         const id = typeof hint.id === 'string' ? hint.id : null
         if (id) {
@@ -447,6 +479,7 @@ function toDriverHints(hintSetId: string, items: TourHint[]): DriverHint[] {
         description: h.description,
         side: h.position ?? 'bottom',
         popoverClass: TOUR_POPOVER_CLASS,
+        buttonText: labels.gotIt,
       },
     }))
 }

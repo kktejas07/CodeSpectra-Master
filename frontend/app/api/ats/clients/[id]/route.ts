@@ -39,7 +39,7 @@ export async function DELETE(req: NextRequest, { params }: IdRouteContext) {
       (await atsJobs()).countDocuments({ tenant_id: g.actor.tenantId, client_id: id }),
       (await atsMembers()).countDocuments({ tenant_id: g.actor.tenantId, client_id: id, status: { $ne: 'disabled' } }),
     ])
-    if (jobs || members) return json({ error: `This client still has ${jobs} job(s) and ${members} team member(s). Move or remove them first.` }, 409)
+    if (jobs || members) return json({ error: `This client still has ${jobs} job(s) and ${members} team member(s). Move or remove them first.`, code: 'ats_client_in_use', params: { jobs, members } }, 409)
     const r = await (await atsClients()).deleteOne({ id, tenant_id: g.actor.tenantId })
     if (!r.deletedCount) return json({ error: 'Client not found' }, 404)
     await auditAts(g.actor, 'ats.client.delete', 'ats_client', id, undefined, req)

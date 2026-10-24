@@ -112,7 +112,7 @@ export async function deliverNudge(m: NudgeMessage): Promise<NudgeOutcome> {
       return 'stopped'
     }
     const cls: MessageClass = m.class ?? (m.capExempt ? 'transactional' : m.priority === 'high' ? 'deadline' : 'engagement')
-    const admit = await admitMessage(m.to, { class: cls, topic: m.topic, object: m.object, source: m.automationId }, now)
+    const admit = await admitMessage(m.to, { class: cls, topic: m.topic, object: m.object, source: m.automationId, log: false }, now)
     if (!admit.ok) {
       // Capped: try again on a later sweep. Duplicate: another sender already said it — done.
       if (admit.outcome === 'capped') await releaseClaim(onceKey)

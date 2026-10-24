@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 interface AICredits {
   balance: number
@@ -14,6 +15,7 @@ interface AICredits {
 }
 
 export function AiCreditsWidget({ className }: { className?: string }) {
+  const { t, rich } = useT()
   const [credits, setCredits] = useState<AICredits | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -31,7 +33,7 @@ export function AiCreditsWidget({ className }: { className?: string }) {
     return (
       <Card className={cn("overflow-hidden border-primary/20 bg-primary/5", className)}>
         <CardContent className="p-4 flex items-center justify-center min-h-25">
-          <Loader2 aria-label="Loading AI credits" className="h-5 w-5 animate-spin text-primary" />
+          <Loader2 aria-label={t('common.aiCreditsLoading')} className="h-5 w-5 animate-spin text-primary" />
         </CardContent>
       </Card>
     )
@@ -55,13 +57,13 @@ export function AiCreditsWidget({ className }: { className?: string }) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles aria-hidden className="h-4 w-4 text-primary" />
-              <h3 className="text-base font-semibold">AI credits</h3>
+              <h3 className="text-base font-semibold">{t('common.aiCreditsTitle')}</h3>
               {!isPro && (
-                <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Free plan</span>
+                <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{t('common.aiCreditsFreePlan')}</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Used for AI mock tests and AI interview feedback
+              {t('common.aiCreditsUsedFor')}
             </p>
           </div>
           <div className="text-right">
@@ -78,10 +80,10 @@ export function AiCreditsWidget({ className }: { className?: string }) {
         />
         
         <div className="mt-4 bg-muted/50 p-3 rounded-lg border border-border/50 text-xs text-muted-foreground">
-          Your AI credits reset every month. 
+          {t('common.aiCreditsReset')}
           {!isPro && (
             <span className="block mt-1">
-              For more AI credits, <Link href="/dashboard/pricing" className="text-primary font-semibold hover:underline">go Pro</Link> now and get 10 credits/month to upskill.
+              {rich('common.aiCreditsUpsell', { link: <Link href="/dashboard/pricing" className="text-primary font-semibold hover:underline">{t('common.aiCreditsGoPro')}</Link> })}
             </span>
           )}
         </div>

@@ -1621,5 +1621,10 @@
   "ldNoShowsTarget": "Add them to",
   "ldNoShowsMove": "Add {count} to this drive",
   "ldNoShowsNoTarget": "Create or schedule another drive to offer them a new slot.",
-  "ldNoShowsMoved": "Added {added} (already there: {already})."
+  "ldNoShowsMoved": "Added {added} (already there: {already}).",
+  "inviteNotSentUnsubscribed": "The candidate unsubscribed from hiring e-mails, so the e-mail with the link to pick a time was not sent.",
+  "inviteNotSentNoEmail": "The candidate has no e-mail address, so the link to pick a time was not e-mailed.",
+  "inviteNotSentFailed": "The e-mail with the link to pick a time could not be sent.",
+  "inviteWentByWhatsapp": "It went by WhatsApp. You can also copy their link below and share it another way.",
+  "inviteShareAnotherWay": "Copy their link below and share it another way, or book a time for them."
 }

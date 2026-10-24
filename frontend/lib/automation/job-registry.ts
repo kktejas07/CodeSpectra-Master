@@ -33,6 +33,7 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'grace-expiry', label: 'Payment grace expiry', group: 'Platform', everyMinutes: 1440 },
   { id: 'identity-media-purge', label: 'Identity photo retention', group: 'Platform', everyMinutes: 1440 },
   { id: 'interview-sim-retention', label: 'Mock-interview recording retention', group: 'Platform', everyMinutes: 1440 },
+  { id: 'automations-heavy', label: 'Slow automation sweeps (content freshness)', group: 'Content', everyMinutes: 1 },
   { id: 'learn', label: 'Learn hub (publish + drafts)', group: 'Content', everyMinutes: 1 },
   // Its own heartbeat (lib/learn/generate.ts): the daily AI draft, ok or error (AUTO-104).
   { id: 'learn-daily', label: 'Learn daily AI draft', group: 'Content', everyMinutes: 1440, optional: true },
@@ -62,6 +63,8 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'referral-rewards', label: 'Referral rewards', group: 'Platform', everyMinutes: 1440 },
   { id: 'licence-expiry', label: 'Organisation licence expiry', group: 'Platform', everyMinutes: 1440 },
   { id: 'ai-usage-rollup', label: 'AI spend daily rollup', group: 'Platform', everyMinutes: 1440 },
+  // One-time (SEC-037 follow-up): stops heartbeating once its done flag is set, so it is optional.
+  { id: 'learner-problems-review', label: 'One-time: learner-published problems back to review', group: 'Platform', everyMinutes: 1440, optional: true },
   { id: 'pro-cert-sweep', label: 'Proctored certifications (finalise, payments, expiry reminders)', group: 'Platform', everyMinutes: 5 },
   { id: 'lti-grade-retry', label: 'LMS grade passback retries', group: 'Platform', everyMinutes: 5 },
   { id: 'company-tests-refresh', label: 'Company test weekly refresh', group: 'Content', everyMinutes: 10080, optional: true },

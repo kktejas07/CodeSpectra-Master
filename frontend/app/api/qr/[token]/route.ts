@@ -57,7 +57,7 @@ export async function GET(
   const idRow = await idCol.findOne({ token })
   if (idRow) {
     if (idRow.revoked_at) {
-      return NextResponse.json({ error: 'revoked', kind: 'user' }, { status: 410 })
+      return NextResponse.json({ error: 'revoked', code: 'qr_revoked', kind: 'user' }, { status: 410 })
     }
     const db = await getMongoDb()
     const u = ObjectId.isValid(idRow.user_id)

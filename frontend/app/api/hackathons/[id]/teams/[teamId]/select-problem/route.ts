@@ -39,7 +39,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // Check limit
   const limit = hk.solve_limit || 0
   if (limit > 0 && selected.length >= limit) {
-    return NextResponse.json({ error: `You have reached the solve limit of ${limit} problem(s).` }, { status: 409 })
+    return NextResponse.json({ error: `You have reached the solve limit of ${limit} problem(s).`, code: 'hk_solve_limit', params: { limit: Number(limit) } }, { status: 409 })
   }
 
   const updatedSelected = [...selected, body.problem_slug]

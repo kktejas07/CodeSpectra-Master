@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 // ponytail: module-level translator handle so the plain fetch helper speaks the page language.
 let apiT: Translator | null = null
@@ -385,7 +386,7 @@ export default function InterviewSessionPage() {
                   maxLength={6000}
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send() } }}
+                  onKeyDown={(e) => { if (isSubmitEnter(e, { modifier: true })) { e.preventDefault(); void send() } }}
                   placeholder={isVoice ? t('dashboard.voicePlaceholder') : t('dashboard.typePlaceholder')}
                   className="rounded-xl"
                   disabled={sending}

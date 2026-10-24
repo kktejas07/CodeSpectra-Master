@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
     const count = await col.countDocuments({ user_id: gate.user.id })
     if (count >= MAX_DRAFTS) {
-      return NextResponse.json({ error: `You can keep up to ${MAX_DRAFTS} drafts. Delete one to save another.` }, { status: 409 })
+      return NextResponse.json({ error: `You can keep up to ${MAX_DRAFTS} drafts. Delete one to save another.`, code: 'resume_drafts_max', params: { max: MAX_DRAFTS } }, { status: 409 })
     }
     const doc: ResumeDraftDoc = { id: newId(), user_id: gate.user.id, name, template, data, created_at: now, updated_at: now }
     await col.insertOne({ ...doc })

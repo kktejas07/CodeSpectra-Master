@@ -38,6 +38,58 @@ export function fusionConfig(env: Record<string, string | undefined> = process.e
   }
 }
 
+/**
+ * RAG-025: vector-confidence rescue. Keyword-first fusion buries a pure
+ * paraphrase (a question that shares no words with its answer) at about
+ * keyword rank 19. When the vector list is *confident* — its top hit has a
+ * high cosine and clearly beats the runner-up — and the keyword list ranks
+ * that hit poorly (or not at all), the hit is moved up to `position`. One hit
+ * at most, never above the keyword top `position - 1`, so keyword-led answers
+ * keep their place. Tune per embedder with RAG_VECTOR_RESCUE_MIN /
+ * RAG_VECTOR_RESCUE_MARGIN / RAG_VECTOR_RESCUE_POSITION (MIN 0 or > 1 = off).
+ */
+export const VECTOR_RESCUE_DEFAULTS = { minScore: 0.5, margin: 0.05, position: 3, keywordRankBelow: 5 }
+
+export function vectorRescueConfig(env: Record<string, string | undefined> = process.env): typeof VECTOR_RESCUE_DEFAULTS {
+  const num = (v: string | undefined, min: number, max: number, def: number) => {
+    const n = v === undefined || v.trim() === '' ? NaN : Number(v)
+    return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : def
+  }
+  return {
+    minScore: num(env.RAG_VECTOR_RESCUE_MIN, 0, 2, VECTOR_RESCUE_DEFAULTS.minScore),
+    margin: num(env.RAG_VECTOR_RESCUE_MARGIN, 0, 1, VECTOR_RESCUE_DEFAULTS.margin),
+    position: Math.round(num(env.RAG_VECTOR_RESCUE_POSITION, 1, 20, VECTOR_RESCUE_DEFAULTS.position)),
+    keywordRankBelow: Math.round(num(env.RAG_VECTOR_RESCUE_KEYWORD_RANK, 1, 100, VECTOR_RESCUE_DEFAULTS.keywordRankBelow)),
+  }
+}
+
+/** Pure: `fused` with the confident vector top hit moved up to `position` (1-based) when the rule applies. */
+export function vectorRescue<T extends { id: string }>(
+  fused: readonly T[],
+  vector: ReadonlyArray<{ id: string; score: number }>,
+  keywordIds: readonly string[],
+  cfg: typeof VECTOR_RESCUE_DEFAULTS = VECTOR_RESCUE_DEFAULTS,
+): T[] {
+  const out = [...fused]
+  // Best and runner-up by score (vector lists are normally sorted, but don't rely on it).
+  let top: { id: string; score: number } | undefined
+  let second = 0
+  for (const v of vector) {
+    if (!top || v.score > top.score) { if (top) second = Math.max(second, top.score); top = v }
+    else second = Math.max(second, v.score)
+  }
+  if (!top || !(cfg.minScore > 0) || cfg.minScore > 1) return out
+  if (top.score < cfg.minScore || top.score - second < cfg.margin) return out
+  const kwRank = keywordIds.indexOf(top.id) // 0-based; -1 = keyword never saw it
+  if (kwRank !== -1 && kwRank + 1 < cfg.keywordRankBelow) return out
+  const at = out.findIndex((f) => f.id === top.id)
+  const target = Math.max(0, cfg.position - 1)
+  if (at <= target) return out
+  const [hit] = out.splice(at, 1)
+  out.splice(target, 0, hit)
+  return out
+}
+
 export interface RankedId {
   id: string
 }

@@ -235,7 +235,8 @@
   "label:Agent loops": "ఏజెంట్ లూప్‌లు",
   "impersonating": "మీరు ఈ యూజర్‌గా యాప్ చూస్తున్నారు (ఇంపర్సనేషన్). మీ చర్యలు వారి అకౌంట్‌లో లెక్కించబడతాయి.",
   "exitImpersonation": "ఇంపర్సనేషన్ నుంచి బయటకు రండి",
-  "exitingImpersonation": "బయటకు వస్తోంది…",
+  "exitingImpersonation": "బయటకు వస్తున్నాం…",
   "exitImpersonationFailed": "బయటకు రాలేకపోయాం. మళ్లీ ప్రయత్నించండి లేదా సైన్ అవుట్ చేయండి.",
-  "exitImpersonationOffline": "బయటకు రాలేకపోయాం. మీ కనెక్షన్ చూసి మళ్లీ ప్రయత్నించండి."
+  "exitImpersonationOffline": "బయటకు రాలేకపోయాం. మీ కనెక్షన్ చూసి మళ్లీ ప్రయత్నించండి.",
+  "label:Problems review": "ప్రాబ్లమ్‌ల సమీక్ష"
 }

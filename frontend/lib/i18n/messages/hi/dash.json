@@ -670,5 +670,11 @@
   "digestCategory:codeathon": "कोडिंग राउंड",
   "digestCategory:news": "टेक खबर",
   "digestCategory:learn": "लर्न",
-  "digestCategory:platform": "CodeSpectra पर नया"
+  "digestCategory:platform": "CodeSpectra पर नया",
+  "tourWelcomeHomeTitle": "आपका डेवलपर होम",
+  "tourWelcomeHomeBody": "यहीं से सब संभालें: अपने XP और स्ट्रीक यहाँ देखें, फिर नीचे से प्रैक्टिस, स्कैन या इवेंट्स पर जाएँ।",
+  "tourWelcomeArenaTitle": "प्रैक्टिस एरीना",
+  "tourWelcomeArenaBody": "कोडिंग प्रॉब्लम और इंटरव्यू सवालों से खुद को परखें। अपनी प्रगति देखें और साथियों से मुकाबला करें।",
+  "tourWelcomeScannerTitle": "कोड स्कैनर",
+  "tourWelcomeScannerBody": "AI से कोड की जाँच: समस्याएँ पकड़ता है, सुधार सुझाता है और सुरक्षा से जुड़ी जानकारी देता है।"
 }

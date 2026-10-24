@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
           { $set: { selected_problems: selected, updated_at: nowIso() } }
         )
       } else {
-        return NextResponse.json({ error: `You have not selected this problem. You can only solve up to ${hk.solve_limit} problem(s).` }, { status: 403 })
+        return NextResponse.json({ error: `You have not selected this problem. You can only solve up to ${hk.solve_limit} problem(s).`, code: 'hk_problem_not_selected', params: { limit: Number(hk.solve_limit) } }, { status: 403 })
       }
     }
   }
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (firstSub.length > 0) {
       const elapsed = (Date.now() - new Date(firstSub[0].submitted_at).getTime()) / 60_000
       if (elapsed >= timeLimit) {
-        return NextResponse.json({ error: `Time limit of ${timeLimit} minutes exceeded for this problem` }, { status: 409 })
+        return NextResponse.json({ error: `Time limit of ${timeLimit} minutes exceeded for this problem`, code: 'hk_time_limit_exceeded', params: { minutes: Number(timeLimit) } }, { status: 409 })
       }
     }
   }

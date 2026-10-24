@@ -237,5 +237,6 @@
   "exitImpersonation": "इम्पर्सनेशन से बाहर निकलें",
   "exitingImpersonation": "बाहर निकल रहे हैं…",
   "exitImpersonationFailed": "बाहर नहीं निकल सके। फिर से कोशिश करें या साइन आउट करें।",
-  "exitImpersonationOffline": "बाहर नहीं निकल सके। अपना कनेक्शन जाँचें और फिर से कोशिश करें।"
+  "exitImpersonationOffline": "बाहर नहीं निकल सके। अपना कनेक्शन जाँचें और फिर से कोशिश करें।",
+  "label:Problems review": "प्रॉब्लम की समीक्षा"
 }

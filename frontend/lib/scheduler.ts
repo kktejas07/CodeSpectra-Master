@@ -375,6 +375,8 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     // mentor follow-ups. Checked every tick; each loop claims its own window + heartbeat (assistant-*).
     // First in the lane so a slow content job can't push them past a timeout (CORE-045 / AUTO-106).
     await (await import('./assistants/tick')).runAssistantsTick(now).catch((e) => console.error('[scheduler] assistants error:', e))
+    // Slow built-in automation sweeps (content freshness: link checks + AI notes) — AUTO-099. Each claims its own window.
+    await job('automations-heavy', minute, async () => (await import('./automation/system/registry')).runHeavyAutomationSweeps(now), { leaseMs: 30 * 60_000 })
     // Learn hub (lib/learn/generate.ts): publish due posts; drafts until today's quota; weekly digest.
     await job('learn', minute, async () => (await import('./learn/generate')).runLearnTick(now), { leaseMs: 10 * 60_000 })
     // Events feed (lib/events-feed/tick.ts): source pulls, WhatsApp alerts + reminders, weekly digest.
@@ -421,7 +423,7 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     await (await import('./agent/hiring-loops/tick')).runHiringLoopsTick(now).catch((e) => console.error('[scheduler] hiring agents error:', e))
   }
   if (opts.heavyInBackground) {
-    report.background = ['learn', 'events-feed', 'news-digest', 'content-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports', 'knowledge']
+    report.background = ['automations-heavy', 'learn', 'events-feed', 'news-digest', 'content-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports', 'knowledge']
     void heavy().catch((e) => console.error('[scheduler] content lane error:', e))
   } else {
     await heavy()

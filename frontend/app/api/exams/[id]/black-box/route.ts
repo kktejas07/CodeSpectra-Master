@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const user = gate.user
   const { id: examId } = await ctx.params
   const parsed = Body.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: `Send a question and an input of up to ${BLACK_BOX_INPUT_MAX} characters.` }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: `Send a question and an input of up to ${BLACK_BOX_INPUT_MAX} characters.`, code: 'bb_input_max', params: { max: BLACK_BOX_INPUT_MAX } }, { status: 400 })
   const body = parsed.data
 
   try {
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const limited = await limitRequest(req, `black-box:${examId}:${body.question_id}:a${access.attemptNo}`, user.id, ext.black_box_runs, 60 * 60_000)
-    if (limited) return NextResponse.json({ error: `You've used all ${ext.black_box_runs} black-box runs for this hour.` }, { status: 429, headers: limited.headers })
+    if (limited) return NextResponse.json({ error: `You've used all ${ext.black_box_runs} black-box runs for this hour.`, code: 'bb_runs_used', params: { n: Number(ext.black_box_runs) } }, { status: 429, headers: limited.headers })
 
     try {
       const r = await executeOnce({ language: ext.reference_solution.language, source: ext.reference_solution.code, stdin: body.input, timeoutMs: 5000 })

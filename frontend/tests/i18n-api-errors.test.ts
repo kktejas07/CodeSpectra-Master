@@ -35,7 +35,9 @@ const UI_BRANCH_CODES = new Set(['address', 'coupon'])
 /** Pre-existing machine codes the clients branch on (kept as they were). */
 const LEGACY_CODES = new Set<string>([])
 /** Codes deliberately sent with more than one wording (the client shows the code's text). */
-const SHARED_CODES = new Set(['admin_2fa_required'])
+const SHARED_CODES = new Set(['admin_2fa_required',
+  // SEO-055: machine strings kept as `error` for existing clients (native app), code carries the readable text.
+  'qr_revoked', 'kyc_session_create_failed'])
 
 describe('API error code map', () => {
   it('every code sent next to an error message is in the catalog', () => {
@@ -126,7 +128,12 @@ describe('client helper (localizeApiError)', () => {
   })
 
   it('infers the code from a known message (routes that only send `error`)', () => {
-    expect(localizeApiError('hi', messages, { error: 'Unauthorized' }, 'f')).toBe((hi as Record<string, string>).unauthorized)
+    // SEO-055: the English table comes with the lazily loaded catalog (useApiError).
+    const withEn = { ...messages, apiErrorsEn: en as Record<string, string> }
+    expect(localizeApiError('hi', withEn, { error: 'Unauthorized' }, 'f')).toBe((hi as Record<string, string>).unauthorized)
+    expect(localizeApiError('hi', withEn, { error: 'unauthorized.' }, 'f')).toBe((hi as Record<string, string>).unauthorized)
+    // Without it only explicit codes translate.
+    expect(localizeApiError('hi', messages, { error: 'Unauthorized' }, 'f')).toBe('Unauthorized')
   })
 
   it('falls back to the server text for unknown codes, missing params or unknown messages', () => {
@@ -134,5 +141,45 @@ describe('client helper (localizeApiError)', () => {
     expect(localizeApiError('hi', messages, { error: 'Wait 30s', code: 'auth_too_many_attempts' }, 'f')).toBe('Wait 30s')
     expect(localizeApiError('hi', messages, {}, 'Fallback')).toBe('Fallback')
     expect(localizeApiError('hi', messages, { message: 'From message' }, 'f')).toBe('From message')
+  })
+})
+
+/**
+ * SEO-055 ratchet: route errors the client can't translate — an `error:`
+ * string literal with no `code` next to it whose text is not a catalog
+ * message (exact English, so codeForMessage can't infer one). Counted per
+ * app/api folder against tests/fixtures/api-error-uncoded.json; a count may
+ * only go down (lower the ceiling when you fix some, never raise it).
+ * Webhooks and cron answer machines, not people, so they are not counted.
+ */
+describe('uncoded API errors only go down (SEO-055)', () => {
+  const norm = (s: string) => s.trim().replace(/[’']/g, "'").replace(/\.$/, '').toLowerCase()
+  const KNOWN = new Set(Object.values(EN).filter((v) => !/\{\w+\}/.test(v)).map(norm))
+  const LITERAL = /\berror: (?:'((?:[^'\\\n]|\\.)*)'|"([^"\n]*)"|`([^`\n]*)`)(?!,\s*code:)/g
+  const CEILING = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/api-error-uncoded.json'), 'utf8')) as Record<string, number>
+
+  function counts(): Record<string, number> {
+    const out: Record<string, number> = {}
+    for (const { f, s } of SOURCES) {
+      if (!f.startsWith('app/api/') || /\/(webhooks?|[a-z-]*-webhook)\/|^app\/api\/cron\//.test(f)) continue
+      const folder = f.split('/')[2]
+      for (const m of s.matchAll(LITERAL)) {
+        const text = (m[1] ?? m[2] ?? m[3] ?? '').replace(/\\'/g, "'")
+        if (KNOWN.has(norm(text))) continue
+        out[folder] = (out[folder] ?? 0) + 1
+      }
+    }
+    return out
+  }
+
+  it('no folder has more uncoded errors than its ceiling', () => {
+    const over = Object.entries(counts()).filter(([k, n]) => n > (CEILING[k] ?? 0)).map(([k, n]) => `app/api/${k}: ${n} > ${CEILING[k] ?? 0}`)
+    expect(over, 'give the new error a code (apiErrorFor / a catalog message in lib/i18n/messages/*/apiErrors.json)').toEqual([])
+  })
+
+  it('the total stays at or under the recorded ceiling', () => {
+    const total = Object.values(counts()).reduce((a, b) => a + b, 0)
+    // Was ~1,350 before SEO-055; lower the fixture when you fix more, never raise it.
+    expect(total).toBeLessThanOrEqual(Object.values(CEILING).reduce((a, b) => a + b, 0))
   })
 })

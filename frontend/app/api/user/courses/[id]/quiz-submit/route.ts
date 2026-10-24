@@ -70,7 +70,7 @@ export async function POST(
     if (!gate.ok) {
       const mins = Math.ceil(gate.retryAfterSec / 60)
       return NextResponse.json(
-        { error: `You've used your attempts for this module. Review the lessons and try again in ${mins} minute${mins === 1 ? '' : 's'}.` },
+        { error: `You've used your attempts for this module. Review the lessons and try again in ${mins} minute${mins === 1 ? '' : 's'}.`, code: 'course_quiz_cooldown', params: { minutes: mins } },
         { status: 429, headers: { 'Retry-After': String(gate.retryAfterSec) } },
       )
     }

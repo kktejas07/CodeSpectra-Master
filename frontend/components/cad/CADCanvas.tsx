@@ -12,6 +12,7 @@ import { snapPointToGrid } from '@/lib/cad/math';
 import { collectSnapPoints, snapToNearest, getSnapIndicatorColor } from '@/lib/cad/snap-engine';
 import { DEFAULT_STYLES, LINE_DASH_MAP } from '@/types/cad';
 import type { CADShape, TextShape, DimensionShape } from '@/types/cad';
+import { isSubmitEnter } from '@/lib/keyboard'
 
 const SELECTION_COLOR = '#2F5BE7'; // brand royal blue
 
@@ -165,7 +166,7 @@ const ShapeComponent = React.memo(function ShapeComponent({ shape, isDrawing, cu
               textarea.remove();
             });
             textarea.addEventListener('keydown', (ke) => {
-              if (ke.key === 'Enter' && !ke.shiftKey) {
+              if (isSubmitEnter(ke, { shift: false })) {
                 ke.preventDefault();
                 textarea.blur();
               }

@@ -237,5 +237,6 @@
   "exitImpersonation": "Exit impersonation",
   "exitingImpersonation": "Exiting…",
   "exitImpersonationFailed": "Couldn't exit. Try again or sign out.",
-  "exitImpersonationOffline": "Couldn't exit. Check your connection and try again."
+  "exitImpersonationOffline": "Couldn't exit. Check your connection and try again.",
+  "label:Problems review": "Problems review"
 }

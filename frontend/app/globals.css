@@ -69,8 +69,9 @@
   --accent: 226 60% 95%;
   --accent-foreground: 226 65% 25%;
   
-  /* Destructive */
-  --destructive: 0 84% 60%;
+  /* Destructive. SEO-056: 42% lightness keeps red text >= 4.5:1 on the page, cards and
+     muted panels (6.3:1 on --background) and white text on red buttons (6.4:1). */
+  --destructive: 0 74% 42%;
   --destructive-foreground: 0 0% 100%;
   
   /* Success */
@@ -141,9 +142,10 @@
   --accent: 220 25% 15%;
   --accent-foreground: 225 90% 90%;
   
-  /* Destructive */
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 98%;
+  /* Destructive. SEO-056: a lighter red keeps error text >= 4.5:1 on the dark page, cards
+     and muted panels (6.5:1 on --background); buttons use dark text on it, like --primary. */
+  --destructive: 0 90% 68%;
+  --destructive-foreground: 220 40% 5%;
   
   /* Success */
   --success: 156 100% 42%;
@@ -954,6 +956,21 @@
   background: var(--cs-paper);
   color: var(--cs-ink);
   font-stretch: 100%;
+}
+/* Dark mode: the brand blue on the dark paper (#080c14) was 3.4:1 — use the
+ * dark theme's lighter primary so small brand text stays >= 4.5:1. */
+.dark .cs-brand {
+  --primary: 225 100% 68%;
+  --primary-foreground: 220 40% 5%;
+  --ring: 225 100% 68%;
+}
+/* …except the always-light hero (.cs-light), which keeps the light-theme blue. */
+.dark .cs-brand .cs-light,
+.dark .cs-light .cs-brand,
+.dark .cs-brand.cs-light {
+  --primary: 226 79% 54%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 226 79% 54%;
 }
 /* Condensed display type: the width axis is the brand's voice. */
 .cs-display {

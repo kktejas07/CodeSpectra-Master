@@ -670,5 +670,11 @@
   "digestCategory:codeathon": "కోడింగ్ రౌండ్",
   "digestCategory:news": "టెక్ వార్త",
   "digestCategory:learn": "లెర్న్",
-  "digestCategory:platform": "CodeSpectra లో కొత్తది"
+  "digestCategory:platform": "CodeSpectra లో కొత్తది",
+  "tourWelcomeHomeTitle": "మీ డెవలపర్ హోమ్",
+  "tourWelcomeHomeBody": "అన్నీ ఇక్కడి నుంచే: మీ XP, స్ట్రీక్‌లు ఇక్కడ చూడండి, తర్వాత కింద ప్రాక్టీస్, స్కాన్‌లు లేదా ఈవెంట్‌లలోకి వెళ్లండి.",
+  "tourWelcomeArenaTitle": "ప్రాక్టీస్ అరీనా",
+  "tourWelcomeArenaBody": "కోడింగ్ ప్రాబ్లమ్‌లు, ఇంటర్వ్యూ ప్రశ్నలతో మిమ్మల్ని మీరు పరీక్షించుకోండి. మీ ప్రోగ్రెస్ చూసుకుంటూ తోటివారితో పోటీ పడండి.",
+  "tourWelcomeScannerTitle": "కోడ్ స్కానర్",
+  "tourWelcomeScannerBody": "AI తో కోడ్ విశ్లేషణ: సమస్యలను గుర్తిస్తుంది, మెరుగుదలలు సూచిస్తుంది, భద్రతకు సంబంధించిన వివరాలు ఇస్తుంది."
 }

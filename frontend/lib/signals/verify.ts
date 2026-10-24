@@ -39,6 +39,35 @@ export function groundFacts<F extends SignalFactStored>(facts: readonly F[] | nu
   return { kept, dropped }
 }
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * AGT-048: is an extracted fact's separate `date` field written in the pages?
+ * Accepts the raw value and the usual spellings (2026-10-24, 24 October 2026,
+ * October 24, 2026, 24 Oct 2026, Oct 24 2026, 24/10/2026, 10/24/2026). No
+ * source text → nothing to check against (same rule as groundFacts). Pure.
+ */
+export function dateGrounded(date: unknown, src: string): boolean {
+  const raw = String(date ?? '').trim()
+  if (!raw) return false
+  if (!src.trim()) return true
+  const hay = src.toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, '$1').replace(/[,\s]+/g, ' ')
+  const has = (v: string) => hay.includes(v.toLowerCase().replace(/[,\s]+/g, ' '))
+  if (has(raw)) return true
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return false
+  const day = d.getUTCDate()
+  const m = MONTHS[d.getUTCMonth()]
+  const y = d.getUTCFullYear()
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(day).padStart(2, '0')
+  const short = m.slice(0, 3)
+  return [
+    `${y}-${mm}-${dd}`, `${day} ${m} ${y}`, `${m} ${day} ${y}`, `${day} ${short} ${y}`, `${short} ${day} ${y}`,
+    `${short}. ${day} ${y}`, `${dd}/${mm}/${y}`, `${mm}/${dd}/${y}`, `${day}/${d.getUTCMonth() + 1}/${y}`,
+  ].some(has)
+}
+
 /** Article HTML as plain text: tags out, entities decoded, the "Source" link label dropped. Pure. */
 export function articleText(html: string): string {
   return String(html || '')
@@ -61,9 +90,11 @@ export function articleText(html: string): string {
 export function signalEvidenceText(e: Evidence): string {
   const lines: string[] = []
   for (const t of [e.sourceTitle, e.pageTitle, e.sourceSummary, e.pageDescription, e.sourceText]) if (t && t.trim()) lines.push(t.trim())
+  const src = groundText(e)
   for (const f of groundFacts(e.facts, e).kept) {
     if (f?.claim) lines.push(String(f.claim))
-    if (f?.date) {
+    // AGT-048: the date is evidence only when the pages carry it too.
+    if (f?.date && dateGrounded(f.date, src)) {
       lines.push(String(f.date))
       const d = new Date(String(f.date))
       if (!Number.isNaN(d.getTime())) lines.push(d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }))

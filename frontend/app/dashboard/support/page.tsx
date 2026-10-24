@@ -19,6 +19,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n/client'
 import { SupportAssistant } from '@/components/support/support-assistant'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 type Ticket = { id: string; subject: string; message: string; category: string; status: string; user_email?: string; created_at: string; updated_at: string }
 
@@ -177,7 +178,7 @@ export default function SupportPage() {
 
         {selectedTicket.status !== 'closed' && (
           <div className="flex gap-2">
-            <Input aria-label={tr('account.reply')} value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder={tr('account.typeYourReply')} onKeyDown={e => e.key === 'Enter' && sendReply()} />
+            <Input aria-label={tr('account.reply')} value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder={tr('account.typeYourReply')} onKeyDown={e => isSubmitEnter(e) && sendReply()} />
             <Button onClick={sendReply} disabled={sending || !newMessage.trim()} title={tr('account.send')} aria-label={tr('account.sendReply')}><Send className="h-4 w-4" /></Button>
           </div>
         )}

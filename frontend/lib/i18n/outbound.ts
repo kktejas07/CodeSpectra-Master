@@ -27,10 +27,14 @@ export const OUTBOUND_CATALOGS: Record<OutboundNamespace, Record<Locale, Table>>
   notify: { en: enNotify, hi: hiNotify, te: teNotify },
 }
 
-/** A translatable message: catalog key + values. A value `{ t: key }` is itself translated (e.g. an enum label). */
+/**
+ * A translatable message: catalog key + values. A value `{ t: key }` is itself
+ * translated (e.g. an enum label); `{ t: key, params }` too, e.g. a plural
+ * duration `{ t: 'event.left.hours', params: { count: 3 } }` (SEO-054).
+ */
 export interface OutboundText {
   key: string
-  params?: Record<string, string | number | null | undefined | { t: string }>
+  params?: Record<string, string | number | null | undefined | { t: string; params?: OutboundParams }>
 }
 
 function pick(table: Table | undefined, key: string, count: number | undefined, locale: Locale): string | undefined {
@@ -73,6 +77,6 @@ export function outboundT(ns: OutboundNamespace, locale: Locale): OutboundTransl
 export function renderOutbound(ns: OutboundNamespace, locale: Locale, text: OutboundText | OutboundText[]): string {
   const t = outboundT(ns, locale)
   const resolve = (params: OutboundText['params']): OutboundParams | undefined =>
-    params && Object.fromEntries(Object.entries(params).map(([k, v]) => [k, v && typeof v === 'object' ? t(v.t) : v]))
+    params && Object.fromEntries(Object.entries(params).map(([k, v]) => [k, v && typeof v === 'object' ? t(v.t, v.params) : v]))
   return (Array.isArray(text) ? text : [text]).map((p) => t(p.key, resolve(p.params))).filter(Boolean).join(' ')
 }

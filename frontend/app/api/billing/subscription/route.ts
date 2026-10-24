@@ -60,7 +60,7 @@ export async function PUT(req: NextRequest) {
 
     const rateCheck = await rateLimitAIRedis(req, user.id)
     if (!rateCheck.ok) {
-      return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
+      return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } }, { status: 429 })
     }
 
     const { plan_id } = (await req.json().catch(() => ({}))) as { plan_id?: unknown }

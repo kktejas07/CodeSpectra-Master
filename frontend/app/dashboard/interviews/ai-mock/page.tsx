@@ -17,6 +17,7 @@ import type { Question, Evaluation } from '@/lib/interviews/ai-mock-types'
 import { createVoiceManager, getVoiceCapabilities } from '@/lib/interviews/ai-mock-voice'
 import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface StoredSession {
   sessionId: string
@@ -386,7 +387,7 @@ export default function AiMockSessionPage() {
 
           {/* Error Banner */}
           {error && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-destructive/90 text-white text-xs px-3 py-1.5 rounded-full">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-xs px-3 py-1.5 rounded-full">
               {error}
               <button type="button" onClick={() => setError('')} className="ml-2 underline">{tr('career.dismiss')}</button>
             </div>
@@ -447,7 +448,7 @@ export default function AiMockSessionPage() {
               type="text"
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
+              onKeyDown={(e) => isSubmitEnter(e) && handleTextSubmit()}
               placeholder={tr('career.typeYourAnswer')}
               aria-label={tr('career.yourAnswer')}
               className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"

@@ -12,7 +12,7 @@
  * DELETE /api/exams/[id]/links?linkId=... — revoke (soft; audit retained)
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, requireAuth } from '@/lib/route-auth'
+import { requireAdmin, requireAuth, gateErrorBody } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
@@ -147,6 +147,7 @@ export async function POST(req: NextRequest, ctx: IdRouteContext) {
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
   if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
+  // role-scope: a tenant admin only manages their own tenant's exams
   if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
@@ -269,17 +270,15 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
 
   // Admin usage logs path — ?linkId=... returns usage records for that link
   if (linkId) {
-    const gate = await requireAuth().catch(() => null)
-    if (!gate || 'error' in gate) {
-      return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-    }
-    if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-    }
+    // SEC-029: requireAdmin enforces role + tenant + admin 2FA.
+    const gate = await requireAdmin().catch(() => null)
+    if (!gate) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+    if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
-    if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
+    // role-scope: a tenant admin only manages their own tenant's exams
+  if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
       return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     const usageCol = await linkUsageCol()
@@ -292,16 +291,14 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
   }
 
   // List path — admins only (tokens are the URLs, never expose to candidates).
-  const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  }
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  // SEC-029: requireAdmin enforces role + tenant + admin 2FA.
+  const gate = await requireAdmin().catch(() => null)
+  if (!gate) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
   if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
+  // role-scope: a tenant admin only manages their own tenant's exams
   if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
@@ -318,19 +315,17 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
 }
 
 export async function DELETE(req: NextRequest, ctx: IdRouteContext) {
-  const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
-  }
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
-  }
+  // SEC-029: requireAdmin enforces role + tenant + admin 2FA.
+  const gate = await requireAdmin().catch(() => null)
+  if (!gate) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   const { id: examId } = await ctx.params
   const linkId = new URL(req.url).searchParams.get('linkId')
   if (!linkId) return NextResponse.json({ error: 'linkId required' }, { status: 400 })
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
   if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
+  // role-scope: a tenant admin only manages their own tenant's exams
   if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }

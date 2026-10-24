@@ -103,6 +103,12 @@ export function SchedulePanel({ d, onChanged }: { d: InterviewDetail; onChanged:
       {iv.requested_slot && !scheduled && (
         <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">{t('hiring.theCandidateAskedForDateIts6fb', { date: formatDateTime(iv.requested_slot, tz) })}</p>
       )}
+      {d.self_schedule_link && d.self_schedule_invite && d.self_schedule_invite.email !== 'sent' && (
+        <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+          {t(d.self_schedule_invite.email === 'unsubscribed' ? 'hiring.inviteNotSentUnsubscribed' : d.self_schedule_invite.email === 'no_email' ? 'hiring.inviteNotSentNoEmail' : 'hiring.inviteNotSentFailed')}
+          {' '}{t(d.self_schedule_invite.whatsapp ? 'hiring.inviteWentByWhatsapp' : 'hiring.inviteShareAnotherWay')}
+        </p>
+      )}
       {d.self_schedule_link && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
           <span>{t('hiring.theCandidateCanPickATimeffe')}</span>

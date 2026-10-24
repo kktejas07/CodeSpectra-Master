@@ -37,7 +37,7 @@ import type { KnowledgeHit, KnowledgeSearchArgs } from '@/lib/agent/contract'
 import { scanPrompt } from '@/lib/ai/prompt-guard'
 import { andFilters, canSeeChunk, knowledgeAclFilter, MATCH_NOTHING, type AclFilter } from './acl'
 import { embedTexts, EMBED_MODELS, OPENAI_EMBED_MODEL } from './embed'
-import { cosine, dedupeBySource, fusionConfig, highlightSnippet, reciprocalRankFusion } from './fusion'
+import { cosine, dedupeBySource, fusionConfig, highlightSnippet, reciprocalRankFusion, vectorRescue, vectorRescueConfig } from './fusion'
 import { dominantEmbeddingModel } from './ingest'
 import { ragChunks } from './store'
 import type { RagChunkDoc } from './types'
@@ -265,7 +265,9 @@ async function runSearch(filter: AclFilter, rowOk: (row: RagChunkDoc) => boolean
   const retrieval: 'hybrid' | 'keyword_only' = vectorOrNull ? 'hybrid' : 'keyword_only'
   const vector = vectorOrNull ?? []
   const fc = fusionConfig()
-  const fused = reciprocalRankFusion([vector.map((v) => v.id), keyword.map((k) => k.id)], fc.k, [fc.vector, fc.keyword]).slice(0, PER_LIST * 2)
+  const keywordIds = keyword.map((k) => k.id)
+  // RAG-025: a confident vector top hit the keyword list buries is moved up (lib/rag/fusion vectorRescue).
+  const fused = vectorRescue(reciprocalRankFusion([vector.map((v) => v.id), keywordIds], fc.k, [fc.vector, fc.keyword]), vector, keywordIds, vectorRescueConfig()).slice(0, PER_LIST * 2)
   if (!fused.length) return []
 
   // Fetch text for the fused ids — still under the ACL filter.

@@ -5,6 +5,26 @@ import dynamic from 'next/dynamic'
 import { readyToaster, registerToasterHost } from '@/lib/toast-bus'
 // Static import is fine: AnimatedIcon loads its Lottie player lazily (never in this root chunk).
 import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
+import { activeLocale } from '@/lib/i18n/client'
+import { localizeApiError } from '@/lib/i18n/api-error'
+import { loadApiErrors } from '@/lib/i18n/use-api-error'
+
+/**
+ * SEO-055: most pages toast the server's English `error` as is. For Hindi /
+ * Telugu users a toast text that is a known API error (exact catalog English,
+ * lib/i18n/messages/en/apiErrors.json) is shown in their language; anything
+ * else stays as given. English never loads the catalogs.
+ */
+async function localizeToastText<T>(text: T): Promise<T> {
+  const locale = activeLocale()
+  if (locale === 'en' || typeof text !== 'string' || !text) return text
+  try {
+    const { table, en } = await loadApiErrors(locale)
+    return localizeApiError(locale, { apiErrors: table, apiErrorsEn: en }, { error: text }, text) as T
+  } catch {
+    return text
+  }
+}
 
 /**
  * Single toast system for the entire app — goey-toast
@@ -79,7 +99,7 @@ export function useToast() {
   // forever (settings page hit 1200+ requests → 429 storm). gooeyToast fns
   // are module-singleton refs, so [] deps are safe.
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
-    void readyToaster().then(({ gooeyToast }) => {
+    void Promise.all([readyToaster(), localizeToastText(toast.title), localizeToastText(toast.message)]).then(([{ gooeyToast }, title, message]) => {
       const fn =
         toast.type === 'success'
           ? gooeyToast.success
@@ -99,8 +119,8 @@ export function useToast() {
             ? 86_400_000
             : toast.duration
           : TYPE_DURATIONS[toast.type] ?? 5000
-      fn(toast.title, {
-        description: toast.message ?? undefined,
+      fn(title, {
+        description: message ?? undefined,
         action: toast.action,
         timing: { displayDuration: duration },
         // Success gets the animated check (plays once; still frame under reduced motion).

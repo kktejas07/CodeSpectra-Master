@@ -8,6 +8,8 @@ import {
   Undo2, Redo2, Minus, RemoveFormatting
 } from 'lucide-react'
 import { compressImageDataUrl } from '@/lib/image-compress'
+import { isSubmitEnter } from '@/lib/keyboard'
+import { useT } from '@/lib/i18n/client'
 
 interface RichTextEditorProps {
   value: string
@@ -17,6 +19,7 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ value, onChange, placeholder = 'Write your content...', minHeight = 250 }: RichTextEditorProps) {
+  const { t } = useT()
   const editorRef = useRef<HTMLDivElement>(null)
   const isInternalEdit = useRef(false)
   const [showLinkInput, setShowLinkInput] = useState(false)
@@ -145,8 +148,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Insert link"
-          aria-label="Insert link"
+          title={t('common.editorInsertLink')}
+          aria-label={t('common.editorInsertLink')}
           onMouseDown={e => e.preventDefault()}
           onClick={() => setShowLinkInput(!showLinkInput)}
         >
@@ -157,8 +160,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Insert image"
-          aria-label="Insert image"
+          title={t('common.editorInsertImage')}
+          aria-label={t('common.editorInsertImage')}
           onMouseDown={e => e.preventDefault()}
           onClick={insertImage}
         >
@@ -170,8 +173,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Undo"
-          aria-label="Undo"
+          title={t('common.editorUndo')}
+          aria-label={t('common.editorUndo')}
           onMouseDown={e => { e.preventDefault(); execCommand('undo') }}
         >
           <Undo2 className="h-3.5 w-3.5" />
@@ -181,8 +184,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Redo"
-          aria-label="Redo"
+          title={t('common.editorRedo')}
+          aria-label={t('common.editorRedo')}
           onMouseDown={e => { e.preventDefault(); execCommand('redo') }}
         >
           <Redo2 className="h-3.5 w-3.5" />
@@ -197,12 +200,12 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
             value={linkUrl}
             onChange={e => setLinkUrl(e.target.value)}
             placeholder="https://example.com"
-            aria-label="Link URL"
+            aria-label={t('common.editorLinkUrl')}
             className="flex-1 text-sm px-2 py-1 rounded border border-border/60 bg-background"
-            onKeyDown={e => e.key === 'Enter' && insertLink()}
+            onKeyDown={e => isSubmitEnter(e) && insertLink()}
           />
-          <Button type="button" size="sm" onClick={insertLink}>Insert</Button>
-          <Button type="button" size="sm" variant="ghost" onClick={() => { setShowLinkInput(false); setLinkUrl('') }}>Cancel</Button>
+          <Button type="button" size="sm" onClick={insertLink}>{t('common.editorInsert')}</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => { setShowLinkInput(false); setLinkUrl('') }}>{t('common.cancel')}</Button>
         </div>
       )}
 

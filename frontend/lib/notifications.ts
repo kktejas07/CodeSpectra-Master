@@ -125,6 +125,7 @@ export const NOTIFICATION_TYPES = {
 
   // Reminders and nudges (wave 15 + older reminders, AUTO-105)
   'streak.saver': { category: 'learning', icon: 'flame', default_title: 'Keep your streak alive', default_link: '/dashboard/arena' },
+  newsletter: { category: 'system', icon: 'mail', default_title: 'Newsletter', default_link: '/newsletter' },
   'study_plan.reminder': { category: 'learning', icon: 'calendar-check', default_title: "Today's study plan", default_link: '/dashboard/study-plan' },
   'drive.reminder': { category: 'assessment', icon: 'clock', default_title: 'Hiring drive reminder', default_link: '/dashboard/assessments' },
   'drive.no_show': { category: 'assessment', icon: 'alert-circle', default_title: 'You missed a hiring drive', default_link: '/dashboard/assessments' },
@@ -153,7 +154,8 @@ export const NOTIFICATION_TYPES = {
  */
 export const NOTIFICATION_BUDGET_CLASS: Readonly<Record<string, MessageClass>> = {
   'streak.saver': 'engagement',
-  'study_plan.reminder': 'engagement',
+  // A reminder at the hour the learner picked: their own schedule, never capped (AUTO-108).
+  'study_plan.reminder': 'subscribed',
   'onboarding_tips': 'engagement',
   'placement.nudge': 'engagement',
   'cohort.reminder': 'engagement',
@@ -162,6 +164,7 @@ export const NOTIFICATION_BUDGET_CLASS: Readonly<Record<string, MessageClass>> =
   'talent.invite': 'transactional',
   'billing.upgrade_offer': 'marketing',
   'billing.winback_offer': 'marketing',
+  newsletter: 'marketing',
   'automation.message': 'engagement',
   'certification.expiring': 'deadline',
   'pro_cert.expiring': 'deadline',
@@ -173,6 +176,18 @@ export const NOTIFICATION_BUDGET_CLASS: Readonly<Record<string, MessageClass>> =
 }
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
+
+/**
+ * Mail category of a notification's email (AUTO-112). Marketing-class types
+ * (win-back / upgrade offers) are promotional: sent as 'engagement' so they
+ * carry the unsubscribe link + one-click headers and honour unsubscribe-all,
+ * even though they live in the billing category. Other billing / security
+ * notices can't be unsubscribed from; everything else is 'transactional'.
+ */
+export function notificationMailCategory(type: string, category: string): 'security' | 'billing' | 'engagement' | 'transactional' {
+  if (NOTIFICATION_BUDGET_CLASS[type] === 'marketing') return 'engagement'
+  return category === 'security' ? 'security' : category === 'billing' ? 'billing' : 'transactional'
+}
 
 interface NotifyInput {
   user_id: string
@@ -216,6 +231,8 @@ interface NotifyInput {
    * `false` only when the caller already admitted it (deliverNudge).
    */
   budget?: MessageBudget | false
+  /** Called when the budget held the message (notify then returns null) — lets the sender undo its own claim and retry (AUTO-109). */
+  on_held?: (outcome: 'capped' | 'duplicate') => void
 }
 
 /**
@@ -230,7 +247,10 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
     if (budget) {
       const { admitMessage } = await import('@/lib/messaging/budget')
       const a = await admitMessage({ userId: input.user_id }, budget)
-      if (!a.ok) return null
+      if (!a.ok) {
+        try { input.on_held?.(a.outcome) } catch { /* caller's hook never breaks notify */ }
+        return null
+      }
       admit = a
     }
     const col = await notifications()
@@ -338,8 +358,9 @@ async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc, locale:
         payload.email = {
           to: String(user.email),
           locale,
-          // Unsubscribes are honoured and the link added (AUTO-052); billing/security can't be unsubscribed from.
-          category: doc.category === 'security' ? 'security' : doc.category === 'billing' ? 'billing' : 'transactional',
+          // Unsubscribes are honoured and the link added (AUTO-052); billing/security can't be unsubscribed from,
+          // promotional offers can (AUTO-112).
+          category: notificationMailCategory(doc.type, String(doc.category)),
           subject: doc.title,
           html: `<div lang="${locale}" style="font-family:sans-serif;padding:24px;max-width:480px">
                 <h2 style="margin:0 0 8px">${esc(doc.title)}</h2>

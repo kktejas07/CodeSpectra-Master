@@ -164,6 +164,13 @@ export async function PATCH(
     if ('time_limit_ms' in body) patch.time_limit_ms = Number(body.time_limit_ms) || 2000
     if ('memory_limit_kb' in body) patch.memory_limit_kb = Number(body.memory_limit_kb) || 65536
     if ('is_published' in body) patch.is_published = Boolean(body.is_published)
+    // SEC-037: only an admin publishes to the public library / knowledge index.
+    // A learner who created a problem earlier keeps it as a private draft: any
+    // edit by a non-admin takes it out of the library until an admin publishes it.
+    if (!isAdminCaller(gate.user) && Object.keys(patch).length > 0) {
+      patch.is_published = false
+      patch.review_status = 'pending_review' // shows up under Admin → Problems review
+    }
     if ('test_cases' in body) {
       patch.test_cases = (Array.isArray(body.test_cases) ? body.test_cases : ([] as unknown[])).map((tc, i) => {
         const t = tc as Record<string, unknown>

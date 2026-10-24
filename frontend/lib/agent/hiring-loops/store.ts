@@ -171,6 +171,12 @@ export async function saveLoopSettings(tenantId: string, loop: LoopId, patch: Se
   return getLoopSettings(tenantId, loop)
 }
 
+/** AGT-047: replace the auto-send grants (owner re-enabled the steps that were on without a valid grant). */
+export async function saveAutoSendBy(tenantId: string, loop: LoopId, autoSendBy: AutoSendBy, actorId: string): Promise<LoadedSettings> {
+  await (await settingsCol()).updateOne({ _id: sid(tenantId, loop) }, { $set: { auto_send_by: autoSendBy, updated_at: nowIso(), updated_by: actorId } as never })
+  return getLoopSettings(tenantId, loop)
+}
+
 /** Switch a loop off (owner lost access). */
 export async function disableLoop(tenantId: string, loop: LoopId): Promise<void> {
   await (await settingsCol()).updateOne({ _id: sid(tenantId, loop) }, { $set: { enabled: false, updated_at: nowIso(), updated_by: 'system' } })

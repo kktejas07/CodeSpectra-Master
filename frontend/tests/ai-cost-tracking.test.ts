@@ -8,7 +8,7 @@ import {
   cleanPrice, costMicros, DEFAULT_PRICE_BOOK, mergePriceBook, modelMatches, priceCall, resolvePrice, setActivePriceBook, toMicroRate,
 } from '@/lib/ai/pricing'
 import {
-  baseFeature, bookFor, budgetCrossings, budgetLevel, capSpendUsd, denseSpend, featureMatches, hardStopApplies, mergeAiCostSettings,
+  DEFAULT_AI_COST_SETTINGS, noPlatformAiCeiling, baseFeature, bookFor, budgetCrossings, budgetLevel, capSpendUsd, denseSpend, featureMatches, hardStopApplies, mergeAiCostSettings,
   microsIn, moneyDigits, spendCsv, summarizeSpend, trendPct, type SpendGroupRow,
   fromRollupDoc, rawCutoffDay, rollupDays, rollupId, toRollupDoc, RAW_WINDOW_DAYS,
 } from '@/lib/ai/spend'
@@ -194,12 +194,23 @@ describe('budget alerts and hard stop', () => {
 
   it('reads stored settings safely', () => {
     const s = mergeAiCostSettings({ monthly_budget_usd: 'lots', usd_inr_rate: 83, hard_stop: true, prices: [{ match: 'ok-model', kind: 'chat', inputPer1M: 1, outputPer1M: 2 }, { match: '' }] })
-    expect(s.monthly_budget_usd).toBe(0)
+    expect(s.monthly_budget_usd).toBe(DEFAULT_AI_COST_SETTINGS.monthly_budget_usd) // SEC-042: bad value → the safe default
     expect(s.usd_inr_rate).toBe(84) // one bad field → whole doc falls back to defaults
     const good = mergeAiCostSettings({ monthly_budget_usd: 25, usd_inr_rate: 83, hard_stop: true, prices: [{ match: 'ok-model', kind: 'chat', inputPer1M: 1, outputPer1M: 2 }, { match: '' }] })
     expect(good).toMatchObject({ monthly_budget_usd: 25, usd_inr_rate: 83, hard_stop: true })
     expect(good.prices).toHaveLength(1)
     expect(resolvePrice(bookFor(good), '', 'ok-model').unpriced).toBe(false)
+  })
+
+  it('SEC-042: a fresh install has a platform ceiling with the hard stop on; 0 or no stop warns', () => {
+    const fresh = mergeAiCostSettings(null)
+    expect(fresh.monthly_budget_usd).toBeGreaterThan(0)
+    expect(fresh.hard_stop).toBe(true)
+    expect(noPlatformAiCeiling(fresh)).toBe(false)
+    expect(noPlatformAiCeiling({ monthly_budget_usd: 0, hard_stop: true })).toBe(true)
+    expect(noPlatformAiCeiling({ monthly_budget_usd: 50, hard_stop: false })).toBe(true)
+    // The owner can still change it (incl. 0 = no budget).
+    expect(mergeAiCostSettings({ monthly_budget_usd: 0 }).monthly_budget_usd).toBe(0)
   })
 })
 

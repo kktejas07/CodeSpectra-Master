@@ -46,6 +46,8 @@ import { NotEventStaff } from '@/components/hackathons/not-event-staff'
 import { rankByScore, formatRank } from '@/lib/hackathons/ranking'
 import { DEFAULT_JUDGING_CONFIG, sanitizeJudgingConfig, type JudgingConfig } from '@/lib/hackathons/judge-config'
 import { EmptyState } from '@/components/ui/empty-state'
+import { isSubmitEnter } from '@/lib/keyboard'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Hackathon {
   id: string
@@ -90,6 +92,7 @@ export default function HackathonDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const { t: ta } = useAdminT()
   const confirmDialog = useConfirm()
   const { id } = use(params)
   const gate = usePageGuard('tenant_admin')
@@ -366,7 +369,7 @@ export default function HackathonDetailPage({
     return (
       <div className="space-y-3 p-6">
         <Link href="/dashboard/admin/hackathons" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-3 w-3" /> Back
+          <ArrowLeft className="h-3 w-3" /> {ta('hkForm.back2')}
         </Link>
         <Card className="rounded-2xl border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
           {error || 'Event not found. It may have been deleted — go back to all events.'}
@@ -388,7 +391,7 @@ export default function HackathonDetailPage({
           href="/dashboard/admin/hackathons"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors bg-muted/40 px-4 py-2 rounded-full border border-border/60 hover:bg-muted/60"
         >
-          <ArrowLeft className="h-4 w-4" /> All events
+          <ArrowLeft className="h-4 w-4" /> {ta('hkForm.allEvents')}
         </Link>
       </div>
       <Panel className="space-y-4">
@@ -400,13 +403,13 @@ export default function HackathonDetailPage({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" aria-label="Event details" />
+                    <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" aria-label={ta('hkForm.eventDetails')} />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="p-3">
                     <p className="text-sm max-w-70 font-medium leading-relaxed">
                       <span className="font-semibold text-foreground">Slug:</span> /{event.slug}<br/>
-                      <span className="font-semibold text-foreground">Capacity:</span> {event.num_teams} teams<br/>
-                      <span className="font-semibold text-foreground">Team size:</span> max {event.max_per_team}<br/>
+                      <span className="font-semibold text-foreground">Capacity:</span> {event.num_teams} {ta('hkForm.teams')}<br/>
+                      <span className="font-semibold text-foreground">{ta('hkForm.teamSize')}</span> {ta('hkForm.max2')} {event.max_per_team}<br/>
                       <span className="font-semibold text-foreground">Duration:</span> {event.timeout_minutes} min<br/>
                       <span className="font-semibold text-foreground">Ends:</span> {formatDateTime(event.ends_at)}
                     </p>
@@ -415,10 +418,10 @@ export default function HackathonDetailPage({
               </TooltipProvider>
             </span>
           }
-          description="Assign judges, set up judging, manage teams and release results."
+          description={ta('hkForm.assignJudgesSetUpJudgingManage')}
           actions={
             <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-1.5">
-              <Label htmlFor="status-select" className="text-xs font-medium text-muted-foreground px-2">Status</Label>
+              <Label htmlFor="status-select" className="text-xs font-medium text-muted-foreground px-2">{ta('hkForm.status')}</Label>
               <select
                 id="status-select"
                 value={event.status}
@@ -441,10 +444,10 @@ export default function HackathonDetailPage({
                 }}
                 className="text-sm font-medium rounded-lg border border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-ring outline-none cursor-pointer"
               >
-                <option value="draft">Draft</option>
-                <option value="open">Open (registration)</option>
-                <option value="live">Live (running)</option>
-                <option value="closed">Closed (ended)</option>
+                <option value="draft">{ta('hkForm.draft')}</option>
+                <option value="open">{ta('hkForm.openRegistration')}</option>
+                <option value="live">{ta('hkForm.liveRunning')}</option>
+                <option value="closed">{ta('hkForm.closedEnded')}</option>
               </select>
             </div>
           }
@@ -456,13 +459,13 @@ export default function HackathonDetailPage({
           </Badge>
           {event.status === 'open' && (
             <span className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 font-medium text-xs tabular-nums">
-              <Timer className="h-4 w-4" /> Starts <Countdown targetIso={event.starts_at} />
+              <Timer className="h-4 w-4" /> {ta('hkForm.starts')} <Countdown targetIso={event.starts_at} />
             </span>
           )}
           {event.status === 'live' && (
             <span className="flex items-center gap-1.5 text-green-700 dark:text-green-300 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 font-medium text-xs tabular-nums">
               <span className="relative flex h-2 w-2"><span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" /></span>
-              <Timer className="h-4 w-4" /> Ends <Countdown targetIso={event.ends_at} />
+              <Timer className="h-4 w-4" /> {ta('hkForm.ends')} <Countdown targetIso={event.ends_at} />
             </span>
           )}
         </div>
@@ -476,30 +479,30 @@ export default function HackathonDetailPage({
       )}
 
       <Panel className="space-y-5">
-        <h2 className="text-lg font-semibold">Judges</h2>
+        <h2 className="text-lg font-semibold">{ta('hkForm.judges')}</h2>
         <div className="flex flex-wrap gap-2 min-h-12 p-3 rounded-2xl bg-muted/30 border border-border/60">
           {judgeIds.length === 0 && (
-            <p className="text-sm text-muted-foreground self-center px-2">No judges assigned yet. Search for people below and add them.</p>
+            <p className="text-sm text-muted-foreground self-center px-2">{ta('hkForm.noJudgesAssignedYetSearchFor')}</p>
           )}
           {judgeIds.map((uid) => (
             <Badge key={uid} variant="secondary" className="gap-1.5 py-1.5 px-3 bg-card hover:bg-accent transition-colors border-border/60 text-xs font-medium rounded-full">
               {judgeNames[uid] || uid.slice(0, 8)}
-              <button onClick={() => removeJudge(uid)} aria-label="Remove judge" className="ml-1 text-muted-foreground hover:text-destructive transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">×</button>
+              <button onClick={() => removeJudge(uid)} aria-label={ta('hkForm.removeJudge')} className="ml-1 text-muted-foreground hover:text-destructive transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">×</button>
             </Badge>
           ))}
         </div>
         <div className="relative flex flex-col sm:flex-row gap-3">
           <Input
-            placeholder="Search by name or email..."
+            placeholder={ta('hkForm.searchByNameOrEmail')}
             value={judgeInput}
             onChange={(e) => setJudgeInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') void searchJudges(judgeInput) }}
-            aria-label="Search people to add as judges"
+            onKeyDown={(e) => { if (isSubmitEnter(e)) void searchJudges(judgeInput) }}
+            aria-label={ta('hkForm.searchPeopleToAddAsJudges')}
             className="h-11 text-sm flex-1 rounded-xl"
           />
           <div className="flex gap-2">
-            <Button size="lg" variant="secondary" onClick={() => void searchJudges(judgeInput)} disabled={judgeInput.trim().length < 2} className="h-11 px-6 font-semibold rounded-xl">Search</Button>
-            <Button size="lg" onClick={saveJudges} className="h-11 px-6 font-semibold rounded-xl">Save judges</Button>
+            <Button size="lg" variant="secondary" onClick={() => void searchJudges(judgeInput)} disabled={judgeInput.trim().length < 2} className="h-11 px-6 font-semibold rounded-xl">{ta('hkForm.search')}</Button>
+            <Button size="lg" onClick={saveJudges} className="h-11 px-6 font-semibold rounded-xl">{ta('hkForm.saveJudges')}</Button>
           </div>
           {judgeSearchResults.length > 0 && (
             <div className="absolute left-0 top-full z-50 w-full sm:w-[calc(100%-210px)] border border-border rounded-xl mt-2 max-h-48 overflow-y-auto bg-card shadow-xl divide-y divide-border/40">
@@ -521,12 +524,12 @@ export default function HackathonDetailPage({
         <div className="flex flex-wrap gap-3 pt-4 border-t border-border/60">
           <Button size="lg" className="h-11 px-6 font-semibold rounded-xl gap-2" asChild>
             <Link href={`/dashboard/events/${event.id}?tab=judge`}>
-              <Gavel className="h-4 w-4" /> Review submissions
+              <Gavel className="h-4 w-4" /> {ta('hkForm.reviewSubmissions')}
             </Link>
           </Button>
           <Button size="lg" variant="secondary" className="h-11 px-6 font-semibold rounded-xl gap-2" asChild>
             <Link href={`/dashboard/admin/hackathons/${event.id}/report`}>
-              <FileBarChart className="h-4 w-4" /> Submission report
+              <FileBarChart className="h-4 w-4" /> {ta('hkForm.submissionReport')}
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
             </Link>
           </Button>
@@ -537,12 +540,12 @@ export default function HackathonDetailPage({
       <Panel className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Judging</h2>
-            <p className="text-xs text-muted-foreground mt-1">Rubric is published to all viewers before the event. AI weight blends screening with human averages.</p>
+            <h2 className="text-lg font-semibold">{ta('hkForm.judging')}</h2>
+            <p className="text-xs text-muted-foreground mt-1">{ta('hkForm.rubricIsPublishedToAllViewers')}</p>
           </div>
           <Button size="lg" onClick={() => void saveJudging()} disabled={judgingSaving} className="h-11 px-6 font-semibold rounded-xl">
             {judgingSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Save judging
+            {ta('hkForm.saveJudging')}
           </Button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -570,7 +573,7 @@ export default function HackathonDetailPage({
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">AI weight</Label>
+              <Label className="text-xs font-medium">{ta('hkForm.aiWeight')}</Label>
               <span className="text-xs font-mono tabular-nums">{Math.round((judging?.aiWeight ?? 0.4) * 100)}%</span>
             </div>
             <input
@@ -581,11 +584,11 @@ export default function HackathonDetailPage({
               onChange={(e) => setJudging((prev) => ({ ...prev, aiWeight: Number(e.target.value) / 100 }))}
               className="w-full accent-primary"
             />
-            <p className="text-[11px] text-muted-foreground">Human weight {Math.round((1 - (judging?.aiWeight ?? 0.4)) * 100)}%</p>
+            <p className="text-[11px] text-muted-foreground">{ta('hkForm.humanWeight', { round: Math.round((1 - (judging?.aiWeight ?? 0.4)) * 100) })}</p>
           </div>
           <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
-            <Label className="text-xs font-medium">Advance top-N</Label>
-            <Input aria-label="Advance top-N"
+            <Label className="text-xs font-medium">{ta('hkForm.advanceTopN')}</Label>
+            <Input aria-label={ta('hkForm.advanceTopN')}
               type="number"
               min={1}
               max={100}
@@ -595,8 +598,8 @@ export default function HackathonDetailPage({
             />
           </div>
           <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
-            <Label className="text-xs font-medium">Publish top-N</Label>
-            <Input aria-label="Publish top-N"
+            <Label className="text-xs font-medium">{ta('hkForm.publishTopN')}</Label>
+            <Input aria-label={ta('hkForm.publishTopN')}
               type="number"
               min={1}
               max={100}
@@ -606,7 +609,7 @@ export default function HackathonDetailPage({
             />
           </div>
           <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
-            <Label className="text-xs font-medium">Fairness</Label>
+            <Label className="text-xs font-medium">{ta('hkForm.fairness')}</Label>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input
                 type="checkbox"
@@ -614,7 +617,7 @@ export default function HackathonDetailPage({
                 onChange={(e) => setJudging((prev) => ({ ...prev, blindMode: e.target.checked }))}
                 className="accent-primary"
               />
-              Blind mode (hide team names)
+              {ta('hkForm.blindModeHideTeamNames')}
             </label>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input
@@ -623,7 +626,7 @@ export default function HackathonDetailPage({
                 onChange={(e) => setJudging((prev) => ({ ...prev, dropHighLow: e.target.checked }))}
                 className="accent-primary"
               />
-              Drop highest + lowest score
+              {ta('hkForm.dropHighestLowestScore')}
             </label>
           </div>
         </div>
@@ -631,7 +634,7 @@ export default function HackathonDetailPage({
 
       <div className="flex items-center justify-between pt-2">
         <h2 className="text-lg font-semibold flex items-center gap-3">
-          Teams
+          {ta('hkForm.teams2')}
           <Badge variant="secondary" className="px-3 py-0.5 rounded-full text-xs font-semibold tabular-nums">
             {teams.length} / {event.num_teams}
           </Badge>
@@ -641,7 +644,7 @@ export default function HackathonDetailPage({
       {teams.length === 0 ? (
         <EmptyState
           illustration="team"
-          title="No teams have registered yet"
+          title={ta('hkForm.noTeamsHaveRegisteredYet')}
           description={`Share /hackathons/${event.slug} with participants so they can sign up.`}
         />
       ) : (
@@ -654,7 +657,7 @@ export default function HackathonDetailPage({
                 <div className="flex items-start justify-between">
                   <div className="flex-1 mr-2">
                     <p className="text-xs tabular-nums text-muted-foreground">
-                      {formatRank(rankInfo)} <span className="sr-only">by judged score</span>
+                      {formatRank(rankInfo)} <span className="sr-only">{ta('hkForm.byJudgedScore')}</span>
                     </p>
                     {editingTeamId === t.id ? (
                       <div className="flex gap-1.5 mt-1">
@@ -662,10 +665,10 @@ export default function HackathonDetailPage({
                           value={editNameInput}
                           onChange={(e) => setEditNameInput(e.target.value)}
                           className="h-7 text-xs flex-1"
-                          onKeyDown={(e) => e.key === 'Enter' && void saveTeamName(t)}
+                          onKeyDown={(e) => isSubmitEnter(e) && void saveTeamName(t)}
                         />
-                        <Button size="sm" className="h-7 text-xs px-2" onClick={() => saveTeamName(t)}>Save</Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingTeamId(null)}>Cancel</Button>
+                        <Button size="sm" className="h-7 text-xs px-2" onClick={() => saveTeamName(t)}>{ta('hkForm.save')}</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingTeamId(null)}>{ta('hkForm.cancel')}</Button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
@@ -673,8 +676,8 @@ export default function HackathonDetailPage({
                         <button
                           onClick={() => { setEditingTeamId(t.id); setEditNameInput(t.name) }}
                           className="text-muted-foreground hover:text-foreground"
-                          title="Rename team"
-                          aria-label="Rename team"
+                          title={ta('hkForm.renameTeam')}
+                          aria-label={ta('hkForm.renameTeam')}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
@@ -685,21 +688,21 @@ export default function HackathonDetailPage({
                         <Badge key={(m as any).user_id || m.name} variant={(m as any).role === 'captain' ? 'default' : 'secondary'} className="text-[11px] gap-1 px-1.5 py-0.5">
                           {m.name} {(m as any).role === 'captain' && '(Captain)'}
                           {(m as any).user_id && (
-                            <button onClick={() => removeMemberFromTeam(t, (m as any).user_id)} className="ml-1 opacity-70 hover:opacity-100" title="Remove member" aria-label="Remove member">×</button>
+                            <button onClick={() => removeMemberFromTeam(t, (m as any).user_id)} className="ml-1 opacity-70 hover:opacity-100" title={ta('hkForm.removeMember')} aria-label={ta('hkForm.removeMember')}>×</button>
                           )}
                         </Badge>
                       ))}
                       {addingMemberTeamId === t.id ? (
                         <div className="flex gap-1 items-center mt-1">
                           <Input
-                            placeholder="Email or user ID"
+                            placeholder={ta('hkForm.emailOrUserId')}
                             value={addMemberInput}
                             onChange={(e) => setAddMemberInput(e.target.value)}
                             className="h-6 text-[10px] w-36 px-1.5"
-                            onKeyDown={(e) => e.key === 'Enter' && void addMemberToTeam(t)}
+                            onKeyDown={(e) => isSubmitEnter(e) && void addMemberToTeam(t)}
                           />
-                          <Button size="sm" className="h-6 text-[10px] px-1.5" onClick={() => addMemberToTeam(t)}>Add</Button>
-                          <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1" onClick={() => setAddingMemberTeamId(null)} aria-label="Cancel adding member">
+                          <Button size="sm" className="h-6 text-[10px] px-1.5" onClick={() => addMemberToTeam(t)}>{ta('hkForm.add')}</Button>
+                          <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1" onClick={() => setAddingMemberTeamId(null)} aria-label={ta('hkForm.cancelAddingMember')}>
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
@@ -708,24 +711,24 @@ export default function HackathonDetailPage({
                           onClick={() => { setAddingMemberTeamId(t.id); setAddMemberInput('') }}
                           className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline ml-1"
                         >
-                          <UserPlus className="h-3 w-3" /> Add member
+                          <UserPlus className="h-3 w-3" /> {ta('hkForm.addMember')}
                         </button>
                       )}
                     </div>
                   </div>
                   <Badge className="gap-1 flex-shrink-0 tabular-nums">
-                    <Trophy className="h-3 w-3" /> {t.xp} XP · Lv {t.level}
+                    <Trophy className="h-3 w-3" /> {t.xp} {ta('hkForm.xpLv')} {t.level}
                   </Badge>
                 </div>
 
                   {/* Stats Row */}
                   <div className="flex gap-4">
                     <div className="flex-1 rounded-2xl border border-border/60 bg-muted/30 p-4 text-center">
-                      <div className="text-xs font-medium text-muted-foreground mb-1">Submissions</div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">{ta('hkForm.submissions')}</div>
                       <div className="text-2xl font-bold tabular-nums text-foreground">{t.submissions}</div>
                     </div>
                     <div className="flex-1 rounded-2xl border border-border/60 bg-muted/30 p-4 text-center">
-                      <div className="text-xs font-medium text-muted-foreground mb-1">Achievements</div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">{ta('hkForm.achievements')}</div>
                       <div className="text-2xl font-bold tabular-nums text-foreground">{t.achievements.length}</div>
                     </div>
                   </div>
@@ -744,7 +747,7 @@ export default function HackathonDetailPage({
                 {/* Footer Actions */}
                 <div className="-mx-5 -mb-5 border-t border-border/60 bg-muted/30 p-5 space-y-3">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Admin actions</p>
+                    <p className="text-sm font-medium text-muted-foreground">{ta('hkForm.adminActions')}</p>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -753,13 +756,13 @@ export default function HackathonDetailPage({
                             variant="ghost"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
                             onClick={() => removeTeam(t)}
-                            aria-label="Disqualify team"
+                            aria-label={ta('hkForm.disqualifyTeam')}
                             data-testid={`team-delete-${t.slug}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs font-semibold">Disqualify team</TooltipContent>
+                        <TooltipContent side="top" className="text-xs font-semibold">{ta('hkForm.disqualifyTeam')}</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
@@ -767,8 +770,8 @@ export default function HackathonDetailPage({
                   <div className="flex gap-3 mb-3">
                     <div className="flex flex-1 relative">
                       <Input
-                        placeholder="New team name"
-                        aria-label="New team name"
+                        placeholder={ta('hkForm.newTeamName')}
+                        aria-label={ta('hkForm.newTeamName')}
                         value={g.rename || ''}
                         onChange={(e) => updateGrant(t.id, { rename: e.target.value })}
                         className="h-10 pr-10 text-sm bg-background rounded-xl"
@@ -779,7 +782,7 @@ export default function HackathonDetailPage({
                         variant="ghost"
                         className="absolute right-1 top-1 h-8 w-8 rounded-lg text-primary hover:bg-primary/10 transition-colors"
                         onClick={() => applyGrant(t, 'rename')}
-                        aria-label="Apply new name"
+                        aria-label={ta('hkForm.applyNewName')}
                         disabled={g.busy || !g.rename}
                         data-testid={`grant-rename-apply-${t.slug}`}
                       >
@@ -793,7 +796,7 @@ export default function HackathonDetailPage({
                       <Input
                         type="number"
                         placeholder="±XP"
-                        aria-label="XP to add or remove"
+                        aria-label={ta('hkForm.xpToAddOrRemove')}
                         value={g.xp}
                         onChange={(e) => updateGrant(t.id, { xp: e.target.value })}
                         className="h-10 pr-10 text-sm bg-background rounded-xl"
@@ -804,7 +807,7 @@ export default function HackathonDetailPage({
                         variant="ghost"
                         className="absolute right-1 top-1 h-8 w-8 rounded-lg text-primary hover:bg-primary/10 transition-colors"
                         onClick={() => applyGrant(t, 'xp')}
-                        aria-label="Apply XP"
+                        aria-label={ta('hkForm.applyXp')}
                         disabled={g.busy || !g.xp}
                         data-testid={`grant-xp-apply-${t.slug}`}
                       >
@@ -814,8 +817,8 @@ export default function HackathonDetailPage({
                     
                     <div className="flex flex-1 relative">
                       <Input
-                        placeholder="Award name"
-                        aria-label="Award name"
+                        placeholder={ta('hkForm.awardName')}
+                        aria-label={ta('hkForm.awardName')}
                         value={g.achievement}
                         onChange={(e) => updateGrant(t.id, { achievement: e.target.value })}
                         className="h-10 pr-10 text-sm bg-background rounded-xl"
@@ -826,7 +829,7 @@ export default function HackathonDetailPage({
                         variant="ghost"
                         className="absolute right-1 top-1 h-8 w-8 rounded-lg text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
                         onClick={() => applyGrant(t, 'ach')}
-                        aria-label="Grant award"
+                        aria-label={ta('hkForm.grantAward')}
                         disabled={g.busy || !g.achievement}
                         data-testid={`grant-ach-apply-${t.slug}`}
                       >
@@ -843,7 +846,7 @@ export default function HackathonDetailPage({
                     className="w-full h-10 text-sm font-semibold bg-background hover:bg-accent border border-border/60 rounded-xl transition-colors"
                     data-testid={`grant-sub-${t.slug}`}
                   >
-                    Register submission
+                    {ta('hkForm.registerSubmission')}
                   </Button>
                 </div>
               </Panel>
@@ -858,7 +861,7 @@ export default function HackathonDetailPage({
         <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3">
             <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground tracking-tight">
-              <Trophy className="h-5 w-5 text-primary" /> Results
+              <Trophy className="h-5 w-5 text-primary" /> {ta('hkForm.results')}
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-[70ch]">
               {event.results_released
@@ -870,7 +873,7 @@ export default function HackathonDetailPage({
           <div className="shrink-0">
             {event.results_released ? (
               <Badge variant="outline" className="gap-2.5 px-5 py-2.5 text-sm font-semibold border-green-500/30 text-green-700 dark:text-green-300 bg-green-500/10 rounded-full">
-                <CheckCircle className="h-4 w-4" /> Results released
+                <CheckCircle className="h-4 w-4" /> {ta('hkForm.resultsReleased')}
               </Badge>
             ) : (
               <Button 
@@ -903,7 +906,7 @@ export default function HackathonDetailPage({
                 disabled={busy}
               >
                 {busy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Trophy className="mr-2 h-5 w-5" />}
-                Release all results
+                {ta('hkForm.releaseAllResults')}
               </Button>
             )}
           </div>

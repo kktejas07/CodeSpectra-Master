@@ -34,6 +34,8 @@ interface RunRow {
 interface AgentRow {
   loop: LoopId; settings: LoopSettings; steps: string[]; default_enabled: boolean; owner_name: string | null; owner_is_you: boolean; has_owner: boolean
   auto_send_by?: Record<string, { name: string | null; at: string; is_you: boolean }>
+  /** AGT-047: steps switched on that won't auto-send until the owner switches them on again. */
+  auto_send_needs_owner?: string[]
   usage: { items_today: number; spent_month_usd: number }; last_run: RunRow | null
 }
 interface PendingRow { id: string; tool: string; title: string; preview: Record<string, unknown>; created_at: string; expires_at: string; conversationId: string }
@@ -94,6 +96,20 @@ function AgentCard({ a, q, onChanged, canEnableAutoSend }: { a: AgentRow; q: str
       setBusy(null)
     }
   }
+  const needsOwner = a.auto_send_needs_owner ?? []
+  // AGT-047: one click re-enables every auto-send step that is on but not sending.
+  const reauthorise = async () => {
+    setBusy('save')
+    try {
+      await api(`/api/admin/hiring-agents${q}`, { method: 'PATCH', body: JSON.stringify({ loop: a.loop, reauthorise_auto_send: true }) })
+      addToast({ type: 'success', title: L('autoSendReauthorised') })
+      onChanged()
+    } catch (e) {
+      addToast({ type: 'error', title: E(e) })
+    } finally {
+      setBusy(null)
+    }
+  }
   const run = async () => {
     setBusy('run')
     try {
@@ -134,18 +150,38 @@ function AgentCard({ a, q, onChanged, canEnableAutoSend }: { a: AgentRow; q: str
         <span>{L('spentMonth', { amount: a.usage.spent_month_usd.toFixed(2) })}</span>
         <span>{L('lastRun')}: {a.last_run ? `${fmt.relative(a.last_run.started_at)} · ${L(`status.${a.last_run.status}`)}` : L('never')}</span>
         {a.last_run?.ai_off && <span className="text-amber-700 dark:text-amber-300">{L(`ai.${a.last_run.ai_off}`)}</span>}
+        {a.last_run?.status === 'blocked' && (a.last_run.message === 'owner' || a.last_run.message === 'owner_2fa') && <span className="text-red-700 dark:text-red-400">{L(`blocked.${a.last_run.message}`)}</span>}
       </div>
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-foreground">{L('autoSend')}</legend>
         <p className="text-xs text-muted-foreground">{L('autoSendHint')}</p>
         {!canEnableAutoSend && <p className="text-xs text-muted-foreground">{L('autoSendOwnerOnly')}</p>}
+        {needsOwner.length > 0 && (
+          <div role="status" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            <div className="flex min-w-0 max-w-prose items-start gap-2">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <div className="min-w-0">
+                <p>{L('autoSendNeedsOwner')}</p>
+                {!canEnableAutoSend && <p className="mt-1 text-xs">{L('autoSendAskOwner')}</p>}
+              </div>
+            </div>
+            {canEnableAutoSend && (
+              <Button size="sm" variant="outline" className="min-h-11 gap-1.5" disabled={busy !== null} onClick={() => void reauthorise()}>
+                {busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Check className="h-4 w-4" aria-hidden />}
+                {L('autoSendReauthorise')}
+              </Button>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {a.steps.map((st) => (
             <div key={st} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2">
               <div className="min-w-0">
                 <Label htmlFor={id(`auto-${st}`)} className="text-sm font-normal">{L(`step.${st}`)}</Label>
-                {form.auto_send[st] === true && a.auto_send_by?.[st]?.name && <p className="text-xs text-muted-foreground">{L('autoSendBy', { name: a.auto_send_by[st].name })}</p>}
+                {form.auto_send[st] === true && needsOwner.includes(st)
+                  ? <p className="text-xs text-amber-700 dark:text-amber-300">{L('autoSendNeedsOwnerStep')}</p>
+                  : form.auto_send[st] === true && a.auto_send_by?.[st]?.name && <p className="text-xs text-muted-foreground">{L('autoSendBy', { name: a.auto_send_by[st].name })}</p>}
               </div>
               <Switch id={id(`auto-${st}`)} checked={form.auto_send[st] === true} disabled={busy !== null || (!canEnableAutoSend && form.auto_send[st] !== true)} onCheckedChange={(v) => { setForm((f) => ({ ...f, auto_send: { ...f.auto_send, [st]: v } })); void save({ auto_send: { [st]: v } }) }} />
             </div>

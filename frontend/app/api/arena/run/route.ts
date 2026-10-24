@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
   } else {
     const raw = Array.isArray(body.test_cases) ? body.test_cases : []
     if (raw.length > MAX_CASES) {
-      return NextResponse.json({ error: `At most ${MAX_CASES} test cases per run` }, { status: 400 })
+      return NextResponse.json({ error: `At most ${MAX_CASES} test cases per run`, code: 'run_max_cases', params: { max: MAX_CASES } }, { status: 400 })
     }
     test_cases = raw.map((tc: any) => ({
       input: String(tc?.input ?? '').slice(0, MAX_CASE_CHARS),

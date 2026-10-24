@@ -7,7 +7,7 @@ import { buildIcs, googleCalendarUrl, type CalendarEvent } from '@/lib/calendar/
 import { escapeHtml } from '@/lib/safe-html'
 import { getAppOrigin } from '@/lib/app-origin'
 import { mailLocale, wrapEmail } from '@/lib/ats/notify'
-import { outboundT, type OutboundTranslator } from '@/lib/i18n/outbound'
+import { outboundT, type OutboundText, type OutboundTranslator } from '@/lib/i18n/outbound'
 import type { Locale } from '@/lib/i18n/config'
 import type { AtsCandidate } from '@/lib/ats/contract'
 import type { AtsInterviewDoc } from './db'
@@ -64,14 +64,30 @@ async function send(to: string | null | undefined, msg: { subject: string; html:
 }
 
 /** Consent, STOP opt-outs and the official channel are enforced by lib/whatsapp-send (AUTO-060). */
-async function whatsapp(candidate: Pick<AtsCandidate, 'phone' | 'consent'> | null, text: string): Promise<void> {
-  if (!candidate?.phone || candidate.consent?.whatsapp !== true) return
+async function whatsapp(candidate: Pick<AtsCandidate, 'phone' | 'consent'> | null, text: string): Promise<boolean> {
+  if (!candidate?.phone || candidate.consent?.whatsapp !== true) return false
   try {
     const { sendWhatsAppToCandidate } = await import('@/lib/whatsapp-send')
-    await sendWhatsAppToCandidate(candidate, { kind: 'hiring', title: 'Interview update', text: text.slice(0, 1000), urgent: true })
+    const r = await sendWhatsAppToCandidate(candidate, { kind: 'hiring', title: 'Interview update', text: text.slice(0, 1000), urgent: true })
+    return r.sent === true
   } catch (e) {
     console.error('[ats/interviews] whatsapp failed:', (e as Error)?.message)
+    return false
   }
+}
+
+/** How the self-schedule invite reached the candidate (CORE-053). */
+export interface InviteDelivery { email: 'sent' | 'unsubscribed' | 'failed' | 'no_email'; whatsapp: boolean }
+
+/**
+ * Pure: the recruiter notice key when the "pick a time" e-mail did not go out
+ * (null when it did). The recruiter can copy the link from the interview page
+ * and share it another way.
+ */
+export function inviteNoticeKey(d: InviteDelivery): string | null {
+  if (d.email === 'sent') return null
+  const why = d.email === 'unsubscribed' ? 'Unsubscribed' : d.email === 'no_email' ? 'NoEmail' : 'Failed'
+  return `interview.inviteNotSent${why}${d.whatsapp ? 'Wa' : ''}`
 }
 
 /**
@@ -123,24 +139,27 @@ export async function noticeCandidate(iv: AtsInterviewDoc, candidate: AtsCandida
 }
 
 /** Self-schedule invitation with the slot-picker link (same subject / button / footer as the scheduler agent's offer). */
-export async function inviteToSchedule(iv: AtsInterviewDoc, candidate: AtsCandidate, link: string, company: string): Promise<void> {
+export async function inviteToSchedule(iv: AtsInterviewDoc, candidate: AtsCandidate, link: string, company: string): Promise<InviteDelivery> {
   const locale = await mailLocale(candidate.email)
   const t = outboundT('email', locale)
   const { hlt, hlLocale } = await import('@/lib/agent/hiring-loops/i18n')
   const hl = hlLocale(locale)
   const name = candidate.name || t('atsMail.nameFallback')
   const role = iv.job_title || t('atsMail.roleFallback')
+  let email: InviteDelivery['email'] = 'no_email'
   if (candidate.email) {
     const { isUnsubscribed, unsubscribeUrl, listUnsubscribeHeaders } = await import('@/lib/automation/mailer')
-    if (!(await isUnsubscribed(candidate.email, 'hiring').catch(() => false))) {
+    if (await isUnsubscribed(candidate.email, 'hiring').catch(() => false)) email = 'unsubscribed'
+    else {
       const intro = t('atsMail.iv.inviteIntro', { name, role, company, minutes: iv.duration_min, mode: t(iv.mode === 'f2f' ? 'atsMail.iv.mode.f2f' : 'atsMail.iv.mode.video') })
       const unsub = unsubscribeUrl(candidate.email, 'hiring')
       const body = `<p style="margin:0 0 14px">${escapeHtml(intro)}</p>`
         + `<p style="margin:16px 0 0;font-size:12px;color:#6b7280">${escapeHtml(hlt(hl, 'mail.footer', { company }))}${unsub ? ` · <a href="${escapeHtml(unsub)}" style="color:#6b7280">${escapeHtml(hlt(hl, 'mail.unsubscribe'))}</a>` : ''}</p>`
-      await send(candidate.email, wrapEmail(hlt(hl, 'mail.subject', { role, company }), body, { url: link, label: hlt(hl, 'mail.pick') }, locale), undefined, listUnsubscribeHeaders(candidate.email, 'hiring'))
+      email = (await send(candidate.email, wrapEmail(hlt(hl, 'mail.subject', { role, company }), body, { url: link, label: hlt(hl, 'mail.pick') }, locale), undefined, listUnsubscribeHeaders(candidate.email, 'hiring'))) ? 'sent' : 'failed'
     }
   }
-  await whatsapp(candidate, t('atsMail.iv.waInvite', { name, role, company, link }))
+  const wa = await whatsapp(candidate, t('atsMail.iv.waInvite', { name, role, company, link }))
+  return { email, whatsapp: wa }
 }
 
 /** Panel notice (each member separately, in their own language). */
@@ -172,7 +191,7 @@ export async function noticePanel(iv: AtsInterviewDoc, kind: NoticeKind, panelUr
 }
 
 /** In-app notification to people who schedule (job recruiters, else ATS admins/recruiters). */
-export async function notifySchedulers(iv: AtsInterviewDoc, recruiterIds: string[], title: string, message: string): Promise<void> {
+export async function notifySchedulers(iv: AtsInterviewDoc, recruiterIds: string[], title: string, message: string, i18n?: { title: OutboundText; message: OutboundText }): Promise<void> {
   try {
     let ids = recruiterIds.filter(Boolean)
     if (!ids.length) {
@@ -188,6 +207,7 @@ export async function notifySchedulers(iv: AtsInterviewDoc, recruiterIds: string
       type: 'interview.scheduled',
       title,
       message,
+      ...(i18n ? { title_i18n: i18n.title, message_i18n: i18n.message } : {}),
       link: `/dashboard/hiring/interviews/${iv.id}`,
     })
   } catch (e) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
+import { getAPIUser, requireSuperAdmin, isSuperAdminCaller } from '@/lib/route-auth'
 import { ebooksCol, type EbookDoc, type EbookPage } from '@/lib/db/ebooks'
 import { ensureEbookSeed } from '@/lib/ebooks-seed'
 import { generateEbookDraft } from '@/lib/ebooks-generate'
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
   }
   const url = new URL(req.url)
   const wantAll = url.searchParams.get('all') === '1'
-  const isSa = user.role === 'superadmin'
+  const isSa = isSuperAdminCaller(user) // SEC-029: no drafts while admin 2FA is owed
 
   const filter = wantAll && isSa ? {} : { status: 'published' as const }
   const rows = await col.find(filter).sort({ publishedAt: -1, createdAt: -1 }).limit(100).toArray()

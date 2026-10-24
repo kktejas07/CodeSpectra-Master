@@ -25,4 +25,9 @@ export interface SystemAutomation {
    * stops workflows that trigger on them (the admin page warns about that).
    */
   emits?: string[]
+  /**
+   * Slow sweep (link checks, AI notes): run from the scheduler's heavy content lane, never the
+   * every-minute critical lane, so it can't hold up quiet-hours flush or exam auto-close (AUTO-099).
+   */
+  heavy?: boolean
 }

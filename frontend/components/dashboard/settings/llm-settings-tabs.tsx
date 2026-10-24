@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface ProviderKey {
   id: string
@@ -557,7 +558,7 @@ export function LlmSettingsTabs() {
                               placeholder={p.placeholder}
                               className="flex-1 h-8 text-xs font-mono"
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                                if (isSubmitEnter(e) && (e.target as HTMLInputElement).value.trim()) {
                                   const val = (e.target as HTMLInputElement).value.trim()
                                   setSecretsDraft(d => {
                                     const existing = d[p.key] || ''

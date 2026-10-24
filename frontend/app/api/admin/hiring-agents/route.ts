@@ -9,7 +9,8 @@
 import { NextResponse } from 'next/server'
 import { readJson } from '@/lib/agent/http'
 import { hiringAgentsGate } from '@/lib/agent/hiring-loops/http'
-import { cleanSettingsPatch, defaultSettings, isLoopId, LOOP_IDS, LOOP_STEPS } from '@/lib/agent/hiring-loops/types'
+import { cleanSettingsPatch, defaultSettings, isLoopId, LOOP_IDS, LOOP_STEPS, type LoopId } from '@/lib/agent/hiring-loops/types'
+import type { AgentCaller } from '@/lib/agent/contract'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,12 @@ export async function GET(req: Request) {
   // SEC-036: may this caller switch auto-send steps on?
   const [{ orgOwnerId }, { mayEnableAutoSend }] = await Promise.all([import('@/lib/tenant-owner'), import('@/lib/agent/hiring-loops/auto-send')])
   const canEnableAutoSend = mayEnableAutoSend(caller, await orgOwnerId(tenantId).catch(() => null))
+  // AGT-047: auto-send steps that are on but won't send (no grant from before
+  // grants existed, or the enabling admin lost rights / owes 2FA).
+  const { stepsNeedingOwner } = await import('@/lib/agent/hiring-loops/auto-send')
+  const { autoSendEnablerValid } = await import('@/lib/agent/hiring-loops/runtime')
+  const grantUsers = [...new Set(rows.flatMap(({ s }) => Object.entries(s.auto_send_by).filter(([k]) => s.settings.auto_send[k] === true).map(([, g]) => g.user_id)))]
+  const validGrant = new Map(await Promise.all(grantUsers.map(async (u) => [u, await autoSendEnablerValid(u, tenantId)] as const)))
   const pending = await (await getMongoDb()).collection('agent_actions').find(
     { ...actionScope(caller), tenant_id: tenantId, status: 'pending', 'preview.drafted_by': { $regex: '^hiring-agent-' } },
     { projection: { _id: 0, id: 1, tool: 1, risk: 1, title: 1, preview: 1, created_at: 1, expires_at: 1, conversationId: 1 } },
@@ -45,6 +52,7 @@ export async function GET(req: Request) {
       loop: l, settings: s.settings, steps: LOOP_STEPS[l], default_enabled: defaultSettings(l).enabled,
       owner_name: s.owner_name, owner_is_you: s.owner_id === caller.userId, has_owner: !!s.owner_id,
       auto_send_by: Object.fromEntries(Object.entries(s.auto_send_by).map(([k, g]) => [k, { name: g.name, at: g.at, is_you: g.user_id === caller.userId }])),
+      auto_send_needs_owner: stepsNeedingOwner(s.settings.auto_send, s.auto_send_by, (u) => validGrant.get(u) === true),
       usage: { items_today: u.itemsToday, spent_month_usd: u.spentMonth }, last_run: last[l] ?? null,
     })),
     can_enable_auto_send: canEnableAutoSend,
@@ -61,6 +69,7 @@ export async function PATCH(req: Request) {
   if ('response' in gate) return gate.response
   const body = await readJson(req)
   if (!body || !isLoopId(body.loop)) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
+  if (body.reauthorise_auto_send === true) return reauthoriseAutoSend(gate, body.loop)
   const clean = cleanSettingsPatch(body.loop, body.patch)
   if (!clean.ok) return NextResponse.json({ error: clean.error, code: 'invalid_request' }, { status: 400 })
   const { saveLoopSettings, getLoopSettings } = await import('@/lib/agent/hiring-loops/store')
@@ -81,4 +90,27 @@ export async function PATCH(req: Request) {
     await auditAgent({ id: gate.caller.userId }, 'hiring_agent.auto_send_enabled', `${gate.tenantId}:${body.loop}`, `steps=${turnedOn.join(',')}; items go out as the organisation, enabled by ${gate.caller.userId}`, 'warning').catch(() => undefined)
   }
   return NextResponse.json({ settings: saved.settings, owner_name: saved.owner_name, auto_send_by: saved.auto_send_by })
+}
+
+/**
+ * AGT-047: PATCH { loop, reauthorise_auto_send: true } — the organisation owner
+ * (or a superadmin) re-enables, in one click, every auto-send step that is on
+ * but not sending; each is stamped with them. Other admins get 403.
+ */
+async function reauthoriseAutoSend(gate: { caller: AgentCaller; tenantId: string }, loop: LoopId) {
+  const [{ orgOwnerId }, auto, store, { autoSendEnablerValid }] = await Promise.all([
+    import('@/lib/tenant-owner'), import('@/lib/agent/hiring-loops/auto-send'), import('@/lib/agent/hiring-loops/store'), import('@/lib/agent/hiring-loops/runtime'),
+  ])
+  if (!auto.mayEnableAutoSend(gate.caller, await orgOwnerId(gate.tenantId))) {
+    return NextResponse.json({ error: 'Only the organisation owner or a platform admin can turn on auto-send.', code: 'hiring_auto_send_owner_only' }, { status: 403 })
+  }
+  const cur = await store.getLoopSettings(gate.tenantId, loop)
+  const users = [...new Set(Object.values(cur.auto_send_by).map((g) => g.user_id))]
+  const valid = new Map(await Promise.all(users.map(async (u) => [u, await autoSendEnablerValid(u, gate.tenantId)] as const)))
+  const steps = auto.stepsNeedingOwner(cur.settings.auto_send, cur.auto_send_by, (u) => valid.get(u) === true)
+  if (!steps.length) return NextResponse.json({ settings: cur.settings, owner_name: cur.owner_name, auto_send_by: cur.auto_send_by, reauthorised: [] })
+  const saved = await store.saveAutoSendBy(gate.tenantId, loop, auto.reauthoriseAutoSendBy(cur.auto_send_by, steps, { id: gate.caller.userId, name: gate.caller.name }, new Date()), gate.caller.userId)
+  const { auditAgent } = await import('@/lib/agent/http')
+  await auditAgent({ id: gate.caller.userId }, 'hiring_agent.auto_send_enabled', `${gate.tenantId}:${loop}`, `re-enabled steps=${steps.join(',')}; items go out as the organisation, enabled by ${gate.caller.userId}`, 'warning').catch(() => undefined)
+  return NextResponse.json({ settings: saved.settings, owner_name: saved.owner_name, auto_send_by: saved.auto_send_by, reauthorised: steps })
 }

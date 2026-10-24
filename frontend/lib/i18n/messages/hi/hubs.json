@@ -288,7 +288,7 @@
   "dtEvents_one": "{count} इवेंट",
   "dtEvents_other": "{count} इवेंट",
   "dtNoStudentPoints": "इस कॉलेज के किसी छात्र के अभी अंक नहीं हैं।",
-  "dtNoTeamPoints": "किसी पूरे-कॉलेज टीम के अभी अंक नहीं हैं।",
+  "dtNoTeamPoints": "किसी ऑल-कॉलेज टीम के अभी कोई अंक नहीं हैं।",
   "dtCollegeTitle": "यूनिवर्सिटी लीग में {college}",
   "dtCollegeDesc": "CodeSpectra यूनिवर्सिटी लीग में {college} की स्थिति, शीर्ष छात्र और टीमें।",
   "dtCollegeFallbackTitle": "कॉलेज लीग",
@@ -365,5 +365,8 @@
   "dtNext": "अगला",
   "dtSellerTitle": "{name}: CodeSpectra मार्केटप्लेस पर विक्रेता",
   "dtSellerDesc": "CodeSpectra मार्केटप्लेस पर {name} द्वारा बेचे गए आइटम।",
-  "dtSellerNotFound": "विक्रेता नहीं मिला"
+  "dtSellerNotFound": "विक्रेता नहीं मिला",
+  "bookerSessionType": "सेशन का प्रकार",
+  "bookerMinOnline": "{min} मिनट · ऑनलाइन",
+  "bookerNote": "समय आपके टाइम ज़ोन में दिखाया गया है। भुगतान चेकआउट पर होगा; मीटिंग लिंक और कैलेंडर इनवाइट ईमेल पर आएँगे। सेशन से {hours} घंटे पहले तक मुफ़्त में रद्द कर सकते हैं।"
 }

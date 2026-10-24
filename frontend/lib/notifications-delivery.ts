@@ -295,6 +295,11 @@ export function escapeHtml(v: unknown): string {
  * double-send. ponytail: upsert without a unique index — a simultaneous
  * double fire could still race; add a unique index on `key` if that matters.
  */
+/** Undo a digest claim when nothing went out (held by the messaging budget), so a later run can send it (AUTO-109). */
+export async function releaseDigestSend(db: Db, kind: 'daily' | 'weekly', userId: string, period: string): Promise<void> {
+  await db.collection('digest_sends').deleteOne({ key: `${kind}:${userId}:${period}` }).catch(() => {})
+}
+
 export async function claimDigestSend(db: Db, kind: 'daily' | 'weekly', userId: string, period: string): Promise<boolean> {
   const key = `${kind}:${userId}:${period}`
   const r = await db.collection('digest_sends').updateOne(

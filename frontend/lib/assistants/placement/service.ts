@@ -14,7 +14,7 @@ import { lazyCollection } from '@/lib/community/lazy'
 import { newId, nowIso } from '@/lib/db/ids'
 import { logger } from '@/lib/logger'
 import type { StaffContext } from '@/lib/campus/access'
-import { activeMarks, getAssistantSettings, markOnce, recordRun } from '../store'
+import { activeMarks, getAssistantSettings, markOnce, recordRun, releaseMark } from '../store'
 import { assignmentProgress, type AssignmentAttempt, type AssignmentProgress, type AssignmentStudent } from './assignments'
 import { buildPlacementReport, isoWeek, NUDGE_DEFAULTS, rankShortlist, selectNudges, type NudgeReason, type PlacementReport } from './select'
 
@@ -135,9 +135,13 @@ export async function nudgeStudents(ctx: StaffContext, ids: readonly string[], k
       link: kind === 'drive' ? '/dashboard/campus' : '/dashboard/company-tests', send_email: true,
     })
     if (r) sent++
-    else held++
+    else {
+      // Held (limit, or already told today): free the 7-day cooldown so the officer can try again (AGT-046).
+      held++
+      await releaseMark('placement', `nudge:${st.id}`).catch(() => {})
+    }
   }
-  await recordRun({ assistant: 'placement', trigger: 'copilot', status: 'ok', tenant_id: ctx.college.tenant_id, message: `Nudged ${sent} student(s)${skipped ? `, ${skipped} nudged recently` : ''}${held ? `, ${held} held by the message limit` : ''}`, counts: { sent, skipped, held, not_joined: s.noAccount } })
+  await recordRun({ assistant: 'placement', trigger: 'copilot', status: 'ok', tenant_id: ctx.college.tenant_id, message: `Nudged ${sent} student(s)${skipped ? `, ${skipped} nudged recently` : ''}${held ? `, ${held} held by the message limit (cooldown not used, can be nudged again)` : ''}`, counts: { sent, skipped, held, not_joined: s.noAccount } })
   return { sent, skipped, held, not_joined: s.noAccount, not_in_college: s.missing }
 }
 

@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Illustration } from '@/components/illustrations/spot'
 import { cn } from '@/lib/utils'
 import { scoreTone } from './lib/labels'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 export function LoadingRows({ rows = 4, className }: { rows?: number; className?: string }) {
   return (
@@ -167,7 +168,7 @@ export function ChipInput({
           value={draft}
           onChange={(e) => (e.target.value.includes(',') ? add(e.target.value) : setDraft(e.target.value))}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); add(draft) }
+            if (isSubmitEnter(e)) { e.preventDefault(); add(draft) }
             else if (e.key === 'Backspace' && !draft && value.length) onChange(value.slice(0, -1))
           }}
           onBlur={() => add(draft)}

@@ -141,7 +141,7 @@ export async function DELETE(request: Request) {
   if (plan === 'free') return NextResponse.json({ error: 'The free plan cannot be deleted.' }, { status: 400 })
   try {
     const live = await (await billingSubscriptions()).countDocuments({ plan_id: plan, status: 'active', ends_at: { $gt: new Date().toISOString() } })
-    if (live > 0) return NextResponse.json({ error: `${live} active subscription(s) use this plan. Wait for them to end first.` }, { status: 409 })
+    if (live > 0) return NextResponse.json({ error: `${live} active subscription(s) use this plan. Wait for them to end first.`, code: 'plan_in_use', params: { count: live } }, { status: 409 })
     const res = await (await getMongoDb()).collection('plans').deleteOne({ plan })
     if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     invalidatePlanCache()

@@ -1,8 +1,9 @@
 /**
  * Wave 15 billing nudges (default OFF — they message people / can issue coupons):
  *   checkout-recovery   unpaid plan orders: resume link at 1 h, optional one-time coupon at 24 h
- *   renewal-nudges      org licences 30 / 7 days before the end (with seat usage) and a
- *                       heads-up 3 days before an automatic renewal charge (amount + manage link)
+ *   renewal-nudges      org licences 30 / 7 days before the end (with seat usage)
+ * and, always on (locked — AUTO-111):
+ *   auto-renew-notice   heads-up 3 days before an automatic renewal charge (amount + manage link)
  * Money is integer minor units; payment itself only through the normal checkout.
  */
 import { getMongoDb } from '@/lib/mongodb'
@@ -128,7 +129,19 @@ export async function runRenewalNudges(now = new Date()): Promise<Record<string,
     }
     if (any) await licences.updateOne({ id: l.id }, { $addToSet: { renewal_steps: stepKey(step) } } as never)
   }
-  // Automatic renewals: a heads-up with the amount 3 days before the charge (pre-debit notice; not capped).
+  return tally(outcomes)
+}
+
+/**
+ * Automatic renewals: a heads-up with the amount 3 days before the charge
+ * (pre-debit notice, legally required for e-mandates; class 'legal', never
+ * capped, once per charge). Its own always-on automation (AUTO-111), so an
+ * auto-renew customer gets it on a fresh install whatever the off-by-default
+ * renewal nudges are set to.
+ */
+export async function runAutoRenewNotices(now = new Date()): Promise<Record<string, number>> {
+  const db = await getMongoDb()
+  const outcomes: NudgeOutcome[] = []
   const subs = (await db.collection('billing_subscriptions').find({ status: 'active', ends_at: { $gt: now.toISOString(), $lte: new Date(now.getTime() + AUTO_RENEW_NOTICE_DAYS * DAY).toISOString() } }, { projection: { _id: 0 } }).limit(5000).toArray()) as Doc[]
   const { stripeAutoRenewEnabled } = await import('@/lib/stripe-client')
   const stripeRenews = stripeAutoRenewEnabled()
@@ -139,8 +152,9 @@ export async function runRenewalNudges(now = new Date()): Promise<Record<string,
     const last = (await db.collection('billing_orders').find({ user_id: s.user_id, status: 'paid', $or: [{ subscription_id: s.id }, { plan_id: s.plan_id }] }, { projection: { _id: 0, amount_paise: 1, currency: 1, plan_name: 1 } }).sort({ created_at: -1 }).limit(1).toArray())[0] as Doc | undefined
     const params = { plan: String(last?.plan_name || s.plan_id || 'Your plan').slice(0, 80), date: dayUtc(s.ends_at), amount: last ? money(Number(last.amount_paise) || 0, String(last.currency || 'INR')) : '—' }
     outcomes.push(await deliverNudge({
-      // Pre-debit notice (legally required for e-mandates): never capped, once per charge.
-      automationId: 'renewal-nudges', key: `autorenew:${String(s.id)}:${String(s.ends_at)}`, now, capExempt: true,
+      // Pre-debit notice (legally required for e-mandates): never capped, once per charge
+      // (the topic/object claim also covers notices sent under the old renewal-nudges id).
+      automationId: 'auto-renew-notice', key: `autorenew:${String(s.id)}:${String(s.ends_at)}`, now, capExempt: true,
       class: 'legal', topic: 'auto-renew-notice', object: `${String(s.id)}:${String(s.ends_at).slice(0, 10)}`,
       to: { userId: String(s.user_id), email: String(u.email) },
       email: nudgeMail({ id: 'autoRenew', category: 'billing', params, name: firstName(u.fullName || u.name), cta: { url: '/dashboard/billing' } }),
@@ -166,12 +180,22 @@ export const BILLING_NUDGE_AUTOMATIONS: SystemAutomation[] = [
   },
   {
     id: 'renewal-nudges',
-    title: 'Licence and auto-renew notices',
-    description: 'Organisation admins get a licence renewal email with seat usage 30 and 7 days before it ends; people on an automatically renewing plan get the amount and a manage/cancel link 3 days before the charge.',
+    title: 'Licence renewal notices',
+    description: 'Organisation admins get a licence renewal email with seat usage 30 and 7 days before it ends.',
     group: 'Billing',
     refs: ['W15-AUTO-04'],
     defaultOn: false,
     cadence: { kind: 'daily', hourUtc: 4, minuteUtc: 30 },
     run: async (now) => runRenewalNudges(now),
+  },
+  {
+    id: 'auto-renew-notice',
+    title: 'Pre-charge notice for automatic renewals',
+    description: 'People on an automatically renewing plan (card or UPI mandate) get the amount and a manage/cancel link 3 days before the charge. Always on: it is a required payment notice, sent once per charge and never held by the message limit.',
+    group: 'Billing',
+    refs: ['W15-AUTO-04', 'AUTO-093', 'AUTO-111'],
+    locked: true,
+    cadence: { kind: 'daily', hourUtc: 4, minuteUtc: 30 },
+    run: async (now) => runAutoRenewNotices(now),
   },
 ]

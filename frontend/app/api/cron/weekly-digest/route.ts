@@ -2,7 +2,8 @@ import { isCronAuthorized } from '@/lib/cron-auth'
 import { NextRequest, NextResponse } from 'next/server'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
-import { claimDigestSend, deliverOrDefer } from '@/lib/notifications-delivery'
+import { claimDigestSend, deliverOrDefer, releaseDigestSend } from '@/lib/notifications-delivery'
+import { isUnsubscribed } from '@/lib/automation/mailer'
 import { withBudget } from '@/lib/messaging/budget'
 import { emailTemplatesFor } from '@/lib/email-templates'
 import { recipientLocaleFrom } from '@/lib/i18n/recipient'
@@ -59,6 +60,7 @@ async function postImpl(req: NextRequest) {
     let sent = 0
     let deferred = 0
     let skipped = 0
+    let capped = 0
     let empty = 0
     let checked = 0
     let outOfTime = false
@@ -69,6 +71,8 @@ async function postImpl(req: NextRequest) {
       const id = String(u.id ?? u._id)
       if (off.has(id)) continue
       try {
+        // Unsubscribed by link: nothing would go out, so don't claim it or use a slot (AUTO-116).
+        if (!u.email || (await isUnsubscribed(String(u.email), 'engagement'))) { skipped++; continue }
         if (!(await claimDigestSend(db, 'weekly', id, period))) { skipped++; continue }
         const [solved, streak] = await Promise.all([
           // created_at is an ISO string on new rows and a Date on old ones.
@@ -87,8 +91,11 @@ async function postImpl(req: NextRequest) {
           res.r = await deliverOrDefer(id, { email: { to: String(u.email), subject: msg.subject, html: msg.html, category: 'engagement' } })
           return true
         })
-        if (outcome !== 'sent') skipped++
-        else if (res.r === 'deferred') deferred++
+        if (outcome !== 'sent') {
+          skipped++
+          // Held by the shared limit: unclaimed, so the catch-up run later this week can still send it (AUTO-109).
+          if (outcome === 'capped') { capped++; await releaseDigestSend(db, 'weekly', id, period) }
+        } else if (res.r === 'deferred') deferred++
         else sent++
       } catch (e) {
         console.error('[weekly-digest] send failed:', (e as Error)?.message)
@@ -97,7 +104,7 @@ async function postImpl(req: NextRequest) {
 
     // Stopping at the time budget is progress, not failure: 200 + x-cron-partial so the heartbeat stays ok and
     // the next catch-up run continues (per-user claims prevent repeats). Only real errors return 5xx.
-    const body = { sent, deferred, skipped, empty, checked, period, ...(outOfTime ? { partial: true, remaining } : {}) }
+    const body = { sent, deferred, skipped, capped, empty, checked, period, ...(outOfTime ? { partial: true, remaining } : {}) }
     return NextResponse.json(body, { status: 200, headers: outOfTime ? { 'x-cron-partial': '1' } : undefined })
   } catch (e) {
     console.error('[weekly-digest] error:', (e as Error)?.message)

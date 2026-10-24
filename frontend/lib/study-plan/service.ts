@@ -433,9 +433,12 @@ export async function runStudyPlanTick(now = new Date(), opts: { maxAdapt?: numb
     if (!claimed.modifiedCount) continue
     const mins = open.reduce((a, i) => a + i.minutes, 0)
     const { notify } = await import('@/lib/notifications')
-    // study_plan.reminder is an engagement type: it goes through the shared per-person cap (AUTO-094).
+    // The learner chose this reminder and its hour: 'subscribed' — de-duplicated per plan + day, never
+    // capped (AUTO-108). Should it ever be held, the day's claim is undone so a later run can retry (AUTO-109).
+    let held = false
     const sent = await notify({
-      budget: { class: 'engagement', topic: 'study-plan-reminder', object: `${p.id}:${day}`, source: 'study-plan' },
+      budget: { class: 'subscribed', topic: 'study-plan-reminder', object: `${p.id}:${day}`, source: 'study-plan' },
+      on_held: (o) => { held = o === 'capped' },
       user_id: p.user_id, type: 'study_plan.reminder', title: "Today's study plan",
       message: `${open.length} item${open.length === 1 ? '' : 's'} left today (about ${mins} min): ${open.slice(0, 2).map((i) => i.title).join('; ').slice(0, 160)}`,
       title_i18n: { key: 'studyPlan.title' },
@@ -445,6 +448,7 @@ export async function runStudyPlanTick(now = new Date(), opts: { maxAdapt?: numb
       send_email: p.reminders.email, send_whatsapp: p.reminders.whatsapp, skip_push: false,
     }).catch(() => null)
     if (sent) rep.reminded++
+    else if (held) await col.updateOne({ id: p.id, 'reminders.last_sent_day': day }, { $unset: { 'reminders.last_sent_day': '' } } as never).catch(() => {})
   }
   return rep
 }

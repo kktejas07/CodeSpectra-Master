@@ -2,7 +2,8 @@
  * SEO-039: accessibility of the signed-in candidate screens (the public crawl
  * never reaches them). Signs in a seeded candidate (scripts/seed-dev-users.ts
  * → demo@codespectra.com) and, on the dashboard and the demo test workspace:
- *  - axe-core (WCAG 2.1 A/AA): no critical violations (serious are logged),
+ *  - axe-core (WCAG 2.1 A/AA): no critical violations and no colour-contrast
+ *    ones (other serious ones are logged),
  *  - a Tab-only pass: focus moves forward, never lands on hidden elements and
  *    every stop shows a visible focus indicator.
  *
@@ -35,8 +36,9 @@ async function signIn(page: Page) {
 
 async function expectNoCritical(page: Page, label: string) {
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
-  const critical = axe.violations.filter((v) => v.impact === 'critical')
-  const serious = axe.violations.filter((v) => v.impact === 'serious')
+  // SEO-056: serious colour-contrast fails as well (other serious rules are logged).
+  const critical = axe.violations.filter((v) => v.impact === 'critical' || v.id === 'color-contrast')
+  const serious = axe.violations.filter((v) => v.impact === 'serious' && v.id !== 'color-contrast')
   if (serious.length) console.warn(`[a11y] ${label} serious:`, serious.map((v) => `${v.id} ×${v.nodes.length}`).join(', '))
   expect(critical.map((v) => `${v.id}: ${v.help} @ ${page.url()} :: ${(v.nodes[0]?.html ?? '').slice(0, 300)}`), label).toEqual([])
 }
@@ -74,6 +76,12 @@ for (const path of PAGES) {
     await page.waitForTimeout(1500)
     expect(res?.status() ?? 0).toBeLessThan(400)
     await expect(page).not.toHaveURL(/\/auth\/login/)
+    // The test screen sends the candidate home when the exam can't be loaded;
+    // say why instead of silently checking the landing page.
+    if (path.startsWith('/assessment/') && !path.includes('/demo/') && new URL(page.url()).pathname !== path) {
+      const api = await page.request.get(`/api/exams/${path.split('/').pop()}`)
+      throw new Error(`${path} redirected to ${page.url()} — GET /api/exams → ${api.status()} ${(await api.text()).slice(0, 300)}`)
+    }
     await expectNoCritical(page, path)
     // Test screen: get past the start / consent step to the questions (best effort —
     // the start screen itself was checked above).

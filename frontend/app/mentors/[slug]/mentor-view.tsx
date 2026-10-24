@@ -108,7 +108,12 @@ export async function MentorView({ slug, locale }: { slug: string; locale: Local
           </div>
           <aside aria-label={t('hubs.dtBookSession')} className="h-fit rounded-3xl border border-cs-grid bg-cs-sheet p-6 lg:sticky lg:top-24">
             <h2 className="mb-4 text-lg font-semibold text-cs-ink">{t('hubs.dtBookSession')}</h2>
-            <OfferingBooker offerings={m.offerings} cancelHours={SERVICE_CANCEL_HOURS} />
+            <OfferingBooker offerings={m.offerings} cancelHours={SERVICE_CANCEL_HOURS} labels={{
+              sessionType: t('hubs.bookerSessionType'),
+              minOnline: t('hubs.bookerMinOnline'),
+              note: t('hubs.bookerNote', { hours: SERVICE_CANCEL_HOURS }),
+              offering: Object.fromEntries(m.offerings.map((x) => [x.type, t.dyn(`hubs.offering:${x.type}`, x.type)])),
+            }} />
           </aside>
         </div>
       </div>

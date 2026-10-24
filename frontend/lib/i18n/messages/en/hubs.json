@@ -365,5 +365,8 @@
   "dtNext": "Next",
   "dtSellerTitle": "{name}: seller on CodeSpectra marketplace",
   "dtSellerDesc": "Items sold by {name} on the CodeSpectra marketplace.",
-  "dtSellerNotFound": "Seller not found"
+  "dtSellerNotFound": "Seller not found",
+  "bookerSessionType": "Session type",
+  "bookerMinOnline": "{min} min · online",
+  "bookerNote": "Times are shown in your time zone. You pay at checkout; the meeting link and a calendar invite arrive by e-mail. Free cancellation up to {hours} hours before the session."
 }

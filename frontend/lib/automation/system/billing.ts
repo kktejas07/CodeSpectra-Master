@@ -10,7 +10,7 @@ import { emit } from '../events'
 import { sendAutomationEmail } from '../mailer'
 import { claimOnce, col, nowIso, releaseClaim } from '../store'
 import { withBudget } from '@/lib/messaging/budget'
-import { utcDay } from '@/lib/messaging/budget-rules'
+import { dunningBudgetObject, utcDay } from '@/lib/messaging/budget-rules'
 import { getSystemSettings, configValue } from '../settings'
 import { dueDunningStep, expiryReminderDay, needsExpiryReminder, reconcileAction, reconcileOutcome, type ProviderState } from './rules'
 import type { SystemAutomation } from './types'
@@ -73,7 +73,9 @@ export async function runDunning(now = new Date(), onlySub?: string): Promise<{ 
     const subject = step.final ? 'Last notice: your CodeSpectra plan is about to end' : step.day === 0 ? 'Your CodeSpectra payment didn’t go through' : 'Reminder: please update your payment method'
     // Payment notices bypass the shared cap but are sent once per subscription and day across
     // senders (dunning, the revenue assistant's "update your payment method") — AUTO-094.
-    await withBudget({ userId: user.id, email: user.email }, { class: 'payment', topic: 'payment-failed', object: `${String(d.subscription_id)}:${utcDay(now)}`, source: 'dunning' }, async () => {
+    // The final notice has its own object, and a step the assistant already covered today is put back
+    // for the next sweep, so dunning is never silently replaced (AUTO-117).
+    const dunningOutcome = await withBudget({ userId: user.id, email: user.email }, { class: 'payment', topic: 'payment-failed', object: dunningBudgetObject(String(d.subscription_id), String(d.episode), step, now), source: 'dunning' }, async () => {
     if (user.email) {
       await sendAutomationEmail({
         budget: false,
@@ -104,6 +106,10 @@ export async function runDunning(now = new Date(), onlySub?: string): Promise<{ 
     }
     return true
     }, now)
+    if (dunningOutcome === 'duplicate' && !step.final) {
+      await c.updateOne({ subscription_id: d.subscription_id, episode: d.episode }, { $pull: { sent: step.key } as never, $unset: { [`sent_at.${step.key}`]: '' } }).catch(() => {})
+      continue
+    }
     if (step.day === 0 && Number(d.amount_minor) >= HIGH_VALUE_MINOR) {
       const { sendAdminAlert } = await import('../alerts')
       await sendAdminAlert({ key: `dunning-high:${String(d.subscription_id)}`, title: 'High-value renewal failed', detail: `A renewal of ${(Number(d.amount_minor) / 100).toFixed(2)} ${String(d.currency || '').toUpperCase()} failed (plan ${plan}). Dunning emails have started.`, severity: 'warning', link: '/dashboard/admin/billing', windowMinutes: 24 * 60 })
