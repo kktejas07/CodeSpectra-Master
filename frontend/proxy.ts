@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { checkCsrf, CSRF_COOKIE, CSRF_HEADER } from '@/lib/csrf'
-import { edgeRateLimit, edgeClientKey } from '@/lib/edge-rate-limit'
+import { edgeRateLimit, edgeClientKey, globalApiLimitKey, GLOBAL_API_PER_IP, GLOBAL_API_PER_PERSON } from '@/lib/edge-rate-limit'
 import { isCsrfExempt } from '@/lib/csrf-exempt'
 import { isPublicMarketingPath } from '@/lib/seo/public-routes'
 import { PERMISSIONS_POLICY } from '@/lib/security-headers'
@@ -110,7 +110,15 @@ export async function proxy(request: NextRequest) {
   // only egregious abuse — per-route limits in Node handlers are the real guard.
   // Exempt paths: lib/csrf-exempt.ts (segment-aware).
   if (pathname.startsWith('/api/') && !isCsrfExempt(pathname)) {
-    const rl = edgeRateLimit(`api:${edgeClientKey(request)}`, 240, 60_000)
+    // Per signed-in person (signature-checked session) or per IP when anonymous,
+    // plus a high per-IP ceiling: a whole campus behind one NAT must not share
+    // one person's budget (that 429'd candidates out of their test screen).
+    const ip = edgeClientKey(request)
+    const sessionToken = request.cookies.get(SESSION_COOKIE)?.value
+    const { sessionUidUnchecked } = await import('@/lib/session')
+    const uid = sessionToken ? await sessionUidUnchecked(sessionToken).catch(() => null) : null
+    const ipRl = edgeRateLimit(`api:ipcap:${ip}`, GLOBAL_API_PER_IP, 60_000)
+    const rl = ipRl.ok ? edgeRateLimit(globalApiLimitKey(ip, uid), GLOBAL_API_PER_PERSON, 60_000) : ipRl
     if (!rl.ok) {
       return NextResponse.json(
         { error: `Too many requests. Try again in ${rl.retryAfterSec}s.` },

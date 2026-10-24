@@ -1,5 +1,6 @@
 'use client'
 
+import { fetchWithRetry, isTransientStatus } from '@/lib/fetch-retry'
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -287,7 +288,12 @@ export default function CandidateAssessmentPage() {
         const qs = new URLSearchParams()
         if (inviteToken) qs.set('inviteToken', inviteToken)
         if (linkToken) qs.set('link', linkToken)
-        const res = await fetch(`/api/exams/${params.id}${qs.toString() ? `?${qs}` : ''}`, { credentials: 'include' })
+        // A busy moment (429 / 5xx) is retried; it must not send a candidate home.
+        const res = await fetchWithRetry(`/api/exams/${params.id}${qs.toString() ? `?${qs}` : ''}`, { credentials: 'include' })
+        if (!res.ok && isTransientStatus(res.status)) {
+          addToast({ type: 'error', title: t('assessment.loadFailed') })
+          return
+        }
         if (!res.ok) {
           addToast({ type: 'error', title: t('assessment.unavailable') })
           router.push('/')

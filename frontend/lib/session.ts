@@ -235,6 +235,21 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   return data
 }
 
+/**
+ * Who a session cookie belongs to, checked by signature and expiry only — no
+ * database lookup. For cheap per-person keys (the global API rate limit), never
+ * for access decisions: a signed-out or deactivated session still verifies here.
+ */
+export async function sessionUidUnchecked(token: string | null | undefined): Promise<string | null> {
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, await getSecret())
+    return typeof payload.uid === 'string' && payload.uid ? payload.uid : null
+  } catch {
+    return null
+  }
+}
+
 /** Sign out one session (logout): its id goes on a deny-list until it would have expired. */
 export async function revokeSessionToken(token: string | null | undefined): Promise<void> {
   if (!token) return
