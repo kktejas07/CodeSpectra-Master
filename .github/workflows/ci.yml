@@ -97,6 +97,7 @@ jobs:
           backend/tests/test_security_scan.py
           backend/tests/test_internal_security.py
           backend/tests/test_log_redaction_and_docs.py
+          backend/tests/test_rag_ranking.py
           -q
         timeout-minutes: 10
 

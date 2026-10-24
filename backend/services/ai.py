@@ -85,6 +85,7 @@ async def handle_chat(
     await check_rate_limit(f"chat:{client_ip(request)}", 30, 60)
 
     rag_context: str | None = None
+    rag_meta: dict[str, Any] | None = None
     if req.rag_enabled and RAG_API_KEY:
         try:
             uri = (
@@ -93,7 +94,7 @@ async def handle_chat(
                 or os.environ.get("MONGODB_URI", "")
             )
             if uri:
-                rag_context = await _search_rag(req.user_message, uri)
+                rag_context, rag_meta = await _search_rag(req.user_message, uri)
         except Exception:
             pass
 
@@ -128,6 +129,10 @@ async def handle_chat(
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
         try:
+            if rag_meta:
+                # Clients ignore unknown keys; low_confidence=true means the
+                # context came from the below-threshold fallback (rag.FALLBACK_K).
+                yield f"data: {json.dumps({'rag': rag_meta})}\n\n".encode()
             user_msg = UserMessage(text=req.user_message)
             usage = {}
             async for ev in chat.stream_message(user_msg):
@@ -158,41 +163,33 @@ async def handle_chat(
     )
 
 
-async def _search_rag(query: str, uri: str) -> str | None:
-    """RAG search — embedding generated and similarity search in async context using motor."""
-    from rag import cosine_similarity, build_context
+async def _search_rag(query: str, uri: str) -> tuple[str | None, dict[str, Any] | None]:
+    """RAG search — embedding generated and similarity search in async context using motor.
+
+    Returns (context, meta). meta = {"chunks": n, "low_confidence": bool} when
+    retrieval ran; low_confidence means no chunk cleared rag.MIN_SIMILARITY and
+    the context is the best rag.FALLBACK_K chunks regardless of score.
+    """
+    from rag import build_context, rank_chunks
     from core.database import get_database
 
     query_emb = await generate_embedding(query, RAG_API_KEY)
     if not query_emb:
-        return None
+        return None, None
 
     try:
         # Get the database connection (singleton via get_database)
         db = await get_database()
         col = db.get_collection("embeddings")
 
-        # Perform async query
-        cands: list[dict] = []
-        async for doc in col.find(
-            {}, projection={"text": 1, "source": 1, "embedding": 1}
-        ):
-            vec = doc.get("embedding")
-            if vec and len(vec) == 768:
-                sim = cosine_similarity(query_emb, vec)
-                if sim > 0.65:
-                    cands.append(
-                        {
-                            "text": doc.get("text", ""),
-                            "source": doc.get("source", ""),
-                            "score": sim,
-                        }
-                    )
-        cands.sort(key=lambda x: x["score"], reverse=True)
-        ctx = build_context(cands[:5])
-        return ctx if ctx else None
+        chunks, low_confidence = await rank_chunks(
+            query_emb, col.find({}, projection={"text": 1, "source": 1, "embedding": 1})
+        )
+        ctx = build_context(chunks)
+        meta = {"chunks": len(chunks), "low_confidence": low_confidence}
+        return (ctx or None), meta
     except Exception:
-        return None
+        return None, None
 
 
 # ── Completion (non-stream) ────────────────────────────────────
