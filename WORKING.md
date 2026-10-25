@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| opencode (this session, LOCKFILE-FIX) | DONE — Dokploy frontend build red: `yarn install --frozen-lockfile` failed on main. Root cause: a0cee49f added langfuse/mem0ai to package.json but committed yarn.lock lacked `langfuse@`/`langfuse-core@` entries + `zod@^3.24.1` pattern (19-line gap, zero version changes). Fix: regenerated with yarn 1.22.22; frozen install verified green locally (280s) + scratch (98s). Branch `fix/yarn-lock-langfuse` → PR to main. | frontend/yarn.lock, WORKING.md | DONE — PUSHED (PR to main) | 2026-10-25 |
+
 | opencode (this session, ASSESS-LIST-FIX) | DONE — title → results page (edit stays in row … menu); invites counter dedupes by email per exam (was counting re-invite docs). tsc clean, gate green. | frontend/app/dashboard/admin/assessments/page.tsx, frontend/app/api/exams/route.ts | DONE — PUSHED | 2026-10-16 |
 
 | opencode (this session, LLMKEY-NORMALIZE) | DONE — normalized prod platform_settings.secrets (backup: secrets-backup-20261016): comma-joined, deduped, moved sk-or-v stray to openrouter, dropped github PATs/oauth/hex unknowns. Live-tested: openrouter 200, groq 200, gemini key INVALID (needs replacement, chain skips it). | prod Mongo data fix, no code | DONE | 2026-10-16 |
