@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| opencode (this session, HERO-DARK-TEXT) | DONE — root cause: regen map lacked 3-digit `#fff`, so 7+ surface rects stayed white while labels went paperwhite. Fix: `#fff→#0d131f` surfaces; audited all remaining `#fff` (text-on-brand only: Publish/Run/score/pill labels) + Release-label/camera exceptions intact; XML valid. No .tsx change → no tsc needed. Branch `fix/hero-dark-text` → PR to main. | frontend/public/illustrations/codespectra/hero-screen-*-dark.svg, WORKING.md | DONE — PUSHED (PR to main) | 2026-10-25 |
+
 | opencode (this session, HERO-DARK) | DONE — full-dark hero: dropped `cs-light` pin (deleted dead CSS), `dark:` variants for CTA/checks/track/pause/glows, 4 new `hero-screen-*-dark.svg` (obsidian; camera stays dark viewport, Release button inverts w/ dark label), light/dark `<img>` swap w/ animation-restart keys. tsc: no new errors (3 pre-existing in unrelated tests). Branch `fix/hero-dark-mode` → PR to main. | frontend/components/landing/hero-showcase.tsx, frontend/public/illustrations/codespectra/hero-screen-*-dark.svg (new), frontend/app/globals.css (.cs-light removal), WORKING.md | DONE — PUSHED (PR #376 to main) | 2026-10-25 |
 
 | opencode (this session, ASSESS-LIST-FIX) | DONE — title → results page (edit stays in row … menu); invites counter dedupes by email per exam (was counting re-invite docs). tsc clean, gate green. | frontend/app/dashboard/admin/assessments/page.tsx, frontend/app/api/exams/route.ts | DONE — PUSHED | 2026-10-16 |
