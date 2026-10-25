@@ -8,11 +8,12 @@ import { useT } from '@/lib/i18n/client'
 import type { MessageKey } from '@/lib/i18n/catalog'
 
 /**
- * White + mint hero: a headline whose role word slides through the roles
- * CodeSpectra assesses, beside an auto-advancing slideshow of animated
- * product screens (SVG files in /public/illustrations/codespectra).
+ * White + mint hero in light, obsidian hero in dark: the headline role word
+ * slides through the roles CodeSpectra assesses, beside an auto-advancing
+ * slideshow of animated product screens (SVG files in
+ * /public/illustrations/codespectra, `-light` / `-dark` pairs swapped with
+ * the theme like ThemeIllustration).
  *
- * The hero stays light in both themes (`cs-light` pins the light tokens).
  * Auto-advance pauses on hover/focus, has a visible pause control, and is
  * off entirely for people who prefer reduced motion.
  */
@@ -81,15 +82,15 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
   const current = SLIDES[slide]
 
   return (
-    <section className="cs-light relative isolate overflow-hidden border-b border-cs-grid bg-white text-cs-ink">
-      {/* Background: mint dot field + two soft glows */}
+    <section className="relative isolate overflow-hidden border-b border-cs-grid bg-white text-cs-ink dark:bg-cs-paper">
+      {/* Background: dot field + two soft glows (dimmed in dark so the obsidian stays deep) */}
       <div
         aria-hidden
-        className="absolute inset-0 -z-10 opacity-60 [mask-image:radial-gradient(70%_60%_at_70%_40%,#000_30%,transparent_80%)]"
+        className="absolute inset-0 -z-10 opacity-60 [mask-image:radial-gradient(70%_60%_at_70%_40%,#000_30%,transparent_80%)] dark:opacity-40"
         style={{ backgroundImage: 'radial-gradient(rgba(47,91,231,0.30) 1px, transparent 1px)', backgroundSize: '22px 22px' }}
       />
-      <div aria-hidden className="absolute -top-40 right-[-10%] -z-10 h-[520px] w-[620px] rounded-full bg-[#2f5be7]/14 blur-3xl" />
-      <div aria-hidden className="absolute bottom-[-30%] left-[-10%] -z-10 h-[420px] w-[520px] rounded-full bg-[#38bdf8]/12 blur-3xl" />
+      <div aria-hidden className="absolute -top-40 right-[-10%] -z-10 h-[520px] w-[620px] rounded-full bg-[#2f5be7]/14 blur-3xl dark:bg-[#2f5be7]/25" />
+      <div aria-hidden className="absolute bottom-[-30%] left-[-10%] -z-10 h-[420px] w-[520px] rounded-full bg-[#38bdf8]/12 blur-3xl dark:bg-[#38bdf8]/18" />
 
       <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-14 pb-16 sm:px-6 sm:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:px-8 lg:pb-24">
         {/* Copy */}
@@ -129,7 +130,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
             </Link>
             <Link
               href={secondaryHref}
-              className="inline-flex h-12 items-center justify-center rounded-full border border-slate-300 bg-white px-7 text-[15px] font-semibold text-cs-ink transition-colors hover:border-[#2f5be7]"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-slate-300 bg-white px-7 text-[15px] font-semibold text-cs-ink transition-colors hover:border-[#2f5be7] dark:border-cs-grid dark:bg-cs-sheet"
             >
               {secondaryLabel}
             </Link>
@@ -139,7 +140,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
             {[tx('public.heroCheckProctored'), tx('public.heroCheckAutoScored'), tx('public.heroCheckAnyRole')].map((x) => (
               <li key={x} className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2f5be7]/12">
-                  <Check className="h-3.5 w-3.5 text-[#1e40af]" strokeWidth={3} aria-hidden />
+                  <Check className="h-3.5 w-3.5 text-[#1e40af] dark:text-[#8aa8ff]" strokeWidth={3} aria-hidden />
                 </span>
                 {x}
               </li>
@@ -185,10 +186,11 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                     i === slide ? 'translate-x-0 scale-100 opacity-100' : 'pointer-events-none translate-x-6 scale-[0.98] opacity-0',
                   )}
                 >
-                  {/* key forces the SVG animation to restart each time the slide becomes active */}
-                  {/* eslint-disable-next-line @next/next/no-img-element -- animated SVG */}
+                  {/* key forces the SVG animation to restart each time the slide becomes active.
+                      Light/dark pair swaps with the theme (display:none keeps the hidden one out of the a11y tree). */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
                   <img
-                    key={i === slide ? `${s.id}-on-${slide}` : s.id}
+                    key={i === slide ? `${s.id}-light-on-${slide}` : `${s.id}-light`}
                     src={`/illustrations/codespectra/hero-screen-${s.id}.svg`}
                     alt={tx(slideKey(s, 'Alt'))}
                     width={584}
@@ -196,7 +198,19 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                     loading={i === 0 ? 'eager' : 'lazy'}
                     fetchPriority={i === 0 ? 'high' : 'low'}
                     decoding="async"
-                    className="h-full w-full"
+                    className="h-full w-full dark:hidden"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
+                  <img
+                    key={i === slide ? `${s.id}-dark-on-${slide}` : `${s.id}-dark`}
+                    src={`/illustrations/codespectra/hero-screen-${s.id}-dark.svg`}
+                    alt={tx(slideKey(s, 'Alt'))}
+                    width={584}
+                    height={440}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={i === 0 ? 'high' : 'low'}
+                    decoding="async"
+                    className="hidden h-full w-full dark:block"
                   />
                 </div>
               ))}
@@ -224,7 +238,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                     onClick={() => go(i)}
                     className="group text-left"
                   >
-                    <span className="block h-1 overflow-hidden rounded-full bg-slate-200">
+                    <span className="block h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-cs-grid">
                       <span
                         key={active ? `p-${slide}-${running}` : 'idle'}
                         className={cn(
@@ -246,7 +260,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                 type="button"
                 onClick={() => setPaused((p) => !p)}
                 aria-label={paused ? tx('public.heroPlay') : tx('public.heroPause')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-cs-ink hover:border-[#2f5be7]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-cs-ink hover:border-[#2f5be7] dark:border-cs-grid dark:bg-cs-sheet"
               >
                 {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
               </button>
