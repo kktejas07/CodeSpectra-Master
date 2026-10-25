@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| opencode (this session, HERO-DARK) | DONE — full-dark hero: dropped `cs-light` pin (deleted dead CSS), `dark:` variants for CTA/checks/track/pause/glows, 4 new `hero-screen-*-dark.svg` (obsidian; camera stays dark viewport, Release button inverts w/ dark label), light/dark `<img>` swap w/ animation-restart keys. tsc: no new errors (3 pre-existing in unrelated tests). Branch `fix/hero-dark-mode` → PR to main. | frontend/components/landing/hero-showcase.tsx, frontend/public/illustrations/codespectra/hero-screen-*-dark.svg (new), frontend/app/globals.css (.cs-light removal), WORKING.md | DONE — PUSHED (PR #376 to main) | 2026-10-25 |
+
 | opencode (this session, ASSESS-LIST-FIX) | DONE — title → results page (edit stays in row … menu); invites counter dedupes by email per exam (was counting re-invite docs). tsc clean, gate green. | frontend/app/dashboard/admin/assessments/page.tsx, frontend/app/api/exams/route.ts | DONE — PUSHED | 2026-10-16 |
 
 | opencode (this session, LLMKEY-NORMALIZE) | DONE — normalized prod platform_settings.secrets (backup: secrets-backup-20261016): comma-joined, deduped, moved sk-or-v stray to openrouter, dropped github PATs/oauth/hex unknowns. Live-tested: openrouter 200, groq 200, gemini key INVALID (needs replacement, chain skips it). | prod Mongo data fix, no code | DONE | 2026-10-16 |
