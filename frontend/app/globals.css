@@ -964,14 +964,6 @@
   --primary-foreground: 220 40% 5%;
   --ring: 225 100% 68%;
 }
-/* …except the always-light hero (.cs-light), which keeps the light-theme blue. */
-.dark .cs-brand .cs-light,
-.dark .cs-light .cs-brand,
-.dark .cs-brand.cs-light {
-  --primary: 226 79% 54%;
-  --primary-foreground: 0 0% 100%;
-  --ring: 226 79% 54%;
-}
 /* Condensed display type: the width axis is the brand's voice. */
 .cs-display {
   font-stretch: 68%;
@@ -1023,16 +1015,6 @@
   .cs-mark-row::before { animation: none; }
 }
 
-/* Hero is white + mint in both themes */
-.cs-light {
-  --cs-paper: #fbfcff;
-  --cs-sheet: #ffffff;
-  --cs-ink: #0f1729;
-  --cs-ink-soft: #475569;
-  --cs-accent-text: #1e40af;
-  --cs-grid: #e2e8f0;
-  color-scheme: light;
-}
 @keyframes cs-underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .cs-underline { animation: cs-underline 600ms 200ms cubic-bezier(.2,.7,.2,1) both; }
 @keyframes cs-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
