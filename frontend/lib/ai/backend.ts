@@ -18,7 +18,10 @@
 
 import { internalBackendUrl } from '@/lib/ai/internal-backend-url'
 import { estimateTokens, reportAiUsage } from '@/lib/ai/usage-meter'
-import { langfuseGeneration } from '@/lib/ai/langfuse'
+// ponytail: langfuse is imported LAZILY at the call site (not statically)
+// because lib/ai/langfuse.ts carries `import 'server-only'`, whose marker
+// package tsx cannot resolve under CJS require — a static import kills the
+// course-video-worker at startup with MODULE_NOT_FOUND.
 
 // AGT-027: INTERNAL_BACKEND_URL is required in production (no baked-in host).
 const backendBase = () => internalBackendUrl()
@@ -207,7 +210,9 @@ async function recordCompletion(
     })
 
     // Langfuse observability — fire-and-forget, never fails the request.
-    void langfuseGeneration({
+    // Lazy import keeps 'server-only' out of the tsx worker graph.
+    void import('@/lib/ai/langfuse').then(({ langfuseGeneration }) =>
+      langfuseGeneration({
       name: args.feature || 'unknown',
       model,
       userId: args.userId,
@@ -229,7 +234,8 @@ async function recordCompletion(
         ...(opts.cacheHit ? ['cache-hit'] : []),
         ...(injectionFlags.length ? ['injection-flagged'] : []),
       ],
-    }).catch(() => { /* never fail */ })
+      }),
+    ).catch(() => { /* telemetry optional — never fail */ })
 
     return { provider, model, inputTokens, outputTokens, costMicros: r.costMicros }
   } catch {
