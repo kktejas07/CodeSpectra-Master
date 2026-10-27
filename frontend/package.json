@@ -63,7 +63,7 @@
     "@vidstack/react": "^1.15.6",
     "@vladmandic/face-api": "^1.7.15",
     "@xyflow/react": "^12.11.3",
-    "ai": "^7.0.66",
+    "ai": "^7.0.155",
     "autoprefixer": "^10.5.4",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
