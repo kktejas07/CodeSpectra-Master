@@ -118,7 +118,8 @@ export async function extractPdf(bytes: Uint8Array, maxPages = 300): Promise<str
   const pdfjs = await loadPdfJs()
   const doc = await pdfjs.getDocument({
     data: new Uint8Array(bytes),
-    isEvalSupported: false,
+    // ponytail: pdfjs v6 removed isEvalSupported (wasm replaces the eval
+    // font path) and PDFDocumentProxy.destroy() — cleanup() frees page data.
     disableFontFace: true,
     useSystemFonts: false,
     verbosity: 0,
@@ -142,7 +143,7 @@ export async function extractPdf(bytes: Uint8Array, maxPages = 300): Promise<str
     }
     return pages.filter(Boolean).join('\n\n')
   } finally {
-    await doc.destroy().catch(() => {})
+    await doc.cleanup().catch(() => {})
   }
 }
 
