@@ -56,7 +56,11 @@ describe('CTF', () => {
     const salt = newSalt()
     const h = hashFlag(salt, ' flag{abc} ')
     expect(h).toMatch(/^[0-9a-f]{64}$/)
-    expect(h).not.toContain('abc')
+    // NOTE: do NOT assert `expect(h).not.toContain('abc')` — HMAC-SHA256 output
+    // is a 64-char hex string and can contain any 3-char hex substring by
+    // coincidence (e.g. the hash for this exact input contains 'abc').
+    // The correctness invariant is that the output is a valid 64-char hex
+    // digest and that verifyFlag works correctly, not substring avoidance.
     expect(verifyFlag(salt, 'flag{abc}', h)).toBe(true)
     expect(verifyFlag(salt, 'flag{abd}', h)).toBe(false)
     expect(verifyFlag(newSalt(), 'flag{abc}', h)).toBe(false)

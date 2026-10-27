@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 
 import httpx
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -48,9 +49,55 @@ def _api_docs_enabled() -> bool:
 
 
 _DOCS = _api_docs_enabled()
+_scheduler_task = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage startup and shutdown via the modern lifespan context manager.
+
+    Replaces the deprecated @app.on_event("startup") / ("shutdown") pattern.
+    """
+    global _redis_client, _scheduler_task
+    # ── startup ──────────────────────────────────────────────────────────
+    try:
+        _redis_client = await init_redis_client()
+        if _redis_client:
+            logging.info("Redis client initialized successfully from MongoDB configuration")
+        else:
+            logging.info("Redis client not configured (will use in-memory fallback)")
+    except Exception as e:
+        logging.warning(f"Failed to initialize Redis client: {e}")
+        _redis_client = None
+
+    try:
+        from scheduler import start_scheduler
+        _scheduler_task = start_scheduler()
+        logging.info("Background scheduler started")
+    except Exception as e:
+        logging.warning(f"Failed to start scheduler: {e}")
+
+    yield  # ← application runs here
+
+    # ── shutdown ─────────────────────────────────────────────────────────
+    if _scheduler_task:
+        _scheduler_task.cancel()
+
+    if _redis_client:
+        try:
+            await _redis_client.close()
+            logging.info("Redis client closed")
+        except Exception as e:
+            logging.warning(f"Error closing Redis client: {e}")
+        finally:
+            _redis_client = None
+
+
+# ── FastAPI app — created AFTER lifespan is defined ─────────────────────
 app = FastAPI(
     title="CodeSpectra API",
     debug=False,
+    lifespan=lifespan,
     docs_url="/docs" if _DOCS else None,
     redoc_url="/redoc" if _DOCS else None,
     openapi_url="/openapi.json" if _DOCS else None,
@@ -61,48 +108,6 @@ app = FastAPI(
 from core.ai_usage import AiUsageHeaderMiddleware
 
 app.add_middleware(AiUsageHeaderMiddleware)
-
-
-_scheduler_task = None
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize Redis client and background scheduler on startup."""
-    global _redis_client, _scheduler_task
-    try:
-        _redis_client = await init_redis_client()
-        if _redis_client:
-            logging.info("Redis client initialized successfully from MongoDB configuration")
-        else:
-            logging.info("Redis client not configured (will use in-memory fallback)")
-    except Exception as e:
-        logging.warning(f"Failed to initialize Redis client: {e}")
-        _redis_client = None
-        
-    try:
-        from scheduler import start_scheduler
-        _scheduler_task = start_scheduler()
-        logging.info("Background scheduler started")
-    except Exception as e:
-        logging.warning(f"Failed to start scheduler: {e}")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close Redis client and stop scheduler on shutdown."""
-    global _redis_client, _scheduler_task
-    
-    if _scheduler_task:
-        _scheduler_task.cancel()
-        
-    if _redis_client:
-        try:
-            await _redis_client.close()
-            logging.info("Redis client closed")
-        except Exception as e:
-            logging.warning(f"Error closing Redis client: {e}")
-        finally:
-            _redis_client = None
 
 # ── Mount internal routers (modular backend) ───────────────────
 # Each router is self-contained in its own module.
@@ -118,6 +123,27 @@ app.include_router(item_bank_rtr)
 app.include_router(webhooks_rtr)
 app.include_router(learning_rtr)
 app.include_router(security_rtr)
+
+# ── Crash analytics ingest endpoint ──────────────────────────────────────
+
+from fastapi import HTTPException
+from services.crash_analytics import CrashEvent as _CrashEvent, ingest as _crash_ingest
+
+
+@app.post("/internal/crash-report", status_code=204)
+async def crash_report(request: Request):
+    """Ingest a frontend crash event.
+
+    POST body: CrashEvent JSON (see services/crash_analytics.py).
+    Returns 204 No Content on success.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid JSON")
+    event = _CrashEvent.from_dict(data)
+    await _crash_ingest(event)
+
 
 # ── Proxy to Next.js (for all /api/* requests NOT handled above) ──
 
