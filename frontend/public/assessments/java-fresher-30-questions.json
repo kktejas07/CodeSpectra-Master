@@ -1,0 +1,352 @@
+[
+  {
+    "type": "mcq",
+    "score": 5,
+    "title": "Comparing String contents",
+    "prompt": "Which expression correctly compares the *contents* of two `String` objects in Java?",
+    "options": [
+      "a == b",
+      "a.equals(b)",
+      "a = b",
+      "a.hash() == b.hash()"
+    ],
+    "answer": "a.equals(b)",
+    "explanation": "`==` compares references; `.equals` compares character contents."
+  },
+  {
+    "type": "mcq",
+    "score": 5,
+    "title": "Allows duplicates",
+    "prompt": "Which Java collection type allows duplicate elements?",
+    "options": [
+      "Set",
+      "List",
+      "Map keys",
+      "None of these"
+    ],
+    "answer": "List"
+  },
+  {
+    "type": "mcq",
+    "score": 5,
+    "title": "Meaning of static",
+    "prompt": "What does marking a method `static` mean?",
+    "options": [
+      "It belongs to the class, not to an instance",
+      "It cannot be called from another class",
+      "It runs faster than other methods",
+      "It is automatically synchronized"
+    ],
+    "answer": "It belongs to the class, not to an instance"
+  },
+  {
+    "type": "mcq",
+    "score": 5,
+    "title": "Prevent subclassing",
+    "prompt": "Which keyword prevents a class from being subclassed?",
+    "options": [
+      "static",
+      "final",
+      "abstract",
+      "synchronized"
+    ],
+    "answer": "final"
+  },
+  {
+    "type": "mcq",
+    "score": 5,
+    "title": "Root of all classes",
+    "prompt": "Which class is the superclass of every class in Java?",
+    "options": [
+      "Object",
+      "Class",
+      "Main",
+      "System"
+    ],
+    "answer": "Object"
+  },
+  {
+    "type": "true_false",
+    "score": 3,
+    "title": "String is primitive",
+    "prompt": "In Java, `String` is a primitive type.",
+    "options": [
+      "True",
+      "False"
+    ],
+    "answer": "False"
+  },
+  {
+    "type": "true_false",
+    "score": 3,
+    "title": "int default value",
+    "prompt": "Elements of a newly created `int[]` array default to `0`.",
+    "options": [
+      "True",
+      "False"
+    ],
+    "answer": "True"
+  },
+  {
+    "type": "true_false",
+    "score": 3,
+    "title": "Override private",
+    "prompt": "A `private` method can be overridden by a subclass.",
+    "options": [
+      "True",
+      "False"
+    ],
+    "answer": "False"
+  },
+  {
+    "type": "fill_blanks",
+    "score": 5,
+    "title": "Program entry point",
+    "prompt": "The `___` method is the entry point of a Java application.",
+    "answer": "main"
+  },
+  {
+    "type": "fill_blanks",
+    "score": 5,
+    "title": "Inheritance keyword",
+    "prompt": "The keyword used by a class to inherit from another class is `___`.",
+    "answer": "extends"
+  },
+  {
+    "type": "fill_blanks",
+    "score": 5,
+    "title": "Exception handling",
+    "prompt": "Exception-handling code that may throw is placed inside a `___` block.",
+    "answer": "try"
+  },
+  {
+    "type": "numeric",
+    "score": 5,
+    "title": "Evaluate modulo",
+    "prompt": "What does `17 % 5` evaluate to?",
+    "tolerance": 0,
+    "answer": "2"
+  },
+  {
+    "type": "numeric",
+    "score": 5,
+    "title": "String length",
+    "prompt": "What is the value of `\"Java\".length()`?",
+    "tolerance": 0,
+    "answer": "4"
+  },
+  {
+    "type": "numeric",
+    "score": 5,
+    "title": "Array size",
+    "prompt": "How many elements can `new int[7]` hold?",
+    "tolerance": 0,
+    "answer": "7"
+  },
+  {
+    "type": "short_answer",
+    "score": 5,
+    "title": "Human-readable object string",
+    "prompt": "Which method do you override to give an object a readable text representation?",
+    "answer": "toString"
+  },
+  {
+    "type": "short_answer",
+    "score": 5,
+    "title": "No-duplicate collection",
+    "prompt": "Which collection interface guarantees no duplicate elements?",
+    "answer": "Set"
+  },
+  {
+    "type": "matching",
+    "score": 8,
+    "title": "Collection traits",
+    "prompt": "Match each collection to its defining trait.",
+    "pairs": [
+      {
+        "left": "ArrayList",
+        "right": "Resizable array"
+      },
+      {
+        "left": "HashSet",
+        "right": "No duplicates"
+      },
+      {
+        "left": "HashMap",
+        "right": "Key → value pairs"
+      },
+      {
+        "left": "LinkedList",
+        "right": "Fast insert/remove at the ends"
+      }
+    ]
+  },
+  {
+    "type": "matching",
+    "score": 8,
+    "title": "Keyword meanings",
+    "prompt": "Match each Java keyword to its meaning.",
+    "pairs": [
+      {
+        "left": "static",
+        "right": "Belongs to the class, not instances"
+      },
+      {
+        "left": "final",
+        "right": "Cannot be reassigned / overridden"
+      },
+      {
+        "left": "super",
+        "right": "Refers to the parent class"
+      },
+      {
+        "left": "this",
+        "right": "Refers to the current object"
+      }
+    ]
+  },
+  {
+    "type": "output_prediction",
+    "score": 8,
+    "language": "java",
+    "title": "Predict: while loop",
+    "prompt": "What is printed?",
+    "starter_code": "public class Main {\n  public static void main(String[] a) {\n    int i = 0;\n    while (i < 3) { System.out.print(i); i++; }\n  }\n}",
+    "answer": "012"
+  },
+  {
+    "type": "output_prediction",
+    "score": 8,
+    "language": "java",
+    "title": "Predict: array length",
+    "prompt": "What is printed?",
+    "starter_code": "public class Main {\n  public static void main(String[] a) {\n    int[] x = {1, 2, 3};\n    System.out.println(x.length + \" \" + x[0]);\n  }\n}",
+    "answer": "3 1"
+  },
+  {
+    "type": "output_prediction",
+    "score": 8,
+    "language": "java",
+    "title": "Predict: string + int",
+    "prompt": "What is printed?",
+    "starter_code": "public class Main {\n  public static void main(String[] a) {\n    System.out.println(\"5\" + 3);\n  }\n}",
+    "answer": "53"
+  },
+  {
+    "type": "output_prediction",
+    "score": 8,
+    "language": "java",
+    "title": "Predict: post-increment",
+    "prompt": "What is printed?",
+    "starter_code": "public class Main {\n  public static void main(String[] a) {\n    int x = 5;\n    System.out.println(x++ + \" \" + x);\n  }\n}",
+    "answer": "5 6"
+  },
+  {
+    "type": "coding",
+    "score": 10,
+    "language": "java",
+    "title": "Count vowels",
+    "prompt": "Count the vowels (a, e, i, o, u, case-insensitive) in the input line and print the count.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static int countVowels(String s) {\n        // TODO\n        return 0;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.println(countVowels(sc.hasNextLine() ? sc.nextLine() : \"\"));\n    }\n}",
+    "test_cases": [
+      {
+        "input": "hello world",
+        "output": "3"
+      },
+      {
+        "input": "JAVA",
+        "output": "2"
+      }
+    ],
+    "answer": "Iterate characters, lowercase each, and count those in \"aeiou\"."
+  },
+  {
+    "type": "coding",
+    "score": 10,
+    "language": "java",
+    "title": "Reverse a string",
+    "prompt": "Print the input string reversed.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static String reverse(String s) {\n        // TODO\n        return s;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.println(reverse(sc.hasNextLine() ? sc.nextLine() : \"\"));\n    }\n}",
+    "test_cases": [
+      {
+        "input": "abc",
+        "output": "cba"
+      },
+      {
+        "input": "hello",
+        "output": "olleh"
+      }
+    ],
+    "answer": "new StringBuilder(s).reverse().toString()"
+  },
+  {
+    "type": "coding",
+    "score": 12,
+    "language": "java",
+    "title": "First duplicate",
+    "prompt": "Read n then n integers; print the first value that appears twice, or -1 if none.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static int firstDuplicate(int[] a) {\n        // TODO\n        return -1;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        System.out.println(firstDuplicate(a));\n    }\n}",
+    "test_cases": [
+      {
+        "input": "5\n1 2 3 2 1",
+        "output": "2"
+      },
+      {
+        "input": "3\n1 2 3",
+        "output": "-1"
+      }
+    ],
+    "answer": "Track seen values in a HashSet; the first add() that returns false is the duplicate."
+  },
+  {
+    "type": "coding",
+    "score": 10,
+    "language": "java",
+    "title": "Sum of an array",
+    "prompt": "Read n then n integers and print their sum.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static long sum(int[] a) {\n        // TODO\n        return 0;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        System.out.println(sum(a));\n    }\n}",
+    "test_cases": [
+      {
+        "input": "4\n1 2 3 4",
+        "output": "10"
+      },
+      {
+        "input": "3\n-1 0 1",
+        "output": "0"
+      }
+    ],
+    "answer": "Add each element into an accumulator."
+  },
+  {
+    "type": "debugging",
+    "score": 10,
+    "language": "java",
+    "title": "Debug: off-by-one sum",
+    "prompt": "This method should return the sum 1+2+...+n but is wrong. State the bug and the fix.",
+    "starter_code": "static int sumTo(int n) {\n    int total = 0;\n    for (int i = 1; i < n; i++) {\n        total += i;\n    }\n    return total;\n}",
+    "answer": "The loop condition `i < n` excludes `n`. Change it to `i <= n` so `n` is included."
+  },
+  {
+    "type": "debugging",
+    "score": 10,
+    "language": "java",
+    "title": "Debug: String comparison",
+    "prompt": "This code should print \"match\" for equal strings but sometimes does not. State the bug and the fix.",
+    "starter_code": "String a = sc.nextLine();\nString b = sc.nextLine();\nif (a == b) {\n    System.out.println(\"match\");\n}",
+    "answer": "`==` compares references, not contents. Use `a.equals(b)` to compare string values."
+  },
+  {
+    "type": "descriptive",
+    "score": 10,
+    "title": "Explain == vs .equals()",
+    "prompt": "Explain the difference between `==` and `.equals()` in Java, with an example.",
+    "answer": "`==` compares references (memory identity) for objects; `.equals()` compares logical contents (when overridden). `new String(\"a\") == new String(\"a\")` is false, while `.equals` is true. For primitives, `==` compares values."
+  },
+  {
+    "type": "descriptive",
+    "score": 10,
+    "title": "Explain exceptions",
+    "prompt": "What is an exception in Java, and what is the difference between checked and unchecked exceptions?",
+    "answer": "An exception is an event that disrupts normal flow. Checked exceptions (subclasses of Exception, not RuntimeException) must be declared/handled at compile time (e.g. IOException). Unchecked exceptions (RuntimeException and subclasses, e.g. NullPointerException) are not enforced by the compiler and usually indicate programming errors."
+  }
+]
