@@ -11,7 +11,7 @@
  * the flag value itself (without 'flag{...}' wrapper) must not appear as
  * a readable word — but we should not test hex collision avoidance.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('@/lib/mongodb', () => ({ getMongoDb: vi.fn(async () => { throw new Error('no db in unit tests') }) }))
 
