@@ -4520,7 +4520,7 @@ agentkeepalive@^4.2.1:
   dependencies:
     humanize-ms "^1.2.1"
 
-ai@7.0.155:
+ai@^7.0.155:
   version "7.0.155"
   resolved "https://registry.yarnpkg.com/ai/-/ai-7.0.155.tgz#bd6a3c02783b8a5b78fd8d6bf91a747c6717affc"
   integrity sha512-df/UwKgOix8Vc+dj684bQlHCClNojrG5T7Jr5aJvFyz+PlBo7gEgMALPzP7LdeD12Gxc6i0pzpboEszDh9V1wA==
