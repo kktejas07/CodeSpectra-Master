@@ -17,6 +17,10 @@ if [ "${COURSE_WORKER:-}" = "1" ]; then
   # tsx does not set NODE_ENV; without it backend.ts called localhost:8001 (fetch failed).
   export NODE_ENV="${NODE_ENV:-production}"
   export INTERNAL_BACKEND_URL="${INTERNAL_BACKEND_URL:-http://codespectra-backend-cd7lq6:8000}"
-  exec npx tsx scripts/course-video-worker.ts
+  # ponytail: react-server condition so bare `import 'server-only'`
+  # (marker package: throws under default condition) resolves to its
+  # empty.js under tsx, matching Next runtime. Without it the worker
+  # dies at startup with MODULE_NOT_FOUND/thrown marker error.
+  exec npx tsx --conditions=react-server scripts/course-video-worker.ts
 fi
 exec "$@"
