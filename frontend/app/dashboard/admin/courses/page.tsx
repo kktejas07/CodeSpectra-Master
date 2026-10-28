@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/ui/empty-state'
 
 import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -7,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Loader2, Trash2, Pencil, BookOpen, Search } from 'lucide-react'
+import { Plus, Loader2, Trash2, Pencil, BookOpen, Search, Users, Layers } from 'lucide-react'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
@@ -56,14 +58,18 @@ export default function AdminCoursesPage() {
     category: 'Coding'
   })
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchData = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/courses', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load courses (${res.status})`)
       const json = await res.json()
       setCourses(json.data || [])
+      setLoadError(false)
     } catch {
-      // ignore
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -122,12 +128,12 @@ export default function AdminCoursesPage() {
     },
     { key: 'category', header: 'Category', cell: (r) => r.category },
     { key: 'instructor', header: 'Instructor', cell: (r) => r.instructor },
-    { key: 'enrolled', header: 'Enrolled', cell: (r) => r.enrolled?.toString() || '0' },
+    { key: 'enrolled', header: 'Enrolled', cell: (r) => <span className="tabular-nums">{r.enrolled?.toString() || '0'}</span> },
     {
       key: 'actions',
       header: '',
       cell: (r) => (
-        <Button size="sm" variant="ghost" onClick={() => router.push(`/dashboard/admin/courses/${r.id}`)} title="Edit Curriculum">
+        <Button size="sm" variant="ghost" onClick={() => router.push(`/dashboard/admin/courses/${r.id}`)} title="Edit curriculum" aria-label={`Edit curriculum for ${r.title}`}>
           <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
         </Button>
       ),
@@ -142,42 +148,51 @@ export default function AdminCoursesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500/20 via-purple-500/15 to-pink-500/10 border border-indigo-500/20 shadow-sm">
-            <BookOpen className="h-6 w-6 text-indigo-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Course Management</h1>
-            <p className="text-muted-foreground text-xs sm:text-sm">
-              Create and manage courses, curriculum, and AI-generated video content.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        illustration="courses"
+        icon={<BookOpen />}
+        title="Courses"
+        description="Create and manage courses, their curriculum and AI-generated video lessons."
+        actions={
           <Button
-            className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 font-semibold shadow-md"
+            className="gap-2"
             onClick={() => {
               setForm({ title: '', description: '', type: 'video', instructor: 'CodeSpectra', level: 'beginner', category: 'Coding' })
               setCreateOpen(true)
             }}
           >
             <Plus className="w-4 h-4" />
-            Create Course
+            Create course
           </Button>
+        }
+        className="mb-0"
+      />
+
+      {!loading && courses.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="Courses" value={courses.length} icon={<BookOpen />} />
+          <StatCard label="Total enrolled" value={courses.reduce((sum, c) => sum + (c.enrolled || 0), 0).toLocaleString()} icon={<Users />} />
+          <StatCard label="Categories in use" value={new Set(courses.map((c) => c.category).filter(Boolean)).size} icon={<Layers />} />
         </div>
-      </div>
+      )}
 
       <Tabs defaultValue="manage" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 max-w-100">
-          <TabsTrigger value="manage">Manage Courses</TabsTrigger>
-          <TabsTrigger value="generator">AI Course Generator</TabsTrigger>
+          <TabsTrigger value="manage">Manage courses</TabsTrigger>
+          <TabsTrigger value="generator">AI course generator</TabsTrigger>
         </TabsList>
 
         <TabsContent value="manage" className="space-y-6">
           {loading ? (
             <SkeletonTable rows={5} />
+          ) : loadError && courses.length === 0 ? (
+            <EmptyState
+              illustration="error"
+              title="Couldn't load courses"
+              description="Check your connection and try again."
+              actionLabel="Try again"
+              onAction={() => void fetchData()}
+            />
           ) : (
         <DataTable
           columns={columns}
@@ -193,7 +208,7 @@ export default function AdminCoursesPage() {
           ]}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No courses yet. Click 'Create Course' to get started."
+          emptyState={{ illustration: 'courses' }} emptyMessage="No courses yet. Select Create course to add your first one."
         />
       )}
         </TabsContent>
@@ -204,14 +219,14 @@ export default function AdminCoursesPage() {
       </Tabs>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
                 <BookOpen className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Create New Course</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">Create a course</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   Set basic details. You can add the full curriculum on the next page.
                 </DialogDescription>
@@ -222,7 +237,7 @@ export default function AdminCoursesPage() {
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Title *</Label>
-              <Input
+              <Input aria-label="Title"
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder="e.g. Master Full-Stack Web Development"
@@ -232,7 +247,7 @@ export default function AdminCoursesPage() {
             
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Description</Label>
-              <Textarea
+              <Textarea aria-label="Description"
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 rows={3}
@@ -248,7 +263,7 @@ export default function AdminCoursesPage() {
                   value={form.category}
                   onValueChange={(v) => setForm((prev) => ({ ...prev, category: v }))}
                 >
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Category" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
@@ -260,7 +275,7 @@ export default function AdminCoursesPage() {
                   value={form.level}
                   onValueChange={(v) => setForm((prev) => ({ ...prev, level: v }))}
                 >
-                  <SelectTrigger className="h-9 text-sm capitalize"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Level" className="h-9 text-sm capitalize"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {LEVELS.map(l => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}
                   </SelectContent>
@@ -276,10 +291,9 @@ export default function AdminCoursesPage() {
             <Button
               onClick={handleCreate}
               disabled={saving || !form.title.trim()}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-md"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-              Create & Edit Curriculum
+              Create and edit curriculum
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -14,11 +14,9 @@ import { SuggestedFixes } from '@/components/scanner/suggested-fixes'
 import { GitHubIntegration } from '@/components/scanner/github-integration'
 import { RepositoryBrowser } from '@/components/scanner/repository-browser'
 import { ScanHistory } from '@/components/scanner/scan-history'
-import { MetricsTrendChart } from '@/components/scanner/metrics-trend-chart'
 import { CodeDiffViewer } from '@/components/scanner/code-diff-viewer'
 import { QualityGatesLivePanel } from '@/components/scanner/quality-gates-live-panel'
-import { CodeReviewPanel } from '@/components/scanner/code-review-panel'
-import { ScannerConfigPanel } from '@/components/scanner/scanner-config-panel'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ReportGenerator } from '@/components/scanner/report-generator'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { InsightsDashboard } from '@/components/scanner/insights-dashboard'
@@ -40,6 +38,9 @@ import { PRImpactAnalysis } from '@/components/scanner/pr-impact-analysis'
 import { detectLanguage } from '@/lib/local-code-analyzer'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader, Panel } from '@/components/app/page-kit'
+import { Illustration } from '@/components/illustrations/spot'
+import { useT } from '@/lib/i18n/client'
 
 interface AnalysisResult {
   id: string
@@ -73,6 +74,7 @@ interface AnalysisResult {
 }
 
 function CodeScannerPageInner() {
+  const { t } = useT()
   const searchParams = useSearchParams()
   const mode = useMemo(
     () => parseScannerMode(searchParams.get('mode')),
@@ -100,26 +102,26 @@ function CodeScannerPageInner() {
       const scannerTour: TourStep[] = [
         {
           target: '[data-tour="scanner-code-input"]',
-          title: 'Manual Code Scanner',
-          description: 'Manual scan page: paste code here for bug and quality feedback.',
+          title: t('tools.manualCodeScanner'),
+          description: t('tools.manualScanPagePasteCodeHerea47'),
           position: 'bottom',
         },
         {
           target: '[data-tour="scanner-scan-button"]',
-          title: 'Run Code Scan',
-          description: 'Click Scan Code to analyze pasted code and reveal quality issues.',
+          title: t('tools.runCodeScan'),
+          description: t('tools.clickScanCodeToAnalyzePastedd54'),
           position: 'bottom',
         },
         {
           target: '[data-tour="scanner-results"]',
-          title: 'Review Quality Results',
-          description: 'Review quality score, issues, fixes, and recommendations after each scan.',
+          title: t('tools.reviewQualityResults'),
+          description: t('tools.reviewQualityScoreIssuesFixesAnd017'),
           position: 'top',
         },
         {
           target: '[data-tour="scanner-history"]',
-          title: 'Reload Past Scans',
-          description: 'Tip: select any past scan to reload its code and results instantly.',
+          title: t('tools.reloadPastScans'),
+          description: t('tools.tipSelectAnyPastScanToac0'),
           position: 'bottom',
         },
       ]
@@ -338,68 +340,65 @@ function CodeScannerPageInner() {
   return (
     <div className="space-y-6">
       {/* Page Header - visible for all modes */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            {mode === 'manual' && !isModeLocked('manual') && 'Code Scanner'}
-            {mode === 'github' && !isModeLocked('github') && 'GitHub Repository Scan'}
-            {mode === 'trends' && !isModeLocked('trends') && 'Quality Trends'}
-            {mode === 'quality-gates' && !isModeLocked('quality-gates') && 'Quality Gates'}
-            {mode === 'review' && !isModeLocked('review') && 'Code Review'}
-            {mode === 'config' && !isModeLocked('config') && 'Scanner Configuration'}
-            {mode === 'reports' && !isModeLocked('reports') && 'Reports'}
-            {mode === 'insights' && !isModeLocked('insights') && 'Insights'}
-            {mode === 'metrics' && !isModeLocked('metrics') && 'File Metrics'}
-            {mode === 'hotspots' && !isModeLocked('hotspots') && 'Security Hotspots'}
-            {mode === 'ratings' && !isModeLocked('ratings') && 'Quality Ratings'}
-            {mode === 'activity' && !isModeLocked('activity') && 'Activity Timeline'}
-            {mode === 'architecture' && !isModeLocked('architecture') && 'Architecture'}
-            {mode === 'pr' && !isModeLocked('pr') && 'Pull Requests'}
-            {mode === 'branches' && !isModeLocked('branches') && 'Branch Analytics'}
-            {mode === 'team' && !isModeLocked('team') && 'Team Leaderboard'}
-            {mode === 'dependencies' && !isModeLocked('dependencies') && 'Dependency Vulnerability Scan'}
-            {mode === 'secrets' && !isModeLocked('secrets') && 'Secret Detection'}
-            {mode === 'chat' && !isModeLocked('chat') && 'Codebase Assistant'}
-            {mode === 'patterns' && !isModeLocked('patterns') && 'Pattern Detection'}
-            {mode === 'pr-impact' && !isModeLocked('pr-impact') && 'PR Impact Analysis'}
-            {(!mode || mode === 'manual') && !isModeLocked('manual') && 'Code Scanner'}
-            {isModeLocked(mode) && <span className="text-muted-foreground">Locked Feature</span>}
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {mode === 'manual' && !isModeLocked('manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
-            {mode === 'github' && !isModeLocked('github') && 'Connect your GitHub repositories and run automated quality scans on your codebase.'}
-            {mode === 'trends' && !isModeLocked('trends') && 'Track code quality metrics over time across your projects and team.'}
-            {mode === 'quality-gates' && !isModeLocked('quality-gates') && 'Set quality standards and thresholds for your code to pass before merge.'}
-            {mode === 'review' && !isModeLocked('review') && 'Review code collaboratively with comments, suggestions, and approval workflows.'}
-            {mode === 'config' && !isModeLocked('config') && 'Configure scan rules, thresholds, file filters, and notification preferences.'}
-            {mode === 'reports' && !isModeLocked('reports') && 'Generate and export detailed code quality reports in PDF, JSON, or CSV format.'}
-            {mode === 'insights' && !isModeLocked('insights') && 'View aggregate analytics on code quality, issue trends, and team performance.'}
-            {mode === 'metrics' && !isModeLocked('metrics') && 'Browse per-file code metrics including complexity, coverage, duplication, and LOC.'}
-            {mode === 'hotspots' && !isModeLocked('hotspots') && 'Review security-sensitive code locations that may need extra attention.'}
-            {mode === 'ratings' && !isModeLocked('ratings') && 'View letter-grade quality ratings for security, reliability, and maintainability.'}
-            {mode === 'activity' && !isModeLocked('activity') && 'View all code analysis events including scans, reviews, and quality gates.'}
-            {mode === 'architecture' && !isModeLocked('architecture') && 'Explore your codebase architecture — components, dependencies, and health.'}
-            {mode === 'pr' && !isModeLocked('pr') && 'View pull request quality analysis and gate status across your repositories.'}
-            {mode === 'branches' && !isModeLocked('branches') && 'Compare quality metrics across Git branches and track improvements.'}
-            {mode === 'team' && !isModeLocked('team') && 'See how your team ranks in code quality contributions and issue resolution.'}
-            {mode === 'dependencies' && !isModeLocked('dependencies') && 'Check project dependencies against the OSV vulnerability database and embedded security advisories.'}
-            {mode === 'secrets' && !isModeLocked('secrets') && 'Scan source code for hardcoded API keys, tokens, passwords, private keys, and other secrets.'}
-            {mode === 'chat' && !isModeLocked('chat') && 'Interact with your codebase files using our advanced Gemini AI Assistant.'}
-            {mode === 'patterns' && !isModeLocked('patterns') && 'Detect design patterns, anti-patterns, and React hook usage across your codebase.'}
-            {mode === 'pr-impact' && !isModeLocked('pr-impact') && 'Analyze GitHub PR impact — affected components, blast radius, and dependency cascade analysis.'}
-            {(!mode || mode === 'manual') && !isModeLocked('manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        illustration="scanner"
+        className="mb-0"
+        icon={isModeLocked(mode) ? <Lock /> : <Code2 />}
+        title={<>
+            {mode === 'github' && !isModeLocked('github') && t('tools.githubRepositoryScan')}
+            {mode === 'trends' && !isModeLocked('trends') && t('tools.qualityTrends')}
+            {mode === 'quality-gates' && !isModeLocked('quality-gates') && t('tools.qualityGates')}
+            {mode === 'review' && !isModeLocked('review') && t('tools.codeReview')}
+            {mode === 'config' && !isModeLocked('config') && t('tools.scannerSettings')}
+            {mode === 'reports' && !isModeLocked('reports') && t('tools.reports')}
+            {mode === 'insights' && !isModeLocked('insights') && t('tools.insights')}
+            {mode === 'metrics' && !isModeLocked('metrics') && t('tools.fileMetrics')}
+            {mode === 'hotspots' && !isModeLocked('hotspots') && t('tools.securityHotspots')}
+            {mode === 'ratings' && !isModeLocked('ratings') && t('tools.qualityRatings')}
+            {mode === 'activity' && !isModeLocked('activity') && t('tools.activityTimeline')}
+            {mode === 'architecture' && !isModeLocked('architecture') && t('tools.architecture')}
+            {mode === 'pr' && !isModeLocked('pr') && t('tools.pullRequests')}
+            {mode === 'branches' && !isModeLocked('branches') && t('tools.branchAnalytics')}
+            {mode === 'team' && !isModeLocked('team') && t('tools.teamLeaderboard')}
+            {mode === 'dependencies' && !isModeLocked('dependencies') && t('tools.dependencyVulnerabilityScan')}
+            {mode === 'secrets' && !isModeLocked('secrets') && t('tools.secretDetection')}
+            {mode === 'chat' && !isModeLocked('chat') && t('tools.codebaseAssistant')}
+            {mode === 'patterns' && !isModeLocked('patterns') && t('tools.patternDetection')}
+            {mode === 'pr-impact' && !isModeLocked('pr-impact') && t('tools.prImpactAnalysis')}
+            {(!mode || mode === 'manual') && !isModeLocked('manual') && t('tools.codeScanner')}
+            {isModeLocked(mode) && <span className="text-muted-foreground">{t('tools.featureLocked')}</span>}
+        </>}
+        description={<>
+            {mode === 'github' && !isModeLocked('github') && t('tools.connectYourGithubRepositoriesAndRun39d')}
+            {mode === 'trends' && !isModeLocked('trends') && t('tools.trackCodeQualityMetricsOverTime02a')}
+            {mode === 'quality-gates' && !isModeLocked('quality-gates') && t('tools.setQualityStandardsAndThresholdsFor397')}
+            {mode === 'review' && !isModeLocked('review') && t('tools.reviewCodeCollaborativelyWithCommentsSug12d')}
+            {mode === 'config' && !isModeLocked('config') && t('tools.configureScanRulesThresholdsFileFiltersc2b')}
+            {mode === 'reports' && !isModeLocked('reports') && t('tools.generateAndExportDetailedCodeQuality4b1')}
+            {mode === 'insights' && !isModeLocked('insights') && t('tools.viewAggregateAnalyticsOnCodeQualityd60')}
+            {mode === 'metrics' && !isModeLocked('metrics') && t('tools.browsePerFileCodeMetricsIncludingbcc')}
+            {mode === 'hotspots' && !isModeLocked('hotspots') && t('tools.reviewSecuritySensitiveCodeLocationsThat750')}
+            {mode === 'ratings' && !isModeLocked('ratings') && t('tools.viewLetterGradeQualityRatingsFore7d')}
+            {mode === 'activity' && !isModeLocked('activity') && t('tools.viewAllCodeAnalysisEventsIncludingde6')}
+            {mode === 'architecture' && !isModeLocked('architecture') && t('tools.exploreYourCodebaseArchitectureComponent324')}
+            {mode === 'pr' && !isModeLocked('pr') && t('tools.viewPullRequestQualityAnalysisAndafb')}
+            {mode === 'branches' && !isModeLocked('branches') && t('tools.compareQualityMetricsAcrossGitBranches1e3')}
+            {mode === 'team' && !isModeLocked('team') && t('tools.seeHowYourTeamRanksIndfa')}
+            {mode === 'dependencies' && !isModeLocked('dependencies') && t('tools.checkProjectDependenciesAgainstTheOsv3f2')}
+            {mode === 'secrets' && !isModeLocked('secrets') && t('tools.scanSourceCodeForHardcodedApi892')}
+            {mode === 'chat' && !isModeLocked('chat') && t('tools.askQuestionsAboutYourScannedCode81e')}
+            {mode === 'patterns' && !isModeLocked('patterns') && t('tools.detectDesignPatternsAntiPatternsAnd8e4')}
+            {mode === 'pr-impact' && !isModeLocked('pr-impact') && t('tools.analyzeGithubPrImpactAffectedComponents33d')}
+            {(!mode || mode === 'manual') && !isModeLocked('manual') && t('tools.pasteCodeAndGetAiPoweredbd8')}
+        </>}
+      />
 
       {isModeLocked(mode) && (
-        <Card className="flex items-center justify-center p-12 border-border bg-card/30">
-          <div className="text-center">
-            <Lock className="w-10 h-10 text-muted-foreground/40 mb-3" />
-            <p className="font-semibold text-foreground">Feature Locked</p>
-            <p className="text-sm text-muted-foreground mt-1">This scanner mode is currently disabled by admin.</p>
-          </div>
-        </Card>
+        <Panel className="flex flex-col items-center justify-center p-12 text-center">
+          <Illustration name="locked" className="mb-3 w-36" />
+          <p className="font-semibold text-foreground">{t('tools.thisToolIsTurnedOff')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('tools.anAdminHasDisabledThisScannerf7c')}</p>
+        </Panel>
       )}
 
       {/* Manual Analysis Mode */}
@@ -407,17 +406,18 @@ function CodeScannerPageInner() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
           <div className="space-y-4">
-            <Card className="bg-card border border-border p-6 space-y-4">
+            <Panel className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground block mb-2">Programming Language</label>
+                <label htmlFor="scanner-language" className="text-sm font-medium text-foreground block mb-2">{t('tools.programmingLanguage')}</label>
                 <div className="flex items-center gap-2">
                   <select
+                    id="scanner-language"
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="flex-1 px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    className="flex-1 px-4 py-2 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                   >
                     {runtimesLoading ? (
-                      <option value="">Loading languages...</option>
+                      <option value="">{t('tools.loadingLanguages')}</option>
                     ) : runtimes.length > 0 ? (
                       runtimes.map((rt) => (
                         <option key={rt.language || rt.version} value={rt.language}>
@@ -425,12 +425,11 @@ function CodeScannerPageInner() {
                         </option>
                       ))
                     ) : (
-                      <option value="">No runtimes loaded</option>
+                      <option value="">{t('tools.noRuntimesLoaded')}</option>
                     )}
                   </select>
                   {detectedLang && detectedLang !== language && (
-                    <span className="shrink-0 px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                      Detected: {detectedLang.charAt(0).toUpperCase() + detectedLang.slice(1)}
+                    <span className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">{t('tools.detected')}{' '}{detectedLang.charAt(0).toUpperCase() + detectedLang.slice(1)}
                     </span>
                   )}
                 </div>
@@ -438,7 +437,7 @@ function CodeScannerPageInner() {
 
               <div className="space-y-2" data-tour="scanner-code-input">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <label className="text-sm font-medium text-foreground">Paste Your Code</label>
+                  <label className="text-sm font-medium text-foreground">{t('tools.pasteYourCode')}</label>
                   <Button
                     type="button"
                     variant="ghost"
@@ -446,7 +445,7 @@ function CodeScannerPageInner() {
                     className="h-8 text-xs"
                     onClick={() => setUseMonacoEditor((v) => !v)}
                   >
-                    {useMonacoEditor ? 'Plain textarea' : 'Monaco editor'}
+                    {useMonacoEditor ? t('tools.plainTextarea') : t('tools.monacoEditor')}
                   </Button>
                 </div>
                 {useMonacoEditor ? (
@@ -463,17 +462,15 @@ function CodeScannerPageInner() {
                   <textarea
                     value={code}
                     onChange={(e) => handleCodeChange(e.target.value)}
-                    placeholder="Paste your code here for analysis..."
-                    className="h-96 w-full resize-none rounded-lg border border-border bg-background p-4 font-mono text-sm text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder={t('tools.pasteYourCodeHereForAnalysis')}
+                    aria-label={t('tools.codeToScan')}
+                    className="h-96 w-full resize-none rounded-2xl border border-border bg-background p-4 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 )}
-                <p className="text-xs text-foreground/50">
-                  Monaco mode (Phase 5): syntax highlighting and layout; use <strong>Scan Code</strong> to persist a
-                  scan when signed in.
-                </p>
+                <p className="text-xs text-muted-foreground">{t('tools.theEditorViewAddsSyntaxHighlighting312')}{' '}<strong>{t('tools.scanCode')}</strong>{' '}{t('tools.toSaveTheScanToYour408')}</p>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Button
                   onClick={handleRunCode}
                   disabled={executing || !code.trim()}
@@ -482,14 +479,10 @@ function CodeScannerPageInner() {
                 >
                   {executing ? (
                     <>
-                      <Loader className="w-4 h-4 mr-2 animate-spin" />
-                      Running...
-                    </>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />{t('tools.running')}</>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Run Code
-                    </>
+                      <Play className="w-4 h-4 mr-2" />{t('tools.runCode')}</>
                   )}
                 </Button>
                 <Button
@@ -500,29 +493,21 @@ function CodeScannerPageInner() {
                 >
                   {loading ? (
                     <>
-                      <Loader className="w-4 h-4 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />{t('tools.analyzing')}</>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Scan Code
-                    </>
+                      <Sparkles className="w-4 h-4 mr-2" />{t('tools.scanCode')}</>
                   )}
                 </Button>
                 {(analysis || execResult) && (
-                  <Button variant="outline" onClick={clearAnalysis}>
-                    Clear
-                  </Button>
+                  <Button variant="outline" onClick={clearAnalysis}>{t('tools.clear')}</Button>
                 )}
               </div>
 
               {analysis && (
-                <div className="pt-4 border-t border-border text-xs text-foreground/50">
-                  Analysis completed in {analysis.timeMs}ms
-                </div>
+                <div className="pt-4 border-t border-border text-xs tabular-nums text-muted-foreground">{t('tools.analysisCompletedInTimemsMs', { timeMs: analysis.timeMs })}</div>
               )}
-            </Card>
+            </Panel>
 
             {/* Scan History */}
             <div data-tour="scanner-history">
@@ -588,45 +573,41 @@ function CodeScannerPageInner() {
           <div className="space-y-4">
             {/* Execution Output */}
             {execResult && (
-              <Card className="border border-border bg-card/30 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
+              <Card className="gap-0 overflow-hidden rounded-3xl py-0">
+                <div className="flex items-center justify-between border-b border-border bg-muted/40 px-5 py-3">
                   <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Play className="w-3.5 h-3.5 text-green-400" />
-                    Execution Output
-                  </h4>
+                    <Play className="w-3.5 h-3.5 text-primary" />{t('tools.output')}</h4>
                   {execResult.code !== null && (
                     <span className={`text-xs font-mono px-2 py-0.5 rounded ${
                       execResult.code === 0
-                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                    }`}>
-                      Exit code: {execResult.code}
-                    </span>
+                        ? 'bg-green-500/10 text-green-700 border border-green-500/20 dark:text-green-400'
+                        : 'bg-red-500/10 text-red-700 border border-red-500/20 dark:text-red-400'
+                    }`}>{t('tools.exitCodeCode', { code: execResult.code })}</span>
                   )}
                 </div>
                 <div className="p-4 space-y-3 text-sm font-mono">
                   {execResult.compileOutput && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Compile Output</p>
-                      <pre className="whitespace-pre-wrap text-foreground/80 bg-background/50 rounded p-2 max-h-32 overflow-y-auto text-xs">
+                      <p className="mb-1 font-sans text-xs font-medium text-muted-foreground">{t('tools.compilerOutput')}</p>
+                      <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/60 p-2 text-xs text-foreground">
                         {execResult.compileOutput}
                       </pre>
                     </div>
                   )}
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">stdout</p>
+                    <p className="mb-1 font-sans text-xs font-medium text-muted-foreground">{t('tools.standardOutput')}</p>
                     <pre className={`whitespace-pre-wrap rounded p-2 max-h-48 overflow-y-auto text-xs ${
                       execResult.stdout
-                        ? 'bg-background/50 text-foreground/80'
-                        : 'text-muted-foreground/40 italic'
+                        ? 'bg-muted/60 text-foreground'
+                        : 'text-muted-foreground italic'
                     }`}>
                       {execResult.stdout || '(no output)'}
                     </pre>
                   </div>
                   {execResult.stderr && (
                     <div>
-                      <p className="text-xs text-red-400 mb-1 uppercase tracking-wider">stderr</p>
-                      <pre className="whitespace-pre-wrap rounded p-2 max-h-32 overflow-y-auto text-xs bg-red-950/20 text-red-300 border border-red-500/10">
+                      <p className="mb-1 font-sans text-xs font-medium text-red-700 dark:text-red-400">{t('tools.errors')}</p>
+                      <pre className="max-h-32 overflow-y-auto whitespace-pre-wrap rounded-lg border border-red-500/20 bg-red-500/5 p-2 text-xs text-red-700 dark:text-red-300">
                         {execResult.stderr}
                       </pre>
                     </div>
@@ -636,8 +617,8 @@ function CodeScannerPageInner() {
             )}
 
             {loading ? (
-              <div className="space-y-4 animate-pulse">
-                <div className="rounded-xl border border-border/60 bg-card/50 p-5 space-y-4">
+              <div className="space-y-4 animate-pulse motion-reduce:animate-none">
+                <div className="rounded-3xl border border-border/70 bg-card p-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="h-6 w-32 bg-muted/60 rounded" />
                     <div className="h-6 w-16 bg-muted/60 rounded" />
@@ -662,7 +643,7 @@ function CodeScannerPageInner() {
                     </div>
                   </div>
                 </div>
-                <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3">
+                <div className="rounded-3xl border border-border/70 bg-card p-5 space-y-3">
                   <div className="h-4 w-40 bg-muted/60 rounded" />
                   <div className="flex items-center gap-2">
                     <div className="h-2 flex-1 bg-muted/50 rounded" />
@@ -672,43 +653,31 @@ function CodeScannerPageInner() {
                 </div>
               </div>
             ) : !analysis ? (
-              <Card className="h-full flex items-center justify-center bg-card/30 border border-border">
-                <div className="text-center p-6">
-                  <Code2 className="w-12 h-12 text-foreground/40 mb-3" />
-                  <p className="text-foreground/60">
-                    Paste your code and click <strong>Scan Code</strong> to see detailed analysis
-                  </p>
-                  <p className="text-xs text-foreground/50 mt-2">
-                    Supports: {runtimesLoading ? 'Loading...' : runtimes.length > 0 ? runtimes.map(rt => rt.language).join(', ') : 'Popular languages (auto-detected from engine)'}
+              <Panel className="flex h-full min-h-[280px] items-center justify-center border-dashed">
+                <div className="flex flex-col items-center p-6 text-center">
+                  <Illustration name="scanner" className="mb-3 w-36" />
+                  <p className="font-medium text-foreground">{t('tools.pasteYourCodeAndPress')}{' '}<strong>{t('tools.scanCode')}</strong>{' '}{t('tools.toSeeTheAnalysis')}</p>
+                  <p className="mt-2 max-w-md text-xs text-muted-foreground">{t('tools.supports')}{' '}{runtimesLoading ? t('common.loading') : runtimes.length > 0 ? runtimes.map(rt => rt.language).join(', ') : t('tools.mostPopularLanguagesDetectedAutomaticall')}
                   </p>
                 </div>
-              </Card>
+              </Panel>
             ) : analysis.issues.some((i) => i.rule === 'not-code') ? (
-              <Card className="border-red-500/50 bg-red-950/20 p-6 space-y-4 shadow-lg shadow-red-950/10">
+              <Card className="gap-0 space-y-4 rounded-3xl border-red-500/40 bg-red-500/5 p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 shrink-0">
                     <AlertTriangle className="w-6 h-6" />
                   </div>
                   <div className="space-y-2.5 flex-1">
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
-                        AST Verification Failed
-                      </span>
-                      <span className="text-xs text-muted-foreground font-mono">Status: Non-Code Input / Plain Text</span>
+                      <span className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400">{t('tools.couldntParseThisInput')}</span>
+                      <span className="text-xs text-muted-foreground">{t('tools.looksLikePlainTextNotCode')}</span>
                     </div>
-                    <h3 className="text-xl font-bold text-red-200">
-                      Invalid Source Code Detected
-                    </h3>
-                    <p className="text-sm text-red-200/80 leading-relaxed">
-                      The input you provided (<code>{code.slice(0, 50)}{code.length > 50 ? '...' : ''}</code>) does not match the syntax, keywords, or structure of any supported programming language (e.g., JavaScript, TypeScript, Python, Java, C++, Go, Rust).
-                    </p>
-                    <div className="rounded-lg bg-background/60 border border-red-500/20 p-4 text-xs text-foreground/80 space-y-2">
+                    <h3 className="text-xl font-bold text-foreground">{t('tools.thisDoesntLookLikeSourceCode')}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{t('tools.theInputYouProvided')}<code>{code.slice(0, 50)}{code.length > 50 ? '...' : ''}</code>{t('tools.doesNotMatchTheSyntaxKeywords37e')}</p>
+                    <div className="space-y-2 rounded-2xl border border-border bg-card p-4 text-xs text-muted-foreground">
                       <p className="font-semibold text-foreground flex items-center gap-1.5">
-                        <Info className="w-4 h-4 text-primary shrink-0" /> Why is valid code required?
-                      </p>
-                      <p className="leading-relaxed">
-                        CodeSpectra performs Abstract Syntax Tree (AST) parsing, static control flow analysis, and cyclomatic complexity scoring to compute bug risks, security hotspots, code smells, and maintainability indexes accurately. Random text or non-code strings cannot be analyzed.
-                      </p>
+                        <Info className="w-4 h-4 text-primary shrink-0" />{' '}{t('tools.whyDoesItNeedValidCode')}</p>
+                      <p className="leading-relaxed">{t('tools.codespectraParsesTheStructureOfYour3ef')}</p>
                     </div>
                   </div>
                 </div>
@@ -738,20 +707,20 @@ function CodeScannerPageInner() {
 
                 {/* Performance Notes */}
                 {analysis.performance && (
-                  <Card className="bg-card/30 border border-border p-4">
-                    <h4 className="font-semibold text-foreground mb-2">Performance Analysis</h4>
-                    <p className="text-sm text-foreground/70">{analysis.performance}</p>
-                  </Card>
+                  <Panel className="p-5">
+                    <h4 className="text-base font-semibold text-foreground mb-2">{t('tools.performance')}</h4>
+                    <p className="text-sm text-muted-foreground">{analysis.performance}</p>
+                  </Panel>
                 )}
 
                 {/* Best Practices */}
                 {analysis.bestPractices.length > 0 && (
-                  <Card className="bg-green-500/10 border border-green-500/30 p-4">
-                    <h4 className="font-semibold text-green-400 mb-3">What You Did Well</h4>
+                  <Card className="gap-0 rounded-3xl border-green-500/30 bg-green-500/5 p-5">
+                    <h4 className="text-base mb-3 font-semibold text-green-700 dark:text-green-400">{t('tools.whatYouDidWell')}</h4>
                     <ul className="space-y-2">
                       {analysis.bestPractices.map((practice, i) => (
-                        <li key={i} className="text-sm text-green-300 flex gap-2">
-                          <span className="text-green-400">✓</span>
+                        <li key={i} className="flex gap-2 text-sm text-foreground">
+                          <span className="text-green-600 dark:text-green-400" aria-hidden>✓</span>
                           {practice}
                         </li>
                       ))}
@@ -761,12 +730,12 @@ function CodeScannerPageInner() {
 
                 {/* Suggestions */}
                 {analysis.suggestions.length > 0 && (
-                  <Card className="bg-blue-500/10 border border-blue-500/30 p-4">
-                    <h4 className="font-semibold text-blue-400 mb-3">Recommendations</h4>
+                  <Card className="gap-0 rounded-3xl border-primary/25 bg-primary/5 p-5">
+                    <h4 className="text-base mb-3 font-semibold text-primary">{t('tools.recommendations')}</h4>
                     <ul className="space-y-2">
                       {analysis.suggestions.map((suggestion, i) => (
-                        <li key={i} className="text-sm text-blue-300 flex gap-2">
-                          <span className="text-blue-400">→</span>
+                        <li key={i} className="flex gap-2 text-sm text-foreground">
+                          <span className="text-primary" aria-hidden>→</span>
                           {suggestion}
                         </li>
                       ))}
@@ -790,42 +759,31 @@ function CodeScannerPageInner() {
               onScanBusyChange={setGithubScanBusy}
             />
 
-            <Card className="border border-border bg-card/30 p-6">
-              <h3 className="mb-4 font-semibold text-foreground">GitHub roadmap</h3>
+            <Panel>
+              <h3 className="text-base mb-4 font-semibold text-foreground">{t('tools.githubSetupNotes')}</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <h4 className="flex items-center gap-2 text-sm font-medium text-primary">
-                    <Plus className="h-4 w-4" />
-                    Webhooks
-                  </h4>
-                  <p className="text-sm text-foreground/60">
-                    Point repo webhooks to <code className="rounded bg-muted px-1 text-xs">/api/github/webhook</code>{' '}
-                    with <code className="rounded bg-muted px-1 text-xs">GITHUB_WEBHOOK_SECRET</code> — deliveries are
-                    logged for audit.
-                  </p>
+                    <Plus className="h-4 w-4" />{t('tools.webhooks')}</h4>
+                  <p className="text-sm text-foreground/60">{t('tools.pointRepoWebhooksTo')}{' '}<code className="rounded bg-muted px-1 text-xs">/api/github/webhook</code>{' '}{t('tools.with')}{' '}<code className="rounded bg-muted px-1 text-xs">GITHUB_WEBHOOK_SECRET</code>{' '}{t('tools.deliveriesAreLoggedForAudit')}</p>
                 </div>
                 <div className="space-y-2">
                   <h4 className="flex items-center gap-2 text-sm font-medium text-primary">
-                    <Plus className="h-4 w-4" />
-                    Token encryption
-                  </h4>
-                  <p className="text-sm text-foreground/60">
-                    Set <code className="rounded bg-muted px-1 text-xs">GITHUB_TOKEN_ENCRYPTION_KEY</code> (base64, 32
-                    bytes) so new OAuth tokens are stored encrypted at rest.
-                  </p>
+                    <Plus className="h-4 w-4" />{t('tools.tokenEncryption')}</h4>
+                  <p className="text-sm text-foreground/60">{t('tools.set')}{' '}<code className="rounded bg-muted px-1 text-xs">GITHUB_TOKEN_ENCRYPTION_KEY</code>{' '}{t('tools.base6432BytesSoNewOauthbc4')}</p>
                 </div>
               </div>
-            </Card>
+            </Panel>
           </div>
 
           <div className="space-y-4">
             {!analysis ? (
-              <Card className="flex min-h-[280px] items-center justify-center border border-border bg-card/30 p-6">
-                <div className="text-center text-muted-foreground">
-                  <Code2 className="mb-3 h-10 w-10 opacity-40" />
-                  <p className="text-sm">Select a repository, then click a file to scan and persist results.</p>
+              <Panel className="flex min-h-[280px] items-center justify-center border-dashed">
+                <div className="flex flex-col items-center text-center text-muted-foreground">
+                  <Code2 className="mb-3 h-10 w-10 text-primary/50" aria-hidden />
+                  <p className="text-sm">{t('tools.pickARepositoryThenClickA69f')}</p>
                 </div>
-              </Card>
+              </Panel>
             ) : (
               <div className="space-y-4">
                 <AdvancedMetrics
@@ -855,26 +813,14 @@ function CodeScannerPageInner() {
         </div>
       )}
 
-      {/* Metrics Trend Mode */}
+      {/* Metrics Trend Mode — no per-scan history is stored yet, so no chart. */}
       {mode === 'trends' && !isModeLocked('trends') && (
-        <div className="space-y-6">
-          <Card className="bg-card/30 border border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">Code Quality Trends</h3>
-            <p className="text-sm text-foreground/60 mb-6">
-              Track how your code quality metrics evolve over time. Historical data helps you identify patterns and improvements.
-            </p>
-          </Card>
-          <MetricsTrendChart
-            data={[
-              { date: '2024-01-01', quality: 72, bugs: 8, vulnerabilities: 2, codeSmells: 15, complexity: 45, coverage: 65 },
-              { date: '2024-01-08', quality: 75, bugs: 6, vulnerabilities: 2, codeSmells: 12, complexity: 42, coverage: 68 },
-              { date: '2024-01-15', quality: 78, bugs: 4, vulnerabilities: 1, codeSmells: 10, complexity: 40, coverage: 72 },
-              { date: '2024-01-22', quality: 82, bugs: 2, vulnerabilities: 1, codeSmells: 7, complexity: 38, coverage: 76 },
-              { date: '2024-01-29', quality: 85, bugs: 1, vulnerabilities: 0, codeSmells: 5, complexity: 36, coverage: 81 },
-            ]}
-            metric="quality"
-          />
-        </div>
+        <EmptyState illustration="analytics"
+          title={t('tools.qualityTrendsArentAvailableYet')}
+          description={t('tools.weDontKeepAHistoryOf565')}
+          actionLabel={t('tools.runAScan')}
+          actionHref="/dashboard/scanner"
+        />
       )}
 
       {/* Quality Gates Mode */}
@@ -882,29 +828,27 @@ function CodeScannerPageInner() {
 
       {/* Code Review Mode */}
       {mode === 'review' && !isModeLocked('review') && (
-        <CodeReviewPanel
-          issueId="issue-1"
-          comments={[]}
-          onAddComment={(text) => console.log('Added comment:', text)}
-          onReply={(commentId, text) => console.log('Replied to', commentId, ':', text)}
-          onResolve={(issueId) => console.log('Resolved:', issueId)}
+        <EmptyState illustration="scanner"
+          title={t('tools.codeReviewIsntAvailableYet')}
+          description={t('tools.commentsAndApprovalsOnScanIssuesab8')}
+          actionLabel={t('tools.goToManualAnalysis')}
+          actionHref="/dashboard/scanner"
         />
       )}
 
       {/* Configuration Mode */}
       {mode === 'config' && !isModeLocked('config') && (
-        <ScannerConfigPanel
-          onSave={(config) => console.log('Config saved:', config)}
+        <EmptyState illustration="settings"
+          title={t('tools.scannerSettingsArentAvailableYet')}
+          description={t('tools.customThresholdsAndScanRulesCant910')}
+          actionLabel={t('tools.goToManualAnalysis')}
+          actionHref="/dashboard/scanner"
         />
       )}
 
       {/* Reports Mode */}
       {mode === 'reports' && !isModeLocked('reports') && (
-        <ReportGenerator
-          onExport={(format) => console.log('Exporting as:', format)}
-          onEmail={(recipients) => console.log('Emailing to:', recipients)}
-          onShare={(link) => console.log('Share link:', link)}
-        />
+        <ReportGenerator />
       )}
 
       {/* Insights Mode */}
@@ -969,10 +913,10 @@ function CodeScannerPageInner() {
       {/* Pattern Detection Mode */}
       {mode === 'patterns' && !isModeLocked('patterns') && (
         <div className="space-y-6">
-          <Card className="p-5 bg-card/30 border-dashed">
-            <h3 className="font-semibold text-foreground mb-1">Pattern Detection</h3>
-            <p className="text-sm text-muted-foreground">Detect design patterns, React hooks, and anti-patterns in your codebase. Supports common architectural patterns including singleton, factory, observer, decorator, and more.</p>
-          </Card>
+          <Panel className="border-dashed p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">{t('tools.patternDetection')}</h3>
+            <p className="text-sm text-muted-foreground">{t('tools.detectDesignPatternsReactHooksAndb3c')}</p>
+          </Panel>
           <PatternDetector />
         </div>
       )}
@@ -980,10 +924,10 @@ function CodeScannerPageInner() {
       {/* PR Impact Analysis Mode */}
       {mode === 'pr-impact' && !isModeLocked('pr-impact') && (
         <div className="space-y-6">
-          <Card className="p-5 bg-card/30 border-dashed">
-            <h3 className="font-semibold text-foreground mb-1">PR Impact Analysis</h3>
-            <p className="text-sm text-muted-foreground">Paste any GitHub pull request URL to see which architecture components it affects and compute its blast radius across your dependency graph.</p>
-          </Card>
+          <Panel className="border-dashed p-5">
+            <h3 className="text-base font-semibold text-foreground mb-1">{t('tools.prImpactAnalysis')}</h3>
+            <p className="text-sm text-muted-foreground">{t('tools.pasteAnyGithubPullRequestUrl25f')}</p>
+          </Panel>
           <PRImpactAnalysis
             components={[]}
             dependencies={[]}
@@ -995,7 +939,7 @@ function CodeScannerPageInner() {
       {mode === 'chat' && !isModeLocked('chat') && (
         <div>
           <CodebaseChatSidebar 
-            scanId={analysis?.scanId}
+            scanId={analysis?.id && !analysis.id.startsWith('scan-') ? analysis.id : undefined}
             files={analysis ? [
               {
                 path: 'analyzed_snippet',
@@ -1017,19 +961,18 @@ function CodeScannerPageInner() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="sm" className="text-muted-foreground">
-                <HelpCircle className="h-4 w-4 mr-1" /> Scanner tools
-              </Button>
+                <HelpCircle className="h-4 w-4 mr-1" />{' '}{t('tools.scannerTools')}</Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-[300px] p-3">
               <div className="grid gap-1.5 text-xs">
-                <p><strong>Manual Analysis:</strong> Scan code directly</p>
-                <p><strong>GitHub:</strong> Connect and scan repos</p>
-                <p><strong>Trends:</strong> Track quality over time</p>
-                <p><strong>Quality Gates:</strong> Set quality standards</p>
-                <p><strong>Code Review:</strong> Collaborative reviews</p>
-                <p><strong>Configuration:</strong> Customize rules</p>
-                <p><strong>Reports:</strong> Export results</p>
-                <p><strong>Insights:</strong> Dashboard analytics</p>
+                <p><strong>{t('tools.manualAnalysis')}</strong>{' '}{t('tools.scanCodeDirectly')}</p>
+                <p><strong>GitHub:</strong>{' '}{t('tools.connectAndScanRepos')}</p>
+                <p><strong>{t('tools.trends')}</strong>{' '}{t('tools.trackQualityOverTime')}</p>
+                <p><strong>{t('tools.qualityGates2')}</strong>{' '}{t('tools.setQualityStandards')}</p>
+                <p><strong>{t('tools.codeReview2')}</strong>{' '}{t('tools.collaborativeReviews')}</p>
+                <p><strong>{t('tools.configuration')}</strong>{' '}{t('tools.customizeRules')}</p>
+                <p><strong>{t('tools.reports2')}</strong>{' '}{t('tools.exportResults')}</p>
+                <p><strong>{t('tools.insights2')}</strong>{' '}{t('tools.dashboardAnalytics')}</p>
               </div>
             </TooltipContent>
           </Tooltip>
@@ -1040,13 +983,14 @@ function CodeScannerPageInner() {
 }
 
 export default function CodeScannerPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   if (!gate.ready) return null
 
   return (
     <Suspense
       fallback={
-        <div className="p-8 text-sm text-muted-foreground">Loading scanner…</div>
+        <div className="p-8 text-sm text-muted-foreground">{t('tools.loadingScanner')}</div>
       }
     >
       <CodeScannerPageInner />

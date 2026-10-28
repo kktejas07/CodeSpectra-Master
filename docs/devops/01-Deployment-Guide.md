@@ -8,6 +8,9 @@
 
 ---
 
+> **Production checklist** (every secret, cron, worker and webhook): see
+> [05-Production-Checklist.md](./05-Production-Checklist.md).
+
 ## Architecture Overview
 
 ```
@@ -41,10 +44,10 @@ Three services defined in `docker-compose.yml`:
 
 ```yaml
 piston:
-  image: ghcr.io/engineer-man/piston:latest
+  image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}   # pin by digest, see "Piston sandbox configuration"
   container_name: codespectra-piston
   privileged: true
-  ports: ["2000:2000"]
+  expose: ["2000"]   # internal only — never publish (runs arbitrary code, no auth)
   volumes: ["piston-data:/piston"]
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:2000/api/v2/runtimes"]
@@ -73,7 +76,7 @@ frontend:
       NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
       NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
-  ports: ["3000:80"]
+  ports: ["127.0.0.1:3000:80"]
   environment:
     - PISTON_URL=http://piston:2000/api/v2
   depends_on:
@@ -92,7 +95,7 @@ backend:
   build:
     context: ./backend
     dockerfile: Dockerfile
-  ports: ["8001:8000"]
+  expose: ["8000"]   # internal only — no published port
   environment:
     - NEXTJS_INTERNAL_URL=http://frontend:80
   env_file:
@@ -136,6 +139,9 @@ backend:
 | Variable | Description | Source |
 |----------|-------------|--------|
 | `PISTON_URL` | Piston API URL (internal Docker network) | `docker-compose.yml` |
+| `SECRETS_ENCRYPTION_KEY` | Encrypts API keys stored in Admin → Settings (32+ chars, env only) | `openssl rand -hex 32` |
+| `ATS_ENCRYPTION_KEY` | Encrypts hiring integrations credentials + BGV documents | `openssl rand -hex 32` |
+| `CRON_SECRET` | Bearer token for `/api/cron/*` (serverless: call `/api/cron/tick` every minute; Docker: nothing to schedule) | `openssl rand -hex 32` |
 
 ### Optional / Service-Specific
 
@@ -187,8 +193,21 @@ DB_NAME=codespectra
 
 ## Piston Sandbox Configuration
 
-- **Image:** `ghcr.io/engineer-man/piston:latest`
-- **Mode:** `privileged: true` (required for container-in-container)
+- **Image:** pinned by digest — `PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<digest>` in `.env`
+  (SEC-023). Unset, compose falls back to `:latest` and Admin → System shows
+  "Piston image not pinned". Run `scripts/pin-piston-image.sh` to resolve the current
+  upstream digest and write it; re-pin only on purpose after reviewing upstream changes.
+- **Capabilities:** `SYS_ADMIN` + `SYS_PTRACE` (Piston's own isolate sandbox needs them)
+- **Network:** `sandbox` — a Docker `internal: true` network with no route out; only
+  `frontend` and `backend` join it. Installing a language runtime needs egress for a
+  moment:
+  ```bash
+  docker network connect bridge codespectra-piston
+  curl -X POST http://localhost:2000/api/v2/packages -d '{"language":"python","version":"3.10.0"}'  # from inside the frontend container
+  docker network disconnect bridge codespectra-piston
+  ```
+  Code execution itself needs no internet. To disable the isolation entirely, set
+  `internal: false` on the `sandbox` network in `docker-compose.yml`.
 - **Port:** `2000`
 - **Healthcheck:** `/api/v2/runtimes` endpoint
 - **API URL inside frontend:** `http://piston:2000/api/v2` (auto-set via docker-compose env)
@@ -215,7 +234,8 @@ pip install -r requirements.txt
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 
 # Start Piston (Docker)
-docker run -d --privileged -p 2000:2000 -v piston-data:/piston ghcr.io/engineer-man/piston:latest
+# local only — production uses the digest-pinned PISTON_IMAGE via compose
+docker run -d --privileged -p 127.0.0.1:2000:2000 -v piston-data:/piston "${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}"
 ```
 
 ### Docker Compose Deployment
@@ -292,13 +312,9 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    location /api/ {
-        proxy_pass http://localhost:8001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+    # No /api/ → backend block: the backend is internal-only (SEC-001/022).
+    # Everything goes to the frontend. See 06-Reverse-Proxy.md for the
+    # client-IP headers (TRUSTED_PROXY_CIDRS).
 }
 ```
 

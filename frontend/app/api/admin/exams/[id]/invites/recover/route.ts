@@ -89,7 +89,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     const data = await stuckInvites(db, id)
     return NextResponse.json({ data, count: data.length })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to load stuck invites'
+    const msg = 'Failed to load stuck invites'
+    console.error('[admin/exams/[id]/invites/recover]', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
@@ -134,7 +135,8 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
     )
     return NextResponse.json({ ok: true, reset: res.modifiedCount ?? tokens.length })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to reset invites'
+    const msg = 'Failed to reset invites'
+    console.error('[admin/exams/[id]/invites/recover]', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

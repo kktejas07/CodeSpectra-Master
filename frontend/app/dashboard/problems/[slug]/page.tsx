@@ -1,15 +1,17 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Loader2, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Play, Send, Sparkles, XCircle, Sun, Moon, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useToast } from '@/lib/toast-context'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
@@ -17,6 +19,11 @@ import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { AnalysisPanel } from '@/components/ai/analysis-panel'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { Illustration } from '@/components/illustrations/spot'
+import { UnlockPackButton } from '../unlock-pack-button'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -99,6 +106,9 @@ const TOP_LANGUAGES = [
 ]
 
 export default function ProblemDetailPage() {
+  const apiError = useApiError()
+  const { formatDateTime } = useLocaleDates()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const addToast = useToast()
@@ -108,6 +118,8 @@ export default function ProblemDetailPage() {
   const slug = params?.slug ?? ''
   const [problem, setProblem] = useState<Problem | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [packLock, setPackLock] = useState<{ title: string; message: string; pack: { id: string; name: string } | null } | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [bookmarked, setBookmarked] = useState(false)
 
   const [language, setLanguage] = useState<string>('python')
@@ -159,6 +171,15 @@ export default function ProblemDetailPage() {
   sourceRef.current = source
 
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false)
+  const [sampleIdx, setSampleIdx] = useState(0)
+  const [outputExpanded, setOutputExpanded] = useState(false)
+  const [editorExpanded, setEditorExpanded] = useState(false)
+  const [customInput, setCustomInput] = useState('')
+  const [customRunning, setCustomRunning] = useState(false)
+  const [customOutput, setCustomOutput] = useState<{ stdout: string; stderr: string } | null>(null)
+  const [customError, setCustomError] = useState<string | null>(null)
+  const feedbackRef = useFocusTrap<HTMLDivElement>(feedbackOpen, () => setFeedbackOpen(false))
+  const mentorRef = useFocusTrap<HTMLDivElement>(aiMentorOpen, () => setAiMentorOpen(false))
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false)
   const [isDark, setIsDark] = useState(true)
   useEffect(() => {
@@ -175,7 +196,12 @@ export default function ProblemDetailPage() {
       try {
         const res = await fetch(`/api/problems/${slug}`, { cache: 'no-store' })
         const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'Failed to load problem')
+        if (res.status === 402 && json.code === 'pack_locked') {
+          setPackLock({ title: json.problem?.title || tr('practice.lockedProblem'), message: json.error || '', pack: json.pack || null })
+          return
+        }
+        setPackLock(null)
+        if (!res.ok) throw new Error(apiError(json, tr('practice.failedToLoadProblem')))
         const p = json as Problem
         setProblem(p)
         const initialLang = TOP_LANGUAGES.find((l) => p.starter_code?.[l.id])?.id || 'python'
@@ -185,7 +211,7 @@ export default function ProblemDetailPage() {
         setLoadError(e instanceof Error ? e.message : String(e))
       }
     })()
-  }, [slug])
+  }, [slug, reloadKey])
 
   useEffect(() => {
     if (!problem) return
@@ -232,9 +258,9 @@ export default function ProblemDetailPage() {
       }
       setFeedbackOpen(false)
       setFeedbackContent('')
-      addToast({ type: 'success', title: 'Thank you for your feedback!' })
+      addToast({ type: 'success', title: tr('practice.thankYouForYourFeedback') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Failed to submit feedback', message: e instanceof Error ? e.message : undefined })
+      addToast({ type: 'error', title: tr('practice.failedToSubmitFeedback'), message: e instanceof Error ? e.message : undefined })
     }
     setFeedbackSubmitting(false)
   }
@@ -278,7 +304,7 @@ export default function ProblemDetailPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `You are a coding mentor. Help the student with this problem: ${problem.title}\n\nProblem description: ${problem.statement_md}\n\nStudent question: ${aiMentorMessage}\n\nProvide a helpful, educational response. Don't give the full solution directly - guide them to think through it.`,
+          message: tr('practice.youAreACodingMentorHelp3a8', { title: problem.title, statement_md: problem.statement_md, aiMentorMessage }),
         }),
       })
       const data = await res.json()
@@ -352,20 +378,20 @@ export default function ProblemDetailPage() {
       const problemDetailTour: TourStep[] = [
         {
           target: '[data-tour="problem-detail-header"]',
-          title: 'Problem at a glance',
-          description: 'Title, difficulty, and quick actions live in this header.',
+          title: tr('practice.problemAtAGlance'),
+          description: tr('practice.titleDifficultyAndQuickActionsLive30d'),
           position: 'bottom',
         },
         {
           target: '[data-tour="problem-detail-actions"]',
-          title: 'Run then submit',
-          description: 'Compile against sample tests first, then submit for full judging.',
+          title: tr('practice.runThenSubmit'),
+          description: tr('practice.compileAgainstSampleTestsFirstThenca2'),
           position: 'top',
         },
         {
           target: '[data-tour="problem-detail-statement"]',
-          title: 'Read and solve',
-          description: 'Study the statement and samples here while you code on the right.',
+          title: tr('practice.readAndSolve'),
+          description: tr('practice.studyTheStatementAndSamplesHeree95'),
           position: 'right',
         },
       ]
@@ -382,6 +408,30 @@ export default function ProblemDetailPage() {
     }
     setResult(null)
     setAnalysis(null)
+  }
+
+  async function runCustom() {
+    if (!sourceRef.current.trim()) {
+      setCustomError(tr('practice.writeSomeCodeFirst'))
+      return
+    }
+    setCustomRunning(true)
+    setCustomError(null)
+    setCustomOutput(null)
+    try {
+      const res = await csrfFetch('/api/execute-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language, source: sourceRef.current, stdin: customInput }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { error?: string; result?: { run?: { stdout?: string; stderr?: string }; compile?: { stderr?: string } } }
+      if (!res.ok || !j.result) throw new Error(j.error || (res.status === 429 ? tr('practice.tooManyRunsWaitAMoment3aa') : tr('practice.couldntRunYourCode')))
+      setCustomOutput({ stdout: j.result.run?.stdout ?? '', stderr: j.result.compile?.stderr || j.result.run?.stderr || '' })
+    } catch (e) {
+      setCustomError(e instanceof Error ? e.message : tr('practice.couldntRunYourCode'))
+    } finally {
+      setCustomRunning(false)
+    }
   }
 
   async function execute(mode: 'run' | 'submit') {
@@ -401,7 +451,7 @@ export default function ProblemDetailPage() {
         }),
       })
       const json = (await res.json()) as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(json.error || (res.status === 429 ? tr('practice.tooManyRequestsWaitAMoment928') : tr('practice.somethingWentWrongStatusPleaseTryb1e', { status: res.status })))
       setResult(json)
       if (mode === 'submit') {
         setAnalysisLoading(true)
@@ -435,23 +485,62 @@ export default function ProblemDetailPage() {
   const difficultyTone = useMemo(() => {
     if (!problem) return ''
     return problem.difficulty === 'easy'
-      ? 'text-green-600 bg-green-500/10'
+      ? 'text-green-700 dark:text-green-400 bg-green-500/10'
       : problem.difficulty === 'medium'
-        ? 'text-orange-500 bg-orange-500/10'
-        : 'text-red-500 bg-red-500/10'
+        ? 'text-orange-700 dark:text-orange-400 bg-orange-500/10'
+        : 'text-red-700 dark:text-red-400 bg-red-500/10'
   }, [problem])
 
+  // Keyboard shortcuts listed in the information panel. Capture phase so they
+  // work inside Monaco too (it would otherwise swallow Ctrl+Enter).
+  const executeRef = useRef<(mode: 'run' | 'submit') => void>(() => {})
+  executeRef.current = (mode) => { if (running === null) void execute(mode) }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        executeRef.current(e.shiftKey ? 'submit' : 'run')
+      } else if (e.shiftKey && (e.key === 'H' || e.key === 'h')) {
+        e.preventDefault()
+        setIsInfoPanelOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+
   if (!gate.ready) return null
+
+  if (packLock) {
+    return (
+      <div className="flex items-center justify-center p-6 py-20">
+        <div className="max-w-md space-y-3 rounded-3xl border border-border/70 bg-card p-6 text-center">
+          <Illustration name="locked" className="mx-auto w-36" />
+          <h1 className="text-lg font-semibold text-foreground">{packLock.title}</h1>
+          <p className="text-sm text-muted-foreground">{packLock.message}</p>
+          {packLock.pack ? (
+            <UnlockPackButton pack={packLock.pack} size="default" className="gap-2" onUnlocked={() => setReloadKey((k) => k + 1)} />
+          ) : null}
+          <Link href="/dashboard/problems" className="flex items-center justify-center gap-1 text-sm text-primary">
+            <ArrowLeft className="h-4 w-4" aria-hidden />{' '}{tr('practice.backToProblems')}</Link>
+        </div>
+      </div>
+    )
+  }
 
   if (loadError) {
     return (
       <div className="flex items-center justify-center p-6 py-20">
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6">
-          <h2 className="font-semibold text-destructive mb-1">Could not load problem</h2>
+        <div className="rounded-3xl border border-destructive/40 bg-destructive/10 p-6">
+          <h2 className="text-lg font-semibold text-destructive mb-1">{tr('practice.couldNotLoadProblem')}</h2>
           <p className="text-sm text-muted-foreground">{loadError}</p>
-          <Link href="/dashboard/problems" className="inline-flex items-center gap-1 text-primary mt-3 text-sm">
-            <ArrowLeft className="h-4 w-4" /> Back to problems
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button size="sm" variant="outline" onClick={() => { setLoadError(null); setReloadKey((k) => k + 1) }}>{tr('common.tryAgain')}</Button>
+            <Link href="/dashboard/problems" className="inline-flex items-center gap-1 text-primary text-sm">
+              <ArrowLeft className="h-4 w-4" aria-hidden />{' '}{tr('practice.backToProblems')}</Link>
+          </div>
         </div>
       </div>
     )
@@ -484,55 +573,54 @@ export default function ProblemDetailPage() {
     )
   }
 
+  const samples = problem.test_cases.filter((t) => t.is_sample)
+  const activeSample = samples[sampleIdx] ?? samples[0] ?? problem.test_cases[0]
+
   // Header secondary actions — inline on md+ screens, inside the collapsible menu below md.
   const headerSecondaryActions = (
     <>
-      <button onClick={() => { setFeedbackType('feature'); setFeedbackOpen(true) }} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Request a Feature</button>
+      <button onClick={() => { setFeedbackType('feature'); setFeedbackOpen(true) }} className="text-xs font-semibold text-muted-foreground hover:text-foreground">{tr('practice.requestAFeature')}</button>
       <div className="flex items-center gap-1">
-        <button onClick={() => { setFeedbackType('bug'); setFeedbackOpen(true) }} aria-label="Report bug" className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
+        <button onClick={() => { setFeedbackType('bug'); setFeedbackOpen(true) }} aria-label={tr('practice.reportBug')} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
           <Bug className="h-4 w-4" />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Report Bug</div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">{tr('practice.reportBug')}</div>
         </button>
-        <button onClick={() => { setFeedbackType('suggestion'); setFeedbackOpen(true) }} aria-label="Suggest idea" className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
+        <button onClick={() => { setFeedbackType('suggestion'); setFeedbackOpen(true) }} aria-label={tr('practice.suggestIdea')} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
           <Lightbulb className="h-4 w-4" />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Suggest Idea</div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">{tr('practice.suggestIdea')}</div>
         </button>
       </div>
 
       <div className="flex bg-muted rounded-full p-1 border border-border/50">
-        <button onClick={() => setIsDark(false)} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${!isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+        <button onClick={() => setIsDark(false)} aria-label={tr('practice.lightEditorTheme')} aria-pressed={!isDark} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${!isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
           <Sun className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => setIsDark(true)} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+        <button onClick={() => setIsDark(true)} aria-label={tr('practice.darkEditorTheme')} aria-pressed={isDark} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
           <Moon className="h-3.5 w-3.5" />
         </button>
       </div>
 
-       <button onClick={() => setIsInfoPanelOpen(true)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+       <button onClick={() => setIsInfoPanelOpen(true)} aria-label={tr('practice.keyboardShortcutsAndHelp')} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
          <HelpCircle className="h-4 w-4" />
        </button>
 
        {/* AI Mentor Button */}
-       <button onClick={() => setAiMentorOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md hover:from-purple-600 hover:to-blue-600 transition-colors">
-         <Sparkles className="h-3.5 w-3.5" />
-         Ask AI
-       </button>
+       <button onClick={() => setAiMentorOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+         <Sparkles className="h-3.5 w-3.5" />{tr('practice.askAi')}</button>
 
        {/* Functional Timer */}
        <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-muted/50 px-3 py-1.5 rounded-md border border-border/50">
-         <Timer className="h-4 w-4 text-blue-500" />
-         <span className="text-foreground">{formatTimer(timerSeconds)}</span>
-         <button onClick={timerRunning ? stopTimer : startTimer} className="ml-1 p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
+         <AnimatedIcon name="clock" className="text-primary" hover={false} trigger={timerRunning} />
+         <span className="text-foreground tabular-nums">{formatTimer(timerSeconds)}</span>
+         <button onClick={timerRunning ? stopTimer : startTimer} aria-label={timerRunning ? tr('practice.pauseTimer') : tr('practice.startTimer')} className="ml-1 p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
            {timerRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
          </button>
-         <button onClick={resetTimer} className="p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
-           <RotateCcw className="h-3 w-3" />
+         <button onClick={resetTimer} aria-label={tr('practice.resetTimer')} className="p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
+           <AnimatedIcon name="refresh" size={12} />
          </button>
        </div>
 
-      <Button variant="outline" size="sm" className="rounded-md border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" onClick={() => router.push('/dashboard/problems')}>
-        Exit
-      </Button>
+      <Button variant="outline" size="sm" className="rounded-md border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" onClick={() => router.push('/dashboard/problems')}>{tr('practice.exit')}</Button>
     </>
   )
   return (
@@ -540,16 +628,16 @@ export default function ProblemDetailPage() {
       <ProctorMonitor sessionKind="problem" sessionId={problem.slug} captureInterval={30000} blockKeyboardShortcuts lockdownBrowser detectFace />
 
       {/* Top Header */}
-      <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-card shrink-0" data-tour="problem-detail-header">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard/problems')} className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground">
+      <header className="flex items-center justify-between gap-2 px-4 h-14 border-b border-border bg-card shrink-0" data-tour="problem-detail-header">
+        <div className="flex min-w-0 items-center gap-3">
+          <button onClick={() => router.push('/dashboard/problems')} aria-label={tr('practice.backToProblems')} className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground">
              <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="font-bold text-foreground">{problem.title}</div>
-          <button
+          <h1 className="min-w-0 truncate font-bold text-foreground text-base" title={problem.title}>{problem.title}</h1>
+          <button aria-label={tr('practice.toggleBookmark')}
             type="button"
             className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            title={bookmarked ? 'Remove bookmark' : 'Bookmark question'}
+            title={bookmarked ? tr('practice.removeBookmark') : tr('practice.bookmarkQuestion')}
             onClick={() => {
               const next = !bookmarked
               setBookmarked(next)
@@ -580,7 +668,7 @@ export default function ProblemDetailPage() {
         <button
           type="button"
           onClick={() => setHeaderMenuOpen((v) => !v)}
-          aria-label="More actions"
+          aria-label={tr('practice.moreActions')}
           aria-expanded={headerMenuOpen}
           className="flex min-h-10 min-w-10 items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
         >
@@ -599,12 +687,12 @@ export default function ProblemDetailPage() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         
         {/* LEFT PANE */}
-        <section className="lg:w-[45%] flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0" data-tour="problem-detail-statement">
+        <section className={`lg:w-[45%] flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0 ${editorExpanded ? 'hidden' : ''}`} data-tour="problem-detail-statement">
            {/* Tabs */}
            <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
-              <button onClick={() => setLeftTab('problem')} className={`pb-2 text-sm font-bold border-b-2 transition-colors ${leftTab === 'problem' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Problem</button>
-              <button onClick={() => setLeftTab('solution')} className={`pb-2 text-sm font-bold border-b-2 transition-colors ${leftTab === 'solution' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Solution</button>
-              <button onClick={() => setLeftTab('submissions')} className={`pb-2 text-sm font-bold border-b-2 transition-colors ${leftTab === 'submissions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Submissions</button>
+              <button onClick={() => setLeftTab('problem')} className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${leftTab === 'problem' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{tr('practice.problem')}</button>
+              <button onClick={() => setLeftTab('solution')} className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${leftTab === 'solution' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{tr('practice.solution')}</button>
+              <button onClick={() => setLeftTab('submissions')} className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${leftTab === 'submissions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{tr('practice.submissions')}</button>
            </div>
            
            {/* Tab Content */}
@@ -613,7 +701,6 @@ export default function ProblemDetailPage() {
                 <>
                   <div className="flex items-center gap-3 mb-4">
                      <span className={`text-xs font-bold px-2 py-0.5 rounded capitalize ${difficultyTone}`}>{problem.difficulty}</span>
-                     <div className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5"><Sparkles className="h-3 w-3 text-blue-500"/> 120 Points</div>
                   </div>
                   
                   <div className="prose prose-sm dark:prose-invert max-w-none mb-8 text-foreground/90">
@@ -622,20 +709,19 @@ export default function ProblemDetailPage() {
 
                   {problem.test_cases.length > 0 && (
                     <div className="space-y-4 mb-8">
-                       <h3 className="font-bold text-foreground">Sample Testcases</h3>
+                       <h3 className="text-base font-semibold text-foreground">{tr('practice.sampleTestCases')}</h3>
                        {problem.test_cases.filter(t => t.is_sample).map((t, i) => (
                          <div key={t.id} className="rounded-xl border border-border overflow-hidden bg-card/40">
-                            <div className="bg-muted/40 px-4 py-2 border-b border-border flex justify-between items-center text-sm font-semibold">
-                               Testcase {i+1}
+                            <div className="bg-muted/40 px-4 py-2 border-b border-border flex justify-between items-center text-sm font-semibold">{tr('practice.testCase')}{' '}{i+1}
                             </div>
                             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4">
                                <div className="sm:pr-2">
-                                  <div className="text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Input</div>
-                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.stdin}</pre>
+                                  <div className="text-xs text-muted-foreground mb-1.5 font-semibold">{tr('practice.input2')}</div>
+                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-lg border border-border/50">{t.stdin}</pre>
                                </div>
                                <div className="sm:pl-4">
-                                  <div className="text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Output</div>
-                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.expected_stdout}</pre>
+                                  <div className="text-xs text-muted-foreground mb-1.5 font-semibold">{tr('practice.output2')}</div>
+                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-lg border border-border/50">{t.expected_stdout}</pre>
                                </div>
                             </div>
                          </div>
@@ -646,19 +732,17 @@ export default function ProblemDetailPage() {
                   {/* Accordions */}
                   <div className="space-y-2 border-t border-border pt-4">
                      <details className="group border border-border rounded-lg bg-card overflow-hidden">
-                        <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">
-                           Companies <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
+                        <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">{tr('practice.companies')}{' '}<ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
                         </summary>
                         <div className="p-3 pt-0 text-sm text-muted-foreground border-t border-border bg-muted/10">
                            <div className="flex gap-2 mt-2">
-                              <span className="px-2 py-1 rounded bg-background border text-xs font-semibold">TCS</span>
-                              <span className="px-2 py-1 rounded bg-background border text-xs font-semibold">Wipro</span>
+                              <span className="px-2 py-1 rounded bg-background border text-xs font-semibold">{tr('practice.tcs')}</span>
+                              <span className="px-2 py-1 rounded bg-background border text-xs font-semibold">{tr('practice.wipro')}</span>
                            </div>
                         </div>
                      </details>
                      <details className="group border border-border rounded-lg bg-card overflow-hidden">
-                        <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">
-                           Topics <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
+                        <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">{tr('practice.topics')}{' '}<ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
                         </summary>
                         <div className="p-3 pt-0 text-sm text-muted-foreground border-t border-border bg-muted/10">
                            <div className="flex gap-2 flex-wrap mt-2">
@@ -669,12 +753,11 @@ export default function ProblemDetailPage() {
                         </div>
                      </details>
                       <details className="group border border-border rounded-lg bg-card overflow-hidden">
-                         <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">
-                            Discussion Channel <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
+                         <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">{tr('practice.discussionChannel')}{' '}<ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
                          </summary>
                          <div className="p-3 border-t border-border bg-muted/10 h-80 overflow-y-auto">
                             {discussionsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 
-                             discussions.length === 0 ? <p className="text-xs text-muted-foreground">No discussions yet. Be the first to start a discussion!</p> :
+                             discussions.length === 0 ? <p className="text-xs text-muted-foreground">{tr('practice.noDiscussionsYetBeTheFirst375')}</p> :
                              discussions.map(d => (
                                <div key={d.id} className="mb-3 border-b border-border pb-2 last:border-0">
                                   <div className="font-bold text-xs text-foreground flex items-center gap-2"><UserAvatar seed={d.user_name} name={d.user_name} className="h-5 w-5" fallbackClassName="text-[8px]" /> {d.user_name}</div>
@@ -688,7 +771,8 @@ export default function ProblemDetailPage() {
                               <textarea
                                 value={newDiscussion}
                                 onChange={(e) => setNewDiscussion(e.target.value)}
-                                placeholder="Start a discussion..."
+                                aria-label={tr('practice.startADiscussion')}
+                                placeholder={tr('practice.startADiscussion2')}
                                 className="w-full h-16 p-2 text-xs rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                               />
                               <Button 
@@ -697,9 +781,7 @@ export default function ProblemDetailPage() {
                                 onClick={postDiscussion}
                                 disabled={!newDiscussion.trim() || postingDiscussion}
                               >
-                                {postingDiscussion ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MessageSquare className="h-3 w-3 mr-1" />}
-                                Post
-                              </Button>
+                                {postingDiscussion ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MessageSquare className="h-3 w-3 mr-1" />}{tr('practice.post')}</Button>
                             </div>
                          </div>
                       </details>
@@ -711,8 +793,8 @@ export default function ProblemDetailPage() {
                 <div className="flex flex-col items-center justify-center h-full text-center space-y-3 opacity-60">
                    <Code2 className="h-10 w-10 text-muted-foreground" />
                    <div>
-                     <p className="font-bold">Official Solution Locked</p>
-                     <p className="text-xs text-muted-foreground">Solve the problem first to view the official solution.</p>
+                     <p className="font-bold">{tr('practice.officialSolutionLocked')}</p>
+                     <p className="text-xs text-muted-foreground">{tr('practice.solveTheProblemFirstToViewe83')}</p>
                    </div>
                 </div>
              )}
@@ -720,10 +802,10 @@ export default function ProblemDetailPage() {
              {leftTab === 'submissions' && (
                 <div>
                    {submissionsLoading ? <Loader2 className="h-5 w-5 animate-spin mt-10" /> :
-                    submissionsList.length === 0 ? <p className="text-sm text-center text-muted-foreground mt-10">No submissions yet.</p> :
+                    submissionsList.length === 0 ? <p className="text-sm text-center text-muted-foreground mt-10">{tr('practice.noSubmissionsYet')}</p> :
                     <div className="space-y-2">
                        {submissionsList.map(s => (
-                         <div key={s.id} className={`p-3 rounded-md border text-sm flex justify-between items-center ${s.status === 'accepted' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                         <div key={s.id} className={`p-3 rounded-xl border text-sm flex justify-between items-center ${s.status === 'accepted' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
                             <div className="flex flex-col gap-1">
                                <div className={`font-bold flex items-center gap-1.5 ${s.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                  {s.status === 'accepted' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
@@ -753,6 +835,7 @@ export default function ProblemDetailPage() {
                <select
                  value={language}
                  onChange={(e) => onChangeLanguage(e.target.value)}
+                 aria-label={tr('common.language')}
                  className="bg-muted border border-border/50 rounded-md px-3 h-8 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
                >
                  {TOP_LANGUAGES.map((l) => (
@@ -761,7 +844,7 @@ export default function ProblemDetailPage() {
                </select>
              </div>
              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Maximize2 className="h-4 w-4" /></Button>
+                <Button aria-label={editorExpanded ? tr('practice.showProblemStatement') : tr('practice.expandEditor')} aria-pressed={editorExpanded} onClick={() => setEditorExpanded((v) => !v)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><AnimatedIcon name={editorExpanded ? 'full-screen-exit' : 'full-screen'} /></Button>
              </div>
            </div>
 
@@ -786,17 +869,17 @@ export default function ProblemDetailPage() {
            </div>
 
            {/* Console / Output Panel */}
-           <div className="border-t border-border bg-card flex flex-col shrink-0 min-h-55">
+           <div className={`border-t border-border bg-card flex flex-col shrink-0 ${outputExpanded ? 'h-[60vh]' : 'min-h-55'}`}>
               
               <div className="flex items-center justify-between border-b border-border/50 px-2 bg-muted/20">
                  <div className="flex gap-1 pt-1">
-                    <button onClick={() => setRightBottomTab('test')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'test' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Test</button>
-                    <button onClick={() => setRightBottomTab('custom')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'custom' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Custom Test</button>
-                    <button onClick={() => setRightBottomTab('results')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'results' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Results</button>
-                    <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" /> AI Analysis</button>
+                    <button onClick={() => setRightBottomTab('test')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'test' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>{tr('practice.test')}</button>
+                    <button onClick={() => setRightBottomTab('custom')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'custom' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>{tr('practice.customTest')}</button>
+                    <button onClick={() => setRightBottomTab('results')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'results' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>{tr('practice.results')}</button>
+                    <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" />{' '}{tr('practice.aiAnalysis')}</button>
                  </div>
                  <div className="flex items-center text-muted-foreground gap-2 pr-2">
-                    <button className="p-1 hover:bg-muted rounded"><Maximize2 className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label={outputExpanded ? tr('practice.shrinkPanel') : tr('practice.expandPanel')} aria-pressed={outputExpanded} onClick={() => setOutputExpanded((v) => !v)} className="p-1 hover:bg-muted rounded"><AnimatedIcon name={outputExpanded ? 'full-screen-exit' : 'full-screen'} size={14} /></button>
                  </div>
               </div>
 
@@ -804,22 +887,49 @@ export default function ProblemDetailPage() {
                  {rightBottomTab === 'test' && (
                     <div className="space-y-4">
                        <div className="flex gap-2">
-                         {problem.test_cases.filter(t => t.is_sample).map((t, i) => (
-                            <button key={t.id} className="px-3 py-1.5 rounded bg-muted text-xs font-semibold hover:bg-muted/80 transition-colors">
-                               Testcase {i+1}
+                         {samples.map((t, i) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              aria-pressed={i === sampleIdx}
+                              onClick={() => setSampleIdx(i)}
+                              className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${i === sampleIdx ? 'bg-primary/10 text-primary' : 'bg-muted hover:bg-muted/80'}`}
+                            >{tr('practice.testCase')}{' '}{i+1}
                             </button>
                          ))}
                        </div>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-muted/10 p-4 rounded-xl border border-border/50">
                           <div>
-                            <h4 className="text-xs uppercase font-bold text-muted-foreground mb-2">Input</h4>
-                            <pre className="text-sm font-mono text-foreground">{problem.test_cases[0]?.stdin}</pre>
+                            <h4 className="text-xs font-semibold text-muted-foreground mb-2">{tr('practice.input2')}</h4>
+                            <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">{activeSample?.stdin}</pre>
                           </div>
                           <div>
-                            <h4 className="text-xs uppercase font-bold text-muted-foreground mb-2">Expected Output</h4>
-                            <pre className="text-sm font-mono text-foreground">{problem.test_cases[0]?.expected_stdout}</pre>
+                            <h4 className="text-xs font-semibold text-muted-foreground mb-2">{tr('practice.expectedOutput')}</h4>
+                            <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">{activeSample?.expected_stdout}</pre>
                           </div>
                        </div>
+                    </div>
+                 )}
+                 {rightBottomTab === 'custom' && (
+                    <div className="space-y-3">
+                       <label htmlFor="custom-stdin" className="text-xs font-semibold text-muted-foreground">{tr('practice.yourInputStdin')}</label>
+                       <textarea
+                         id="custom-stdin"
+                         value={customInput}
+                         onChange={(e) => setCustomInput(e.target.value)}
+                         rows={4}
+                         className="w-full rounded-lg border border-input bg-background p-3 font-mono text-sm"
+                       />
+                       <Button type="button" size="sm" variant="outline" onClick={() => void runCustom()} disabled={customRunning}>
+                         {customRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden /> : <Play className="h-4 w-4 mr-2 text-primary" aria-hidden />}{tr('practice.runWithThisInput')}</Button>
+                       {customError ? <p role="alert" className="text-sm text-destructive">{customError}</p> : null}
+                       {customOutput ? (
+                         <div className="space-y-2">
+                           <h4 className="text-xs font-semibold text-muted-foreground">{tr('practice.output2')}</h4>
+                           <pre className="text-sm font-mono whitespace-pre-wrap break-all rounded-lg border border-border/50 bg-muted/20 p-2 text-foreground">{customOutput.stdout || '(no output)'}</pre>
+                           {customOutput.stderr ? <pre className="text-sm font-mono whitespace-pre-wrap break-all rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-destructive">{customOutput.stderr}</pre> : null}
+                         </div>
+                       ) : null}
                     </div>
                  )}
                  {rightBottomTab === 'results' && (
@@ -837,17 +947,13 @@ export default function ProblemDetailPage() {
                    disabled={running !== null}
                    className="font-bold border-border/80 h-9"
                  >
-                   {running === 'run' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2 text-primary" />}
-                   Save & Compile
-                 </Button>
+                   {running === 'run' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2 text-primary" />}{tr('practice.saveAndRun')}</Button>
                  <Button 
                    onClick={() => execute('submit')}
                    disabled={running !== null}
-                   className="font-bold h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                   className="font-semibold h-9"
                  >
-                   {running === 'submit' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                   Submit Code
-                 </Button>
+                   {running === 'submit' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}{tr('practice.submitCode')}</Button>
               </div>
 
            </div>
@@ -860,29 +966,26 @@ export default function ProblemDetailPage() {
         {isInfoPanelOpen && (
            <div className="relative z-40 lg:z-auto w-full sm:w-[320px] lg:w-100 border-l border-border bg-card flex flex-col shrink-0 animate-in slide-in-from-right">
               <div className="flex items-center justify-between px-4 py-4 border-b border-border/50">
-                 <h2 className="font-bold text-foreground">Information</h2>
-                 <button onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
+                 <h2 className="text-lg font-semibold text-foreground">{tr('practice.information')}</h2>
+                 <button aria-label={tr('practice.closeInformationPanel')} onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
               </div>
-              <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
-                 <button className="pb-2 text-sm font-bold border-b-2 border-primary text-primary">Shortcuts Guide</button>
-                 <button className="pb-2 text-sm font-bold border-b-2 border-transparent text-muted-foreground hover:text-foreground">Execution Environment</button>
+              <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0">
+                 <h3 className="pb-2 text-sm font-semibold border-b-2 border-primary text-primary">{tr('practice.keyboardShortcuts')}</h3>
               </div>
               <div className="p-4 overflow-y-auto">
-                 <p className="text-xs font-semibold text-muted-foreground mb-4 leading-relaxed">
-                   The options below will help you explore keyboard shortcuts. Master these keyboard shortcuts to navigate seamlessly and enhance your productivity throughout your workflow.
-                 </p>
+                 <p className="text-xs font-semibold text-muted-foreground mb-4 leading-relaxed">{tr('practice.useTheseShortcutsAnywhereOnThis626')}</p>
                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">1. Run / Save & Compile Code:</span>
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
+                       <span className="text-xs font-semibold text-muted-foreground">{tr('practice.saveAndRun')}</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Enter</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">2. Submit Code:</span>
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
+                       <span className="text-xs font-semibold text-muted-foreground">{tr('practice.submitCode')}</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Shift + Enter</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">3. Open Shortcut Help Modal:</span>
-                       <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + shift + H</kbd>
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
+                       <span className="text-xs font-semibold text-muted-foreground">{tr('practice.showOrHideThisPanel')}</span>
+                       <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Shift + H</kbd>
                     </div>
                  </div>
               </div>
@@ -892,20 +995,21 @@ export default function ProblemDetailPage() {
           {/* Feedback Modal */}
           {feedbackOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
-              <div className="bg-background rounded-xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-bold mb-4">
-                  {feedbackType === 'bug' ? 'Report Bug' : feedbackType === 'feature' ? 'Request Feature' : 'Suggest Idea'}
+              <div ref={feedbackRef} role="dialog" aria-modal="true" aria-labelledby="problem-feedback-title" className="bg-background rounded-3xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+                <h3 id="problem-feedback-title" className="text-lg font-semibold mb-4">
+                  {feedbackType === 'bug' ? tr('practice.reportABug') : feedbackType === 'feature' ? tr('practice.requestAFeature') : tr('practice.suggestAnIdea')}
                 </h3>
                 <textarea
                   value={feedbackContent}
                   onChange={(e) => setFeedbackContent(e.target.value)}
-                  placeholder="Describe your feedback..."
+                  aria-label={tr('practice.yourFeedback')}
+                  placeholder={tr('practice.describeYourFeedback')}
                   className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background resize-none"
                 />
                 <div className="flex justify-end gap-2 mt-4">
-                  <Button variant="outline" size="sm" onClick={() => setFeedbackOpen(false)}>Cancel</Button>
+                  <Button variant="outline" size="sm" onClick={() => setFeedbackOpen(false)}>{tr('common.cancel')}</Button>
                   <Button size="sm" onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackContent.trim()}>
-                    {feedbackSubmitting ? 'Submitting...' : 'Submit'}
+                    {feedbackSubmitting ? 'Submitting...' : tr('common.submit')}
                   </Button>
                 </div>
               </div>
@@ -915,14 +1019,12 @@ export default function ProblemDetailPage() {
           {/* AI Mentor Modal */}
           {aiMentorOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAiMentorOpen(false)}>
-              <div className="bg-background rounded-xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div ref={mentorRef} role="dialog" aria-modal="true" aria-labelledby="problem-mentor-title" className="bg-background rounded-3xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="h-5 w-5 text-purple-500" />
-                  <h3 className="text-lg font-bold">AI Mentor</h3>
+                  <Sparkles className="h-5 w-5 text-primary" aria-hidden />
+                  <h3 id="problem-mentor-title" className="text-lg font-semibold">{tr('practice.aiMentor')}</h3>
                 </div>
-                <p className="text-xs text-muted-foreground mb-4">
-                  Ask questions about the problem. The AI will guide you without giving the full solution.
-                </p>
+                <p className="text-xs text-muted-foreground mb-4">{tr('practice.askQuestionsAboutTheProblemThe6ce')}</p>
                 <div className="flex-1 overflow-y-auto mb-4 p-3 bg-muted/30 rounded-lg min-h-[100px]">
                   {aiMentorResponse ? (
                     <p className="text-sm whitespace-pre-wrap">{aiMentorResponse}</p>
@@ -931,7 +1033,7 @@ export default function ProblemDetailPage() {
                       <Loader2 className="h-4 w-4 animate-spin" /> Thinking...
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground italic">Ask me anything about this problem...</p>
+                    <p className="text-sm text-muted-foreground italic">{tr('practice.askMeAnythingAboutThisProblem')}</p>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -939,15 +1041,16 @@ export default function ProblemDetailPage() {
                     type="text"
                     value={aiMentorMessage}
                     onChange={(e) => setAiMentorMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && askAiMentor()}
-                    placeholder="e.g. How should I approach this problem?"
+                    aria-label={tr('practice.askTheAiMentor')}
+                    onKeyDown={(e) => isSubmitEnter(e) && askAiMentor()}
+                    placeholder={tr('practice.eGHowShouldIApproache96')}
                     className="flex-1 p-2 text-sm rounded-lg border border-input bg-background"
                   />
-                  <Button size="sm" onClick={askAiMentor} disabled={aiMentorLoading || !aiMentorMessage.trim()}>
+                  <Button aria-label={tr('practice.askTheAiMentor')} size="sm" onClick={askAiMentor} disabled={aiMentorLoading || !aiMentorMessage.trim()}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-                <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAiMentorOpen(false)}>Close</Button>
+                <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAiMentorOpen(false)}>{tr('common.close')}</Button>
               </div>
             </div>
           )}
@@ -970,24 +1073,25 @@ function Markdownish({ text }: { text: string }) {
 }
 
 function ResultsPanel({ result, running }: { result: RunResponse | null, running: boolean }) {
-  if (running) return <div className="flex items-center gap-2 text-sm text-muted-foreground p-4"><Loader2 className="h-4 w-4 animate-spin" /> Compiling and testing...</div>
-  if (!result) return <p className="text-sm text-muted-foreground p-4 text-center">Click <strong>Save & Compile</strong> to run your code against sample test cases.</p>
+  const { t } = useT()
+  if (running) return <div className="flex items-center gap-2 text-sm text-muted-foreground p-4"><Loader2 className="h-4 w-4 animate-spin" />{' '}{t('practice.compilingAndTesting')}</div>
+  if (!result) return <p className="text-sm text-muted-foreground p-4 text-center">{t('practice.click')}{' '}<strong>{t('practice.saveAndRun')}</strong>{' '}{t('practice.toRunYourCodeAgainstSampleb93')}</p>
   
   const ok = result.status === 'accepted'
   return (
     <div className="space-y-4">
       <div className={`p-4 rounded-xl border ${ok ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'} flex items-center justify-between`}>
          <div className="flex items-center gap-3">
-            {ok ? <CheckCircle2 className="h-6 w-6 text-green-500" /> : <XCircle className="h-6 w-6 text-red-500" />}
+            {ok ? <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" /> : <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />}
             <div>
-               <div className={`font-bold text-lg ${ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{ok ? 'Accepted' : 'Failed'}</div>
-               <div className="text-xs text-muted-foreground font-semibold">Passed {result.passed_tests}/{result.total_tests} test cases</div>
+               <div className={`font-bold text-lg ${ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{ok ? t('practice.accepted') : t('practice.failed')}</div>
+               <div className="text-xs text-muted-foreground font-semibold">{t('practice.passedPassedTestsTotalTestsTest7de', { passed_tests: result.passed_tests, total_tests: result.total_tests })}</div>
             </div>
          </div>
          {result.score != null && (
             <div className="text-right">
-               <div className="text-2xl font-black text-foreground">{result.score}%</div>
-               <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Score</div>
+               <div className="text-2xl font-black tabular-nums text-foreground">{result.score}%</div>
+               <div className="text-xs font-semibold text-muted-foreground">{t('practice.score')}</div>
             </div>
          )}
       </div>
@@ -998,19 +1102,18 @@ function ResultsPanel({ result, running }: { result: RunResponse | null, running
              <div key={r.test_id} className={`rounded-xl border ${r.passed ? 'border-border/50 bg-card/40' : 'border-red-500/30 bg-red-500/5'}`}>
                 <div className="px-4 py-3 flex items-center justify-between border-b border-border/40">
                    <div className="flex items-center gap-2 font-bold text-sm">
-                      {r.passed ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                      Testcase {i+1} {r.is_sample && <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] uppercase font-bold ml-1 text-muted-foreground">Sample</span>}
+                      {r.passed ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}{t('practice.testCase')}{' '}{i+1} {r.is_sample && <span className="px-1.5 py-0.5 rounded bg-muted text-[11px] font-semibold ml-1 text-muted-foreground">{t('practice.sample')}</span>}
                    </div>
-                   <div className="text-xs font-mono text-muted-foreground">{r.time_ms ?? '—'}ms</div>
+                   <div className="text-xs font-mono tabular-nums text-muted-foreground">{r.time_ms ?? '—'}ms</div>
                 </div>
                 {!r.passed && (
                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                         <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Your Output</div>
+                         <div className="text-xs font-semibold text-muted-foreground mb-1">{t('practice.yourOutput')}</div>
                          <pre className="text-sm font-mono bg-red-500/10 text-red-700 dark:text-red-400 p-2 rounded border border-red-500/20 whitespace-pre-wrap">{r.stdout || r.stderr || r.error || '—'}</pre>
                       </div>
                       <div>
-                         <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Expected Output</div>
+                         <div className="text-xs font-semibold text-muted-foreground mb-1">{t('practice.expectedOutput')}</div>
                          <pre className="text-sm font-mono bg-green-500/10 text-green-700 dark:text-green-400 p-2 rounded border border-green-500/20 whitespace-pre-wrap">{r.expected ?? '—'}</pre>
                       </div>
                    </div>

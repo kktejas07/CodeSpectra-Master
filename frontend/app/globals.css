@@ -5,6 +5,35 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Brand swap (green → royal blue): the app hard-codes Tailwind emerald/teal in
+   ~80 files. Re-pointing those scales recolours them all in one place.
+   green-* is left alone — it is used for success states. */
+@theme {
+  --color-emerald-50: #eef3ff;
+  --color-emerald-100: #dfe8ff;
+  --color-emerald-200: #c5d4ff;
+  --color-emerald-300: #9fb6ff;
+  --color-emerald-400: #7090fb;
+  --color-emerald-500: #4a6ef3;
+  --color-emerald-600: #2f5be7;
+  --color-emerald-700: #2448c9;
+  --color-emerald-800: #213ca3;
+  --color-emerald-900: #213781;
+  --color-emerald-950: #17224d;
+  --color-teal-50: #eff6ff;
+  --color-teal-100: #dbeafe;
+  --color-teal-200: #bfdbfe;
+  --color-teal-300: #93c5fd;
+  --color-teal-400: #60a5fa;
+  --color-teal-500: #3b82f6;
+  --color-teal-600: #2563eb;
+  --color-teal-700: #1d4ed8;
+  --color-teal-800: #1e40af;
+  --color-teal-900: #1e3a8a;
+  --color-teal-950: #172554;
+}
+
+
 /* Use JetBrains Mono for code blocks and IDE-like sections. 
    The main UI uses standard sans-serif for readability. */
 @theme {
@@ -13,10 +42,10 @@
     monospace;
 }
 
-/* Prisma Emerald/Mint Marketing & App Theme — Light */
+/* CodeSpectra royal blue app theme — Light */
 :root {
   /* Clean alabaster paper with subtle cool mint undertone */
-  --background: 160 20% 99%;
+  --background: 220 40% 99%;
   --foreground: 220 30% 8%;
   --card: 0 0% 100%;
   --card-foreground: 220 30% 8%;
@@ -24,23 +53,25 @@
   --popover-foreground: 220 30% 8%;
   
   /* Primary accent - Electric Prisma Mint / Emerald (#00c573) */
-  --primary: 156 100% 39%;
-  --primary-foreground: 220 30% 8%;
+  --primary: 226 79% 54%;
+  --primary-foreground: 0 0% 100%;
   
   /* Secondary colors */
-  --secondary: 160 20% 96%;
-  --secondary-foreground: 160 60% 20%;
+  --secondary: 226 60% 97%;
+  --secondary-foreground: 226 60% 30%;
   
   /* Neutral grays */
   --muted: 220 15% 96%;
-  --muted-foreground: 220 10% 46%;
+  /* SEO-040: 42% lightness keeps muted text ≥ 4.5:1 on --muted (was 4.44:1). */
+  --muted-foreground: 220 10% 42%;
   
   /* Accent */
-  --accent: 160 25% 94%;
-  --accent-foreground: 160 60% 15%;
+  --accent: 226 60% 95%;
+  --accent-foreground: 226 65% 25%;
   
-  /* Destructive */
-  --destructive: 0 84% 60%;
+  /* Destructive. SEO-056: 42% lightness keeps red text >= 4.5:1 on the page, cards and
+     muted panels (6.3:1 on --background) and white text on red buttons (6.4:1). */
+  --destructive: 0 74% 42%;
   --destructive-foreground: 0 0% 100%;
   
   /* Success */
@@ -50,12 +81,12 @@
   /* Borders and input */
   --border: 220 15% 90%;
   --input: 220 15% 90%;
-  --ring: 156 100% 39%;
+  --ring: 226 79% 54%;
   
   /* Charts */
-  --chart-1: 156 100% 39%;
+  --chart-1: 226 79% 54%;
   --chart-2: 187 92% 43%;
-  --chart-3: 153 60% 53%;
+  --chart-3: 199 89% 48%;
   --chart-4: 38 92% 50%;
   --chart-5: 221 83% 53%;
   
@@ -65,27 +96,27 @@
   /* Sidebar */
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 220 30% 8%;
-  --sidebar-primary: 156 100% 39%;
-  --sidebar-primary-foreground: 220 30% 8%;
-  --sidebar-accent: 160 20% 96%;
-  --sidebar-accent-foreground: 160 60% 20%;
+  --sidebar-primary: 226 79% 54%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 226 60% 96%;
+  --sidebar-accent-foreground: 226 60% 30%;
   --sidebar-border: 220 15% 90%;
-  --sidebar-ring: 156 100% 39%;
+  --sidebar-ring: 226 79% 54%;
 
   --marketing-band-bg: 220 30% 6%;
   --marketing-band-fg: 0 0% 98%;
 
   /* Prisma Extended Tokens */
-  --color-prisma-emerald: #00c573;
-  --color-prisma-mint: #3ecf8e;
+  --color-prisma-emerald: #2f5be7;
+  --color-prisma-mint: #5b84ff;
   --color-prisma-cyan: #06b6d4;
-  --color-prisma-teal: #14b8a6;
+  --color-prisma-teal: #3b82f6;
   --color-prisma-obsidian: #080c14;
   --color-prisma-card: #0d131f;
   --color-prisma-border: #1e293b;
 }
 
-/* Prisma Emerald/Mint Theme - Dark Mode (Default Elite Obsidian Look) */
+/* CodeSpectra royal blue app theme — Dark (obsidian) */
 .dark {
   /* Deep Obsidian Slate with emerald depth */
   --background: 220 40% 5%;
@@ -96,12 +127,12 @@
   --popover-foreground: 210 20% 98%;
   
   /* Primary accent - Vibrant Electric Prisma Mint (#00c573 / #3ecf8e) */
-  --primary: 156 100% 42%;
+  --primary: 225 100% 68%;
   --primary-foreground: 220 40% 5%;
   
   /* Secondary colors */
   --secondary: 220 25% 13%;
-  --secondary-foreground: 156 60% 85%;
+  --secondary-foreground: 225 90% 88%;
   
   /* Neutral grays / dark slate mists */
   --muted: 220 20% 12%;
@@ -109,11 +140,12 @@
   
   /* Accent */
   --accent: 220 25% 15%;
-  --accent-foreground: 156 80% 90%;
+  --accent-foreground: 225 90% 90%;
   
-  /* Destructive */
-  --destructive: 0 72% 51%;
-  --destructive-foreground: 0 0% 98%;
+  /* Destructive. SEO-056: a lighter red keeps error text >= 4.5:1 on the dark page, cards
+     and muted panels (6.5:1 on --background); buttons use dark text on it, like --primary. */
+  --destructive: 0 90% 68%;
+  --destructive-foreground: 220 40% 5%;
   
   /* Success */
   --success: 156 100% 42%;
@@ -122,12 +154,12 @@
   /* Borders and input */
   --border: 220 20% 16%;
   --input: 220 20% 14%;
-  --ring: 156 100% 42%;
+  --ring: 225 100% 68%;
   
   /* Charts */
-  --chart-1: 156 100% 42%;
+  --chart-1: 225 100% 68%;
   --chart-2: 187 92% 50%;
-  --chart-3: 153 60% 55%;
+  --chart-3: 199 89% 60%;
   --chart-4: 38 92% 50%;
   --chart-5: 221 83% 60%;
   
@@ -137,21 +169,21 @@
   /* Sidebar */
   --sidebar: 220 35% 6%;
   --sidebar-foreground: 210 20% 98%;
-  --sidebar-primary: 156 100% 42%;
+  --sidebar-primary: 225 100% 68%;
   --sidebar-primary-foreground: 220 40% 5%;
   --sidebar-accent: 220 25% 13%;
-  --sidebar-accent-foreground: 156 80% 90%;
+  --sidebar-accent-foreground: 225 90% 90%;
   --sidebar-border: 220 20% 14%;
-  --sidebar-ring: 156 100% 42%;
+  --sidebar-ring: 225 100% 68%;
 
   --marketing-band-bg: 220 45% 3%;
   --marketing-band-fg: 0 0% 98%;
 
   /* Prisma Extended Tokens */
-  --color-prisma-emerald: #00c573;
-  --color-prisma-mint: #3ecf8e;
+  --color-prisma-emerald: #2f5be7;
+  --color-prisma-mint: #5b84ff;
   --color-prisma-cyan: #06b6d4;
-  --color-prisma-teal: #14b8a6;
+  --color-prisma-teal: #3b82f6;
   --color-prisma-obsidian: #080c14;
   --color-prisma-card: #0d131f;
   --color-prisma-border: #1e293b;
@@ -159,14 +191,15 @@
 
 
 @theme inline {
-  --font-sans: var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Indic faces (lib/i18n/fonts.ts) sit after the brand face: Latin keeps Jakarta, Hindi / Telugu glyphs fall through. */
+  --font-sans: var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, 'SF Mono', monospace;
   --font-circular: 'Circular', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-source-code-pro: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Supabase Extended Colors */
-  --color-phosphor-green: #3ecf8e;
-  --color-mint-pulse: #00c573;
+  --color-phosphor-green: #5b84ff; /* legacy name, now royal blue light */
+  --color-mint-pulse: #2f5be7;     /* legacy name, now royal blue */
   --color-forest-depth: #1f4b37;
   --color-midnight-emerald: #006239;
   --color-snow: #fafafa;
@@ -232,8 +265,8 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family:
-      var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
-      monospace;
+      var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, -apple-system,
+      'Segoe UI', sans-serif;
     font-feature-settings: 'rounding-metrics' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -839,3 +872,350 @@
   width: 100%;
 }
 
+
+/* ─────────────────────────────────────────────────────────────
+   Code Spectra brand — public marketing + auth pages
+   Obsidian navy + royal blue; a blue tint marks "shortlisted".
+   Scope: anything inside .cs-brand (PublicPageWrapper, auth pages).
+   ───────────────────────────────────────────────────────────── */
+:root {
+  /* CodeSpectra royal blue — light */
+  --cs-paper: #fbfcff;
+  --cs-sheet: #ffffff;
+  --cs-ink: #0f1729;
+  --cs-ink-soft: #475569;
+  --cs-accent: #2f5be7;       /* royal blue — buttons, bars */
+  --cs-accent-ink: #ffffff;   /* text on royal blue (5.6:1) */
+  --cs-accent-text: #1e40af;  /* royal blue as text/links (8.7:1) */
+  --cs-teal: #3b82f6;         /* secondary blue */
+  --cs-cyan: #0ea5e9;         /* sky, tertiary */
+  --cs-grid: #e2e8f0;
+  --cs-mark: #2f5be7;         /* shortlist highlight (tinted) */
+  --cs-flag: #dc2626;
+}
+.dark {
+  /* CodeSpectra royal blue — obsidian */
+  --cs-paper: #080c14;
+  --cs-sheet: #0d131f;
+  --cs-ink: #f8fafc;
+  --cs-ink-soft: #cbd5e1;
+  --cs-accent: #2f5be7;
+  --cs-accent-ink: #ffffff;
+  --cs-accent-text: #8aa8ff;
+  --cs-teal: #60a5fa;
+  --cs-cyan: #38bdf8;
+  --cs-grid: #1e293b;
+  --cs-mark: #5b84ff;
+  --cs-flag: #f87171;
+}
+
+@theme inline {
+  --font-archivo: var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --color-cs-paper: var(--cs-paper);
+  --color-cs-sheet: var(--cs-sheet);
+  --color-cs-ink: var(--cs-ink);
+  --color-cs-ink-soft: var(--cs-ink-soft);
+  --color-cs-accent: var(--cs-accent);
+  --color-cs-accent-ink: var(--cs-accent-ink);
+  --color-cs-accent-text: var(--cs-accent-text);
+  --color-cs-teal: var(--cs-teal);
+  --color-cs-cyan: var(--cs-cyan);
+  --color-cs-grid: var(--cs-grid);
+  --color-cs-mark: var(--cs-mark);
+  --color-cs-flag: var(--cs-flag);
+}
+
+/* Hindi / Telugu subtrees (components/i18n/locale-root.tsx, Learn posts): re-resolve the
+   stack where the Noto variables are defined, so inherited text picks them up. */
+:where([lang='hi'], [lang='te']) {
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, sans-serif;
+  /* Indic scripts need more room for matras / vowel signs above and below. */
+  line-height: 1.6;
+}
+:where([lang='hi'], [lang='te']) :where(button, a, label, th, td, p, li, span) {
+  overflow-wrap: anywhere;
+}
+/* Public pages in Hindi / Telugu (app/[lang]): the condensed Latin display leading clips matras,
+   and long Indic compounds must wrap on 360px phones instead of widening the page. */
+:where([lang='hi'], [lang='te']) .cs-display {
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+:where([lang='hi'], [lang='te']) .cs-heading {
+  line-height: 1.25;
+}
+:where([lang='hi'], [lang='te']) :where(h1, h2, h3, dt, dd, legend, summary) {
+  overflow-wrap: anywhere;
+}
+
+.cs-brand {
+  --primary: 226 79% 54%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 226 79% 54%;
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, sans-serif;
+  background: var(--cs-paper);
+  color: var(--cs-ink);
+  font-stretch: 100%;
+}
+/* Dark mode: the brand blue on the dark paper (#080c14) was 3.4:1 — use the
+ * dark theme's lighter primary so small brand text stays >= 4.5:1. */
+.dark .cs-brand {
+  --primary: 225 100% 68%;
+  --primary-foreground: 220 40% 5%;
+  --ring: 225 100% 68%;
+}
+/* Condensed display type: the width axis is the brand's voice. */
+.cs-display {
+  font-stretch: 68%;
+  font-weight: 800;
+  line-height: 0.94;
+  letter-spacing: -0.01em;
+}
+.cs-display, .cs-heading {
+  text-wrap: balance;
+  font-family: var(--font-archivo), 'Archivo', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, sans-serif;
+}
+.cs-heading {
+  font-stretch: 78%;
+  font-weight: 750;
+  line-height: 1.02;
+}
+.cs-graph {
+  background-image:
+    linear-gradient(var(--cs-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cs-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.cs-brand :focus-visible {
+  outline: 2px solid var(--cs-accent-text);
+  outline-offset: 2px;
+}
+/* The one orchestrated moment: highlighter sweeps across shortlisted rows. */
+@keyframes cs-mark-sweep {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.cs-mark-row::before {
+  content: '';
+  position: absolute;
+  inset: 3px 0;
+  background: color-mix(in srgb, var(--cs-mark) 22%, transparent);
+  box-shadow: inset 2px 0 0 var(--cs-mark);
+  transform-origin: left center;
+  animation: cs-mark-sweep 520ms cubic-bezier(.2,.7,.2,1) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 350ms);
+  z-index: 0;
+  border-radius: 2px;
+}
+.dark .cs-mark-row::before {
+  background: color-mix(in srgb, var(--cs-mark) 24%, transparent);
+  box-shadow: inset 2px 0 0 var(--cs-mark);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-mark-row::before { animation: none; }
+}
+
+@keyframes cs-underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cs-underline { animation: cs-underline 600ms 200ms cubic-bezier(.2,.7,.2,1) both; }
+@keyframes cs-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cs-progress { animation: cs-progress linear forwards; }
+@keyframes cs-float { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+.cs-float { animation: cs-float 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cs-float, .cs-underline { animation: none; }
+}
+
+/* ── Bento grid (UI/UX Pro Max: bento-box-grid + Stagger List, from centre) ── */
+@keyframes cs-bento-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.reveal-ready .cs-bento:not(.is-in) { opacity: 0; }
+.cs-bento.is-in { animation: cs-bento-in 450ms cubic-bezier(.34, 1.4, .64, 1) var(--d, 0ms) backwards; }
+
+@keyframes cs-marquee { to { transform: translateX(-50%); } }
+.cs-marquee { animation: cs-marquee 28s linear infinite; }
+.cs-bento:hover .cs-marquee { animation-play-state: paused; }
+
+@keyframes cs-grow-y { from { transform: scaleY(0.1); } to { transform: none; } }
+@keyframes cs-grow-x { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes cs-slide-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+.cs-bento.is-in .cs-grow-y { animation: cs-grow-y 700ms cubic-bezier(.2,.7,.2,1) calc(var(--d, 0ms) + 250ms) backwards; }
+.cs-bento.is-in .cs-grow-x { animation: cs-grow-x 800ms cubic-bezier(.2,.7,.2,1) calc(var(--d, 0ms) + var(--gd, 0ms) + 250ms) backwards; }
+.cs-bento.is-in .cs-slide-in { animation: cs-slide-in 450ms ease-out calc(var(--d, 0ms) + var(--gd, 0ms) + 250ms) backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-marquee, .cs-bento.is-in, .cs-bento.is-in .cs-grow-y, .cs-bento.is-in .cs-grow-x, .cs-bento.is-in .cs-slide-in { animation: none; }
+}
+
+/* ── App-wide staggered entrance for card grids (page-kit BentoGrid, or add .cs-stagger) ── */
+@keyframes cs-rise { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+.cs-stagger > * { animation: cs-rise 420ms cubic-bezier(.34,1.3,.64,1) backwards; }
+.cs-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.cs-stagger > *:nth-child(2) { animation-delay: 50ms; }
+.cs-stagger > *:nth-child(3) { animation-delay: 100ms; }
+.cs-stagger > *:nth-child(4) { animation-delay: 150ms; }
+.cs-stagger > *:nth-child(5) { animation-delay: 200ms; }
+.cs-stagger > *:nth-child(6) { animation-delay: 250ms; }
+.cs-stagger > *:nth-child(7) { animation-delay: 300ms; }
+.cs-stagger > *:nth-child(8) { animation-delay: 350ms; }
+.cs-stagger > *:nth-child(n+9) { animation-delay: 400ms; }
+@media (prefers-reduced-motion: reduce) { .cs-stagger > * { animation: none; } }
+
+/* Phone mockup: floating UI cards bob gently (off for reduced motion) */
+@keyframes cs-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.cs-bob { animation: cs-bob 7s ease-in-out infinite; animation-delay: var(--d, 0s); }
+@keyframes cs-ping-soft { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(2.2); opacity: 0; } }
+.cs-ping-soft { animation: cs-ping-soft 2.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cs-bob, .cs-ping-soft { animation: none; } }
+
+/* ── Spot illustrations (components/illustrations) ─────────────────────────
+   Theme-aware vector art: every colour comes from these tokens, so the same
+   SVG works in light, dark and on the royal-blue banner (.cs-illo-inverse). */
+.cs-illo {
+  --i-line: hsl(var(--foreground) / 0.78);
+  --i-paper: hsl(var(--card));
+  --i-soft: hsl(var(--primary) / 0.12);
+  --i-mid: hsl(var(--primary) / 0.32);
+  --i-accent: hsl(var(--primary));
+  --i-muted: hsl(var(--muted-foreground) / 0.35);
+  --i-ground: hsl(var(--primary) / 0.10);
+  --i-ok: #16a34a;
+  --i-warn: #f59e0b;
+  --i-bad: #ef4444;
+}
+.dark .cs-illo { --i-ok: #4ade80; --i-warn: #fbbf24; --i-bad: #f87171; --i-paper: hsl(var(--card)); }
+.cs-illo.cs-illo-inverse, .dark .cs-illo.cs-illo-inverse {
+  --i-line: rgba(255, 255, 255, 0.92);
+  --i-paper: rgba(255, 255, 255, 0.14);
+  --i-soft: rgba(255, 255, 255, 0.16);
+  --i-mid: rgba(255, 255, 255, 0.38);
+  --i-accent: #ffffff;
+  --i-muted: rgba(255, 255, 255, 0.45);
+  --i-ground: rgba(255, 255, 255, 0.12);
+}
+.cs-illo .l { stroke: var(--i-line); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.cs-illo .lt { stroke: var(--i-line); stroke-width: 1.5; stroke-linecap: round; fill: none; opacity: .55; }
+.cs-illo .p { fill: var(--i-paper); }
+.cs-illo .s { fill: var(--i-soft); }
+.cs-illo .m { fill: var(--i-mid); }
+.cs-illo .a { fill: var(--i-accent); }
+.cs-illo .as { stroke: var(--i-accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.cs-illo .mu { fill: var(--i-muted); }
+.cs-illo .g { fill: var(--i-ground); }
+.cs-illo .ok { fill: var(--i-ok); }
+.cs-illo .oks { stroke: var(--i-ok); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.cs-illo .wn { fill: var(--i-warn); }
+.cs-illo .bd { fill: var(--i-bad); }
+.cs-illo .w { fill: #fff; }
+.cs-illo.cs-illo-inverse .w { fill: #2f5be7; }
+.cs-illo.cs-illo-inverse .oks, .cs-illo.cs-illo-inverse .as[style] { stroke: #2f5be7 !important; }
+.cs-illo .float { animation: cs-bob 6s ease-in-out infinite; transform-box: fill-box; }
+.cs-illo .float2 { animation: cs-bob 7s ease-in-out infinite 1.2s; transform-box: fill-box; }
+.cs-illo .twinkle { animation: cs-twinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes cs-twinkle { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .cs-illo .float, .cs-illo .float2, .cs-illo .twinkle { animation: none; } }
+
+/* Scene illustrations (components/illustrations/scenes.tsx): people + props. */
+.cs-illo { --i-ink: #1e2a4a; --i-hair: #1f2433; --i-hair2: #5b3a29; --i-desk: hsl(var(--primary) / 0.18); }
+.dark .cs-illo { --i-ink: #3b4a74; --i-hair: #0f1424; --i-hair2: #4a2e21; --i-desk: hsl(var(--primary) / 0.22); }
+.cs-illo .sk1 { fill: #f2c9a5; } .cs-illo .sk2 { fill: #c98e63; } .cs-illo .sk3 { fill: #8d5a3b; }
+.cs-illo .hr { fill: var(--i-hair); } .cs-illo .hr2 { fill: var(--i-hair2); }
+.cs-illo .ink { fill: var(--i-ink); }
+.cs-illo .desk { fill: var(--i-desk); }
+.cs-illo .arm { stroke-width: 9; stroke-linecap: round; fill: none; }
+.cs-illo .arm.a { stroke: var(--i-accent); fill: none; } .cs-illo .arm.m { stroke: var(--i-mid); fill: none; }
+.cs-illo .arm.ink { stroke: var(--i-ink); fill: none; } .cs-illo .arm.p { stroke: var(--i-soft); fill: none; }
+
+/* ── Accessibility mode (lib/accessibility.ts, components/a11y/accessibility-mount.tsx) ── */
+/* Larger text: everything is rem-based, so the root size scales the whole UI. */
+html[data-a11y-text='large'] { font-size: 112.5%; }
+html[data-a11y-text='xlarge'] { font-size: 125%; }
+/* High contrast: darker text, stronger borders, underlined links, thick focus rings (light + dark). */
+html[data-a11y-contrast='high'] {
+  --foreground: 0 0% 0%;
+  --card-foreground: 0 0% 0%;
+  --popover-foreground: 0 0% 0%;
+  --muted-foreground: 220 20% 18%;
+  --secondary-foreground: 226 70% 20%;
+  --accent-foreground: 226 70% 18%;
+  --border: 220 15% 35%;
+  --input: 220 15% 35%;
+  --primary: 226 85% 38%;
+  --ring: 226 85% 30%;
+  --background: 0 0% 100%;
+  --card: 0 0% 100%;
+}
+html.dark[data-a11y-contrast='high'] {
+  --foreground: 0 0% 100%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
+  --muted-foreground: 220 20% 85%;
+  --secondary-foreground: 226 100% 90%;
+  --accent-foreground: 226 100% 90%;
+  --border: 220 15% 70%;
+  --input: 220 15% 70%;
+  --primary: 225 100% 78%;
+  --primary-foreground: 220 40% 5%;
+  --ring: 225 100% 85%;
+  --background: 0 0% 0%;
+  --card: 220 30% 6%;
+}
+html[data-a11y-contrast='high'] a:not([class*='bg-']) { text-decoration: underline; text-underline-offset: 2px; }
+html[data-a11y-contrast='high'] :focus-visible { outline: 3px solid hsl(var(--ring)) !important; outline-offset: 2px !important; }
+/* Reduced motion regardless of the OS setting. */
+html[data-a11y-motion='reduce'] *,
+html[data-a11y-motion='reduce'] *::before,
+html[data-a11y-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+/* Dyslexia-friendly font (loaded on demand); code keeps the monospace font. */
+html[data-a11y-font='dyslexic'] body,
+html[data-a11y-font='dyslexic'] .font-sans,
+html[data-a11y-font='dyslexic'] .font-archivo {
+  font-family: 'OpenDyslexic', var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.01em;
+  word-spacing: 0.06em;
+  line-height: 1.6;
+}
+html[data-a11y-font='dyslexic'] code,
+html[data-a11y-font='dyslexic'] pre,
+html[data-a11y-font='dyslexic'] .font-mono { font-family: var(--font-mono), ui-monospace, monospace; }
+
+/* ── Bento kit (components/bento) ──────────────────────────────────────────
+   The "well" is the inset stage at the top of a card: a dot grid like squared
+   exam paper, a faint inner highlight and a top-lit border, concentric with
+   the card's radius. Big numbers use the condensed Archivo width. */
+.bento-well {
+  background-color: hsl(var(--muted) / 0.55);
+  background-image: radial-gradient(hsl(var(--foreground) / 0.11) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+  background-position: 7px 7px;
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.6), inset 0 0 0 1px hsl(var(--border) / 0.8);
+}
+.dark .bento-well {
+  background-color: hsl(var(--background) / 0.55);
+  background-image: radial-gradient(hsl(var(--foreground) / 0.09) 1px, transparent 1.2px);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05), inset 0 0 0 1px hsl(var(--border));
+}
+.bento-num {
+  font-family: var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 72%;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes bento-shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.bento-skel {
+  background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--muted-foreground) / 0.12) 50%, hsl(var(--muted)) 100%);
+  background-size: 200% 100%;
+  animation: bento-shimmer 1.4s ease-in-out infinite;
+}
+[data-tone='brand'] .bento-skel { background: hsl(0 0% 100% / 0.22); animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .bento-skel { animation: none; }
+}

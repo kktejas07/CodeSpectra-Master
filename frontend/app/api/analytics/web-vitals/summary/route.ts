@@ -65,8 +65,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       countsByMetric: counts,
     })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Failed to load vitals'
-    console.error('[CodeSpectra] web_vitals summary:', msg)
+    const msg = 'Failed to load vitals'
+    console.error('[CodeSpectra] web_vitals summary:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

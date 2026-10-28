@@ -10,8 +10,15 @@
  * `replayPageTour()`. There is no second/other tour implementation.
  */
 
-import { driver, type Driver, type DriveStep } from 'driver.js'
-import { hints, type DriverHint, type Hints } from 'driver.js/hints'
+import type { Driver, DriveStep } from 'driver.js'
+import type { DriverHint, Hints } from 'driver.js/hints'
+
+// SEO-050: driver.js (+ its CSS) is loaded on first use only — see lib/tour-engine.ts.
+let enginePromise: Promise<typeof import('./tour-engine')> | null = null
+function loadEngine() {
+  enginePromise ??= import('./tour-engine').catch((e) => { enginePromise = null; throw e })
+  return enginePromise
+}
 
 export interface TourStep {
   target: string
@@ -32,178 +39,40 @@ export interface TourHint {
 /** CSS class that themes driver.js popovers to match the app (see app/driver-tour.css). */
 export const TOUR_POPOVER_CLASS = 'cs-tour-popover'
 
-/**
- * Single source of truth mapping a dashboard pathname → tour id.
- * The header Guide button and the per-page tour effects must agree,
- * otherwise Guide replays the wrong tour (or nothing at all).
- */
-export const TOUR_ID_FOR_PATHS: Record<string, string> = {
-  '/dashboard': 'welcome',
-  '/dashboard/scanner': 'scanner',
-  '/dashboard/problems': 'problems',
-  '/dashboard/arena': 'arena',
-  '/dashboard/courses': 'courses',
-  '/dashboard/events': 'events',
-  '/dashboard/interviews': 'interviews',
-  '/dashboard/leaderboard': 'leaderboard',
-  '/dashboard/achievements': 'achievements',
-  '/dashboard/assessments': 'assessments',
-  '/dashboard/tracks': 'tracks',
-  '/dashboard/hackathons': 'hackathons',
-  '/dashboard/articles': 'articles',
-  '/dashboard/codeathons': 'codeathons',
-  '/dashboard/settings': 'settings',
-  '/dashboard/activity/recent': 'recent',
-  '/dashboard/admin/system': 'admin-system',
-  // ponytail: explicit per-page entries so every admin route shows its own
-  // guide; the '/dashboard/admin' catch-all below covers future pages.
-  // Longer exact entries (like admin/system above) still win by longest-match.
-  '/dashboard/admin': 'admin',
-  '/dashboard/admin/feedback': 'feedback',
-  '/dashboard/admin/ai-inventory': 'admin-ai-inventory',
-  '/dashboard/admin/analytics': 'admin-analytics',
-  '/dashboard/admin/announcements': 'admin-announcements',
-  '/dashboard/admin/assessments': 'admin-assessments',
-  '/dashboard/admin/assessments/[id]': 'admin-assessment-results',
-  '/dashboard/admin/assessments/[id]/edit': 'admin-assessments-edit',
-  '/dashboard/admin/assessments/[id]/results': 'admin-assessment-results',
-  '/dashboard/admin/assessments/bulk': 'admin-assessments-bulk',
-  '/dashboard/admin/assessments/pipeline': 'admin-assessments-pipeline',
-  '/dashboard/admin/billing': 'admin-billing',
-  '/dashboard/admin/blog': 'admin-blog',
-  '/dashboard/admin/cdn': 'admin-cdn',
-  '/dashboard/admin/certificates': 'admin-certificates',
-  '/dashboard/admin/codeathons': 'admin-codeathons',
-  '/dashboard/admin/content-studio': 'admin-content-studio',
-  '/dashboard/admin/coupons': 'admin-coupons',
-  '/dashboard/admin/courses': 'admin-courses',
-  '/dashboard/admin/courses/[id]': 'admin-course-detail',
-  '/dashboard/admin/cron-jobs': 'admin-cron-jobs',
-  '/dashboard/admin/hackathons': 'admin-hackathons',
-  '/dashboard/admin/hackathons/[id]': 'admin-hackathon-detail',
-  '/dashboard/admin/hackathons/[id]/report': 'admin-hackathon-report',
-  '/dashboard/admin/hackathons/create': 'admin-hackathon-create',
-  '/dashboard/admin/hackathons/edit/[id]': 'admin-hackathon-edit',
-  '/dashboard/admin/help': 'admin-help',
-  '/dashboard/admin/hiring-manager-report': 'admin-hiring-report',
-  '/dashboard/admin/integrations': 'admin-integrations',
-  '/dashboard/admin/jobs': 'admin-jobs',
-  '/dashboard/admin/kyc': 'admin-kyc',
-  '/dashboard/admin/newsletter': 'admin-newsletter',
-  '/dashboard/admin/organizations': 'admin-organizations',
-  '/dashboard/admin/permissions': 'admin-permissions',
-  '/dashboard/admin/plans': 'admin-plans',
-  '/dashboard/admin/predictive-validity': 'admin-predictive',
-  '/dashboard/admin/pricing': 'admin-plans',
-  '/dashboard/admin/proctor': 'admin-proctor',
-  '/dashboard/admin/question-bank': 'admin-question-bank',
-  '/dashboard/admin/question-generator': 'admin-question-generator',
-  '/dashboard/admin/rag': 'admin-rag',
-  '/dashboard/admin/resources': 'admin-resources',
-  '/dashboard/admin/resumes': 'admin-resumes',
-  '/dashboard/admin/roles': 'admin-roles',
-  '/dashboard/admin/security': 'admin-security',
-  '/dashboard/admin/security/email-monitoring': 'admin-email-monitoring',
-  '/dashboard/admin/settings': 'admin-settings',
-  '/dashboard/admin/settings/cloudflare': 'admin-settings',
-  '/dashboard/admin/settings/kyc': 'admin-settings',
-  '/dashboard/admin/signals': 'admin-signals',
-  '/dashboard/admin/sme-review': 'admin-sme-review',
-  '/dashboard/admin/speed-insights': 'admin-speed-insights',
-  '/dashboard/admin/sso': 'admin-sso',
-  '/dashboard/admin/team': 'admin-team',
-  '/dashboard/admin/team/activity': 'admin-team-activity',
-  '/dashboard/admin/teams': 'admin-teams',
-  '/dashboard/admin/users': 'admin-users',
-  '/dashboard/admin/workflows': 'admin-workflows',
-  // ponytail: bracket segments are dynamic ids — resolveTourId matches them
-  // against any single path segment (see below).
-  '/dashboard/interviews/[id]': 'interview-detail',
-  // User pages with first-visit tours (one entry per page — the registry is
-  // keyed by tour id, so ids must be unique across pages).
-  '/dashboard/profile': 'profile',
-  '/dashboard/notifications': 'notifications',
-  '/dashboard/notifications/preferences': 'notification-preferences',
-  '/dashboard/jobs': 'jobs',
-  '/dashboard/quizzes': 'quizzes',
-  '/dashboard/mock-tests': 'mock-tests',
-  '/dashboard/mock-tests/[id]': 'mock-test-detail',
-  '/dashboard/challenges': 'challenges',
-  '/dashboard/courses/[id]': 'course-detail',
-  '/dashboard/courses/my': 'my-courses',
-  '/dashboard/courses/wishlist': 'wishlist',
-  '/dashboard/courses/generate': 'course-generate',
-  '/dashboard/problems/[slug]': 'problem-detail',
-  '/dashboard/codeathons/[id]': 'codeathon-detail',
-  '/dashboard/interviews/schedule': 'interview-schedule',
-  '/dashboard/interviews/setup': 'interview-setup',
-  '/dashboard/interviews/ai-mock/setup': 'ai-mock-setup',
-  '/dashboard/assessments/[id]': 'assessment-detail',
-  '/dashboard/resumes': 'resumes',
-  '/dashboard/calendar': 'calendar',
-  '/dashboard/billing': 'billing',
-  '/dashboard/support': 'support',
-  '/dashboard/judge': 'judge-desk',
-  '/dashboard/activity/sessions': 'sessions',
-  '/dashboard/activity/bookmarks': 'bookmarks',
-  '/dashboard/referrals': 'referrals',
-  '/dashboard/certifications': 'certifications',
-  '/dashboard/skill-analytics': 'skill-analytics',
-  '/dashboard/resources/[slug]': 'resource-reader',
-  '/dashboard/resources': 'resources',
-  '/dashboard/interview-prep': 'interview-prep',
-  '/dashboard/agent': 'agent',
-  '/dashboard/100-days': '100-days',
-  '/dashboard/identity-verify': 'identity-verify',
-  '/dashboard/arena/[id]': 'arena-detail',
-  '/dashboard/settings/ai': 'ai-settings',
-  '/dashboard/recruiter-analytics': 'recruiter-analytics',
-  '/dashboard/pricing': 'pricing',
-  '/dashboard/cad': 'cad',
-  '/dashboard/challenges/[id]': 'challenge-detail',
-  '/dashboard/team/invites/[token]': 'team-invite',
-}
+export { TOUR_ID_FOR_PATHS, resolveTourId } from './tour-paths'
 
 /**
- * Longest-prefix match so `/dashboard` doesn't shadow every page.
- * `[param]` segments (e.g. `/dashboard/interviews/[id]`) match any single
- * path segment, so dynamic pages resolve to their own tour instead of the
- * parent list page's tour.
+ * Dashboard welcome tour in the user's language (SEO-061): pass the page's
+ * translator; the English below is the fallback for callers without one.
  */
-export function resolveTourId(pathname: string): string | null {
-  const base = pathname.split('?')[0]
-  if (TOUR_ID_FOR_PATHS[base]) return TOUR_ID_FOR_PATHS[base]
-  let best: string | null = null
-  for (const path of Object.keys(TOUR_ID_FOR_PATHS)) {
-    const pattern = new RegExp(
-      '^' + path.split('/').map((seg) => (/^\[.+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/') + '(/|$)',
-    )
-    if (pattern.test(base) && (!best || path.length > best.length)) {
-      best = path
-    }
-  }
-  return best ? TOUR_ID_FOR_PATHS[best] : null
+export function welcomeTourSteps(t: (key: 'dash.tourWelcomeHomeTitle' | 'dash.tourWelcomeHomeBody' | 'dash.tourWelcomeArenaTitle' | 'dash.tourWelcomeArenaBody' | 'dash.tourWelcomeScannerTitle' | 'dash.tourWelcomeScannerBody') => string): TourStep[] {
+  const [home, arena, scanner] = WELCOME_TOUR_STEPS
+  return [
+    { ...home, title: t('dash.tourWelcomeHomeTitle'), description: t('dash.tourWelcomeHomeBody') },
+    { ...arena, title: t('dash.tourWelcomeArenaTitle'), description: t('dash.tourWelcomeArenaBody') },
+    { ...scanner, title: t('dash.tourWelcomeScannerTitle'), description: t('dash.tourWelcomeScannerBody') },
+  ]
 }
 
-/** Prebuilt dashboard welcome tour (migrated from the old tour-hooks). */
+/** Prebuilt dashboard welcome tour, English (migrated from the old tour-hooks). */
 export const WELCOME_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="dashboard-overview"]',
-    title: 'Your Developer Home',
+    title: 'Your developer home',
     description:
       'Your command center: track XP and streaks here, then jump into practice, scans, or events below.',
     position: 'bottom',
   },
   {
     target: '[data-tour="practice-arena"]',
-    title: 'Practice Arena',
+    title: 'Practice arena',
     description:
       'Challenge yourself with coding problems and interview questions. Track your progress and compete with peers.',
     position: 'bottom',
   },
   {
     target: '[data-tour="scanner-tool"]',
-    title: 'Code Scanner',
+    title: 'Code scanner',
     description:
       'AI-powered code analysis that identifies issues, suggests improvements, and provides security insights.',
     position: 'bottom',
@@ -257,6 +126,26 @@ function toDriveSteps(steps: TourStep[]): DriveStep[] {
   }))
 }
 
+/**
+ * SEO-061: button and progress labels in the user's language. The tour
+ * provider (components/tour/tour-context.tsx) sets them from the active
+ * catalog; they are applied before every drive() and to every hint, so a
+ * language switch mid-session takes effect on the next tour.
+ */
+export interface TourLabels { next: string; back: string; finish: string; progress: string; gotIt: string }
+export const ENGLISH_TOUR_LABELS: TourLabels = { next: 'Next', back: 'Back', finish: 'Finish', progress: '{{current}} of {{total}}', gotIt: 'Got it' }
+let labels: TourLabels = ENGLISH_TOUR_LABELS
+export function setTourLabels(next: Partial<TourLabels> | null) {
+  labels = { ...ENGLISH_TOUR_LABELS, ...(next ?? {}) }
+}
+export function getTourLabels(): TourLabels {
+  return labels
+}
+/** driver.js config fields for the current labels. */
+export function tourLabelConfig(l: TourLabels = labels) {
+  return { nextBtnText: l.next, prevBtnText: l.back, doneBtnText: l.finish, progressText: l.progress }
+}
+
 let instance: Driver | null = null
 let activeTourId: string | null = null
 // ponytail: registry of last-started steps per tour id, so replayTour works
@@ -265,21 +154,38 @@ const registry: Record<string, TourStep[]> = {}
 // Flag to suppress markTourSeen when destroying the old instance to replay.
 let replaying = false
 
-function getDriver(): Driver | null {
+const ARIA_POPUP_CAPABLE = 'button,a[href],input,select,textarea,summary,[role="button"],[role="combobox"],[role="link"],[role="menuitem"],[role="tab"],[role="treeitem"],[role="gridcell"],[role="row"],[role="application"]'
+
+/** Remove aria-haspopup / aria-expanded where the element's role doesn't allow them. */
+export function stripUnsupportedTourAria(el: Element): void {
+  if (el.matches(ARIA_POPUP_CAPABLE)) return
+  el.removeAttribute('aria-haspopup')
+  el.removeAttribute('aria-expanded')
+}
+
+async function getDriver(): Promise<Driver | null> {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null
   if (!instance) {
+    const { driver } = await loadEngine()
+    if (instance) return instance
     instance = driver({
       showProgress: true,
-      progressText: '{{current}} of {{total}}',
+      ...tourLabelConfig(),
       popoverClass: TOUR_POPOVER_CLASS,
       smoothScroll: true,
       allowKeyboardControl: true,
       allowClose: true,
       overlayClickBehavior: 'close',
       waitForElement: 3000,
-      nextBtnText: 'Next',
-      prevBtnText: 'Back',
-      doneBtnText: 'Finish',
+      // driver.js marks every highlighted element aria-haspopup/aria-expanded,
+      // which is invalid ARIA on plain containers (axe: aria-allowed-attr) and
+      // confuses screen readers. Keep them only on elements that support them.
+      // driver.js sets those attributes synchronously right after
+      // onHighlightStarted, but onHighlighted only fires once the ~400 ms
+      // stage animation ends — so strip in a microtask after the start hook
+      // (covers the animation window) and again when highlighting finishes.
+      onHighlightStarted: (el) => { if (el) queueMicrotask(() => stripUnsupportedTourAria(el)) },
+      onHighlighted: (el) => { if (el) stripUnsupportedTourAria(el) },
       onDestroyed: () => {
         // ponytail: mark seen on EVERY destroy (finish, X, overlay click) —
         // but NOT when we're destroying the old instance to replay.
@@ -298,15 +204,21 @@ export function registerPageTour(tourId: string, steps: TourStep[]) {
 }
 
 /** Start (or restart) a page tour. No-op on empty steps or server-side. */
-export function startPageTour(tourId: string, steps: TourStep[]) {
+export function startPageTour(tourId: string, steps: TourStep[], opts: { replay?: boolean } = {}) {
   if (!steps || steps.length === 0) return
   registry[tourId] = steps
-  const d = getDriver()
-  if (!d) return
-  if (d.isActive()) d.destroy()
-  activeTourId = tourId
-  d.setSteps(toDriveSteps(steps))
-  d.drive()
+  void getDriver().then((d) => {
+    if (!d || registry[tourId] !== steps) return
+    if (d.isActive()) {
+      replaying = !!opts.replay
+      try { d.destroy() } finally { replaying = false }
+    }
+    activeTourId = tourId
+    // configure() replaces the whole config, so merge onto the current one.
+    d.setConfig({ ...d.getConfig(), ...tourLabelConfig() })
+    d.setSteps(toDriveSteps(steps))
+    d.drive()
+  }).catch(() => { /* chunk failed to load (offline) — the tour just doesn't start */ })
 }
 
 /**
@@ -331,12 +243,7 @@ export function replayPageTour(tourId: string): boolean {
   const steps = registry[tourId]
   if (!steps || steps.length === 0) return false
   clearTourSeen(tourId)
-  replaying = true
-  try {
-    startPageTour(tourId, steps)
-  } finally {
-    replaying = false
-  }
+  startPageTour(tourId, steps, { replay: true })
   return true
 }
 
@@ -388,12 +295,14 @@ function isHintDismissed(id: string): boolean {
   }
 }
 
-function getHints(): Hints | null {
+async function getHints(): Promise<Hints | null> {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null
   if (!hintsInstance) {
+    const { hints } = await loadEngine()
+    if (hintsInstance) return hintsInstance
     hintsInstance = hints({
       popoverClass: TOUR_POPOVER_CLASS,
-      buttonText: 'Got it',
+      buttonText: labels.gotIt,
       onDismiss: (_el, hint) => {
         const id = typeof hint.id === 'string' ? hint.id : null
         if (id) {
@@ -420,6 +329,7 @@ function toDriverHints(hintSetId: string, items: TourHint[]): DriverHint[] {
         description: h.description,
         side: h.position ?? 'bottom',
         popoverClass: TOUR_POPOVER_CLASS,
+        buttonText: labels.gotIt,
       },
     }))
 }
@@ -431,12 +341,13 @@ function toDriverHints(hintSetId: string, items: TourHint[]): DriverHint[] {
  */
 export function startPageHints(hintSetId: string, items: TourHint[]) {
   if (!items || items.length === 0) return
-  const h = getHints()
-  if (!h) return
   const pending = toDriverHints(hintSetId, items)
   if (pending.length === 0) return
-  h.setHints(pending)
-  h.show()
+  void getHints().then((h) => {
+    if (!h) return
+    h.setHints(pending)
+    h.show()
+  }).catch(() => { /* chunk failed to load — no beacons */ })
 }
 
 /** Dismiss one hint programmatically (marks it seen so it never returns). */

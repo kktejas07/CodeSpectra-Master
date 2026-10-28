@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
+import { withCronWindow } from '@/lib/automation/job-lease'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
 
@@ -24,14 +26,11 @@ interface ScanReport {
   freshclam?: string
 }
 
-/** POST /api/cron/security-scan?secret=CRON_SECRET — ingest weekly scan report (server cron). */
+/** POST /api/cron/security-scan (Authorization: Bearer CRON_SECRET) — ingest weekly scan report (server cron). */
 async function postImpl(req: Request) {
   try {
-    const url = new URL(req.url)
-    const expected = process.env.CRON_SECRET?.trim() || ''
-    const fromQuery = url.searchParams.get('secret') || ''
-    if (!expected || fromQuery !== expected) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!isCronAuthorized(req, { allowDevWithoutSecret: false })) {
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     const body = (await req.json().catch(() => ({}))) as Partial<ScanReport>
     if (!Array.isArray(body.images)) {
@@ -76,7 +75,8 @@ async function postImpl(req: Request) {
 }
 
 /** GET — latest report + lightweight history (superadmin). */
-export const POST = withCronHeartbeat('security-scan', postImpl)
+// One run per week across replicas and external crons (AUTO-041).
+export const POST = withCronWindow('security-scan', 10080, withCronHeartbeat('security-scan', postImpl))
 
 export async function GET() {
   const gate = await requireSuperAdmin()

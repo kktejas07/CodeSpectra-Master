@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
+  const user = gate.user
 
   let paths: string[] = []
   try {
     const body = await req.json()
     paths = Array.isArray(body.paths) ? body.paths : (body.purge_all ? [] : ['/'])
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
 
   const secrets = await readServerSecrets()
@@ -50,13 +50,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    await auditAdmin(user, 'admin.cdn.purge', 'system', 'cdn', paths.length ? paths.slice(0, 20).join(', ') : 'all', 'warning')
     return NextResponse.json({
       success: true,
       paths: paths.length > 0 ? paths : ['/* (all)'],
     })
   } catch (e) {
+    console.error('[CodeSpectra] admin/cdn/purge:', e)
     return NextResponse.json(
-      { error: `Network error: ${(e as Error).message}` },
+      { error: 'Network error reaching Cloudflare. Try again.' },
       { status: 502 },
     )
   }

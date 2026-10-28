@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { Clock, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
+import { EmptyState } from '@/components/ui/empty-state'
 import { unmaskedAuditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface AuditLogsViewerProps {
   logs?: AuditRow[]
@@ -14,16 +16,21 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
   const [logs, setLogs] = useState<AuditRow[]>([])
   const [loading, setLoading] = useState(!propLogs)
   const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const { t } = useAdminT()
 
   const fetchLogs = async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true)
     try {
       const params = new URLSearchParams({ limit: '100' })
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`, { credentials: 'include' })
-      const d = await res.json()
+      const d = await res.json().catch(() => null)
+      if (!res.ok || !d) throw new Error('load failed')
       setLogs(d.data || d.logs || [])
+      setLoadError(false)
     } catch {
-      setLogs([])
+      // Keep whatever was loaded before; say so instead of showing an empty table.
+      setLoadError(true)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -42,9 +49,9 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-          <Clock className="h-6 w-6 text-primary" />
-          Audit Logs
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Clock className="h-5 w-5 text-primary" />
+          {t('auditLogs.title')}
         </h2>
         <Button
           variant="outline"
@@ -53,10 +60,24 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
           onClick={() => void fetchLogs(true)}
         >
           {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-          Refresh
+          {t('auditLogs.refresh')}
         </Button>
       </div>
 
+      {loadError && logs.length === 0 ? (
+        <EmptyState
+          compact
+          illustration="error"
+          title={t('auditLogs.loadFailed')}
+          description={t('common.checkConnection')}
+          actionLabel={t('common.tryAgain')}
+          onAction={() => void fetchLogs(true)}
+        />
+      ) : (
+      <>
+      {loadError ? (
+        <p className="text-xs text-destructive" role="status">{t('auditLogs.refreshFailed')}</p>
+      ) : null}
       <DataTable
         columns={unmaskedAuditLogColumns}
         data={logs}
@@ -82,9 +103,11 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
           },
         ]}
         loading={loading}
-        emptyMessage="No audit events found."
+        emptyState={{ illustration: 'security' }} emptyMessage="No audit events yet. Admin actions will be logged here."
         pageSize={20}
       />
+      </>
+      )}
     </div>
   )
 }

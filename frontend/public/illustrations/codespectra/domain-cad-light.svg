@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img"><title>CAD model of a valve with a turning handwheel</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#5b84ff"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8"/><stop offset=".5" stop-color="#2f5be7"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
+  .surf{fill:#f8fafc;stroke:#64748b;stroke-opacity:.7}
+  .ln{stroke:#64748b;stroke-opacity:.6;fill:none}
+  .txt{fill:#64748b;opacity:.75}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+    .tag,.num,.row,.ev,.pass,.f{opacity:1!important}
+    .ck,.ok{stroke-dashoffset:0!important}
+    .gauge{stroke-dashoffset:36!important}
+    .pkt{offset-distance:50%}
+  }
+
+  .wheel{transform-origin:48px 26px;animation:spin 6s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .dim{stroke-dasharray:3 3;animation:dash 1.5s linear infinite}@keyframes dash{to{stroke-dashoffset:-6}}
+</style><path d="M10 58 l18-10 v16 l-18 10z" class="surf"/><path d="M68 48 l18 10 v16 l-18-10z" class="surf"/><path d="M28 44 l20-11 20 11 v24 l-20 11 -20-11z" fill="url(#mint)" fill-opacity=".85" stroke="#3b82f6"/><path d="M28 44 l20 11 20-11 M48 55 v24" stroke="#fff" stroke-opacity=".25"/><line x1="48" y1="33" x2="48" y2="26" stroke="#64748b" stroke-width="2.5"/><g class="wheel"><circle cx="48" cy="26" r="11" stroke="#0ea5e9" stroke-width="2.5"/><path d="M48 15v22M37 26h22M40 18l16 16M56 18L40 34" stroke="#0ea5e9" stroke-width="1.5" opacity=".8"/></g><path class="dim" d="M10 84 H86" stroke="#64748b"/><path d="M10 80v8M86 80v8" stroke="#64748b"/></svg>

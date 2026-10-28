@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
+import { withCronWindow } from '@/lib/automation/job-lease'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
+import { isCronAuthorized } from '@/lib/cron-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,18 +15,16 @@ type ComponentStatus = {
   message?: string
 }
 
-export const GET = withCronHeartbeat('status-check', getImpl)
+// One run per 5-minute window across replicas and external crons (AUTO-041).
+export const GET = withCronWindow('status-check', 5, withCronHeartbeat('status-check', getImpl))
+// The admin "Run now" button POSTs to every cron path.
+export const POST = GET
 
 async function getImpl(req: Request) {
-  // Closed by default: allow the configured cron scheduler (Bearer header or
-  // ?secret=, mirroring cron/tick) or an authenticated superadmin session.
-  // Previously the check was skipped entirely when CRON_SECRET was unset,
-  // leaving the endpoint — and its status_logs writes — open to anyone.
-  const expected = process.env.CRON_SECRET?.trim()
-  const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret') || ''
-  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  if (!expected || (fromQuery !== expected && fromHeader !== expected)) {
+  // Closed by default: allow the configured cron scheduler (Bearer header,
+  // constant-time) or an authenticated superadmin session. No CRON_SECRET
+  // means no unauthenticated access, even in development.
+  if (!isCronAuthorized(req, { allowDevWithoutSecret: false })) {
     const gate = await requireSuperAdmin()
     if ('error' in gate) {
       return NextResponse.json({ error: gate.error }, { status: gate.status })

@@ -6,9 +6,11 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, CheckCircle, XCircle, Users, ArrowRight, LogIn, UserPlus, ShieldAlert } from 'lucide-react'
+import { Loader2, Users, ArrowRight, LogIn, UserPlus } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
 
 export default function JoinHackathonPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
   const { slug, token } = use(params)
@@ -34,7 +36,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
         if (data.team) {
           setOtherTeamSlug(data.team)
           setOtherTeamName(data.team_name || data.team)
-          if (data.team === token || data.team === slug) {
+          if (data.already_this_team === true) {
             setErrorMeta('already_this_team')
           } else {
             setErrorMeta('already_other_team')
@@ -72,7 +74,9 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
   }, [authLoading, authUser?.uid, join])
 
   useEffect(() => {
-    if (status === 'success' || (status === 'error' && (errorMeta === 'already_this_team' || errorMeta === 'already_other_team'))) {
+    // Only move on automatically when the user is now (or already was) on this team —
+    // a conflict with another team needs them to read the message and decide.
+    if (status === 'success' || (status === 'error' && errorMeta === 'already_this_team')) {
       const t = setTimeout(() => router.push(`/hackathons/${slug}/workspace`), 2000)
       return () => clearTimeout(t)
     }
@@ -85,29 +89,29 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <Card className="w-full max-w-md p-8 text-center">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <h2 className="text-lg font-semibold mt-4">Checking authentication...</h2>
+          <h1 className="text-lg font-semibold mt-4">Checking authentication...</h1>
         </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md p-8 text-center space-y-4">
+    <div className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-background p-6 xl:gap-16">
+      <SoftGlow />
+      <DeviceShowcase variant="hackathon" compact className="mx-0 hidden max-w-[480px] xl:block" />
+      <Card className="w-full max-w-md shrink-0 rounded-3xl border-border/70 p-8 text-center space-y-4">
         {status === 'loading' && (
           <>
             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-            <h2 className="text-lg font-semibold">Joining Team...</h2>
+            <h1 className="text-lg font-semibold">Joining team…</h1>
             <p className="text-sm text-muted-foreground">Processing your invitation</p>
           </>
         )}
 
         {status === 'success' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-              <CheckCircle className="h-8 w-8 text-green-500" />
-            </div>
-            <h2 className="text-lg font-semibold">Joined Successfully!</h2>
+            <Illustration name="success" className="mx-auto w-36" />
+            <h1 className="text-lg font-semibold">You&apos;re on the team</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
               <Users className="h-3 w-3" />
@@ -115,7 +119,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
             </Badge>
             <div className="flex gap-3 pt-4">
               <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
-                Go to Workspace <ArrowRight className="h-4 w-4" />
+                Go to workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </>
@@ -123,14 +127,12 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'already_this_team' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10">
-              <Users className="h-8 w-8 text-blue-500" />
-            </div>
-            <h2 className="text-lg font-semibold">Already on this Team</h2>
+            <Illustration name="team" className="mx-auto w-36" />
+            <h1 className="text-lg font-semibold">Already on this team</h1>
             <p className="text-sm text-muted-foreground">You&apos;re already a member of this team.</p>
             <div className="flex gap-3 pt-4">
               <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
-                Go to Workspace <ArrowRight className="h-4 w-4" />
+                Go to workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </>
@@ -138,10 +140,8 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'already_other_team' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <ShieldAlert className="h-8 w-8 text-amber-500" />
-            </div>
-            <h2 className="text-lg font-semibold">Already Registered</h2>
+            <Illustration name="team" className="mx-auto w-36" />
+            <h1 className="text-lg font-semibold">Already registered</h1>
             <p className="text-sm text-muted-foreground">
               You&apos;re already on <strong>{otherTeamName}</strong> for this event.
             </p>
@@ -156,7 +156,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
                 Event Details
               </Button>
               <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
-                Your Workspace <ArrowRight className="h-4 w-4" />
+                Your workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </>
@@ -164,10 +164,8 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'team_full' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-              <XCircle className="h-8 w-8 text-red-500" />
-            </div>
-            <h2 className="text-lg font-semibold">Team is Full</h2>
+            <Illustration name="locked" className="mx-auto w-36" />
+            <h1 className="text-lg font-semibold">This team is full</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
@@ -179,14 +177,12 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'event_in_progress' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <ShieldAlert className="h-8 w-8 text-amber-500" />
-            </div>
-            <h2 className="text-lg font-semibold">Event in Progress</h2>
-            <p className="text-sm text-muted-foreground">Cannot join — the event is already running.</p>
+            <Illustration name="locked" className="mx-auto w-36" />
+            <h1 className="text-lg font-semibold">Event in progress</h1>
+            <p className="text-sm text-muted-foreground">You can&apos;t join once the event has started.</p>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
-                View Event
+                View event
               </Button>
             </div>
           </>
@@ -196,30 +192,26 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
           <>
             {!authUser?.uid ? (
               <>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <LogIn className="h-8 w-8 text-primary" />
-                </div>
-                <h2 className="text-lg font-semibold">Sign in Required</h2>
+                <Illustration name="locked" className="mx-auto w-36" />
+                <h1 className="text-lg font-semibold">Sign in required</h1>
                 <p className="text-sm text-muted-foreground">You need to sign in to join this team.</p>
                 <div className="flex flex-col gap-2 pt-4">
-                  <Link href={loginUrl}>
-                    <Button className="w-full gap-2">
+                  <Button className="w-full gap-2" asChild>
+                    <Link href={loginUrl}>
                       <LogIn className="h-4 w-4" /> Sign in
-                    </Button>
-                  </Link>
-                  <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}/join/${token}`)}`}>
-                    <Button variant="outline" className="w-full">
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}/join/${token}`)}`}>
                       Create account
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </>
             ) : (
               <>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-                  <XCircle className="h-8 w-8 text-red-500" />
-                </div>
-                <h2 className="text-lg font-semibold">Could Not Join</h2>
+                <Illustration name="error" className="mx-auto w-36" />
+                <h1 className="text-lg font-semibold">Couldn&apos;t join</h1>
                 <p className="text-sm text-muted-foreground">{message}</p>
                 <div className="flex gap-3 pt-4">
                   <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">

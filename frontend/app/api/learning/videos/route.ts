@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     })
     return NextResponse.json(data)
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 })
+    console.error('[learning/videos]', e)
+    return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 502 })
   }
 }

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { generateLessonVideo, normalizeTargetMinutes, buildLessonContext } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath } from '@/lib/courses/lesson-mp4'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,10 +14,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   const { id: courseId } = await params
 
@@ -29,7 +28,7 @@ export async function POST(
 
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id: courseId })
-    if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
 
     const sections = course.sections || []
     if (!sections[sectionIndex]) return NextResponse.json({ error: 'Section not found' }, { status: 404 })
@@ -88,6 +87,7 @@ export async function POST(
       { id: courseId },
       { $set: { sections: sectionsUpdate, updated_at: new Date().toISOString() } }
     )
+    knowledgeOnLibraryChange('course', courseId)
 
     return NextResponse.json({
       success: true,
@@ -99,6 +99,6 @@ export async function POST(
 
   } catch (e) {
     console.error('[generate-lesson] error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

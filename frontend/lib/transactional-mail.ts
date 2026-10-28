@@ -1,11 +1,52 @@
 import { getServerSecretsFromCache, warmServerSecretsCache } from '@/lib/server-secrets-cache'
 
+/** A hung mail server must never stall the scheduler (AUTO-043); the outbox retries timeouts. */
+export const POSTAL_TIMEOUT_MS = 15_000
+
+/** Plain-text alternative of an HTML email (AUTO-050: multipart mail scores better with spam filters). Pure. */
+export function htmlToText(html: string): string {
+  return String(html || '')
+    .replace(/<(script|style|head)[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href: string, label: string) => {
+      const text = label.replace(/<[^>]+>/g, '').trim()
+      return text && text !== href ? `${text} (${href})` : href
+    })
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|li|tr|table)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, 100_000)
+}
+
+/** Only well-formed header names/values are passed on (no CR/LF injection). Pure. */
+export function safeMailHeaders(h: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!h) return undefined
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(h)) {
+    if (!/^[A-Za-z][A-Za-z0-9-]{1,60}$/.test(k) || typeof v !== 'string' || /[\r\n]/.test(v) || v.length > 2000) continue
+    out[k] = v
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
 export async function sendEmailViaPostal(params: {
   to: string
   subject: string
   html: string
   text?: string
   cc?: string
+  /** Optional attachments (Postal: name, content_type, base64 data). */
+  attachments?: { name: string; content_type: string; data: string }[]
+  /** Extra headers, e.g. List-Unsubscribe / List-Unsubscribe-Post. */
+  headers?: Record<string, string>
+  /** Reply-To (defaults to EMAIL_REPLY_TO when set). */
+  replyTo?: string
+  /** Display name for the From address ("Acme via CodeSpectra"). */
+  fromName?: string
 }): Promise<{ messageId: number | null }> {
   await warmServerSecretsCache()
   const s = getServerSecretsFromCache()
@@ -19,6 +60,9 @@ export async function sendEmailViaPostal(params: {
   }
 
   const url = `${server.replace(/\/+$/, '')}/api/v1/send/message`
+  const replyTo = (params.replyTo || process.env.EMAIL_REPLY_TO || '').trim()
+  const fromName = (params.fromName || '').replace(/["<>\r\n]/g, '').trim().slice(0, 80)
+  const headers = safeMailHeaders(params.headers)
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -28,11 +72,16 @@ export async function sendEmailViaPostal(params: {
     body: JSON.stringify({
       to: [params.to],
       ...(params.cc ? { cc: [params.cc] } : {}),
-      from,
+      from: fromName && !from.includes('<') ? `"${fromName}" <${from}>` : from,
       subject: params.subject,
       html_body: params.html,
-      ...(params.text ? { text_body: params.text } : {}),
+      // Postal's field for the text part is plain_body.
+      plain_body: params.text || htmlToText(params.html),
+      ...(/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(replyTo) ? { reply_to: replyTo } : {}),
+      ...(headers ? { headers } : {}),
+      ...(params.attachments?.length ? { attachments: params.attachments } : {}),
     }),
+    signal: AbortSignal.timeout(POSTAL_TIMEOUT_MS),
   })
 
   if (!res.ok) {

@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[CodeSpectra] Repo files error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch repository files' },
+      { error: 'Failed to fetch repository files' },
       { status: 500 }
     )
   }

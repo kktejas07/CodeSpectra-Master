@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ZoomIn, ZoomOut, Maximize2, RotateCcw, Move3D, Circle, Zap, Target } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 export interface D3Component {
   id: string
@@ -69,6 +70,7 @@ export function D3ForceGraph({
   selectedId,
   highlightedIds,
 }: D3ForceGraphProps) {
+  const { t } = useT()
   const svgRef = useRef<SVGSVGElement>(null)
   const simRef = useRef<d3.Simulation<SimNode, SimLink> | null>(null)
   const [zoom, setZoom] = useState(100)
@@ -281,10 +283,10 @@ const link = g.append('g').attr('class', 'links')
 
   if (components.length === 0) {
     return (
-      <Card className="flex items-center justify-center h-[420px] border-dashed bg-card/30">
+      <Card className="flex items-center justify-center h-[420px] border-dashed">
         <div className="text-center text-muted-foreground">
           <Move3D className="w-10 h-10 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No components to visualize. Add components to see the force graph.</p>
+          <p className="text-sm">{t('tools.noComponentsToVisualizeAddComponentsb1b')}</p>
         </div>
       </Card>
     )
@@ -295,29 +297,27 @@ const link = g.append('g').attr('class', 'links')
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Zap className="w-4 h-4 text-primary" />
-          <span>Drag nodes • Scroll to zoom • Click to select • Double-click dependency to inspect</span>
+          <span>{t('tools.dragNodesScrollToZoomClickce0')}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title="Zoom out">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title={t('tools.zoomOut')} aria-label={t('tools.zoomOut')}>
             <ZoomOut className="w-4 h-4" />
           </Button>
           <span className="text-xs font-mono text-muted-foreground w-12 text-center">{zoom}%</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title="Zoom in">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title={t('tools.zoomIn')} aria-label={t('tools.zoomIn')}>
             <ZoomIn className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetView} title="Reset view">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetView} title={t('tools.resetView')} aria-label={t('tools.resetView')}>
             <Maximize2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => simRef.current?.alpha(0.5).restart()} title="Re-shuffle">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => simRef.current?.alpha(0.5).restart()} title={t('tools.reShuffle')} aria-label={t('tools.reShuffleLayout')}>
             <RotateCcw className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setLegendExpanded(v => !v)}>
-            {legendExpanded ? 'Hide' : 'Show'} legend
-          </Button>
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setLegendExpanded(v => !v)}>{t('tools.valueLegend', { value: legendExpanded ? t('tools.hide') : t('tools.show') })}</Button>
         </div>
       </div>
 
-      <Card className="relative overflow-hidden bg-card/50 backdrop-blur border border-border" style={{ height: 420 }}>
+      <Card className="relative overflow-hidden backdrop-blur" style={{ height: 420 }}>
         <svg
           ref={svgRef}
           className="w-full h-full"
@@ -326,10 +326,10 @@ const link = g.append('g').attr('class', 'links')
       </Card>
 
       {legendExpanded && (
-        <Card className="p-4 bg-card/50 border border-border/50">
+        <Card className="p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
             <div>
-              <p className="font-semibold mb-2 text-foreground">Node health</p>
+              <p className="font-semibold mb-2 text-foreground">{t('tools.nodeHealth')}</p>
               {Object.entries(HEALTH_COLOR).map(([h, c]) => (
                 <div key={h} className="flex items-center gap-2 mb-1">
                   <Circle className="w-3 h-3 fill-current" style={{ color: c }} />
@@ -338,7 +338,7 @@ const link = g.append('g').attr('class', 'links')
               ))}
             </div>
             <div>
-              <p className="font-semibold mb-2 text-foreground">Node types</p>
+              <p className="font-semibold mb-2 text-foreground">{t('tools.nodeTypes')}</p>
               {Object.entries(TYPE_ICON).map(([t, icon]) => (
                 <div key={t} className="flex items-center gap-2 mb-1">
                   <span>{icon}</span>
@@ -347,19 +347,19 @@ const link = g.append('g').attr('class', 'links')
               ))}
             </div>
             <div>
-              <p className="font-semibold mb-2 text-foreground">Dependencies</p>
+              <p className="font-semibold mb-2 text-foreground">{t('tools.dependencies')}</p>
               <div className="space-y-1 text-muted-foreground">
-                <div className="flex items-center gap-2"><span style={{ borderTop: '2px dashed hsl(var(--border))', width: 20, display: 'inline-block' }} />imports</div>
+                <div className="flex items-center gap-2"><span style={{ borderTop: '2px dashed hsl(var(--border))', width: 20, display: 'inline-block' }} />{t('tools.imports')}</div>
                 <div className="flex items-center gap-2"><span style={{ borderTop: '2px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />depends_on</div>
-                <div className="flex items-center gap-2"><span style={{ borderTop: '2px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />uses</div>
+                <div className="flex items-center gap-2"><span style={{ borderTop: '2px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />{t('tools.uses')}</div>
               </div>
             </div>
             <div>
-              <p className="font-semibold mb-2 text-foreground">Strength</p>
+              <p className="font-semibold mb-2 text-foreground">{t('tools.strength')}</p>
               <div className="space-y-1 text-muted-foreground">
-                <div className="flex items-center gap-2"><span style={{ borderTop: '3px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />strong</div>
-                <div className="flex items-center gap-2"><span style={{ borderTop: '2px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />normal</div>
-                <div className="flex items-center gap-2"><span style={{ borderTop: '1px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />weak</div>
+                <div className="flex items-center gap-2"><span style={{ borderTop: '3px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />{t('tools.strong')}</div>
+                <div className="flex items-center gap-2"><span style={{ borderTop: '2px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />{t('tools.normal')}</div>
+                <div className="flex items-center gap-2"><span style={{ borderTop: '1px solid hsl(var(--border))', width: 20, display: 'inline-block' }} />{t('tools.weak')}</div>
               </div>
             </div>
           </div>

@@ -29,7 +29,7 @@ export async function GET(_req: Request, ctx: RouteContext) {
             status: { $in: publishedStatuses },
           })
 
-    if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!campaign) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     return NextResponse.json({
       id: campaign.id,
@@ -44,6 +44,6 @@ export async function GET(_req: Request, ctx: RouteContext) {
     })
   } catch (e) {
     console.error('[newsletter] public get error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

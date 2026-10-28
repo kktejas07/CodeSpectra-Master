@@ -4,7 +4,7 @@ import { rateLimitGenerateFixes } from '@/lib/upstash-rate-limit'
 import { requireAuth } from '@/lib/route-auth'
 import { codeScans, codeIssues, newId, nowIso } from '@/lib/db/scans'
 import { suggestedFixes } from '@/lib/db/misc'
-import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
+import { getUserAiCredits, spendAiCredits } from '@/lib/user-credits'
 import { backendComplete } from '@/lib/ai/backend'
 
 const fixSchema = z.object({
@@ -129,7 +129,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     body = (await request.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const code = body.code
@@ -161,7 +161,6 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (balance < 1) {
     return NextResponse.json({ success: false, error: 'Insufficient AI credits' }, { status: 402 })
   }
-  await deductUserAiCredits(authedUserId, 1)
 
   const issueContexts = issues as IssueContext[]
 
@@ -196,7 +195,15 @@ Return ONLY valid JSON matching the schema.`,
       feature: 'generate-fixes',
     })
 
+    if (!result.ok) throw new Error('AI backend returned an error')
     const fixes = JSON.parse(result.text || '[]') as any[]
+    if (!Array.isArray(fixes)) throw new Error('AI returned an invalid response')
+
+    // Charge only after the AI call produced a usable result (atomic spend).
+    const spent = await spendAiCredits(authedUserId, 1)
+    if (!spent.ok) {
+      return NextResponse.json({ success: false, error: 'Insufficient AI credits' }, { status: 402 })
+    }
     let persisted: Array<{ issueId: string; fixId: string }> | undefined
 
     if (wantsPersist && authedUserId) {

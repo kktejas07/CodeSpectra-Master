@@ -13,24 +13,24 @@ interface CompleteBody {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: CompleteBody
   try {
     body = (await req.json()) as CompleteBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const { sessionId } = body
   if (!sessionId) {
-    return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
+    return NextResponse.json({ error: 'sessionId required', code: 'assess_session_id_required' }, { status: 400 })
   }
 
   const db = await getMongoDb()
   const doc = await db.collection('ai_mock_sessions').findOne({ id: sessionId, userId: user.id })
   if (!doc) {
-    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Session not found', code: 'session_not_found' }, { status: 404 })
   }
 
   // Return cached report if already generated
@@ -60,8 +60,10 @@ export async function POST(req: NextRequest) {
 
   // Generate report even with zero answers (partial session)
   let report
+  let generated = false
   try {
     report = await generateConversationReport(session)
+    generated = true
   } catch (e) {
     console.error('[ai-mock] Report generation error:', e)
     const avgScore = session.scores.length > 0
@@ -78,10 +80,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Mark session as completed
+  // Mark session as completed. Only a real report is cached — a fallback
+  // would otherwise be served forever instead of retrying generation.
   await db.collection('ai_mock_sessions').updateOne(
     { id: sessionId, userId: user.id },
-    { $set: { completedAt: Date.now(), status: 'completed', report } },
+    { $set: { completedAt: doc.completedAt || Date.now(), status: 'completed', ...(generated ? { report } : {}) } },
   )
 
   return NextResponse.json({ report, sessionComplete: true })

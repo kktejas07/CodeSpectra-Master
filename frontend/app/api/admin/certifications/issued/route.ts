@@ -34,6 +34,9 @@ export async function GET() {
     issuedAt: a.issued_at || a.submitted_at || a.started_at,
     verifyToken: a.verify_token,
     certificationId: a.certification_id,
+    revokedAt: a.revoked_at || null,
+    revokedBy: a.revoked_by || null,
+    revokeReason: a.revoke_reason || null,
   }))
 
   return NextResponse.json({ data })

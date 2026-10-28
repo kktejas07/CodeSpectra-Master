@@ -1,5 +1,6 @@
 'use client'
 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard, Award, Film } from 'lucide-react'
 import { SkeletonStats, SkeletonTable, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useDateFormat } from '@/lib/use-platform-timezone'
@@ -16,6 +17,7 @@ import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader } from '@/components/app/page-kit'
 import { parseCodingAnswer, isCodingType } from '@/lib/coding-answer'
 import { ScoreHistogram, StatusDonut, QuestionBars } from '@/components/assessment/results-charts'
 import {
@@ -37,6 +39,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
+import { EmptyState } from '@/components/ui/empty-state'
+import { CompareCandidates } from '@/components/assessment/CompareCandidates'
+import { ExtendedAnswerView, TraitScoresPanel, hasExtendedView, useAnswerFiles } from '@/components/assessment/ExtendedAnswerView'
+import { HiringOutcomePanel, OutcomeBadge, OutcomeBulkDialog } from '@/components/assessment/HiringOutcome'
+import { OUTCOME_LABELS, isOutcomeStatus } from '@/lib/hiring-outcomes'
+import { useAdminT } from '@/lib/i18n/admin'
 
 
 interface CandidateResult {
@@ -49,6 +57,8 @@ interface CandidateResult {
   maxScore: number | null
   submittedAt: string | null
   invitedAt: string | null
+  inviteToken?: string | null
+  reminderCount?: number
   proctoringFlags: number
   idPhoto?: string | null
   facePhoto?: string | null
@@ -58,13 +68,44 @@ interface CandidateResult {
   graded?: boolean
   needsReview?: boolean
   source?: string
+  attemptNo?: number
+  maxAttempts?: number
+  bestScore?: number | null
+  bestAttemptNo?: number | null
+  kind?: string
+  /** Took the test without a camera (uploaded ID photo): check identity by hand. */
+  identityReview?: boolean
+  /** Advisory face match (0–1) of the ID photo vs the live selfie. */
+  faceMatch?: number | null
+  /** This candidate's certificate for the test, if one was issued. */
+  certificate?: { id: string; revokedAt: string | null; verifyToken: string | null } | null
+  /** Sectioned tests: score per section. */
+  sectionScores?: SectionScoreRow[]
+  /** Recorded hiring outcome (shortlisted, hired, …). */
+  outcome?: string | null
+  totalTimeMs?: number | null
 }
+
+interface SectionScoreRow { id: string; title: string; score: number; max: number; percent: number | null }
+
+interface IdentityCheckInfo {
+  method?: 'camera' | 'no_camera_upload' | null
+  needs_manual_review?: boolean
+  no_camera_reason?: 'no_device' | 'permission_denied' | 'error' | null
+  face_match?: { status?: string; similarity?: number; likely_match?: boolean } | null
+  upload_scan_status?: 'clean' | 'unscanned' | null
+}
+
+const NO_CAMERA_REVIEW_LABEL = 'No camera — needs manual identity review'
 
 interface Exam {
   id: string
   title: string
   level: string
   duration: number
+  issue_certificates?: boolean
+  /** Ordered sections (id + title); empty for tests without sections. */
+  sections?: Array<{ id: string; title: string }>
   publicLinkViews?: number
   plagiarismReport?: {
     score: number
@@ -104,54 +145,71 @@ interface ReviewData {
     released_at: string | null
     id_photo?: string | null
     face_photo?: string | null
+    identity_check?: IdentityCheckInfo | null
     question_timings?: Record<string, number>
     total_time_ms?: number
     started_at?: string | null
+    section_scores?: SectionScoreRow[]
   }
+  /** Hiring outcome doc (status, ratings, history), if recorded. */
+  outcome?: { status?: string; ratings?: Record<string, { value: number; notes?: string; by_email?: string; at?: string }>; history?: Array<{ at: string; by_email?: string; kind: 'status' | 'rating'; from?: string | number | null; to?: string | number | null; period?: number; notes?: string }> } | null
   proctorEvents: Array<{ event_type: string; meta: Record<string, unknown>; created_at: string }>
   candidate: { name: string; email: string }
+  /** CAD task attempts: uploaded files + design rationale (graded as the 'cad' question). */
+  cad?: {
+    files: Array<{ id: string; kind: 'native' | 'step'; name: string; size: number; scan_status?: 'clean' | 'unscanned' }>
+    rationale: string
+    task_code: string | null
+  } | null
+  attempts?: {
+    attempt_no: number
+    max_attempts: number
+    best: { score: number; max_score: number; attempt_no: number } | null
+  }
 }
 
 const PROCTOR_LABELS: Record<string, string> = {
-  tab_blur: 'Tab Switch',
-  tab_focus: 'Tab Return',
+  tab_blur: 'Tab switch',
+  tab_focus: 'Tab return',
   copy: 'Copy',
   paste: 'Paste',
-  fullscreen_exit: 'Fullscreen Exit',
-  fullscreen_enter: 'Fullscreen Enter',
-  right_click: 'Right Click',
-  visibility_change: 'Visibility Change',
-  window_blur: 'Window Blur',
-  window_focus: 'Window Focus',
+  fullscreen_exit: 'Fullscreen exit',
+  fullscreen_enter: 'Fullscreen enter',
+  right_click: 'Right click',
+  visibility_change: 'Visibility change',
+  window_blur: 'Window blur',
+  window_focus: 'Window focus',
   screenshot: 'Screenshot',
-  clipboard_copy: 'Copy Attempt',
-  clipboard_paste: 'Paste Attempt',
+  clipboard_copy: 'Copy attempt',
+  clipboard_paste: 'Paste attempt',
   alt_tab_detected: 'Alt+Tab',
-  right_click_blocked: 'Right Click Blocked',
-  keyboard_shortcut_blocked: 'Blocked Shortcut',
-  hardware_port_audit: 'Hardware Port Audit',
-  usb_device_plugged: 'USB Device Plugged',
-  usb_device_unplugged: 'USB Device Unplugged',
-  screen_share_started: 'Screen Share Started',
-  screen_share_ended: 'Screen Share Ended',
-  screen_capture_detected: 'Screen Capture Detected',
-  prohibited_app_detected: 'Prohibited App Detected',
-  remote_desktop_detected: 'Remote Desktop Detected',
-  rapid_window_resize: 'Rapid Window Resize',
-  secondary_voice_detected: 'Secondary Voice Detected',
-  volume_anomaly_detected: 'Volume Anomaly',
-  tab_focus_lost: 'Tab Switch',
-  copy_paste_attempt: 'Copy-Paste Attempt',
-  hardware_port_anomaly: 'Hardware Port Anomaly',
-  eye_blink_detected: 'Eye Blink Detected',
-  eye_gaze_changed: 'Eye Gaze Changed',
-  head_pose_turned_away: 'Head Turned Away',
-  browser_fingerprint_captured: 'Device Fingerprint Captured',
-  browser_fingerprint_changed: 'Device Change Detected',
-  face_match_mismatch: 'Face Mismatch',
-  face_match_restored: 'Face Verified',
-  keyboard_dynamics_snapshot: 'Typing Pattern Analysis',
-  answer_pattern_score: 'Answer Pattern Score',
+  right_click_blocked: 'Right click blocked',
+  keyboard_shortcut_blocked: 'Blocked shortcut',
+  hardware_port_audit: 'Hardware port audit',
+  usb_device_plugged: 'USB device plugged',
+  usb_device_unplugged: 'USB device unplugged',
+  screen_share_started: 'Screen share started',
+  screen_share_ended: 'Screen share ended',
+  screen_capture_detected: 'Screen capture detected',
+  prohibited_app_detected: 'Prohibited app detected',
+  remote_desktop_detected: 'Remote desktop detected',
+  rapid_window_resize: 'Rapid window resize',
+  secondary_voice_detected: 'Secondary voice detected',
+  volume_anomaly_detected: 'Volume anomaly',
+  tab_focus_lost: 'Tab switch',
+  copy_paste_attempt: 'Copy-paste attempt',
+  hardware_port_anomaly: 'Hardware port anomaly',
+  eye_blink_detected: 'Eye blink detected',
+  eye_gaze_changed: 'Eye gaze changed',
+  head_pose_turned_away: 'Head turned away',
+  browser_fingerprint_captured: 'Device fingerprint captured',
+  browser_fingerprint_changed: 'Device change detected',
+  face_match_mismatch: 'Face mismatch',
+  face_match_restored: 'Face verified',
+  keyboard_dynamics_snapshot: 'Typing pattern analysis',
+  answer_pattern_score: 'Answer pattern score',
+  identity_no_camera: NO_CAMERA_REVIEW_LABEL,
+  identity_check_completed: 'Identity check completed',
 }
 
 const PROCTOR_ICONS: Record<string, React.ReactNode> = {
@@ -168,11 +226,13 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
   face_match_restored: <Camera className="w-3 h-3" />,
   keyboard_dynamics_snapshot: <Keyboard className="w-3 h-3" />,
   answer_pattern_score: <ShieldAlert className="w-3 h-3" />,
+  identity_no_camera: <Camera className="w-3 h-3" />,
+  identity_check_completed: <Camera className="w-3 h-3" />,
 }
 
 const PROCTOR_RISK_HIGH = new Set(['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked', 'face_match_mismatch', 'answer_pattern_score'])
-const PROCTOR_RISK_WARN = new Set(['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed'])
-const PROCTOR_RISK_INFO = new Set(['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot'])
+const PROCTOR_RISK_WARN = new Set(['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed', 'identity_no_camera'])
+const PROCTOR_RISK_INFO = new Set(['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot', 'identity_check_completed'])
 
 
 // Keys every event carries that are noise for a human reviewer.
@@ -181,51 +241,54 @@ const PROCTOR_META_HIDDEN = new Set(['ua', 'timestamp', 'id', 'user_id', 'sessio
 const PROCTOR_META_LABELS: Record<string, string> = {
   total: 'Devices', safe: 'Safe', warn: 'Review', blocked: 'Blocked',
   multi_monitor: 'Multi-monitor', screen_count: 'Monitors', browser: 'Browser',
-  os: 'Operating System', device: 'Device Type', ip: 'IP Address',
+  os: 'Operating system', device: 'Device type', ip: 'IP address',
   textLength: 'Characters', preview: 'Content', appName: 'Application',
-  category: 'Category', url: 'URL', title: 'Page Title', deviceName: 'Device',
+  category: 'Category', url: 'URL', title: 'Page title', deviceName: 'Device',
   deviceType: 'Type', isBlocked: 'Blocked?', manufacturer: 'Manufacturer',
-  indicator: 'Detected Signal', displaySurface: 'Capture Surface',
-  trackKinds: 'Stream Type', state: 'Permission State', count: 'Count',
-  removedCount: 'Removed', audioLevelDb: 'Audio Level', speechDetected: 'Speech',
+  indicator: 'Detected signal', displaySurface: 'Capture surface',
+  trackKinds: 'Stream type', state: 'Permission state', count: 'Count',
+  removedCount: 'Removed', audioLevelDb: 'Audio level', speechDetected: 'Speech',
   key: 'Key', label: 'Shortcut',
-  blink_count: 'Total Blinks', new_blinks: 'New Blinks', gaze_direction: 'Gaze Direction',
-  yaw: 'Head Yaw', pitch: 'Head Pitch',
-  hash: 'Fingerprint Hash', original_hash: 'Original Hash', current_hash: 'Current Hash',
-  original_screen: 'Original Screen', current_screen: 'Current Screen',
-  score: 'Score', mismatch_count: 'Mismatch Count', threshold: 'Threshold',
-  avg_flight_time: 'Avg Flight Time', avg_dwell_time: 'Avg Dwell Time',
-  typing_speed_cpm: 'Typing Speed (CPM)', rhythm_variance: 'Rhythm Variance',
-  total_keystrokes: 'Total Keystrokes', backspace_ratio: 'Backspace Ratio',
+  blink_count: 'Total blinks', new_blinks: 'New blinks', gaze_direction: 'Gaze direction',
+  yaw: 'Head yaw', pitch: 'Head pitch',
+  hash: 'Fingerprint hash', original_hash: 'Original hash', current_hash: 'Current hash',
+  original_screen: 'Original screen', current_screen: 'Current screen',
+  score: 'Score', mismatch_count: 'Mismatch count', threshold: 'Threshold',
+  avg_flight_time: 'Avg flight time', avg_dwell_time: 'Avg dwell time',
+  typing_speed_cpm: 'Typing speed (CPM)', rhythm_variance: 'Rhythm variance',
+  total_keystrokes: 'Total keystrokes', backspace_ratio: 'Backspace ratio',
   is_suspicious: 'Suspicious?', flags: 'Flags', breakdown: 'Breakdown',
-  paste_score: 'Paste Score', speed_score: 'Speed Score',
-  pattern_score: 'Pattern Score', clipboard_score: 'Clipboard Score',
-  total_answers: 'Total Answers', total_pastes: 'Total Pastes',
+  paste_score: 'Paste score', speed_score: 'Speed score',
+  pattern_score: 'Pattern score', clipboard_score: 'Clipboard score',
+  total_answers: 'Total answers', total_pastes: 'Total pastes',
+  reason: 'Reason', scan: 'Virus scan', attempt_no: 'Attempt', id_photo: 'ID photo', face_photo: 'Face photo',
+  face_similarity: 'Face match (advisory)', face_match_advisory: 'Face match note',
 }
 
 const humanize = (k: string): string =>
-  PROCTOR_META_LABELS[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  PROCTOR_META_LABELS[k] || k.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
 
 /** Friendly, human-readable rendering of a proctoring event's metadata. */
 function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Record<string, unknown> }) {
+  const { t: ta } = useAdminT()
   // Hardware port audit gets a purpose-built summary.
   if (event_type === 'hardware_port_audit') {
     const devices = Array.isArray(meta.devices) ? (meta.devices as Array<Record<string, unknown>>) : []
-    const verdictClass = (v: unknown) => (v === 'blocked' ? 'text-rose-400' : v === 'warn' ? 'text-amber-400' : 'text-emerald-400')
+    const verdictClass = (v: unknown) => (v === 'blocked' ? 'text-red-600 dark:text-red-400' : v === 'warn' ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400')
     const verdictLabel = (v: unknown) => (v === 'blocked' ? 'Blocked' : v === 'warn' ? 'Review' : 'Safe')
     return (
       <div className="px-4 pb-3 border-t border-muted/50 space-y-2">
         <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 text-xs">
-          <span className="text-muted-foreground">Devices <b className="text-foreground">{Number(meta.total ?? 0)}</b></span>
+          <span className="text-muted-foreground">{ta('assessForm.devices')} <b className="text-foreground">{Number(meta.total ?? 0)}</b></span>
           {devices.length > 0 && (
             <>
-              <span className="text-emerald-400">{Number(meta.safe ?? 0)} safe</span>
-              <span className="text-amber-400">{Number(meta.warn ?? 0)} review</span>
-              <span className="text-rose-400">{Number(meta.blocked ?? 0)} blocked</span>
+              <span className="text-green-600 dark:text-green-400">{ta('assessForm.safe', { Number: Number(meta.safe ?? 0) })}</span>
+              <span className="text-amber-600 dark:text-amber-400">{ta('assessForm.review', { Number: Number(meta.warn ?? 0) })}</span>
+              <span className="text-red-600 dark:text-red-400">{ta('assessForm.blocked', { Number: Number(meta.blocked ?? 0) })}</span>
             </>
           )}
-          <span className="text-muted-foreground">Monitors <b className="text-foreground">{Number(meta.screen_count ?? 1)}</b></span>
-          {meta.multi_monitor === true && <span className="text-rose-400 font-semibold">Multi-monitor detected</span>}
+          <span className="text-muted-foreground">{ta('assessForm.monitors')} <b className="text-foreground">{Number(meta.screen_count ?? 1)}</b></span>
+          {meta.multi_monitor === true && <span className="text-red-600 dark:text-red-400 font-semibold">{ta('assessForm.multiMonitorDetected')}</span>}
           {meta.browser ? <span className="text-muted-foreground">{String(meta.browser)}</span> : null}
           {meta.os ? <span className="text-muted-foreground">{String(meta.os)}</span> : null}
           {meta.ip ? <span className="text-muted-foreground">IP {String(meta.ip)}</span> : null}
@@ -280,14 +343,21 @@ export default function ExamResultsPage() {
   const router = useRouter()
   const params = useParams()
   
+  const { t: tx } = useAdminT()
   const [exam, setExam] = useState<Exam | null>(null)
   const [results, setResults] = useState<CandidateResult[]>([])
   const [loading, setLoading] = useState(true)
+  /** Compare view (2–4 candidate user ids) and bulk outcome dialog. */
+  const [compareIds, setCompareIds] = useState<string[] | null>(null)
+  const [outcomeIds, setOutcomeIds] = useState<string[] | null>(null)
   const [reviewCandidate, setReviewCandidate] = useState<CandidateResult | null>(null)
   const [reviewData, setReviewData] = useState<ReviewData | null>(null)
+  // Wave 6: file / video answers of the candidate under review.
+  const answerFiles = useAnswerFiles(String(params.id), reviewData ? (reviewCandidate?.userId || reviewCandidate?.id) : null)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [releasing, setReleasing] = useState<string | null>(null)
   const [bulkReleasing, setBulkReleasing] = useState(false)
+  const [issuingCerts, setIssuingCerts] = useState(false)
   // Jev second-opinion availability (null = not checked yet). Grades work
   // without it; unverified free-text grades are flagged for human review.
   const [jevConfigured, setJevConfigured] = useState<boolean | null>(null)
@@ -398,23 +468,26 @@ export default function ExamResultsPage() {
     }
   }
 
-  const fetchData = useCallback(async () => {
+  /** `silent`: refresh rows in place (no skeleton, no redirect on error) — used after outcome edits. */
+  const fetchData = useCallback(async (silent = false) => {
     if (!params.id) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       const res = await fetch(`/api/admin/exams/${params.id}/results`, { credentials: 'include' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load results')
       setExam(json.exam)
+      // Pre-fill the release cutoff with the exam's saved pass mark.
+      if (typeof json.exam?.passing_score === 'number') setReleaseCutoff(json.exam.passing_score)
       setResults((json.results || []).map((r: CandidateResult) => ({
         ...r,
         inviteId: r.id,
       })))
     } catch {
       addToast({ type: 'error', title: 'Failed to load results' })
-      router.push('/dashboard/admin/assessments')
+      if (!silent) router.push('/dashboard/admin/assessments')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [params.id, router])
 
@@ -511,11 +584,13 @@ export default function ExamResultsPage() {
     const uid = reviewCandidate.userId || reviewCandidate.id
     // Grade whatever still needs review: pending questions, or any question the
     // candidate answered but that hasn't been awarded points yet.
-    const needsGrade = reviewData.questions.filter(q => {
+    // CAD submissions are files — a person scores them, never the AI.
+    const gradable = reviewData.questions.filter(q => q.type !== 'cad')
+    const needsGrade = gradable.filter(q => {
       const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
       return detail?.pending_review === true || (detail?.awarded === undefined && !detail?.correct)
     })
-    const questions = needsGrade.length > 0 ? needsGrade : reviewData.questions.filter(q => !!reviewData.submission.answers[q.id])
+    const questions = needsGrade.length > 0 ? needsGrade : gradable.filter(q => !!reviewData.submission.answers[q.id])
     const withAnswer = questions.filter(q => !!reviewData.submission.answers[q.id])
     const blank = questions.filter(q => !reviewData.submission.answers[q.id])
     // Unanswered questions are an automatic 0 — no LLM round-trip needed.
@@ -527,7 +602,7 @@ export default function ExamResultsPage() {
       return
     }
     if (withAnswer.length === 0) {
-      addToast({ type: 'success', title: `${blank.length} unanswered question(s) set to 0`, message: 'Click Save Manual Grades to persist.' })
+      addToast({ type: 'success', title: `${blank.length} unanswered question(s) set to 0`, message: 'Click Save manual grades to persist.' })
       return
     }
     setBulkGrading({ running: true, done: 0, total: withAnswer.length, failed: [] })
@@ -557,7 +632,7 @@ export default function ExamResultsPage() {
     if (failed.length > 0) {
       addToast({ type: 'error', title: `Graded ${withAnswer.length - failed.length}/${withAnswer.length}`, message: `${failed.length} question(s) could not be graded — check them manually.` })
     } else {
-      addToast({ type: 'success', title: `AI graded ${withAnswer.length} question(s)`, message: `Review the suggestions, then click Save Manual Grades.${blank.length > 0 ? ` ${blank.length} unanswered question(s) set to 0.` : ''}` })
+      addToast({ type: 'success', title: `AI graded ${withAnswer.length} question(s)`, message: `Review the suggestions, then click Save manual grades.${blank.length > 0 ? ` ${blank.length} unanswered question(s) set to 0.` : ''}` })
     }
   }
 
@@ -719,6 +794,40 @@ export default function ExamResultsPage() {
   const [bulkReminding, setBulkReminding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteInvite, setConfirmDeleteInvite] = useState<{ id: string; name: string } | null>(null)
+  const [revokeTarget, setRevokeTarget] = useState<{ certId: string; userId: string; name: string } | null>(null)
+  const [revokeReason, setRevokeReason] = useState('')
+  const [revoking, setRevoking] = useState(false)
+
+  const revokeCertificate = async () => {
+    if (!revokeTarget || revoking) return
+    const reason = revokeReason.trim()
+    if (reason.length < 5) {
+      addToast({ type: 'error', title: 'Give a reason (at least 5 characters)' })
+      return
+    }
+    setRevoking(true)
+    try {
+      const res = await csrfFetch(`/api/admin/certifications/${encodeURIComponent(revokeTarget.certId)}/revoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason }),
+      })
+      const json = await res.json().catch(() => ({})) as { error?: string; revokedAt?: string }
+      if (!res.ok) throw new Error(json.error || 'Could not revoke the certificate')
+      const { userId, certId, name } = revokeTarget
+      setResults((prev) => prev.map((r) => (r.userId === userId && r.certificate?.id === certId
+        ? { ...r, certificate: { ...r.certificate, revokedAt: json.revokedAt || new Date().toISOString() } }
+        : r)))
+      addToast({ type: 'success', title: `${name}'s certificate is revoked`, message: 'Its verify link now shows it as revoked.' })
+      setRevokeTarget(null)
+      setRevokeReason('')
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not revoke the certificate' })
+    } finally {
+      setRevoking(false)
+    }
+  }
 
   const resendInvite = async (inviteId: string, name: string) => {
     setResendingId(inviteId)
@@ -780,92 +889,33 @@ export default function ExamResultsPage() {
         method: 'DELETE',
         credentials: 'include',
       })
-      if (!res.ok) throw new Error('Failed to delete')
-      addToast({ type: 'success', title: `Invite deleted for ${name}` })
-      setResults(prev => prev.filter(r => r.inviteId !== inviteId))
-    } catch {
-      addToast({ type: 'error', title: `Failed to delete invite for ${name}` })
+      const j = await res.json().catch(() => ({})) as { error?: string; deleted?: boolean; revoked?: boolean }
+      if (!res.ok) throw new Error(j.error || '')
+      if (j.deleted) {
+        addToast({ type: 'success', title: `Invite deleted for ${name}` })
+        setResults(prev => prev.filter(r => r.inviteId !== inviteId))
+      } else {
+        // The candidate already submitted: the link is withdrawn, results stay.
+        addToast({ type: 'success', title: `Invite withdrawn for ${name}`, message: 'Their submitted results are kept.' })
+      }
+    } catch (e) {
+      addToast({ type: 'error', title: `Failed to withdraw invite for ${name}`, message: e instanceof Error && e.message ? e.message : undefined })
     } finally {
       setDeletingId(null)
     }
   }
 
-  const exportCsv = () => {
-    try {
-      if (!results) {
-        addToast({ type: 'error', title: 'No results available to export' })
-        return
-      }
-
-      const headers = [
-        'Candidate Name',
-        'Email',
-        'Status',
-        'Delivery Status',
-        'Proctoring Flags',
-        'Score (%)',
-        'Submitted At',
-        'Score Released',
-      ]
-
-      const candidateRows = results.map(r => [
-        r.name || '',
-        r.email || '',
-        r.status || '',
-        r.deliveryStatus || '',
-        r.proctoringFlags ?? 0,
-        r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
-        r.submittedAt ? fmtDateTime(r.submittedAt) : '--',
-        r.released ? 'Yes' : 'No',
-      ])
-
-      const csvRows = [headers, ...candidateRows]
-      const csvString = csvRows
-        .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-        .join('\r\n')
-
-      const csvContent = '\uFEFF' + csvString
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-
-      const sanitizeTitle = (exam?.title || 'exam_results')
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '_')
-        .replace(/_+/g, '_')
-      const filename = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
-
-      if (typeof window !== 'undefined' && (window.navigator as any).msSaveOrOpenBlob) {
-        ;(window.navigator as any).msSaveOrOpenBlob(blob, filename)
-        addToast({ type: 'success', title: 'Exported CSV successfully' })
-        return
-      }
-
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-
-      setTimeout(() => {
-        if (document.body.contains(link)) {
-          document.body.removeChild(link)
-        }
-        URL.revokeObjectURL(url)
-      }, 1000)
-
-      addToast({ type: 'success', title: 'Exported CSV successfully' })
-    } catch (err) {
-      console.error('[CodeSpectra] CSV Export Error:', err)
-      addToast({ type: 'error', title: 'Failed to export CSV file' })
-    }
-  }
-
   const copyInviteLink = (row: CandidateResult) => {
-    const link = `${window.location.origin}/assessment/invite/${row.id}`
-    navigator.clipboard.writeText(link).then(() => {
-      addToast({ type: 'success', title: `Invite link copied for ${row.name}` })
-    })
+    // The invite route looks up by token, not by the invite doc id.
+    if (!row.inviteToken) {
+      addToast({ type: 'error', title: 'No invite link for this candidate', message: 'Use resend invite to send a fresh link.' })
+      return
+    }
+    const link = `${window.location.origin}/assessment/invite/${encodeURIComponent(row.inviteToken)}`
+    navigator.clipboard.writeText(link).then(
+      () => addToast({ type: 'success', title: `Invite link copied for ${row.name}` }),
+      () => addToast({ type: 'error', title: 'Could not copy the link' }),
+    )
   }
 
   const downloadReviewPdf = () => {
@@ -878,7 +928,8 @@ export default function ExamResultsPage() {
   }
 
   const exportCSV = () => {
-    const headers = ['Candidate', 'Email', 'Status', 'Score (%)', 'Submitted At', 'Integrity Flags', 'Graded', 'Released']
+    const secs = exam?.sections ?? []
+    const headers = ['Candidate', 'Email', 'Status', 'Score (%)', 'Submitted At', 'Integrity Flags', 'Graded', 'Released', 'Outcome', ...secs.map((x) => `${x.title} (%)`)]
     const rows = results.map((r: CandidateResult) => [
       r.name || '',
       r.email || '',
@@ -888,24 +939,39 @@ export default function ExamResultsPage() {
       String(r.proctoringFlags || 0),
       r.graded ? 'Yes' : 'No',
       r.released ? 'Yes' : 'No',
+      isOutcomeStatus(r.outcome) ? OUTCOME_LABELS[r.outcome] : '',
+      ...secs.map((x) => {
+        const sc = r.sectionScores?.find((y) => y.id === x.id)
+        return sc && sc.percent !== null ? String(sc.percent) : ''
+      }),
     ])
+    // Candidate-controlled text (names) must not run as a spreadsheet formula.
+    const cell = (c: unknown) => {
+      let v = String(c ?? '')
+      if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`
+      return `"${v.replace(/"/g, '""')}"`
+    }
     const csv = [headers, ...rows]
-      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
+      .map((r) => r.map(cell).join(','))
+      .join('\r\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
+    a.href = url
     a.download = `${(exam?.title || 'exam').replace(/[^a-z0-9]+/gi, '_')}_results_${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(a.href)
+    a.remove()
+    // Revoking right after click() can cancel the download in Safari/Firefox.
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
   const proctorColor = (type: string): string => {
-    if (PROCTOR_RISK_HIGH.has(type)) return 'border-l-[3px] border-l-rose-500 text-rose-400 border-border/50 bg-rose-500/5'
+    if (PROCTOR_RISK_HIGH.has(type)) return 'border-l-[3px] border-l-red-500 text-red-700 dark:text-red-400 border-border/50 bg-red-500/5'
     if (PROCTOR_RISK_WARN.has(type)) return 'border-l-[3px] border-l-amber-500 text-amber-400 border-border/50 bg-amber-500/5'
-    if (PROCTOR_RISK_INFO.has(type)) return 'border-l-[3px] border-l-blue-500 text-blue-400 border-border/50 bg-blue-500/5'
+    if (PROCTOR_RISK_INFO.has(type)) return 'border-l-[3px] border-l-primary text-primary border-border/50 bg-blue-500/5'
     return 'border-l-[3px] border-l-muted-foreground text-muted-foreground border-border/50 bg-muted/20'
   }
 
@@ -930,16 +996,23 @@ export default function ExamResultsPage() {
       const examData = json.exam
       const candidates = json.candidates || []
 
-      const formatEvtType = (t: string) => PROCTOR_LABELS[t] || t.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+      // Everything below is candidate-controlled (names, photos, event meta):
+      // escape every interpolation and only allow image data URLs / https.
+      const esc = (v: unknown) => String(v ?? '').replace(/[&<>"'`]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[ch] as string))
+      const safeImg = (v: unknown) => {
+        const s = String(v ?? '')
+        return /^data:image\/(png|jpe?g|webp);base64,[a-z0-9+/=\s]+$/i.test(s) || /^https:\/\/[^\s"'<>]+$/i.test(s) ? s : ''
+      }
+      const formatEvtType = (t: string) => esc(PROCTOR_LABELS[t] || String(t).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()))
 
       let html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Proctor Report — ${examData.title}</title>
+<html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https:; style-src 'unsafe-inline'"><title>Proctor Report — ${esc(examData.title)}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; color: #1a1a1a; font-size: 13px; }
   h1 { font-size: 20px; margin-bottom: 4px; } h2 { font-size: 16px; margin: 24px 0 8px; border-bottom: 2px solid #e5e7eb; padding-bottom: 4px; }
   h3 { font-size: 14px; margin: 16px 0 6px; }
   table { width: 100%; border-collapse: collapse; margin: 8px 0; } th, td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; font-size: 12px; }
-  th { background: #f9fafb; font-weight: 600; } .pass { color: #059669; } .fail { color: #dc2626; }
+  th { background: #f9fafb; font-weight: 600; } .pass { color: #15803d; } .fail { color: #dc2626; }
   .evt { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin: 1px; }
   .evt-red { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
   .evt-amber { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
@@ -949,34 +1022,36 @@ export default function ExamResultsPage() {
   .meta { color: #6b7280; font-size: 11px; } .summary-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 8px 0; }
   @media print { body { padding: 0; } .no-print { display: none; } }
 </style></head><body>
-<div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#fff">Print / Save PDF</button></div>
-<h1>Proctor Report: ${examData.title}</h1>
-<p class="meta">Level: ${examData.level} | Duration: ${examData.duration} min | Generated: ${fmtDateTime(new Date())}</p>
-<p class="meta">Total Candidates: ${json.total_candidates} | Total Proctor Events: ${json.total_events}</p>
-<h2>Event Type Summary</h2>
-<div class="summary-box"><table><tr><th>Event Type</th><th>Count</th></tr>`
+<div class="no-print" style="text-align:right;margin-bottom:12px"><button id="print-report" type="button" style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#fff">Print / Save PDF</button></div>
+<h1>Proctor Report: ${esc(examData.title)}</h1>
+<p class="meta">Level: ${esc(examData.level)} | Duration: ${esc(examData.duration)} min | Generated: ${fmtDateTime(new Date())}</p>
+<p class="meta">Total Candidates: ${esc(json.total_candidates)} | Total Proctor Events: ${esc(json.total_events)}</p>
+<h2>Event type summary</h2>
+<div class="summary-box"><table><tr><th>Event type</th><th>Count</th></tr>`
 
       for (const [type, count] of Object.entries(json.event_type_summary || {})) {
-        html += `<tr><td>${formatEvtType(type)}</td><td>${count}</td></tr>`
+        html += `<tr><td>${formatEvtType(type)}</td><td>${esc(count)}</td></tr>`
       }
       html += `</table></div>`
 
       for (const c of candidates) {
         const pct = c.max_score > 0 ? Math.round((c.score / c.max_score) * 100) : null
         const passed = pct !== null && pct >= 50
-        const rating = (c.event_count || 0) === 0 ? 'Clean' : (c.event_count || 0) < 5 ? 'Low Risk' : (c.event_count || 0) < 15 ? 'Medium Risk' : 'High Risk'
+        const rating = (c.event_count || 0) === 0 ? 'Clean' : (c.event_count || 0) < 5 ? 'Low risk' : (c.event_count || 0) < 15 ? 'Medium risk' : 'High risk'
 
-        html += `<h2>${c.name || 'Unknown'} <span class="meta">(${c.email || 'N/A'})</span></h2>`
+        html += `<h2>${esc(c.name || 'Unknown')} <span class="meta">(${esc(c.email || 'N/A')})</span></h2>`
         html += `<div class="summary-box">`
-        html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity Events</th><th>Rating</th></tr>`
+        html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity events</th><th>Rating</th></tr>`
         html += `<tr><td>${pct !== null ? pct + '%' : '--'}</td><td class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</td>`
         html += `<td>${c.submitted_at ? fmtDateTime(c.submitted_at) : '--'}</td>`
-        html += `<td>${c.event_count || 0}</td><td><strong>${rating}</strong></td></tr></table>`
+        html += `<td>${esc(Number(c.event_count) || 0)}</td><td><strong>${rating}</strong></td></tr></table>`
 
-        if (c.id_photo || c.face_photo) {
+        const idImg = safeImg(c.id_photo)
+        const faceImg = safeImg(c.face_photo)
+        if (idImg || faceImg) {
           html += `<div style="margin-top:8px">`
-          if (c.id_photo) html += `<div style="display:inline-block;margin-right:12px"><div class="meta">ID Photo</div><img src="${c.id_photo}" /></div>`
-          if (c.face_photo) html += `<div style="display:inline-block"><div class="meta">Face Photo</div><img src="${c.face_photo}" /></div>`
+          if (idImg) html += `<div style="display:inline-block;margin-right:12px"><div class="meta">ID photo</div><img src="${esc(idImg)}" alt="ID document photo" /></div>`
+          if (faceImg) html += `<div style="display:inline-block"><div class="meta">Face photo</div><img src="${esc(faceImg)}" alt="Candidate face photo" /></div>`
           html += `</div>`
         }
 
@@ -995,21 +1070,21 @@ export default function ExamResultsPage() {
         if (answerEvts.length > 0) {
           const lastAnswerEvt = answerEvts[answerEvts.length - 1]
           const score = (lastAnswerEvt.meta as any)?.score
-          html += ` | Answer Pattern Score: ${score !== undefined ? score : 'N/A'}`
+          html += ` | Answer Pattern Score: ${score !== undefined ? esc(score) : 'N/A'}`
         }
         html += `</div></div>`
 
         if (c.proctor_events && c.proctor_events.length > 0) {
-          html += `<h3>Proctoring Event Log</h3><table><tr><th>Event</th><th>Time</th><th>Details</th></tr>`
+          html += `<h3>Proctoring event log</h3><table><tr><th>Event</th><th>Time</th><th>Details</th></tr>`
           for (const evt of c.proctor_events) {
             const evtType = formatEvtType(evt.event_type)
             const time = evt.created_at ? fmtDateTime(evt.created_at) : '--'
             const meta = evt.meta || {}
             const details = Object.entries(meta)
               .filter(([k]) => !['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source', 'ip', 'browser', 'os', 'device'].includes(k))
-              .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+              .map(([k, v]) => `${esc(k.replace(/_/g, ' '))}: ${esc(typeof v === 'object' ? JSON.stringify(v) : String(v))}`)
               .join('; ')
-            html += `<tr><td>${evtType}</td><td class="meta">${time}</td><td class="meta">${details}</td></tr>`
+            html += `<tr><td>${evtType}</td><td class="meta">${esc(time)}</td><td class="meta">${details}</td></tr>`
           }
           html += `</table>`
         }
@@ -1019,8 +1094,10 @@ export default function ExamResultsPage() {
 
       const win = window.open('', '_blank')
       if (win) {
+        win.opener = null
         win.document.write(html)
         win.document.close()
+        win.document.getElementById('print-report')?.addEventListener('click', () => win.print())
       }
       addToast({ type: 'success', title: 'Proctor report generated' })
     } catch (e: any) {
@@ -1055,7 +1132,10 @@ export default function ExamResultsPage() {
         title: json.released === 0
           ? 'No unreleased scores found'
           : `${json.released} scores released (${json.passed} passed, ${json.failed} below cutoff)`,
-        message: json.skipped_pending > 0 ? `${json.skipped_pending} ungraded submission(s) stayed locked.` : undefined,
+        message: [
+          json.certificates_issued > 0 ? `${json.certificates_issued} certificate${json.certificates_issued === 1 ? '' : 's'} issued.` : null,
+          json.skipped_pending > 0 ? `${json.skipped_pending} ungraded submission(s) stayed locked.` : null,
+        ].filter(Boolean).join(' ') || undefined,
       })
 
       if (json.released > 0) {
@@ -1068,6 +1148,37 @@ export default function ExamResultsPage() {
       addToast({ type: 'error', title: 'Bulk release failed' })
     } finally {
       setBulkReleasing(false)
+    }
+  }
+
+  // Certificates for results released before certificates existed (idempotent on the server).
+  const issueMissingCertificates = async () => {
+    setIssuingCerts(true)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/release-scores/certificates`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Could not issue certificates')
+      const issued = Number(json.issued) || 0
+      addToast({
+        type: issued > 0 ? 'success' : 'info',
+        title: issued > 0
+          ? `${issued} certificate${issued === 1 ? '' : 's'} issued`
+          : 'No missing certificates',
+        message: [
+          `${Number(json.checked) || 0} passing candidate${json.checked === 1 ? '' : 's'} checked at ${json.cutoff ?? '—'}% pass mark.`,
+          json.failed > 0 ? `${json.failed} could not be issued; try again.` : null,
+        ].filter(Boolean).join(' '),
+      })
+      if (issued > 0) {
+        await recordAuditLog('issue_missing_certificates', String(params.id), `Issued ${issued} missing certificates`)
+      }
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not issue certificates' })
+    } finally {
+      setIssuingCerts(false)
     }
   }
 
@@ -1125,10 +1236,14 @@ export default function ExamResultsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Advance failed')
+      const notSent = Math.max(0, (json.advanced || 0) - (json.emailed || 0))
       addToast({
-        type: 'success',
+        type: notSent > 0 ? 'warning' : 'success',
         title: `${json.advanced} candidate(s) advanced to ${json.target?.title || 'next round'}`,
-        message: json.skipped > 0 ? `${json.skipped} skipped (already invited or missing email).` : undefined,
+        message: [
+          notSent > 0 ? `${notSent} invite email(s) could not be sent — use resend on the next round's results page.` : '',
+          json.skipped > 0 ? `${json.skipped} skipped (already invited or missing email).` : '',
+        ].filter(Boolean).join(' ') || undefined,
       })
     } catch (e: unknown) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Advance failed' })
@@ -1226,6 +1341,7 @@ export default function ExamResultsPage() {
           <div>
             <div className="text-sm">{fmtDate(row.invitedAt)}</div>
             <div className="text-xs text-muted-foreground">{fmtTime(row.invitedAt)}</div>
+            {!!row.reminderCount && !row.submittedAt && <div className="text-xs text-muted-foreground">{tx('automations.nudges.remindedTimes', { count: row.reminderCount })}</div>}
           </div>
         ) : <span className="text-xs text-muted-foreground">--</span>
       ),
@@ -1248,9 +1364,9 @@ export default function ExamResultsPage() {
       header: 'Source',
       cell: (row: CandidateResult) => (
         row.source === 'invite' ? (
-          <Badge variant="outline" className="text-xs"><Mail className="w-3 h-3 mr-1" />Invite</Badge>
+          <Badge variant="outline" className="text-xs"><Mail className="w-3 h-3 mr-1" />{tx('assessForm.invite')}</Badge>
         ) : (
-          <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20"><Link className="w-3 h-3 mr-1" />Public</Badge>
+          <Badge variant="outline" className="text-xs bg-blue-500/10 text-primary border-blue-500/20"><Link className="w-3 h-3 mr-1" />{tx('assessForm.public')}</Badge>
         )
       ),
     },
@@ -1259,10 +1375,10 @@ export default function ExamResultsPage() {
       header: 'Status',
       cell: (row: CandidateResult) => {
         const badges: Record<string, React.ReactNode> = {
-          pending: <Badge variant="outline" className="text-muted-foreground">Invited</Badge>,
-          in_progress: <Badge variant="outline" className="text-blue-500 border-blue-500/20">In Progress</Badge>,
-          completed: <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 text-white">Completed</Badge>,
-          expired: <Badge variant="secondary" className="text-amber-500">Expired</Badge>,
+          pending: <Badge variant="outline" className="text-muted-foreground">{tx('assessForm.invited')}</Badge>,
+          in_progress: <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-500/20">{tx('assessForm.inProgress')}</Badge>,
+          completed: <Badge variant="success">{tx('assessForm.completed')}</Badge>,
+          expired: <Badge variant="secondary" className="text-amber-700 dark:text-amber-400">{tx('assessForm.expired')}</Badge>,
         }
         return badges[row.status] || <Badge variant="outline">{row.status}</Badge>
       },
@@ -1272,9 +1388,9 @@ export default function ExamResultsPage() {
       header: 'Graded',
       cell: (row: CandidateResult) => {
         if (row.status !== 'completed') return <span className="text-xs text-muted-foreground">--</span>
-        if (row.graded) return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Graded</span>
-        if (row.needsReview) return <span className="text-xs text-amber-500 flex items-center gap-1" title="AI graded, but a question is flagged for human review — open the candidate to finish"><Clock className="w-3 h-3"/> Needs review</span>
-        return <span className="text-xs text-amber-500 flex items-center gap-1"><Clock className="w-3 h-3"/> Not Graded</span>
+        if (row.graded) return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.graded')}</span>
+        if (row.needsReview) return <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1" title={tx('assessForm.aiGradedButAQuestionIs')}><Clock className="w-3 h-3"/> {tx('assessForm.needsReview')}</span>
+        return <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1"><Clock className="w-3 h-3"/> {tx('assessForm.notGraded')}</span>
       },
     },
     {
@@ -1282,22 +1398,22 @@ export default function ExamResultsPage() {
       header: 'Email',
       cell: (row: CandidateResult) => {
         if (row.deliveryStatus === 'sending') {
-          return <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> Sending</span>
+          return <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> {tx('assessForm.sending')}</span>
         }
         if (row.deliveryStatus === 'sent') {
-          return <span className="text-xs text-blue-500 flex items-center gap-1"><Send className="w-3 h-3"/> Sent</span>
+          return <span className="text-xs text-primary flex items-center gap-1"><Send className="w-3 h-3"/> {tx('assessForm.sent')}</span>
         }
         if (row.deliveryStatus === 'opened') {
-          return <span className="text-xs text-emerald-500 flex items-center gap-1"><Eye className="w-3 h-3"/> Opened</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><Eye className="w-3 h-3"/> {tx('assessForm.opened')}</span>
         }
         if (row.deliveryStatus === 'delivered') {
-          return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.delivered')}</span>
         }
         if (row.deliveryStatus === 'failed' || row.deliveryStatus === 'bounced') {
-          return <span className="text-xs text-rose-500 flex items-center gap-1"><XCircle className="w-3 h-3"/> {row.deliveryStatus === 'bounced' ? 'Bounced' : 'Failed'}</span>
+          return <span className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1"><XCircle className="w-3 h-3"/> {row.deliveryStatus === 'bounced' ? 'Bounced' : 'Failed'}</span>
         }
         if (row.status === 'completed') {
-          return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.delivered')}</span>
         }
         return <span className="text-xs text-muted-foreground">--</span>
       },
@@ -1306,14 +1422,21 @@ export default function ExamResultsPage() {
       key: 'proctoringFlags',
       header: 'Integrity',
       cell: (row: CandidateResult) => (
+        <div>
         <div className="flex items-center gap-2">
           {row.proctoringFlags === 0 ? (
-            <span className="text-emerald-500 text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Clean</span>
+            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> {tx('assessForm.clean')}</span>
           ) : (
-            <span className="text-rose-500 text-xs flex items-center gap-1 font-bold">
-              <ShieldAlert className="w-3 h-3"/> {row.proctoringFlags} Flags
+            <span className="text-red-600 dark:text-red-400 text-xs flex items-center gap-1 font-bold">
+              <ShieldAlert className="w-3 h-3"/> {row.proctoringFlags} {tx('assessForm.flags')}
             </span>
           )}
+        </div>
+        {row.identityReview && (
+          <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1" title={tx('assessForm.theCandidateHadNoWorkingCamera')}>
+            <Camera className="w-3 h-3 shrink-0" /> {NO_CAMERA_REVIEW_LABEL}
+          </div>
+        )}
         </div>
       ),
     },
@@ -1322,19 +1445,55 @@ export default function ExamResultsPage() {
       header: 'Score',
       sortable: true,
       cell: (row: CandidateResult) => (
-        <div className="font-mono font-medium">
-          {row.score !== null ? `${row.score}%` : '--'}
+        <div>
+          <div className="font-mono font-medium">
+            {row.score !== null ? `${row.score}%` : '--'}
+          </div>
+          {row.maxAttempts !== undefined && row.maxAttempts > 1 && (
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              {tx('assessForm.attempt')} {row.attemptNo ?? 1} {tx('assessForm.of')} {row.maxAttempts}
+              {row.bestScore !== null && row.bestScore !== undefined && (row.attemptNo ?? 1) > 1 ? ` · best ${row.bestScore}%` : ''}
+            </div>
+          )}
         </div>
       ),
+    },
+    ...((exam?.sections?.length ?? 0) > 0 ? [{
+      key: 'sectionScores',
+      header: 'Sections',
+      cell: (row: CandidateResult) => (
+        row.sectionScores && row.sectionScores.length > 0 ? (
+          <ul className="space-y-0.5 text-[11px]">
+            {row.sectionScores.map((sc) => (
+              <li key={sc.id} className="flex justify-between gap-2">
+                <span className="max-w-[8rem] truncate text-muted-foreground" title={sc.title}>{sc.title}</span>
+                <span className="font-mono tabular-nums">{sc.percent !== null ? `${sc.percent}%` : '--'}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <span className="text-xs text-muted-foreground">--</span>
+      ),
+    } as DataTableColumn<CandidateResult>] : []),
+    {
+      key: 'outcome',
+      header: 'Outcome',
+      cell: (row: CandidateResult) => <OutcomeBadge status={row.outcome} />,
     },
     {
       key: 'released',
       header: 'Released',
       cell: (row: CandidateResult) => (
         row.released ? (
-          <span className="text-emerald-500 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Released</span>
+          <div>
+            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> {tx('assessForm.released')}</span>
+            {row.certificate && (
+              row.certificate.revokedAt
+                ? <span className="text-[11px] text-destructive">{tx('assessForm.certificateRevoked')}</span>
+                : <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3" /> {tx('assessForm.certificateIssued')}</span>
+            )}
+          </div>
         ) : row.status === 'completed' ? (
-          <span className="text-muted-foreground text-xs">Pending</span>
+          <span className="text-muted-foreground text-xs">{tx('assessForm.pending')}</span>
         ) : null
       ),
     },
@@ -1345,7 +1504,7 @@ export default function ExamResultsPage() {
         <div className="flex items-center gap-1 justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={tx('assessForm.inviteActions')}
                 disabled={resendingId === row.inviteId || deletingId === row.inviteId}
               >
                 {resendingId === row.inviteId || deletingId === row.inviteId
@@ -1354,37 +1513,52 @@ export default function ExamResultsPage() {
                 }
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end" className="w-48">
               {row.status === 'completed' && (
                 <DropdownMenuItem onClick={() => openReview(row)} className="gap-2">
-                  <Eye className="h-4 w-4" /> Review
+                  <Eye className="h-4 w-4" /> {tx('assessForm.review2')}
+                </DropdownMenuItem>
+              )}
+              {(row.userId || row.status === 'completed') && (
+                <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/recordings?user=${encodeURIComponent(row.userId || row.id)}`)} className="gap-2">
+                  <Film className="h-4 w-4" /> {tx('assessForm.recordings')}
                 </DropdownMenuItem>
               )}
               {row.status === 'completed' && row.graded === false && (
-                <DropdownMenuItem disabled className="gap-2 text-amber-500">
-                  <Clock className="h-4 w-4" /> Grading Pending
+                <DropdownMenuItem disabled className="gap-2 text-amber-700 dark:text-amber-400">
+                  <Clock className="h-4 w-4" /> {tx('assessForm.gradingPending')}
                 </DropdownMenuItem>
               )}
               {row.status === 'completed' && row.graded && !row.released && (
-                <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-emerald-500 focus:text-emerald-500">
-                  <Send className="h-4 w-4" /> Release Score
+                <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-green-600 dark:text-green-400 focus:text-green-600">
+                  <Send className="h-4 w-4" /> {tx('assessForm.releaseScore')}
                 </DropdownMenuItem>
               )}
               {row.status !== 'completed' && (
                 <>
                   <DropdownMenuItem onClick={() => resendInvite(row.inviteId, row.name)} className="gap-2">
-                    <Mail className="h-4 w-4" /> Resend Invite
+                    <Mail className="h-4 w-4" /> {tx('assessForm.resendInvite')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => sendReminder(row.inviteId, row.name)} className="gap-2">
-                    <Bell className="h-4 w-4" /> Send Reminder
+                    <Bell className="h-4 w-4" /> {tx('assessForm.sendReminder')}
                   </DropdownMenuItem>
                 </>
               )}
-              <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
-                <Link className="h-4 w-4" /> Copy Link
-              </DropdownMenuItem>
+              {row.certificate && !row.certificate.revokedAt && row.userId && (
+                <DropdownMenuItem
+                  onClick={() => { setRevokeReason(''); setRevokeTarget({ certId: row.certificate!.id, userId: row.userId!, name: row.name }) }}
+                  className="gap-2 text-destructive focus:text-destructive"
+                >
+                  <Award className="h-4 w-4" /> {tx('assessForm.revokeCertificate')}
+                </DropdownMenuItem>
+              )}
+              {row.inviteToken && (
+                <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
+                  <Link className="h-4 w-4" /> {tx('assessForm.copyInviteLink')}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => setConfirmDeleteInvite({ id: row.inviteId, name: row.name })} className="gap-2 text-destructive focus:text-destructive">
-                <Trash2 className="h-4 w-4" /> Delete
+                <Trash2 className="h-4 w-4" /> {tx('assessForm.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1416,7 +1590,7 @@ export default function ExamResultsPage() {
 
   const inProgressCount = results.filter(r => r.status === 'in_progress').length
   const pendingCount = results.filter(r => r.status === 'pending').length
-  const flaggedCount = results.filter(r => r.proctoringFlags > 0).length
+  const flaggedCount = results.filter(r => r.proctoringFlags > 0 || r.identityReview).length
 
   const filteredResults = results.filter(r => {
     switch (resultFilter) {
@@ -1424,80 +1598,106 @@ export default function ExamResultsPage() {
       case 'in_progress': return r.status === 'in_progress'
       case 'pending': return r.status === 'pending'
       case 'ungraded': return r.status === 'completed' && r.graded === false
-      case 'flagged': return r.proctoringFlags > 0
+      case 'flagged': return r.proctoringFlags > 0 || r.identityReview === true
       default: return true
     }
   })
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
-            <ArrowLeft className="h-4 w-4" /> Back to Assessments
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Results: {exam.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
+      <div className="space-y-3">
+        <button type="button" className="flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push('/dashboard/admin/assessments')}>
+          <ArrowLeft className="h-4 w-4" /> {tx('assessForm.backToAssessments')}
+        </button>
+        <PageHeader
+          className="mb-0"
+          title={<>Results: {exam.title}</>}
+          description={tx('assessForm.reviewSubmissionsGradeOpenAnswersCheck')}
+          icon={<CheckCheck />}
+          actions={
+            <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/recordings`)}>
+              <Film className="h-4 w-4" /> {tx('assessForm.recordings')}
+            </Button>
+            <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/integrity`)}>
+              <ShieldAlert className="h-4 w-4" /> {tx('assessForm.integrity')}
+            </Button>
+            </div>
+          }
+        />
+        <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{exam.level}</Badge>
-            <Badge variant="outline">{exam.duration} mins</Badge>
-            <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {completedCount} Submitted
-            </Badge>
-            <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
-              {results.length} Total Invited
-            </Badge>
+            <Badge variant="outline">{tx('assessForm.mins', { duration: exam.duration })}</Badge>
+            <Badge variant="secondary" className="bg-primary/10 text-primary">{tx('assessForm.submitted', { completedCount: completedCount })}</Badge>
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">{tx('assessForm.invited2', { length: results.length })}</Badge>
             {(exam.publicLinkViews ?? 0) > 0 && (
-              <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
+              <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400">
                 <Link className="w-3 h-3 mr-1" />
-                {exam.publicLinkViews} Public Link Views
+                {exam.publicLinkViews} {tx('assessForm.publicLinkViews')}
               </Badge>
             )}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {pendingGradingCount > 0 && (
-            <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
-              <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
+            <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20">
+              <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} {tx('assessForm.awaitingGrading')}
             </Badge>
           )}
           {jevConfigured !== null && (
-            <Badge
-              variant="secondary"
-              title={jevConfigured ? 'Jev second-opinion verification active — disagreements escalate to human review' : 'Jev key not configured — free-text grades will be flagged for human review'}
-              className={jevConfigured ? 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'gap-1 bg-muted text-muted-foreground'}
+            <SecondOpinionHint
+              text={jevConfigured
+                ? 'A second AI model double-checks each AI grade on written and code answers. If it disagrees, the answer is flagged for a person to review.'
+                : 'Not set up. Written and code answers are still graded by AI, but every one is flagged for a person to review.'}
             >
-              <ShieldAlert className="w-3.5 h-3.5" /> {jevConfigured ? 'Jev verified' : 'Jev off'}
-            </Badge>
+              <Badge
+                variant="secondary"
+                className={jevConfigured ? 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' : 'gap-1 bg-muted text-muted-foreground'}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" aria-hidden /> {jevConfigured ? 'Second-opinion check on' : 'Second-opinion check off'}
+              </Badge>
+            </SecondOpinionHint>
           )}
           {exam?.plagiarismReport && (
             <Badge
               variant="secondary"
               title={`Checked ${fmtDateTime(exam.plagiarismReport.checked_at)} · ${exam.plagiarismReport.pairs} pair(s), ${exam.plagiarismReport.aiFlags} AI flag(s), ${exam.plagiarismReport.bankMatches} bank match(es)`}
-              className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-rose-500/10 text-rose-500 border-rose-500/20' : 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}
+              className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' : 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20'}
             >
-              <ShieldAlert className="w-3.5 h-3.5" /> Plagiarism {exam.plagiarismReport.score}/100
+              <ShieldAlert className="w-3.5 h-3.5" /> {tx('assessForm.plagiarism')} {exam.plagiarismReport.score}/100
             </Badge>
           )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           {pendingGradingCount > 0 && (
             <Button
               variant="outline"
-              className="gap-2 text-blue-600 border-blue-500/40 hover:bg-blue-500/10 dark:text-blue-400"
+              className="gap-2 text-primary border-primary/40 hover:bg-primary/10"
               onClick={() => gradeCandidates(results.filter(r => r.status === 'completed' && r.graded === false).map(r => r.userId || r.id))}
               disabled={!!bulkGradeIds}
             >
               {bulkGradeIds ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : `Grade All Pending (${pendingGradingCount})`}
+              {bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : `Grade all pending (${pendingGradingCount})`}
             </Button>
           )}
           {unreleasedCount > 0 && (
             <Button
               variant="default"
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="gap-2"
               onClick={openReleaseDialog}
               disabled={bulkReleasing}
             >
               {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Release All ({unreleasedCount})
+              {tx('assessForm.releaseAll')}{unreleasedCount})
+            </Button>
+          )}
+          {exam?.issue_certificates !== false && results.some((r) => r.released) && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={issueMissingCertificates}
+              disabled={issuingCerts}
+              title={tx('assessForm.issueCertificatesToReleasedCandidatesAt')}
+            >
+              {issuingCerts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
+              {tx('assessForm.issueMissingCertificates')}
             </Button>
           )}
           <Button
@@ -1507,44 +1707,45 @@ export default function ExamResultsPage() {
             disabled={exportingReport}
           >
             {exportingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Export Report
+            {tx('assessForm.exportReport')}
           </Button>
           <Button
             variant="outline"
             className="gap-2"
             onClick={runPlagiarismCheck}
             disabled={plagRunning}
-            title="Cross-submission copy detection + AI-authorship flags (runs on demand, up to ~2 min)"
+            title={tx('assessForm.crossSubmissionCopyDetectionAiAuthorship')}
           >
             {plagRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldAlert className="w-4 h-4" />}
-            Check plagiarism
+            {tx('assessForm.checkPlagiarism')}
           </Button>
           <Button variant="outline" className="gap-2" onClick={remindAllPending} disabled={bulkReminding}>
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
-            Remind All Pending
+            {tx('assessForm.remindAllPending')}
           </Button>
           <Button variant="outline" className="gap-2" onClick={exportCSV}>
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /> {tx('assessForm.exportCsv')}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {([
-          ['all', 'All Invited', results.length, 'text-foreground', ''],
+          ['all', 'All invited', results.length, 'text-foreground', ''],
           ['pending', 'Invited', pendingCount, 'text-muted-foreground', ''],
-          ['in_progress', 'In Progress', inProgressCount, 'text-blue-600 dark:text-blue-400', ''],
-          ['completed', 'Submitted', completedCount, 'text-emerald-600 dark:text-emerald-400', ''],
-          ['ungraded', 'Awaiting Grading', pendingGradingCount, 'text-amber-600 dark:text-amber-400', ''],
-          ['flagged', 'Flagged Review', flaggedCount, 'text-red-600 dark:text-red-400', ''],
+          ['in_progress', 'In progress', inProgressCount, 'text-blue-600 dark:text-blue-400', ''],
+          ['completed', 'Submitted', completedCount, 'text-green-700 dark:text-green-400', ''],
+          ['ungraded', 'Awaiting grading', pendingGradingCount, 'text-amber-600 dark:text-amber-400', ''],
+          ['flagged', 'Flagged for review', flaggedCount, 'text-red-600 dark:text-red-400', ''],
         ] as const).map(([key, label, count, color, _]) => (
           <button
             key={key}
             type="button"
             onClick={() => setResultFilter(key)}
-            className={`rounded-lg border p-3 text-left transition-colors ${resultFilter === key ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-card hover:bg-muted/50'} ${count === 0 ? 'opacity-60' : ''}`}
+            aria-pressed={resultFilter === key}
+            className={`rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${resultFilter === key ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border/70 bg-card hover:bg-muted/50'} ${count === 0 ? 'opacity-60' : ''}`}
           >
-            <div className={`text-2xl font-bold ${color}`}>{count}</div>
+            <div className={`text-2xl font-bold tabular-nums ${color}`}>{count}</div>
             <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
           </button>
         ))}
@@ -1560,8 +1761,8 @@ export default function ExamResultsPage() {
 
       {resultFilter !== 'all' && (
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Showing {filteredResults.length} of {results.length} candidates.</span>
-          <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setResultFilter('all')}>Show all</Button>
+          <span className="text-muted-foreground">{tx('assessForm.showingOfCandidates', { length: filteredResults.length, length2: results.length })}</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setResultFilter('all')}>{tx('assessForm.showAll')}</Button>
         </div>
       )}
 
@@ -1571,22 +1772,21 @@ export default function ExamResultsPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <h2 className="text-sm font-semibold">Invite recovery — {stuckInvites.length} stuck</h2>
+              <h2 className="text-sm font-semibold">{tx('assessForm.inviteRecoveryStuck', { length: stuckInvites.length })}</h2>
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="gap-2 border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
+              className="gap-2 border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
               onClick={() => void resetInvites('all', 'all')}
               disabled={!!recovering}
             >
               {recovering === 'all' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              Reset all to pending
+              {tx('assessForm.resetAllToPending')}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            These invites show as used but have no submission — the candidate was locked out mid-exam.
-            Resetting flips them back to pending; the candidate resubmits from the same browser (answers restore from draft).
+            {tx('assessForm.theseInvitesShowAsUsedBut')}
           </p>
           <div className="border rounded-md divide-y divide-border/40 max-h-56 overflow-y-auto bg-card">
             {stuckInvites.map((s) => (
@@ -1596,10 +1796,10 @@ export default function ExamResultsPage() {
                   <p className="text-muted-foreground truncate">{s.email}</p>
                 </div>
                 {s.has_draft === true && (
-                  <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 shrink-0">draft saved</Badge>
+                  <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 shrink-0">{tx('assessForm.draftSaved')}</Badge>
                 )}
                 {s.has_draft === false && (
-                  <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0">no draft</Badge>
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0">{tx('assessForm.noDraft')}</Badge>
                 )}
                 <Button
                   size="sm"
@@ -1624,6 +1824,32 @@ export default function ExamResultsPage() {
           searchPlaceholder="Search candidates..."
           bulkActions={[
             {
+              label: 'Compare',
+              variant: 'outline',
+              icon: <Eye className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (rowIds) => {
+                const uids = [...new Set(rowIds.map((id) => results.find((c) => c.id === id)).filter((r): r is CandidateResult => !!r && r.status === 'completed' && !!r.userId).map((r) => r.userId as string))]
+                if (uids.length < 2 || uids.length > 4) {
+                  addToast({ type: 'error', title: 'Select 2 to 4 candidates who submitted', message: `You selected ${uids.length} with a submission.` })
+                  return
+                }
+                setCompareIds(uids)
+              },
+            },
+            {
+              label: 'Record outcome',
+              variant: 'outline',
+              icon: <Award className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (rowIds) => {
+                const uids = [...new Set(rowIds.map((id) => results.find((c) => c.id === id)).filter((r): r is CandidateResult => !!r && r.status === 'completed' && !!r.userId).map((r) => r.userId as string))]
+                if (uids.length === 0) {
+                  addToast({ type: 'error', title: 'Select candidates who submitted this test' })
+                  return
+                }
+                setOutcomeIds(uids)
+              },
+            },
+            {
               label: bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : 'Grade with AI',
               variant: 'default',
               icon: bulkGradeIds ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />,
@@ -1637,7 +1863,7 @@ export default function ExamResultsPage() {
               },
             },
             {
-              label: 'Release Scores',
+              label: 'Release scores',
               variant: 'default',
               icon: <Send className="w-3.5 h-3.5 mr-1" />,
               onClick: async (ids) => {
@@ -1650,7 +1876,7 @@ export default function ExamResultsPage() {
               },
             },
             {
-              label: 'Send Reminder',
+              label: 'Send reminder',
               variant: 'outline',
               icon: <Bell className="w-3.5 h-3.5 mr-1" />,
               onClick: async (ids) => {
@@ -1666,6 +1892,25 @@ export default function ExamResultsPage() {
         />
       </div>
 
+      {compareIds && exam && (
+        <CompareCandidates
+          examId={exam.id}
+          userIds={compareIds}
+          open={!!compareIds}
+          onOpenChange={(o) => { if (!o) setCompareIds(null) }}
+          onChanged={() => { void fetchData(true) }}
+        />
+      )}
+      {outcomeIds && exam && (
+        <OutcomeBulkDialog
+          open={!!outcomeIds}
+          onOpenChange={(o) => { if (!o) setOutcomeIds(null) }}
+          examId={exam.id}
+          userIds={outcomeIds}
+          onSaved={() => { void fetchData(true) }}
+        />
+      )}
+
       {reviewCandidate && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background print-review-overlay overflow-hidden">
           {/* Header — sticky */}
@@ -1675,13 +1920,13 @@ export default function ExamResultsPage() {
               <p className="text-xs text-muted-foreground mt-0.5 truncate">{reviewCandidate.email}</p>
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setReviewCandidate(null); setReviewData(null) }} className="gap-1.5 shrink-0">
-              <X className="h-4 w-4" /> <span className="hidden sm:inline">Close</span>
+              <X className="h-4 w-4" /> <span className="hidden sm:inline">{tx('assessForm.close')}</span>
             </Button>
           </div>
 
           {reviewLoading ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading review data...
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> {tx('assessForm.loadingReviewData')}
             </div>
           ) : reviewData ? (
             <>
@@ -1690,14 +1935,14 @@ export default function ExamResultsPage() {
                   {/* Candidate Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
-                      <span className="text-muted-foreground block text-xs">Score</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.score')}</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
                       {reviewData.submission.has_pending_review && (
-                        <span className="block text-xs text-amber-500 mt-0.5">⚠ Partial — pending review</span>
+                        <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">{tx('assessForm.partialPendingReview')}</span>
                       )}
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-xs">Percentage</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.percentage')}</span>
                       <span className="text-xl font-bold">
                         {reviewData.submission.max_score > 0
                           ? `${Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)}%`
@@ -1705,33 +1950,72 @@ export default function ExamResultsPage() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-xs">Submitted</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.submitted2')}</span>
                       <span className="text-sm font-medium">
                         {reviewData.submission.submitted_at
                           ? fmtDateTime(reviewData.submission.submitted_at)
                           : '--'}
                       </span>
+                      {reviewData.attempts && reviewData.attempts.max_attempts > 1 && (
+                        <span className="block text-xs text-muted-foreground mt-0.5 tabular-nums">
+                          {tx('assessForm.attempt')} {reviewData.attempts.attempt_no} {tx('assessForm.of')} {reviewData.attempts.max_attempts}
+                          {reviewData.attempts.best && reviewData.attempts.best.max_score > 0 && reviewData.attempts.attempt_no > 1
+                            ? ` · best ${Math.round((reviewData.attempts.best.score / reviewData.attempts.best.max_score) * 100)}% (attempt ${reviewData.attempts.best.attempt_no})`
+                            : ''}
+                        </span>
+                      )}
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-xs">Time Used</span>
+                      <span className="text-muted-foreground block text-xs">{tx('assessForm.timeUsed')}</span>
                       <span className="text-xl font-bold">
                         {reviewData.submission.total_time_ms
                           ? `${Math.floor(reviewData.submission.total_time_ms / 60000)}m ${Math.floor((reviewData.submission.total_time_ms % 60000) / 1000)}s`
                           : '--'}
                       </span>
                       {reviewData.submission.total_time_ms && reviewData.submission.total_time_ms < 60000 && (
-                        <span className="block text-xs text-amber-500 mt-0.5">⚠ Very fast submission</span>
+                        <span className="block text-xs text-amber-700 dark:text-amber-400 mt-0.5">{tx('assessForm.veryFastSubmission')}</span>
                       )}
                     </div>
                   </div>
 
+                  {reviewData.submission.section_scores && reviewData.submission.section_scores.length > 0 && (
+                    <div className="rounded-lg border p-4">
+                      <h4 className="mb-2 text-sm font-semibold">{tx('assessForm.scoreBySection')}</h4>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {reviewData.submission.section_scores.map((sc) => (
+                          <div key={sc.id} className="rounded-lg border bg-muted/30 p-3">
+                            <p className="truncate text-xs text-muted-foreground" title={sc.title}>{sc.title}</p>
+                            <p className="text-lg font-bold tabular-nums">{sc.percent !== null ? `${sc.percent}%` : '--'}</p>
+                            <p className="text-xs text-muted-foreground tabular-nums">{tx('assessForm.points', { score: sc.score, max: sc.max })}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(reviewCandidate.userId || reviewCandidate.id) && exam && (
+                    <HiringOutcomePanel
+                      key={`${reviewCandidate.userId || reviewCandidate.id}:${reviewData.outcome?.history?.length ?? 0}:${reviewData.outcome?.status ?? ''}`}
+                      examId={exam.id}
+                      userId={reviewCandidate.userId || reviewCandidate.id}
+                      outcome={reviewData.outcome ?? null}
+                      onSaved={async () => {
+                        const uid = reviewCandidate.userId || reviewCandidate.id
+                        const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
+                        const json = await res.json().catch(() => null)
+                        if (res.ok && json?.submission) setReviewData((prev) => (prev ? { ...prev, outcome: json.outcome ?? null } : prev))
+                        void fetchData(true)
+                      }}
+                    />
+                  )}
+
                   {/* Answer Review */}
                   <div className="space-y-3">
                     <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Answer Review
+                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" /> {tx('assessForm.answerReview')}
                       {reviewData.submission.has_pending_review && (
-                        <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/10">
-                          <Clock className="w-3 h-3 mr-1" /> Pending Manual Grading
+                        <Badge variant="outline" className="text-xs text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10">
+                          <Clock className="w-3 h-3 mr-1" /> {tx('assessForm.pendingManualGrading')}
                         </Badge>
                       )}
                     </h4>
@@ -1743,20 +2027,20 @@ export default function ExamResultsPage() {
                       return (
                         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-1">
                           <p className="font-semibold">
-                            {pendingIdx.length} question{pendingIdx.length === 1 ? '' : 's'} need review before this score can be released:
+                            {pendingIdx.length} {tx('assessForm.question')}{pendingIdx.length === 1 ? '' : 's'} {tx('assessForm.needReviewBeforeThisScoreCan')}
                           </p>
                           <p className="break-words">
                             {pendingIdx.map((n) => `Q${n}`).join(', ')}
                           </p>
                           <p className="text-amber-700/80 dark:text-amber-300/80">
-                            Scroll to the highlighted rows, set the points (the AI&apos;s value is pre-filled), then
-                            click <strong>Save Manual Grades</strong> — that clears them.
+                            {tx('assessForm.scrollToTheHighlightedRowsSet')} <strong>{tx('assessForm.saveManualGrades')}</strong> {tx('assessForm.thatClearsThem')}
                           </p>
                         </div>
                       )
                     })()}
+                    <TraitScoresPanel questions={reviewData.questions as Array<Record<string, unknown>>} answers={reviewData.submission.answers} />
                     {reviewData.questions.length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
+                      <p className="text-xs text-muted-foreground py-4 text-center">{tx('assessForm.noQuestionsFound')}</p>
                     ) : (
                       reviewData.questions.map((q, i) => {
                         const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
@@ -1793,45 +2077,50 @@ export default function ExamResultsPage() {
                               {timeSpent > 0 && (
                                 <div className="flex items-center gap-1 text-xs shrink-0">
                                   <Clock className="w-3 h-3 text-muted-foreground" />
-                                  <span className={isSuspiciouslyFast ? 'text-red-500 font-semibold' : isSuspiciouslySlow ? 'text-amber-500 font-semibold' : 'text-muted-foreground'}>
+                                  <span className={isSuspiciouslyFast ? 'text-red-600 dark:text-red-400 font-semibold' : isSuspiciouslySlow ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-muted-foreground'}>
                                     {timeSpent < 1000 ? `${timeSpent}ms` : `${(timeSpent / 1000).toFixed(1)}s`}
                                   </span>
                                   {isSuspiciouslyFast && (
-                                    <Badge variant="outline" className="text-[10px] text-red-500 border-red-500/30 bg-red-500/10 ml-1">Fast</Badge>
+                                    <Badge variant="outline" className="text-[10px] text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10 ml-1">{tx('assessForm.fast')}</Badge>
                                   )}
                                   {isSuspiciouslySlow && (
-                                    <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30 bg-amber-500/10 ml-1">Slow</Badge>
+                                    <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 ml-1">{tx('assessForm.slow')}</Badge>
                                   )}
                                 </div>
                               )}
                               {isPendingReview ? (
                                 <div className="flex items-center gap-2 shrink-0">
                                   {detail?.requires_human_review && (
-                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0">
-                                      <AlertTriangle className="w-3 h-3 mr-1" /> AI Uncertain
+                                    <Badge variant="outline" className="text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 shrink-0">
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> {tx('assessForm.aiUncertain')}
                                     </Badge>
                                   )}
-                                  <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 shrink-0">
-                                    <Clock className="w-3 h-3 mr-1" /> Pending
+                                  <Badge variant="outline" className="text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 shrink-0">
+                                    <Clock className="w-3 h-3 mr-1" /> {tx('assessForm.pending')}
                                   </Badge>
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
                                   {detail?.requires_human_review && (
-                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0" title="AI Confidence was low, human review is recommended">
-                                      <AlertTriangle className="w-3 h-3 mr-1" /> Review Recommended
+                                    <Badge variant="outline" className="text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 shrink-0" title={tx('assessForm.theAiWasNotConfidentAbout')}>
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> {tx('assessForm.reviewRecommended')}
                                     </Badge>
                                   )}
                                   {detail?.jev_agree !== undefined && detail?.jev_agree !== null && (
-                                    <Badge
-                                      variant="outline"
-                                      title={detail.jev_agree ? 'Jev second opinion agreed with the AI grade' : 'Jev second opinion disagreed — check this grade manually'}
-                                      className={detail.jev_agree ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30 shrink-0' : 'text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0'}
+                                    <SecondOpinionHint
+                                      text={detail.jev_agree
+                                        ? 'A second AI model checked this grade and agrees with it.'
+                                        : 'A second AI model checked this grade and disagrees. Check this answer yourself before relying on the score.'}
                                     >
-                                      <ShieldAlert className="w-3 h-3 mr-1" /> Jev {detail.jev_agree ? 'agreed' : 'disputed'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` ${Math.round(detail.jev_confidence * 100)}%` : ''}
-                                    </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className={detail.jev_agree ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/30 shrink-0' : 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30 shrink-0'}
+                                      >
+                                        <ShieldAlert className="w-3 h-3 mr-1" aria-hidden /> {tx('assessForm.secondOpinion')} {detail.jev_agree ? 'agrees' : 'disagrees'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` (${Math.round(detail.jev_confidence * 100)}% sure)` : ''}
+                                      </Badge>
+                                    </SecondOpinionHint>
                                   )}
-                                  <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
+                                  <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30' : 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30'}`}>
                                     {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
                                   </Badge>
                                 </div>
@@ -1854,11 +2143,11 @@ export default function ExamResultsPage() {
                                   const isSelected = userSet.includes(optLower)
                                   const isCorrectAnswer = correctSet.includes(optLower)
                                   const optClass = isSelected && isCorrectAnswer
-                                    ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'
+                                    ? 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/40'
                                     : isSelected && !isCorrectAnswer
-                                      ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through'
+                                      ? 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/40 line-through'
                                       : !isSelected && isCorrectAnswer
-                                        ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20'
+                                        ? 'bg-green-500/10 text-green-600/70 dark:text-green-400/70 border-green-500/20'
                                         : 'text-muted-foreground'
                                   return (
                                     <div
@@ -1878,9 +2167,11 @@ export default function ExamResultsPage() {
                             {!isMcq && (
                               <div className="mt-2 space-y-2">
                                 <div>
-                                  <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
+                                  <span className="text-xs font-medium text-muted-foreground block mb-1">{tx('assessForm.candidateSAnswer')}</span>
                                   {userAnswer ? (
-                                    showStructuredCode ? (
+                                    hasExtendedView(q.type) ? (
+                                      <ExtendedAnswerView question={q as never} answer={userAnswer} examId={String(params.id)} files={answerFiles} />
+                                    ) : showStructuredCode ? (
                                       <div className="space-y-1.5">
                                         <Badge variant="outline" className="text-[10px] font-mono">{parsedCoding?.language || 'code'}</Badge>
                                         <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto border wrap-break-word">{parsedCoding?.code || '(empty code)'}</pre>
@@ -1889,13 +2180,41 @@ export default function ExamResultsPage() {
                                       <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border wrap-break-word">{userAnswer}</pre>
                                     )
                                   ) : (
-                                    <span className="text-xs text-muted-foreground italic">No answer provided</span>
+                                    <span className="text-xs text-muted-foreground italic">{tx('assessForm.noAnswerProvided')}</span>
                                   )}
                                 </div>
+                                {q.type === 'cad' && reviewData.cad && (
+                                  <div className="space-y-1.5">
+                                    <span className="text-xs font-medium text-muted-foreground block">{tx('assessForm.uploadedFiles')}</span>
+                                    {reviewData.cad.files.length === 0 ? (
+                                      <span className="text-xs text-muted-foreground italic">{tx('assessForm.noFilesWereUploadedTimeRan')}</span>
+                                    ) : (
+                                      <ul className="space-y-1">
+                                        {reviewData.cad.files.map((f) => (
+                                          <li key={f.id} className="flex flex-wrap items-center gap-2 text-xs">
+                                            <a
+                                              href={`/api/exams/${params.id}/cad-submission/files/${f.id}`}
+                                              className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                              download
+                                            >
+                                              <Download className="w-3.5 h-3.5" aria-hidden /> {f.name}
+                                            </a>
+                                            <span className="text-muted-foreground tabular-nums">
+                                              {f.kind === 'step' ? 'STEP export' : 'Native file'} · {f.size >= 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
+                                            </span>
+                                            {f.scan_status === 'unscanned' && (
+                                              <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10">{tx('assessForm.notVirusScanned')}</Badge>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                )}
                                 {modelAnswer && (
                                   <div>
-                                    <span className="text-xs font-medium text-emerald-500 block mb-1">Model Answer / Rubric:</span>
-                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
+                                    <span className="text-xs font-medium text-green-600 dark:text-green-400 block mb-1">{tx('assessForm.modelAnswerRubric2')}</span>
+                                    <pre className="text-xs font-mono bg-green-500/5 border border-green-500/20 text-green-700 dark:text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
                                   </div>
                                 )}
 
@@ -1903,8 +2222,8 @@ export default function ExamResultsPage() {
                                 {(isPendingReview || isManuallyGraded) && (
                                   <div className="pt-3 border-t border-dashed space-y-3">
                                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                                      <label className="text-xs font-medium text-muted-foreground shrink-0">Award Points:</label>
-                                      <input
+                                      <label className="text-xs font-medium text-muted-foreground shrink-0">{tx('assessForm.awardPoints')}</label>
+                                      <input aria-label={tx('assessForm.awardPoints2')}
                                         type="text"
                                         inputMode="numeric"
                                         pattern="[0-9]*"
@@ -1918,7 +2237,7 @@ export default function ExamResultsPage() {
                                         placeholder="0"
                                       />
                                       <span className="text-xs text-muted-foreground">/ {maxPoints}</span>
-                                      <Button
+                                      {q.type !== 'cad' && <Button
                                         size="sm"
                                         variant="outline"
                                         className="gap-1.5 text-xs h-8"
@@ -1927,20 +2246,20 @@ export default function ExamResultsPage() {
                                       >
                                         {aiGrading[q.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                                         {aiGrading[q.id] ? 'Grading…' : 'AI Grade'}
-                                      </Button>
+                                      </Button>}
                                     </div>
 
                                     {aiFeedback[q.id] && (
                                       <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
                                         <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                                          <Sparkles className="w-3.5 h-3.5" /> AI Feedback — review & edit before saving
+                                          <Sparkles className="w-3.5 h-3.5" /> {tx('assessForm.aiFeedbackReviewEditBeforeSaving')}
                                           {detail?.confidence !== undefined && (
                                             <span className="ml-2 font-normal opacity-80">
                                               (Confidence: {Math.round(detail.confidence * 100)}%)
                                             </span>
                                           )}
                                           {detail?.graded_by && (
-                                            <span className="ml-2 font-normal opacity-80" title="LLM that produced this grade">
+                                            <span className="ml-2 font-normal opacity-80" title={tx('assessForm.llmThatProducedThisGrade')}>
                                               · {detail.graded_by}
                                             </span>
                                           )}
@@ -1949,7 +2268,7 @@ export default function ExamResultsPage() {
                                           value={aiFeedback[q.id]}
                                           onChange={(e) => setAiFeedback(prev => ({ ...prev, [q.id]: e.target.value }))}
                                           className="w-full min-h-20 px-3 py-2 text-xs border rounded-md bg-background"
-                                          placeholder="Feedback shown to the candidate on release…"
+                                          placeholder={tx('assessForm.feedbackShownToTheCandidateOn')}
                                         />
                                       </div>
                                     )}
@@ -1957,13 +2276,13 @@ export default function ExamResultsPage() {
                                     {/* Persisted remarks shown to candidate on release */}
                                     <div className="space-y-1">
                                       <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                                        <MessageSquare className="w-3.5 h-3.5" /> Remarks / Feedback for Candidate
+                                        <MessageSquare className="w-3.5 h-3.5" /> {tx('assessForm.remarksFeedbackForCandidate')}
                                       </label>
-                                      <textarea
+                                      <textarea aria-label={tx('assessForm.remarksFeedbackForCandidate')}
                                         value={remarks[q.id] ?? detail?.remarks ?? (detail?.awarded !== undefined ? aiFeedback[q.id] ?? '' : '')}
                                         onChange={(e) => setRemarks(prev => ({ ...prev, [q.id]: e.target.value }))}
                                         className="w-full min-h-16 px-3 py-2 text-xs border rounded-md bg-background"
-                                        placeholder="Where they went wrong, what's missing, how to improve…"
+                                        placeholder={tx('assessForm.whereTheyWentWrongWhatS')}
                                       />
                                     </div>
                                   </div>
@@ -1987,8 +2306,8 @@ export default function ExamResultsPage() {
                         {bulkGrading.running
                           ? `Grading… ${bulkGrading.done}/${bulkGrading.total}`
                           : bulkGrading.failed.length > 0
-                            ? `Grade All (${bulkGrading.total - bulkGrading.failed.length}/${bulkGrading.total} graded)`
-                            : 'Grade All with AI'}
+                            ? `Grade all (${bulkGrading.total - bulkGrading.failed.length}/${bulkGrading.total} graded)`
+                            : 'Grade all with AI'}
                       </Button>
                       {bulkGrading.running && (
                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
@@ -1998,12 +2317,12 @@ export default function ExamResultsPage() {
                       {Object.keys(manualGrades).length > 0 && (
                         <Button
                           size="sm"
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                          className="w-full gap-2"
                           onClick={saveGradesWithAudit}
                           disabled={savingGrades}
                         >
                           {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                          Save Manual Grades
+                          {tx('assessForm.saveManualGrades')}
                         </Button>
                       )}
                     </div>
@@ -2017,16 +2336,16 @@ export default function ExamResultsPage() {
                         onClick={() => setShowProctorLog(v => !v)}
                         className="flex items-center gap-2 font-semibold text-sm text-left flex-1 min-w-0"
                       >
-                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">Proctoring Log</span>
-                        <Badge variant="outline" className="text-xs shrink-0">{reviewData.proctorEvents.length} events</Badge>
+                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">{tx('assessForm.proctoringLog')}</span>
+                        <Badge variant="outline" className="text-xs shrink-0">{tx('assessForm.events', { length: reviewData.proctorEvents.length })}</Badge>
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowRawProctorMeta(v => !v)}
-                        title="Toggle raw JSON details"
-                        className={`text-[11px] px-2 py-0.5 rounded-md border font-medium shrink-0 transition-colors ${showRawProctorMeta ? 'border-amber-500/40 text-amber-500 bg-amber-500/10' : 'border-border text-muted-foreground hover:text-foreground'}`}
+                        title={tx('assessForm.toggleRawJsonDetails')}
+                        className={`text-[11px] px-2 py-0.5 rounded-md border font-medium shrink-0 transition-colors ${showRawProctorMeta ? 'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10' : 'border-border text-muted-foreground hover:text-foreground'}`}
                       >
-                        Raw JSON
+                        {tx('assessForm.rawJson')}
                       </button>
                       <ChevronDown
                         onClick={() => setShowProctorLog(v => !v)}
@@ -2056,35 +2375,43 @@ export default function ExamResultsPage() {
                           return (
                             <div className="space-y-3">
                               {allEvents.length > 0 && (
-                                <div className="grid grid-cols-4 gap-2">
-                                  <div 
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                  <button
+                                    type="button"
+                                    aria-pressed={proctorFilter === 'all'}
                                     onClick={() => setProctorFilter('all')}
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'all' ? 'bg-muted border-foreground/30' : 'bg-card hover:bg-muted/50'}`}
                                   >
-                                    <div className="text-lg font-bold">{allEvents.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total</div>
-                                  </div>
-                                  <div 
+                                    <span className="block text-lg font-bold tabular-nums">{allEvents.length}</span>
+                                    <span className="block text-[11px] text-muted-foreground font-medium">{tx('assessForm.total')}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-pressed={proctorFilter === 'high'}
                                     onClick={() => setProctorFilter('high')}
-                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'high' ? 'bg-rose-500/10 border-rose-500/40' : 'bg-card hover:bg-rose-500/5'}`}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'high' ? 'bg-red-500/10 border-red-500/40' : 'bg-card hover:bg-red-500/5'}`}
                                   >
-                                    <div className="text-lg font-bold text-rose-500">{highRisk.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-rose-500/70 font-semibold">High Risk</div>
-                                  </div>
-                                  <div 
+                                    <span className="block text-lg font-bold tabular-nums text-red-600 dark:text-red-400">{highRisk.length}</span>
+                                    <span className="block text-[11px] text-red-600/80 dark:text-red-400/80 font-medium">{tx('assessForm.highRisk')}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-pressed={proctorFilter === 'warn'}
                                     onClick={() => setProctorFilter('warn')}
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'warn' ? 'bg-amber-500/10 border-amber-500/40' : 'bg-card hover:bg-amber-500/5'}`}
                                   >
-                                    <div className="text-lg font-bold text-amber-500">{warnRisk.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-amber-500/70 font-semibold">Warnings</div>
-                                  </div>
-                                  <div 
+                                    <span className="block text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400">{warnRisk.length}</span>
+                                    <span className="block text-[11px] text-amber-700/80 dark:text-amber-400/80 font-medium">{tx('assessForm.warnings')}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-pressed={proctorFilter === 'info'}
                                     onClick={() => setProctorFilter('info')}
-                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'info' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-card hover:bg-blue-500/5'}`}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'info' ? 'bg-primary/10 border-primary/40' : 'bg-card hover:bg-primary/5'}`}
                                   >
-                                    <div className="text-lg font-bold text-blue-500">{infoRisk.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-blue-500/70 font-semibold">Info</div>
-                                  </div>
+                                    <span className="block text-lg font-bold tabular-nums text-primary">{infoRisk.length}</span>
+                                    <span className="block text-[11px] text-primary/80 font-medium">{tx('assessForm.info')}</span>
+                                  </button>
                                 </div>
                               )}
 
@@ -2092,7 +2419,7 @@ export default function ExamResultsPage() {
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/50 mt-2">
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{tabSwitches}</div>
-                                    <div className="text-[10px] text-muted-foreground font-medium">Tab Switches</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">{tx('assessForm.tabSwitches')}</div>
                                   </div>
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{copyPaste}</div>
@@ -2100,24 +2427,22 @@ export default function ExamResultsPage() {
                                   </div>
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{aiProxy}</div>
-                                    <div className="text-[10px] text-muted-foreground font-medium">AI & Proxies</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">{tx('assessForm.aiProxies')}</div>
                                   </div>
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{hwAnomalies}</div>
-                                    <div className="text-[10px] text-muted-foreground font-medium">Anomalies</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">{tx('assessForm.anomalies')}</div>
                                   </div>
                                 </div>
                               )}
 
                               {allEvents.length === 0 ? (
                                 <div className="border rounded-lg p-6 text-center">
-                                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2" />
-                                  <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
+                                  <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400 mb-2" />
+                                  <p className="text-sm text-muted-foreground">{tx('assessForm.noProctoringViolationsDetected')}</p>
                                 </div>
                               ) : filteredEvents.length === 0 ? (
-                                <div className="border rounded-lg p-6 text-center">
-                                  <p className="text-sm text-muted-foreground">No events match the selected filter.</p>
-                                </div>
+                                <EmptyState variant="search" title={tx('assessForm.noEventsMatchTheSelectedFilter')} description={tx('assessForm.chooseAnotherEventTypeToSee')} className="py-6 md:py-8" />
                               ) : (
                                 <div className="border rounded-lg max-h-96 overflow-y-auto overflow-x-hidden bg-card">
                                   {filteredEvents.map((evt, i) => (
@@ -2149,26 +2474,55 @@ export default function ExamResultsPage() {
                     )}
                   </div>
 
+                  {/* Identity check: no-camera flag + advisory face match */}
+                  {reviewData.submission.identity_check?.needs_manual_review && (
+                    <div role="note" className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+                      <Camera className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                      <div className="space-y-0.5">
+                        <p className="font-semibold">{NO_CAMERA_REVIEW_LABEL}</p>
+                        <p className="text-xs">
+                          {reviewData.submission.identity_check.no_camera_reason === 'permission_denied'
+                            ? 'Camera access was blocked in the candidate’s browser.'
+                            : reviewData.submission.identity_check.no_camera_reason === 'error'
+                              ? 'The candidate said their camera wasn’t working.'
+                              : 'No camera was found on the candidate’s device.'}
+                          {' '}{tx('assessForm.theyUploadedAPhotoOfTheir')}
+                          {reviewData.submission.identity_check.upload_scan_status === 'unscanned' ? ' The virus scanner was unavailable when it was uploaded.' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {reviewData.submission.identity_check?.face_match && (
+                    <p className="text-xs text-muted-foreground">
+                      {reviewData.submission.identity_check.face_match.status === 'compared' && typeof reviewData.submission.identity_check.face_match.similarity === 'number'
+                        ? <>{tx('assessForm.faceMatchAdvisoryComputedInThe')} <span className="font-medium tabular-nums text-foreground">{Math.round(reviewData.submission.identity_check.face_match.similarity * 100)}%</span> — {reviewData.submission.identity_check.face_match.likely_match ? 'likely the same person' : 'may be a different person, compare the photos'}{tx('assessForm.neverUsedToAcceptOrReject')}</>
+                        : reviewData.submission.identity_check.face_match.status === 'no_face_in_id'
+                          ? 'Face match: no face found on the ID photo. Compare the photos by eye.'
+                          : reviewData.submission.identity_check.face_match.status === 'no_face_in_selfie'
+                            ? 'Face match: no face found in the selfie. Compare the photos by eye.'
+                            : 'Face match: couldn’t be computed on the candidate’s device. Compare the photos by eye.'}
+                    </p>
+                  )}
                   {/* Identity Photos */}
                   {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <span className="text-xs font-semibold text-muted-foreground block">ID Photo</span>
+                        <span className="text-xs font-semibold text-muted-foreground block">{tx('assessForm.idPhoto')}</span>
                         <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
                           {reviewData.submission.id_photo ? (
                             <img src={reviewData.submission.id_photo} alt="ID" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-xs text-muted-foreground">Not captured</span>
+                            <span className="text-xs text-muted-foreground">{tx('assessForm.notCaptured')}</span>
                           )}
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-xs font-semibold text-muted-foreground block">Face Photo</span>
+                        <span className="text-xs font-semibold text-muted-foreground block">{tx('assessForm.facePhoto')}</span>
                         <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
                           {reviewData.submission.face_photo ? (
-                            <img src={reviewData.submission.face_photo} alt="Face" className="w-full h-full object-cover" />
+                            <img src={reviewData.submission.face_photo} alt={tx('assessForm.face')} className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-xs text-muted-foreground">Not captured</span>
+                            <span className="text-xs text-muted-foreground">{tx('assessForm.notCaptured')}</span>
                           )}
                         </div>
                       </div>
@@ -2180,8 +2534,8 @@ export default function ExamResultsPage() {
                 <div className="shrink-0 border-t px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-background">
                   <div className="text-xs text-muted-foreground min-w-0">
                     {reviewData.submission.released_at ? (
-                      <span className="text-emerald-500 flex items-center gap-1">
-                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Score released on {fmtDateTime(reviewData.submission.released_at)}</span>
+                      <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">{tx('assessForm.scoreReleasedOn', { fmtDateTime: fmtDateTime(reviewData.submission.released_at) })}</span>
                       </span>
                     ) : (
                       'Score not yet released to candidate'
@@ -2189,14 +2543,14 @@ export default function ExamResultsPage() {
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
                     <Button variant="outline" onClick={downloadReviewPdf} className="gap-2">
-                      <Download className="w-4 h-4" /> Download Report
+                      <Download className="w-4 h-4" /> {tx('assessForm.downloadReport')}
                     </Button>
                     <Button variant="outline" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
-                      Close
+                      {tx('assessForm.close')}
                     </Button>
                     {!reviewData.submission.released_at && (
                       <Button
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                        className="gap-2"
                         onClick={() => releaseScore(reviewCandidate.userId || reviewCandidate.id, reviewCandidate.name)}
                         disabled={releasing === (reviewCandidate.userId || reviewCandidate.id)}
                       >
@@ -2205,7 +2559,7 @@ export default function ExamResultsPage() {
                         ) : (
                           <Send className="w-4 h-4" />
                         )}
-                        Release Score
+                        {tx('assessForm.releaseScore')}
                       </Button>
                     )}
                   </div>
@@ -2213,7 +2567,7 @@ export default function ExamResultsPage() {
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                No submission data found for this candidate.
+                {tx('assessForm.noSubmissionDataFoundForThis')}
               </div>
             )}
         </div>
@@ -2222,13 +2576,11 @@ export default function ExamResultsPage() {
       <AlertDialog open={!!confirmDeleteInvite} onOpenChange={(open) => !open && setConfirmDeleteInvite(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Invite?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the invite for {confirmDeleteInvite?.name}? This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{tx('assessForm.withdrawInvite')}</AlertDialogTitle>
+            <AlertDialogDescription>{tx('assessForm.sInviteLinkWillStopWorking', { name: confirmDeleteInvite?.name })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tx('assessForm.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={async () => {
@@ -2239,11 +2591,39 @@ export default function ExamResultsPage() {
                 }
               }}
             >
-              Delete
+              {tx('assessForm.withdraw')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open && !revoking) setRevokeTarget(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{tx('assessForm.revokeCertificate2')}</DialogTitle>
+            <DialogDescription>{tx('assessForm.sCertificateWillShowAsRevoked', { name: revokeTarget?.name })}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5">
+            <label htmlFor="revoke-reason" className="text-sm font-medium">{tx('assessForm.reason')}</label>
+            <textarea
+              id="revoke-reason"
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder={tx('assessForm.forExampleIdentityCouldNotBe')}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-xs text-muted-foreground">{tx('assessForm.keptInTheAuditLogNot')}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeTarget(null)} disabled={revoking}>{tx('assessForm.cancel')}</Button>
+            <Button variant="destructive" onClick={() => void revokeCertificate()} disabled={revoking || revokeReason.trim().length < 5} className="gap-2">
+              {revoking && <Loader2 className="h-4 w-4 animate-spin" />} {tx('assessForm.revokeCertificate')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk grading progress — chunked batches with live counts so a
           minutes-long grade never looks stuck, plus cancel + retry remainder. */}
@@ -2260,16 +2640,16 @@ export default function ExamResultsPage() {
           <div className="space-y-2 py-2">
             <Progress value={gradeProg && gradeProg.total > 0 ? Math.round((gradeProg.done / gradeProg.total) * 100) : 0} />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{gradeProg?.done} / {gradeProg?.total} candidates</span>
-              <span>{gradeProg?.graded} graded{gradeProg && gradeProg.failed > 0 ? ` · ${gradeProg.failed} failed` : ''}</span>
+              <span>{tx('assessForm.candidates', { done: gradeProg?.done, total: gradeProg?.total })}</span>
+              <span>{gradeProg?.graded} {tx('assessForm.graded2')}{gradeProg && gradeProg.failed > 0 ? ` · ${gradeProg.failed} failed` : ''}</span>
             </div>
           </div>
           {gradeProg && gradeProg.items.length > 0 && (
             <div className="max-h-56 overflow-y-auto rounded-md border divide-y divide-border/40">
               {gradeProg.items.map((it) => (
                 <div key={it.id} className="flex items-start gap-2 px-3 py-1.5 text-xs">
-                  {it.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />}
-                  {it.status === 'failed' && <XCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />}
+                  {it.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />}
+                  {it.status === 'failed' && <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />}
                   {it.status === 'grading' && <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0 mt-0.5" />}
                   {it.status === 'pending' && <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
                   <div className="min-w-0">
@@ -2283,10 +2663,10 @@ export default function ExamResultsPage() {
           <DialogFooter>
             {gradeProg?.running ? (
               <Button variant="outline" onClick={() => { gradeCancelRef.current = true }}>
-                Stop after this batch
+                {tx('assessForm.stopAfterThisBatch')}
               </Button>
             ) : (
-              <Button onClick={() => setGradeProg(null)}>Close</Button>
+              <Button onClick={() => setGradeProg(null)}>{tx('assessForm.close')}</Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -2296,7 +2676,7 @@ export default function ExamResultsPage() {
       <Dialog open={plagOpen} onOpenChange={setPlagOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Plagiarism check</DialogTitle>
+            <DialogTitle>{tx('assessForm.plagiarismCheck')}</DialogTitle>
             <DialogDescription>
               {plagRunning
                 ? 'Comparing answers across submissions (exact matches instantly, AI semantic checks take longer)…'
@@ -2308,14 +2688,14 @@ export default function ExamResultsPage() {
           {plagRunning && (
             <div className="space-y-2 py-4">
               <Progress value={undefined} />
-              <p className="text-xs text-muted-foreground text-center">Running — safe to wait; closing keeps the server run going but discards the view.</p>
+              <p className="text-xs text-muted-foreground text-center">{tx('assessForm.runningSafeToWaitClosingKeeps')}</p>
             </div>
           )}
           {plagResult && !plagRunning && (
             <div className="space-y-4 py-2">
               {plagResult.suspiciousPairs.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold">Suspicious pairs</p>
+                  <p className="text-sm font-semibold">{tx('assessForm.suspiciousPairs')}</p>
                   <div className="max-h-56 overflow-y-auto rounded-md border divide-y divide-border/40">
                     {plagResult.suspiciousPairs.map((p, i) => (
                       <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs">
@@ -2329,7 +2709,7 @@ export default function ExamResultsPage() {
               )}
               {plagResult.aiGeneratedFlags.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold">Possible AI-written answers</p>
+                  <p className="text-sm font-semibold">{tx('assessForm.possibleAiWrittenAnswers')}</p>
                   <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
                     {plagResult.aiGeneratedFlags.map((f, i) => (
                       <div key={i} className="px-3 py-1.5 text-xs">
@@ -2342,26 +2722,26 @@ export default function ExamResultsPage() {
               )}
               {plagResult.questionBankMatches.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold">Matches against question-bank answers</p>
+                  <p className="text-sm font-semibold">{tx('assessForm.matchesAgainstQuestionBankAnswers')}</p>
                   <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
                     {plagResult.questionBankMatches.map((m, i) => (
                       <div key={i} className="px-3 py-1.5 text-xs">
                         <span className="font-medium">{m.name}</span>
-                        <span className="text-muted-foreground"> · {m.matchType} match</span>
+                        <span className="text-muted-foreground">{' '}{tx('assessForm.match', { matchType: m.matchType })}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
               {plagResult.suspiciousPairs.length === 0 && plagResult.aiGeneratedFlags.length === 0 && plagResult.questionBankMatches.length === 0 && (
-                <p className="text-sm text-emerald-600 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" /> No copy or AI-authorship signals found.
+                <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" /> {tx('assessForm.noCopyOrAiAuthorshipSignals')}
                 </p>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPlagOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setPlagOpen(false)}>{tx('assessForm.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2369,15 +2749,15 @@ export default function ExamResultsPage() {
       <AlertDialog open={showReleaseAllConfirm} onOpenChange={setShowReleaseAllConfirm}>
         <AlertDialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Release scores with cutoff</AlertDialogTitle>
+            <AlertDialogTitle>{tx('assessForm.releaseScoresWithCutoff')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Everyone graded gets their score; candidates at or above the cutoff are marked passed.
-              {blockedPreviewCount > 0 ? ` ${blockedPreviewCount} ungraded submission(s) stay locked.` : ''} This cannot be undone.
+              {tx('assessForm.everyoneGradedGetsTheirScoreCandidates')}
+              {blockedPreviewCount > 0 ? ` ${blockedPreviewCount} ungraded submission(s) stay locked.` : ''} {tx('assessForm.thisCannotBeUndone')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 py-2">
             <div className="flex items-center gap-3">
-              <label htmlFor="release-cutoff" className="text-sm font-medium whitespace-nowrap">Cutoff %</label>
+              <label htmlFor="release-cutoff" className="text-sm font-medium whitespace-nowrap">{tx('assessForm.cutoff')}</label>
               <input
                 id="release-cutoff"
                 type="number"
@@ -2389,16 +2769,16 @@ export default function ExamResultsPage() {
                 className="h-9 w-24 rounded-md border border-border bg-background px-2 text-sm"
               />
               <div className="flex gap-2 text-xs">
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600">{passPreview.length} pass</Badge>
-                <Badge variant="secondary" className="bg-rose-500/10 text-rose-500">{failPreview.length} below</Badge>
-                <Badge variant="secondary">{releasablePreview.length} releasing</Badge>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{tx('assessForm.pass', { length: passPreview.length })}</Badge>
+                <Badge variant="secondary" className="bg-red-500/10 text-red-600 dark:text-red-400">{tx('assessForm.below', { length: failPreview.length })}</Badge>
+                <Badge variant="secondary">{tx('assessForm.releasing', { length: releasablePreview.length })}</Badge>
               </div>
             </div>
             {passPreview.length > 0 && (
               <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
                 {passPreview.map((r) => (
                   <div key={r.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
                     <span className="font-medium truncate">{r.name}</span>
                     <span className="text-muted-foreground truncate ml-auto">{r.email}</span>
                     <span className="font-mono font-semibold">{r.score}%</span>
@@ -2407,15 +2787,15 @@ export default function ExamResultsPage() {
               </div>
             )}
             {releaseResult && (
-              <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-                <p className="text-sm font-medium text-emerald-600">
-                  Released {releaseResult.released} at {releaseResult.cutoff}% — {releaseResult.passed} passed, {releaseResult.failed} below cutoff
+              <div className="space-y-3 rounded-lg border border-green-500/30 bg-green-500/5 p-3">
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                  {tx('assessForm.released')} {releaseResult.released} {tx('assessForm.at')} {releaseResult.cutoff}% — {releaseResult.passed} {tx('assessForm.passed')} {releaseResult.failed} {tx('assessForm.belowCutoff')}
                   {releaseResult.skipped_pending > 0 ? `, ${releaseResult.skipped_pending} still locked (ungraded)` : ''}.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" className="gap-2" onClick={exportPassPdf} disabled={exportingPdf}>
                     {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                    Export pass list (PDF)
+                    {tx('assessForm.exportPassListPdf')}
                   </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -2424,34 +2804,51 @@ export default function ExamResultsPage() {
                     onChange={(e) => setAdvanceTarget(e.target.value)}
                     className="h-9 flex-1 min-w-40 rounded-md border border-border bg-background px-2 text-xs"
                   >
-                    <option value="">Advance passers to…</option>
+                    <option value="">{tx('assessForm.advancePassersTo')}</option>
                     {examsList.map((e) => (
                       <option key={e.id} value={e.id}>{e.title}</option>
                     ))}
                   </select>
                   <Button size="sm" className="gap-2" onClick={advancePassers} disabled={advancing || !advanceTarget}>
                     {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    Advance
+                    {tx('assessForm.advance')}
                   </Button>
                 </div>
               </div>
             )}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkReleasing}>Close</AlertDialogCancel>
+            <AlertDialogCancel disabled={bulkReleasing}>{tx('assessForm.close')}</AlertDialogCancel>
             {!releaseResult && (
               <AlertDialogAction
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={(e) => { e.preventDefault(); void releaseAllWithAudit() }}
                 disabled={bulkReleasing || releasablePreview.length === 0}
               >
                 {bulkReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Release {releasablePreview.length}
+                {tx('assessForm.release')} {releasablePreview.length}
               </AlertDialogAction>
             )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+/** Keyboard-reachable tooltip explaining the second-opinion grade check. */
+function SecondOpinionHint({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex cursor-help rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {children}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p className="max-w-64 text-xs">{text}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }

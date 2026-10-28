@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import os from 'os'
 import { execSync } from 'child_process'
+import { pistonImagePinned } from '@/lib/piston-image'
 
 function safeExec(cmd: string): string {
   try {
@@ -126,6 +127,8 @@ export async function GET() {
       status: pistonStatus,
       runtimes: pistonRuntimes,
       queue: pistonQueue,
+      // SEC-023: false → the runner image floats on :latest (warning on the page).
+      image_pinned: pistonImagePinned(),
     },
     node: {
       heapUsed: nodeMem.heapUsed,

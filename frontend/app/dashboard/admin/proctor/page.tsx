@@ -2,13 +2,15 @@
 import { formatDateTime, formatTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw, Copy, ClipboardPaste, Bell, Monitor, Usb, Mic, Video, Globe, Keyboard, Mouse, Maximize, Move } from 'lucide-react'
+import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw, Copy, ClipboardPaste, Bell, Monitor, Usb, Mic, Video, Globe, Keyboard, Mouse, Maximize, Move, Users, UserX, Moon, Activity } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ProctorEvent {
   id: string; user_id: string; session_kind: string; session_id: string
@@ -64,10 +66,10 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
   // Camera & Identity
   camera_capture: <Video className="w-4 h-4" />,
   camera_denied: <Video className="w-4 h-4" />,
-  multi_face: '👥', no_face: '😶',
+  multi_face: <Users className="w-4 h-4" />, no_face: <UserX className="w-4 h-4" />,
 
   // Idle & Session
-  idle_60s: '💤',
+  idle_60s: <Moon className="w-4 h-4" />,
   session_kickout: <Shield className="w-4 h-4" />,
 }
 
@@ -98,6 +100,7 @@ const EVENT_SEVERITY: Record<string, string> = {
 
 export default function AdminProctorPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
   const [events, setEvents] = useState<ProctorEvent[]>([])
   const [violations, setViolations] = useState<Record<string, number>>({})
   const [flagged, setFlagged] = useState<string[]>([])
@@ -132,14 +135,14 @@ export default function AdminProctorPage() {
   }
 
   const CATEGORIES = [
-    { id: 'all', label: 'All Events' },
-    { id: 'critical', label: 'Critical Only' },
-    { id: 'focus', label: 'Focus & Navigation' },
+    { id: 'all', label: 'All events' },
+    { id: 'critical', label: 'Critical only' },
+    { id: 'focus', label: 'Focus and navigation' },
     { id: 'clipboard', label: 'Clipboard' },
-    { id: 'screen', label: 'Screen & Display' },
-    { id: 'hardware', label: 'USB & Hardware' },
+    { id: 'screen', label: 'Screen and display' },
+    { id: 'hardware', label: 'USB and hardware' },
     { id: 'audio', label: 'Audio' },
-    { id: 'applications', label: 'Apps & Proxy' },
+    { id: 'applications', label: 'Apps and remote access' },
     { id: 'input', label: 'Input' },
     { id: 'identity', label: 'Identity' },
     { id: 'session', label: 'Session' },
@@ -155,9 +158,9 @@ export default function AdminProctorPage() {
         setEvents(j.events || [])
         setViolations(j.violations || {})
         setFlagged(j.flagged_sessions || [])
-      }
-    } catch {} finally { setLoading(false) }
-  }, [])
+      } else addToast({ type: 'error', title: "Couldn't load proctoring events", message: 'Refresh the page or try again in a moment.' })
+    } catch { addToast({ type: 'error', title: "Couldn't load proctoring events", message: 'Refresh the page or try again in a moment.' }) } finally { setLoading(false) }
+  }, [addToast])
 
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
 
@@ -202,60 +205,57 @@ export default function AdminProctorPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Shield className="h-7 w-7 text-primary" /> Proctor Dashboard
-        </h1>
-      </div>
+      <PageHeader
+        illustration="proctoring"
+        title="Proctoring events"
+        description="Everything proctoring recorded during tests, newest first. A flag is evidence for a reviewer, not an automatic fail."
+        icon={<Shield />}
+      />
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4">
-          <p className="text-2xl font-bold">{events.length}</p>
-          <p className="text-xs text-muted-foreground">Total Events</p>
-        </Card>
-        <Card className="p-4 border-destructive/30">
-          <p className="text-2xl font-bold text-destructive">{countViolations}</p>
-          <p className="text-xs text-muted-foreground">Critical Violations</p>
-        </Card>
-        <Card className="p-4 border-yellow-500/30">
-          <p className="text-2xl font-bold text-yellow-500">{countWarnings}</p>
-          <p className="text-xs text-muted-foreground">Warnings</p>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="All events" value={events.length} icon={<Activity />} />
+        <StatCard label="Critical" value={<span className="text-destructive">{countViolations}</span>} icon={<AlertTriangle />} className="border-destructive/30" />
+        <StatCard label="Warnings" value={<span className="text-amber-600 dark:text-amber-400">{countWarnings}</span>} icon={<Eye />} className="border-amber-500/30" />
       </div>
 
       {flagged.length > 0 && (
-        <Card className="p-4 border-destructive/40 bg-destructive/5">
-          <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-4 w-4 text-destructive" /> Flagged Sessions ({flagged.length})
+        <Panel className="border-destructive/40 bg-destructive/5 p-4">
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+            <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden /> Flagged sessions (<span className="tabular-nums">{flagged.length}</span>)
           </h3>
           <div className="flex flex-wrap gap-2">
             {flagged.map((s) => (
-              <Badge key={s} variant="outline" className="cursor-pointer" onClick={() => setSearch(s)}>
-                {s.slice(0, 16)}…
-              </Badge>
+              <button key={s} type="button" onClick={() => setSearch(s)} className="rounded-full focus-visible:outline-2 focus-visible:outline-primary" title="Filter by this session">
+                <Badge variant="outline" className="cursor-pointer font-mono hover:border-primary/50">
+                  {s.slice(0, 16)}…
+                </Badge>
+              </button>
             ))}
           </div>
-        </Card>
+        </Panel>
       )}
 
       <div className="flex gap-2 flex-wrap">
         <Input placeholder="Search by session ID, user ID, or event type…" value={search}
+          aria-label="Search proctoring events"
+          className="min-w-[240px] flex-1"
           onChange={(e) => setSearch(e.target.value)} />
         <select
           value={categoryFilter}
+          aria-label="Event category"
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {CATEGORIES.map((cat) => (
             <option key={cat.id} value={cat.id}>{cat.label}</option>
           ))}
         </select>
-        <Button variant="outline" onClick={() => load(search)}>
+        <Button variant="outline" onClick={() => load(search)} aria-label="Search by session">
           <Search className="h-4 w-4" />
         </Button>
         {categoryFilter !== 'all' && (
           <Button variant="ghost" size="sm" onClick={() => setCategoryFilter('all')}>
-            Clear Filter
+            Clear filter
           </Button>
         )}
       </div>
@@ -266,43 +266,51 @@ export default function AdminProctorPage() {
           <SkeletonList count={5} />
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">No proctor events found.</Card>
+        <EmptyState variant="search" title="No proctoring events match" description="Try another category or clear the search." />
       ) : (
-        <Card className="divide-y divide-border/60 overflow-hidden">
+        <Panel className="divide-y divide-border/60 overflow-hidden p-0">
           {filtered.map((e) => (
             <div key={e.id}>
               <div
-                className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/30 ${
+                role="button"
+                tabIndex={0}
+                aria-expanded={expanded === e.id}
+                className={`flex cursor-pointer items-center gap-3 p-3 hover:bg-muted/30 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${
                   EVENT_SEVERITY[e.event_type] === 'critical' ? 'bg-destructive/5' : ''
                 }`}
                 onClick={() => setExpanded(expanded === e.id ? null : e.id)}
+                onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setExpanded(expanded === e.id ? null : e.id) } }}
               >
-                <span className="text-lg">{EVENT_ICONS[e.event_type] || <Bell className="w-4 h-4" />}</span>
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                  EVENT_SEVERITY[e.event_type] === 'critical' ? 'bg-destructive/10 text-destructive' :
+                  EVENT_SEVERITY[e.event_type] === 'warning' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                  'bg-muted text-muted-foreground'
+                }`} aria-hidden>{EVENT_ICONS[e.event_type] || <Bell className="w-4 h-4" />}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{e.event_type}</p>
+                  <p className="truncate text-sm font-medium text-foreground first-letter:uppercase">{e.event_type.replace(/_/g, ' ')}</p>
                   <p className="text-xs text-muted-foreground truncate">
                     {userMap[e.user_id]?.name || e.user_id.slice(0, 16)} · {e.session_id.slice(0, 24)}… · {formatTime(e.created_at)}
                   </p>
                 </div>
-                <Badge variant={EVENT_SEVERITY[e.event_type] === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
+                <Badge variant={EVENT_SEVERITY[e.event_type] === 'critical' ? 'destructive' : 'secondary'} className="text-[11px] capitalize">
                   {EVENT_SEVERITY[e.event_type] || 'info'}
                 </Badge>
                 <span className="text-xs text-muted-foreground">{e.session_kind}</span>
               </div>
               {expanded === e.id && (
-                <div className="px-12 pb-3 text-xs text-muted-foreground space-y-1 bg-muted/20">
-                  <p>ID: {e.id}</p>
+                <div className="space-y-1 bg-muted/20 px-14 py-3 text-xs text-muted-foreground">
+                  <p>ID: <span className="font-mono">{e.id}</span></p>
                   <p>User: {userMap[e.user_id]?.name || e.user_id}{userMap[e.user_id]?.email ? ` (${userMap[e.user_id].email})` : ''}</p>
-                  <p>Session: {e.session_id}</p>
+                  <p>Session: <span className="font-mono">{e.session_id}</span></p>
                   <p>Time: {formatDateTime(e.created_at)}</p>
                   {Object.keys(e.meta).length > 0 && (
-                    <pre className="text-[10px] mt-1">{JSON.stringify(e.meta, null, 2)}</pre>
+                    <pre className="mt-1 overflow-x-auto rounded-lg bg-muted/50 p-2 font-mono text-[11px] text-foreground">{JSON.stringify(e.meta, null, 2)}</pre>
                   )}
                 </div>
               )}
             </div>
           ))}
-        </Card>
+        </Panel>
       )}
     </div>
   )

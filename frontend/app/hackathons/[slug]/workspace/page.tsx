@@ -1,4 +1,5 @@
 'use client'
+import { normalizeSubmissionStatus } from '@/lib/hackathons/submission-state'
 import { formatDateTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState, useRef } from 'react'
@@ -52,10 +53,12 @@ const TOP_LANGUAGES = [
   { id: "csharp", label: "C#", monaco: "csharp" },
   { id: "ruby", label: "Ruby", monaco: "ruby" },
   { id: "php", label: "PHP", monaco: "php" },
-  { id: "plaintext", label: "Plain Text", monaco: "plaintext" },
+  { id: "plaintext", label: "Plain text", monaco: "plaintext" },
 ];
 
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Illustration } from "@/components/illustrations/spot"
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -78,7 +81,7 @@ interface Team {
 }
 
 interface Submission {
-  id: string; problem_slug: string; status: 'pending' | 'under_review' | 'released'; score: number | null
+  id: string; problem_slug: string; status: string; score: number | null
   max_score: number; submitted_at: string; repo_url?: string; code?: string; commit_sha?: string
   video_url?: string; live_url?: string; comment?: string
 }
@@ -283,12 +286,18 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     if (!hackathon) return
     setClaiming(slug)
     try {
-      await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ problem_slug: slug }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        addToast({ type: 'error', title: data.error || 'Could not claim this problem' })
+      }
       await fetchClaims()
+    } catch {
+      addToast({ type: 'error', title: 'Could not claim this problem' })
     } finally {
       setClaiming(null)
     }
@@ -449,7 +458,14 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       })
       const data = await res.json()
       if (!res.ok) { setSubmitError(data.error || 'Submission failed'); return }
-      addToast({ type: 'success', title: 'Solution submitted!' })
+      const samples = Array.isArray(data.test_results) ? data.test_results as Array<{ passed: boolean }> : []
+      addToast({
+        type: 'success',
+        title: 'Solution submitted',
+        message: samples.length > 0
+          ? `${samples.filter((r) => r.passed).length} of ${samples.length} sample tests passed. Hidden tests count toward the score, shown when results are released.`
+          : 'Your score is shown when results are released.',
+      })
       await refreshSubmissions()
     } catch { setSubmitError('Network error') }
     finally { setSubmitting(false) }
@@ -473,7 +489,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         addToast({ type: 'error', title: data.error || 'Failed to select problem' })
         return
       }
-      addToast({ type: 'success', title: 'Problem Selected!', message: 'You can now submit solutions for this problem.' })
+      addToast({ type: 'success', title: 'Problem selected', message: 'You can now submit solutions for this problem.' })
       await refreshAll() // to update team.selected_problems
     } catch {
       addToast({ type: 'error', title: 'Network error' })
@@ -487,9 +503,9 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
   const getClaimUrgency = (claim: Claim) => {
     const remaining = (new Date(claim.claimed_at).getTime() + 5 * 60 * 1000) - Date.now()
-    if (remaining < 60000) return 'text-red-400'
-    if (remaining < 120000) return 'text-yellow-400'
-    return 'text-blue-400'
+    if (remaining < 60000) return 'bg-red-500/10 text-red-600 dark:text-red-400'
+    if (remaining < 120000) return 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+    return 'bg-primary/10 text-primary'
   }
 
   const getClaimCountdown = (claim: Claim) => {
@@ -506,8 +522,12 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const getProblemStatus = (problemSlug: string) => {
     const sub = submissions.find((s) => s.problem_slug === problemSlug)
     if (!sub) return 'pending'
-    if (sub.status === 'released') return 'accepted'
-    return sub.status
+    // Canonical states live in lib/hackathons/submission-state; scores stay hidden until release.
+    const st = normalizeSubmissionStatus(sub.status)
+    if (st === 'released') return 'accepted'
+    if (st === 'rejected') return 'rejected'
+    if (st === 'under_review' || st === 'scored') return 'under_review'
+    return 'pending'
   }
 
   const getPerProblemTimeLeft = (problemSlug: string, task: { time_limit_minutes?: number }) => {
@@ -534,18 +554,19 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/40 backdrop-blur sticky top-0 z-10">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-3">
-            <Link href={`/hackathons/${slug}`} className="text-sm text-muted-foreground hover:text-foreground">← {hackathon.name}</Link>
-            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase">
-              {isLive ? <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />LIVE</span> : isClosed ? 'Closed' : 'Upcoming'}
+      <h1 className="sr-only">{hackathon.name} workspace</h1>
+      <header className="border-b border-border bg-card/90 backdrop-blur sticky top-0 z-10">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href={`/hackathons/${slug}`} className="truncate text-sm text-muted-foreground hover:text-foreground">← {hackathon.name}</Link>
+            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className={isLive ? 'border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400' : ''}>
+              {isLive ? <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" />Live</span> : isClosed ? 'Closed' : 'Upcoming'}
             </Badge>
           </div>
           {isLive && (
-            <div className="flex items-center gap-2 text-sm font-mono">
-              <Timer className="h-4 w-4 text-red-500" />
-              <span className="text-red-500 font-bold">
+            <div role="timer" className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-mono tabular-nums">
+              <Timer className="h-4 w-4 text-primary" />
+              <span className="text-foreground font-bold">
                 Ends in <Countdown targetIso={hackathon.ends_at} />
               </span>
             </div>
@@ -553,31 +574,32 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-6 px-6 py-8">
+      <main className="mx-auto max-w-5xl space-y-6 px-4 sm:px-6 py-8">
         {team && (
-          <Card className="p-5">
-            <div className="flex items-center gap-3 mb-4">
+          <Card className="rounded-3xl p-5">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
               <Trophy className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold">{team.name}</h2>
+              <h2 className="text-lg font-semibold">{team.name}</h2>
               {(team.members.some(m => m.user_id === hasSession && m.role === 'captain') || ['admin', 'superadmin', 'tenant_admin'].includes((authUser as any)?.role || '')) && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                   onClick={() => { setEditTeamName(team.name); setRenameDialogOpen(true) }}
                   title="Rename team"
+                  aria-label="Rename team"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
               )}
-              <Badge variant="outline">{team.members.length}/{hackathon.max_per_team} members</Badge>
-              <Badge><Sparkles className="h-3 w-3 mr-1" /> {team.xp} XP</Badge>
-              <span className="text-xs text-muted-foreground ml-auto">{team.submissions} submissions</span>
+              <Badge variant="outline" className="tabular-nums">{team.members.length}/{hackathon.max_per_team} members</Badge>
+              <Badge className="tabular-nums"><Sparkles className="h-3 w-3 mr-1" /> {team.xp} XP</Badge>
+              <span className="text-xs text-muted-foreground tabular-nums ml-auto">{team.submissions} submissions</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {team.members.map((m) => (
                 <Badge key={m.user_id} variant={m.role === 'captain' ? 'default' : 'secondary'}>
-                  {m.name} {m.role === 'captain' && '(Captain)'}
+                  {m.name} {m.role === 'captain' && '(captain)'}
                 </Badge>
               ))}
             </div>
@@ -585,26 +607,26 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         )}
 
         {isLive && (
-          <Card className="p-5 border-red-500/20 bg-red-500/5">
-            <div className="flex items-center justify-between">
+          <Card className="rounded-3xl p-5 border-green-500/25 bg-green-500/5">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-red-400">Event is LIVE</p>
-                <p className="text-xs text-muted-foreground">Time remaining:</p>
+                <p className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400"><span className="h-2 w-2 rounded-full bg-green-500" />The event is live</p>
+                <p className="text-xs text-muted-foreground">Time left</p>
               </div>
-              <p className="text-3xl font-mono font-bold text-red-400">
+              <p className="text-3xl font-mono font-bold tabular-nums text-foreground">
                 <Countdown targetIso={hackathon.ends_at} />
               </p>
             </div>
           </Card>
         )}
         {!isLive && !isClosed && (
-          <Card className="p-5 border-blue-500/20 bg-blue-500/5">
-            <div className="flex items-center justify-between">
+          <Card className="rounded-3xl p-5 border-primary/20 bg-primary/5">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-blue-400">Event Not Started</p>
-                <p className="text-xs text-muted-foreground">Starts in:</p>
+                <p className="text-sm font-semibold text-primary">The event hasn&apos;t started yet</p>
+                <p className="text-xs text-muted-foreground">Starts in</p>
               </div>
-              <p className="text-3xl font-mono font-bold text-blue-400">
+              <p className="text-3xl font-mono font-bold tabular-nums text-primary">
                 <Countdown targetIso={hackathon.starts_at} />
               </p>
             </div>
@@ -612,28 +634,28 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           </Card>
         )}
         {isClosed && !hackathon.results_released && (
-          <Card className="p-5 border-amber-500/20 bg-amber-500/5">
+          <Card className="rounded-3xl p-5 border-amber-500/25 bg-amber-500/5">
             <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-amber-400" />
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               <div>
-                <p className="text-sm font-semibold text-amber-400">Event Ended</p>
+                <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">The event has ended</p>
                 <p className="text-xs text-muted-foreground">Waiting for results to be released by the organizers.</p>
               </div>
             </div>
           </Card>
         )}
         {isClosed && hackathon.results_released && (
-          <Card className="p-5 border-green-500/20 bg-green-500/5">
-            <div className="flex items-center justify-between">
+          <Card className="rounded-3xl p-5 border-green-500/25 bg-green-500/5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <Trophy className="h-5 w-5 text-green-400" />
+                <Trophy className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div>
-                  <p className="text-sm font-semibold text-green-400">Results Released!</p>
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-400">Results are out</p>
                   <p className="text-xs text-muted-foreground">View your team&apos;s rank and download certificates.</p>
                 </div>
               </div>
-              <Button asChild variant="outline" size="sm" className="text-green-400 border-green-400/40">
-                <Link href={`/hackathons/${slug}/results`}>View Results</Link>
+              <Button asChild size="sm">
+                <Link href={`/hackathons/${slug}/results`}>View results</Link>
               </Button>
             </div>
           </Card>
@@ -643,10 +665,10 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           <div>
             <div className="flex items-center gap-2 mb-3">
               <ListChecks className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Problems ({solvedCount}/{hackathon.solve_limit && hackathon.solve_limit > 0 ? hackathon.solve_limit : hackathon.tasks.length} solved)</h3>
+              <h3 className="text-sm font-semibold tabular-nums">Problems ({solvedCount}/{hackathon.solve_limit && hackathon.solve_limit > 0 ? hackathon.solve_limit : hackathon.tasks.length} solved)</h3>
               </div>
               {isResubmit && (
-                <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <div className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
                   <Label htmlFor="resubmit_reason">Reason for resubmission <span className="text-destructive">*</span></Label>
                   <Input
                     id="resubmit_reason"
@@ -669,39 +691,39 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 const isSelected = team?.selected_problems?.includes(task.problem_slug)
 
                 return (
-                  <Card key={task.problem_slug} className={`p-4 ${isSelected ? 'border-primary/50 bg-primary/5' : ''}`}>
-                    <div className="flex items-center justify-between">
+                  <Card key={task.problem_slug} className={`rounded-2xl p-4 transition-colors duration-200 ${isSelected ? 'border-primary/50 bg-primary/5' : 'hover:border-primary/30'}`}>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-3">
-                        <span className="text-xs font-mono text-muted-foreground w-5">#{i + 1}</span>
+                        <span className="text-xs font-medium tabular-nums text-muted-foreground w-5">{i + 1}.</span>
                         {isSelected ? (
                           <CheckCircle className="h-4 w-4 text-primary" />
                         ) : status === 'accepted' ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : status === 'under_review' ? (
-                          <AlertCircle className="h-4 w-4 text-yellow-500" />
+                          <AlertCircle className="h-4 w-4 text-amber-500" />
                         ) : status === 'pending' && sub ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : isMyClaim ? (
-                          <Hand className="h-4 w-4 text-blue-400" />
+                          <Hand className="h-4 w-4 text-primary" />
                         ) : (
-                          <div className="h-4 w-4 rounded-full border-2 border-muted" />
+                          <div className="h-4 w-4 rounded-full border-2 border-border" />
                         )}
                         <div>
-                          <p className="text-sm font-medium">{task.problem_title || task.problem_slug}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <Badge variant="outline" className="text-[10px]">{task.difficulty}</Badge>
-                            <span className="text-xs text-muted-foreground">{task.points} pts</span>
+                          <p className="text-sm font-medium text-foreground">{task.problem_title || task.problem_slug}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                            <Badge variant="outline" className="text-[10px] capitalize">{task.difficulty}</Badge>
+                            <span className="text-xs text-muted-foreground tabular-nums">{task.points} pts</span>
                             {task.required && <span className="text-[10px] text-muted-foreground">Required</span>}
                             {sub && status !== 'accepted' && (
-                              <Badge variant="default" className="text-[10px] bg-green-500/20 text-green-500 hover:bg-green-500/30">
-                                {status === 'pending' ? 'Solution Submitted' : status === 'under_review' ? 'Under Review' : status}
+                              <Badge variant="default" className="text-[10px] bg-green-500/15 text-green-700 dark:text-green-400 hover:bg-green-500/20">
+                                {status === 'pending' ? 'Solution submitted' : status === 'under_review' ? 'Under review' : status}
                               </Badge>
                             )}
                             {sub && sub.score !== null && (
-                              <span className={`text-[10px] ${
-                                sub.score >= task.points * 0.8 ? 'text-green-400' :
-                                sub.score >= task.points * 0.5 ? 'text-yellow-400' :
-                                'text-red-400'
+                              <span className={`text-[10px] font-semibold tabular-nums ${
+                                sub.score >= task.points * 0.8 ? 'text-green-700 dark:text-green-400' :
+                                sub.score >= task.points * 0.5 ? 'text-amber-700 dark:text-amber-400' :
+                                'text-red-600 dark:text-red-400'
                               }`}>{sub.score}/{task.points}</span>
                             )}
                             {isClaimed && !isMyClaim && (
@@ -710,16 +732,16 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                               </Badge>
                             )}
                             {isMyClaim && claim && (
-                              <Badge className={`text-[10px] gap-1 border-0 ${getClaimUrgency(claim)}`}>
+                              <Badge className={`text-[10px] gap-1 border-0 tabular-nums ${getClaimUrgency(claim)}`}>
                                 <Timer className="h-3 w-3" /> {getClaimCountdown(claim)}
                               </Badge>
                             )}
                             {(() => {
                               const t = getPerProblemTimeLeft(task.problem_slug, task)
                               if (!t) return null
-                              const color = t.remaining <= 0 ? 'text-red-400' : t.remaining <= 5 ? 'text-yellow-400' : 'text-blue-400'
+                              const color = t.remaining <= 0 ? 'text-red-600 dark:text-red-400' : t.remaining <= 5 ? 'text-amber-700 dark:text-amber-400' : 'text-primary'
                               return (
-                                <span className={`text-[10px] ${color}`}>
+                                <span className={`text-[10px] tabular-nums ${color}`}>
                                   <Timer className="h-3 w-3 inline mr-0.5" />
                                   {t.remaining <= 0 ? "Time's up" : `${t.remaining}m / ${t.total}m`}
                                 </span>
@@ -728,7 +750,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -736,13 +758,13 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                           onClick={() => openProblemPanel(task)}
                         >
                           <Eye className="h-3 w-3" />
-                          View Problem
+                          View problem
                         </Button>
                         {canClaim && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1.5 text-blue-400 border-blue-400/40 hover:bg-blue-400/10"
+                            className="gap-1.5 text-primary border-primary/40 hover:bg-primary/10"
                             onClick={() => void claimProblem(task.problem_slug)}
                             disabled={claiming === task.problem_slug}
                           >
@@ -769,14 +791,14 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             className="gap-1.5 text-muted-foreground"
                             onClick={() => openViewSubmission(sub)}
                           >
-                            View Submission
+                            View submission
                           </Button>
                         )}
                         {sub && status !== 'accepted' && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1.5 text-amber-500"
+                            className="gap-1.5 text-amber-700 dark:text-amber-400"
                             onClick={() => openResubmit(sub, task)}
                           >
                             <RefreshCw className="h-3 w-3" />
@@ -791,7 +813,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             onClick={() => openSubmitModal(task)}
                           >
                             <Send className="h-3 w-3" />
-                            Submit Solution
+                            Submit solution
                           </Button>
                         )}
                       </div>
@@ -804,19 +826,19 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         )}
 
         {(!hackathon.tasks || hackathon.tasks.length === 0) && (
-          <Card className="p-5 text-center">
-            <ListChecks className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+          <Card className="rounded-3xl p-8 text-center">
+            <Illustration name="coding" className="mx-auto mb-2 w-32" />
             <p className="text-sm font-medium">No problems added yet</p>
             <p className="text-xs text-muted-foreground mt-1">The organizer hasn&apos;t added any problems to this hackathon.</p>
           </Card>
         )}
 
         {inviteUrl && !isClosed && !isLive && (
-          <Card className="p-5">
-            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Invite Teammates</p>
+          <Card className="rounded-3xl p-5">
+            <p className="text-sm font-semibold text-foreground mb-2">Invite teammates</p>
             <div className="flex gap-2 mb-2">
-              <Input readOnly value={inviteUrl} className="text-xs font-mono" />
-              <Button size="sm" variant="outline" onClick={copyInvite}>
+              <Input readOnly value={inviteUrl} aria-label="Team invite link" className="text-xs font-mono" />
+              <Button size="sm" variant="outline" onClick={copyInvite} aria-label="Copy invite link">
                 {copied ? <CheckCircle className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
             </div>
@@ -840,7 +862,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   placeholder="teammate@example.com"
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && void sendEmailInvite()}
+                  onKeyDown={e => isSubmitEnter(e) && void sendEmailInvite()}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -851,7 +873,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
               <Button variant="outline" onClick={() => setEmailInviteOpen(false)}>Cancel</Button>
               <Button onClick={() => void sendEmailInvite()} disabled={sendingInvite || !inviteEmail.trim()}>
                 {sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Send Invite
+                Send invite
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -872,7 +894,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   <span className="text-xs text-muted-foreground">{submittingFor.points} points</span>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="repo_url">GitHub Repo URL <span className="text-destructive">*</span></Label>
+                  <Label htmlFor="repo_url">GitHub repo URL <span className="text-destructive">*</span></Label>
                   <Input
                     id="repo_url"
                     type="url"
@@ -885,15 +907,16 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 <div className="space-y-2">
                   <Label htmlFor="lang">Language</Label>
                   <select
+                    id="lang"
                     value={editorLanguage}
                     onChange={(e) => setEditorLanguage(e.target.value)}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="video_url">Video Demo URL (optional)</Label>
+                <Label htmlFor="video_url">Video demo URL (optional)</Label>
                 <Input
                   id="video_url"
                   type="url"
@@ -903,7 +926,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="live_url">Live Website URL (optional)</Label>
+                <Label htmlFor="live_url">Live website URL (optional)</Label>
                 <Input
                   id="live_url"
                   type="url"
@@ -942,7 +965,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 <Button variant="outline" onClick={closeSubmitModal}>Cancel</Button>
                 <Button onClick={() => void handleSubmit()} disabled={submitting}>
                   {submitting && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
-                  {isResubmit ? 'Update Submission' : 'Submit'}
+                  {isResubmit ? 'Update submission' : 'Submit'}
                 </Button>
               </DialogFooter>
             </>
@@ -962,7 +985,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   <Badge variant="outline">{viewingSubmission.status}</Badge>
                   {viewingSubmission.score !== null && (
                     <span className="text-muted-foreground">
-                      Score: <span className="text-green-400 font-medium">{viewingSubmission.score}</span> / {viewingSubmission.max_score}
+                      Score: <span className="text-green-700 dark:text-green-400 font-medium tabular-nums">{viewingSubmission.score}</span> / {viewingSubmission.max_score}
                     </span>
                   )}
                 </div>
@@ -976,14 +999,14 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 )}
                 {viewingSubmission.commit_sha && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Commit SHA</p>
+                    <p className="text-xs text-muted-foreground mb-1">Commit</p>
                     <p className="font-mono text-xs">{viewingSubmission.commit_sha}</p>
                   </div>
                 )}
                 {viewingSubmission.code && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Code</p>
-                    <Textarea readOnly rows={10} value={viewingSubmission.code} className="font-mono text-xs" />
+                    <Textarea readOnly rows={10} value={viewingSubmission.code} aria-label="Submitted code" className="font-mono text-xs" />
                   </div>
                 )}
               </div>
@@ -999,18 +1022,18 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col [&>button]:hidden">
           {selectedProblem && (
             <>
-              <div className="shrink-0 border-b border-border px-6 py-5 sm:px-8 flex items-start justify-between bg-muted/30">
+              <div className="shrink-0 border-b border-border px-6 py-5 sm:px-8 flex items-start justify-between bg-muted/30 text-foreground">
                 <div className="min-w-0 flex-1">
-                  <SheetTitle className="text-xl font-bold truncate pr-4">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
+                  <SheetTitle className="text-lg font-semibold truncate pr-4">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
                   <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="outline" className="text-[10px] uppercase font-semibold tracking-wider">{selectedProblem.difficulty}</Badge>
-                    <span className="text-xs font-medium text-muted-foreground">{selectedProblem.points} pts</span>
-                    {selectedProblem.required && <Badge variant="destructive" className="text-[10px] uppercase font-semibold tracking-wider">Required</Badge>}
+                    <Badge variant="outline" className="text-[10px] capitalize font-semibold">{selectedProblem.difficulty}</Badge>
+                    <span className="text-xs font-medium tabular-nums text-muted-foreground">{selectedProblem.points} pts</span>
+                    {selectedProblem.required && <Badge variant="destructive" className="text-[10px] font-semibold">Required</Badge>}
                   </div>
                 </div>
                 <button
                   onClick={closeProblemPanel}
-                  className="rounded-full bg-background/50 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="rounded-full bg-background/50 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <X className="h-5 w-5" />
                   <span className="sr-only">Close</span>
@@ -1020,7 +1043,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
               <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8 space-y-8">
                 {problemDetailLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading problem…
                   </div>
                 ) : problemDetail?.statement_md ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none wrap-break-word leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3 [&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
@@ -1032,44 +1055,44 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
                 {problemDetail?.input_format && (
                   <div className="space-y-1.5">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <FileText className="h-3 w-3" /> Input Format
+                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <FileText className="h-3 w-3" /> Input format
                     </h4>
-                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded-lg p-3 border border-border/50">{problemDetail.input_format}</pre>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 text-foreground rounded-xl p-3 border border-border/50">{problemDetail.input_format}</pre>
                   </div>
                 )}
                 {problemDetail?.output_format && (
                   <div className="space-y-1.5">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <FileText className="h-3 w-3" /> Output Format
+                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <FileText className="h-3 w-3" /> Output format
                     </h4>
-                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded-lg p-3 border border-border/50">{problemDetail.output_format}</pre>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 text-foreground rounded-xl p-3 border border-border/50">{problemDetail.output_format}</pre>
                   </div>
                 )}
                 {problemDetail?.constraints && (
                   <div className="space-y-1.5">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                       <Shield className="h-3 w-3" /> Constraints
                     </h4>
-                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded-lg p-3 border border-border/50">{problemDetail.constraints}</pre>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 text-foreground rounded-xl p-3 border border-border/50">{problemDetail.constraints}</pre>
                   </div>
                 )}
                 {problemDetail?.test_cases && problemDetail.test_cases.length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <ListChecks className="h-3 w-3" /> Sample Test Cases ({problemDetail.test_cases.length})
+                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                      <ListChecks className="h-3 w-3" /> Sample test cases ({problemDetail.test_cases.length})
                     </h4>
                     <div className="space-y-2">
                       {problemDetail.test_cases.map((tc: any, idx: number) => (
                         <div key={tc.id || idx} className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
-                          <p className="text-muted-foreground mb-2 font-medium text-[11px] uppercase">Test Case #{idx + 1}</p>
+                          <p className="text-muted-foreground mb-2 font-medium text-[11px]">Test case {idx + 1}</p>
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <span className="text-[10px] text-muted-foreground block">Input</span>
                               <pre className="font-mono text-[11px] bg-background rounded p-2 border border-border/40">{tc.stdin || <span className="text-muted-foreground italic">(empty)</span>}</pre>
                             </div>
                             <div className="space-y-1">
-                              <span className="text-[10px] text-muted-foreground block">Expected Output</span>
+                              <span className="text-[10px] text-muted-foreground block">Expected output</span>
                               <pre className="font-mono text-[11px] bg-background rounded p-2 border border-border/40">{tc.expected_stdout || <span className="text-muted-foreground italic">(empty)</span>}</pre>
                             </div>
                           </div>
@@ -1081,13 +1104,14 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
                 <div className="pt-2 border-t border-border">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                       <Code className="h-3 w-3" /> Solution
                     </h4>
                     <select
                       value={sheetLang}
+                    aria-label="Solution language"
                       onChange={(e) => setSheetLang(e.target.value)}
-                      className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="rounded-lg border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
                     </select>
@@ -1106,13 +1130,13 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
                 {submissions.filter(s => s.problem_slug === selectedProblem.problem_slug).length > 0 && (
                   <div className="space-y-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Previous Submissions</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground">Previous submissions</h4>
                     {submissions.filter(s => s.problem_slug === selectedProblem.problem_slug).map((sub) => (
                       <div key={sub.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
                         <div className="flex items-center gap-2">
                           {sub.status === 'released' ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> :
-                           sub.status === 'under_review' ? <AlertCircle className="h-3.5 w-3.5 text-yellow-500" /> :
-                           <Clock className="h-3.5 w-3.5 text-yellow-500" />}
+                           sub.status === 'under_review' ? <AlertCircle className="h-3.5 w-3.5 text-amber-500" /> :
+                           <Clock className="h-3.5 w-3.5 text-amber-500" />}
                           <span className="capitalize">{sub.status.replace('_', ' ')}</span>
                           {sub.score !== null && <span className="text-muted-foreground">· {sub.score}/{sub.max_score}</span>}
                         </div>
@@ -1128,7 +1152,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
               {isLive && (
                 <div className="shrink-0 border-t border-border p-6 sm:px-8 flex items-center gap-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mr-auto">
-                    <span className="font-medium text-foreground">{selectedProblem.points}</span> pts
+                    <span className="font-medium tabular-nums text-foreground">{selectedProblem.points}</span> pts
                   </div>
                   <Button variant="outline" size="sm" onClick={closeProblemPanel}>Close</Button>
                   
@@ -1143,7 +1167,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                       return (
                         <div className="text-xs space-y-1">
                           <div className="text-destructive flex items-center gap-1.5">
-                            <AlertCircle className="h-4 w-4" /> Limit Reached
+                            <AlertCircle className="h-4 w-4" /> Limit reached
                           </div>
                           <p className="text-muted-foreground">You selected: <span className="font-medium text-foreground">{selectedTitle}</span></p>
                         </div>
@@ -1158,7 +1182,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                         disabled={submitting || !sheetCode.trim()}
                       >
                         {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                        {submitting ? 'Submitting...' : 'Submit Solution'}
+                        {submitting ? 'Submitting…' : 'Submit solution'}
                       </Button>
                     )
                   })()}
@@ -1172,17 +1196,17 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Rename Team</DialogTitle>
+            <DialogTitle>Rename team</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label htmlFor="workspace-edit-team-name">New Team Name</Label>
+              <Label htmlFor="workspace-edit-team-name">New team name</Label>
               <Input
                 id="workspace-edit-team-name"
                 placeholder="e.g. PARADISE"
                 value={editTeamName}
                 onChange={e => setEditTeamName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && void handleRenameTeam()}
+                onKeyDown={e => isSubmitEnter(e) && void handleRenameTeam()}
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -1193,7 +1217,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>Cancel</Button>
             <Button onClick={() => void handleRenameTeam()} disabled={renaming || !editTeamName.trim()}>
               {renaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
-              Save Name
+              Save name
             </Button>
           </DialogFooter>
         </DialogContent>

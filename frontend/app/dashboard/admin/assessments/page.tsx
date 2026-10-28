@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/ui/empty-state'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,6 +12,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -23,6 +26,7 @@ import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES } from '@/lib/engineering-catal
 import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 import { toZonedDateInput, formatDateTime } from '@/lib/format-datetime'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Exam {
   id: string
@@ -35,6 +39,14 @@ interface Exam {
   ends_at?: string | null
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  no_camera_policy?: 'block' | 'allow_flag' | null
+  require_token_links?: boolean | null
+  access_type?: 'invite_only' | 'open'
+  allow_retake?: boolean
+  max_attempts?: number
+  passing_score?: number | null
+  issue_certificates?: boolean | null
+  auto_release_scores?: boolean | null
   questions: number
   published: boolean
   attempts: number
@@ -54,6 +66,7 @@ interface Tenant {
 }
 
 export default function AdminExamsPage() {
+  const { t: tx, rich } = useAdminT()
   const gate = usePageGuard('tenant_admin')
   // Platform timezone (Settings → General) for every date display / entry.
   const tz = usePlatformTimezone()
@@ -92,6 +105,12 @@ export default function AdminExamsPage() {
   const [requireTokenLinks, setRequireTokenLinks] = useState(false)
   const [requireIdVerification, setRequireIdVerification] = useState(true)
   const [requireFaceCapture, setRequireFaceCapture] = useState(true)
+  const [noCameraPolicy, setNoCameraPolicy] = useState<'block' | 'allow_flag'>('allow_flag')
+  const [allowRetake, setAllowRetake] = useState(false)
+  const [maxAttempts, setMaxAttempts] = useState(1)
+  const [passingScore, setPassingScore] = useState(60)
+  const [issueCertificates, setIssueCertificates] = useState(true)
+  const [autoReleaseScores, setAutoReleaseScores] = useState(false)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
   const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
@@ -157,29 +176,45 @@ export default function AdminExamsPage() {
 
   const visibleExams = exams.filter(filterByDate)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchExams = async () => {
     setLoading(true)
     try {
+      // The organisations list is superadmin-only; tenant admins only ever see their own exams.
+      const isSuper = gate.user?.role === 'superadmin'
       const [examsRes, tenantsRes] = await Promise.all([
         fetch('/api/exams', { credentials: 'include' }),
-        fetch('/api/admin/tenants', { credentials: 'include' }),
+        isSuper ? fetch('/api/admin/tenants', { credentials: 'include' }) : Promise.resolve(null),
       ])
+      if (!examsRes.ok) throw new Error(`Failed to load assessments (${examsRes.status})`)
       const examsJson = await examsRes.json()
-      const tenantsJson = await tenantsRes.json()
+      const tenantsJson = tenantsRes && tenantsRes.ok ? await tenantsRes.json().catch(() => ({})) : {}
       setExams(examsJson.data || [])
       setTenants(tenantsJson.data || [])
-    } catch { /* ignore */ }
+      setLoadError(false)
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchExams() }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (gate.ready) fetchExams() }, [gate.ready])
 
   const handleDelete = async (ids: string[]) => {
+    // Only drop rows the server actually deleted.
+    const deleted: string[] = []
     for (const id of ids) {
-      await csrfFetch(`/api/exams?id=${id}`, { method: 'DELETE', credentials: 'include' })
+      const res = await csrfFetch(`/api/exams?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' }).catch(() => null)
+      if (res?.ok) deleted.push(id)
     }
-        addToast({ type: 'success', title: `${ids.length} assessment${ids.length !== 1 ? 's' : ''} deleted` })
-    setExams(prev => prev.filter(e => !ids.includes(e.id)))
+    const failed = ids.length - deleted.length
+    if (deleted.length > 0) {
+      addToast({ type: 'success', title: `${deleted.length} assessment${deleted.length !== 1 ? 's' : ''} deleted` })
+      setExams(prev => prev.filter(e => !deleted.includes(e.id)))
+    }
+    if (failed > 0) {
+      addToast({ type: 'error', title: `${failed} assessment${failed !== 1 ? 's' : ''} couldn't be deleted` })
+    }
   }
 
   const openAddModal = () => {
@@ -194,6 +229,12 @@ export default function AdminExamsPage() {
     setRequireTokenLinks(false)
     setRequireIdVerification(true)
     setRequireFaceCapture(true)
+    setNoCameraPolicy('allow_flag')
+    setAllowRetake(false)
+    setMaxAttempts(1)
+    setPassingScore(60)
+    setIssueCertificates(true)
+    setAutoReleaseScores(false)
     setQuestions(0)
     setPublished(false)
     setAccessType('invite_only')
@@ -214,6 +255,15 @@ export default function AdminExamsPage() {
     setEndsAt(exam.ends_at ? toZonedDatetimeString(new Date(exam.ends_at), tz) : '')
     setRequireIdVerification(exam.require_id_verification !== false)
     setRequireFaceCapture(exam.require_face_capture !== false)
+    setNoCameraPolicy(exam.no_camera_policy === 'block' ? 'block' : 'allow_flag')
+    setRequireTokenLinks(exam.require_token_links === true)
+    setAccessType(exam.access_type === 'open' ? 'open' : 'invite_only')
+    setAllowRetake(exam.allow_retake === true)
+    setMaxAttempts(exam.allow_retake === true ? Math.max(1, Number(exam.max_attempts) || 2) : 1)
+    // Exams saved before the pass mark was editable release at 40% (see the release routes).
+    setPassingScore(Number.isFinite(Number(exam.passing_score)) && exam.passing_score !== null ? Number(exam.passing_score) : 40)
+    setIssueCertificates(exam.issue_certificates !== false)
+    setAutoReleaseScores(exam.auto_release_scores === true)
     setQuestions(exam.questions)
     setPublished(exam.published)
     setDegreeType(exam.degree_type || '')
@@ -224,13 +274,13 @@ export default function AdminExamsPage() {
 
   const handleSaveExam = async () => {
     if (!title) {
-      addToast({ type: 'error', title: 'Title is required' })
+      addToast({ type: 'error', title: tx('assess.titleIsRequired') })
       return
     }
     const startsIso = startsAt ? fromZonedDatetimeString(startsAt, tz) : null
     const endsIso = endsAt ? fromZonedDatetimeString(endsAt, tz) : null
     if (startsIso && endsIso && new Date(endsIso).getTime() <= new Date(startsIso).getTime()) {
-      addToast({ type: 'error', title: 'Deadline must be after the available-from time' })
+      addToast({ type: 'error', title: tx('assess.deadlineMustBeAfterThe') })
       return
     }
     
@@ -246,6 +296,12 @@ export default function AdminExamsPage() {
       require_token_links: requireTokenLinks,
       require_id_verification: requireIdVerification,
       require_face_capture: requireFaceCapture,
+      no_camera_policy: noCameraPolicy,
+      allow_retake: allowRetake,
+      max_attempts: allowRetake ? maxAttempts : 1,
+      passing_score: passingScore,
+      issue_certificates: issueCertificates,
+      auto_release_scores: autoReleaseScores,
       questions, 
       published,
       access_type: accessType,
@@ -256,13 +312,14 @@ export default function AdminExamsPage() {
     
     try {
       if (editingExam) {
-        await csrfFetch('/api/exams', {
+        const patchRes = await csrfFetch('/api/exams', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ id: editingExam.id, ...payload })
         })
-        addToast({ type: 'success', title: 'Assessment updated successfully' })
+        if (!patchRes.ok) throw new Error('update failed')
+        addToast({ type: 'success', title: tx('assess.assessmentUpdatedSuccessfully') })
       } else {
         const createRes = await csrfFetch('/api/exams', {
           method: 'POST',
@@ -270,26 +327,28 @@ export default function AdminExamsPage() {
           credentials: 'include',
           body: JSON.stringify(payload)
         })
-        const newExam = await createRes.json()
+        const newExam = await createRes.json().catch(() => ({})) as { id?: string; error?: string }
+        if (!createRes.ok || !newExam.id) throw new Error(newExam.error || 'Failed to create the assessment')
         // POST builds the doc from known fields only — persist the window
         // via PATCH (pass-through) so create+edit stay in parity.
         if (startsIso || endsIso) {
-          await csrfFetch('/api/exams', {
+          const winRes = await csrfFetch('/api/exams', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ id: newExam.id, starts_at: startsIso, ends_at: endsIso })
           })
+          if (!winRes.ok) addToast({ type: 'warning', title: tx('assess.draftCreatedButTheAvailability'), message: tx('assess.setItAgainInThe') })
         }
-        addToast({ type: 'success', title: 'Draft generated! Redirecting to review...' })
+        addToast({ type: 'success', title: tx('assess.draftGeneratedRedirectingToReview') })
         setIsModalOpen(false)
         router.push(`/dashboard/admin/assessments/${newExam.id}/edit`)
         return
       }
       setIsModalOpen(false)
       fetchExams()
-    } catch {
-      addToast({ type: 'error', title: 'Failed to save assessment' })
+    } catch (e) {
+      addToast({ type: 'error', title: tx('assess.failedToSaveAssessment'), message: e instanceof Error && e.message !== 'update failed' ? e.message : undefined })
     } finally {
       setSaving(false)
     }
@@ -323,7 +382,8 @@ export default function AdminExamsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to trigger candidate invitation link')
-      setGeneratedLink(json.invite_url || `${window.location.origin}/assessment/invite/${invitingExam.id}-${Date.now()}`)
+      if (!json.invite_url) throw new Error('The invite was created but no link came back. Use resend from the results page.')
+      setGeneratedLink(json.invite_url)
     } catch (err: any) {
       addToast({ type: 'error', title: err.message || 'Error creating candidate invite link' })
     } finally {
@@ -338,8 +398,26 @@ export default function AdminExamsPage() {
     const hasHeader = firstLine.includes('email') || firstLine.includes('name')
     const startIdx = hasHeader ? 1 : 0
     const candidates: { name: string; email: string }[] = []
+    // RFC 4180-ish: quoted fields may contain commas and doubled quotes ("").
+    const splitCsvLine = (line: string): string[] => {
+      const out: string[] = []
+      let cur = ''
+      let quoted = false
+      for (let j = 0; j < line.length; j++) {
+        const ch = line[j]
+        if (quoted) {
+          if (ch === '"' && line[j + 1] === '"') { cur += '"'; j++ }
+          else if (ch === '"') quoted = false
+          else cur += ch
+        } else if (ch === '"') quoted = true
+        else if (ch === ',') { out.push(cur.trim()); cur = '' }
+        else cur += ch
+      }
+      out.push(cur.trim())
+      return out
+    }
     for (let i = startIdx; i < lines.length; i++) {
-      const parts = lines[i].split(',').map(s => s.trim().replace(/^"(.*)"$/, '$1'))
+      const parts = splitCsvLine(lines[i])
       if (parts.length < 2) {
         candidates.push({ name: 'Candidate', email: parts[0] })
       } else {
@@ -430,7 +508,7 @@ export default function AdminExamsPage() {
   const handleCreateLink = async () => {
     if (!linkExam) return
     if (linkType === 'invited' && !linkEmail.includes('@')) {
-      addToast({ type: 'error', title: 'Email is required for invited links' })
+      addToast({ type: 'error', title: tx('assess.emailIsRequiredForInvited') })
       return
     }
     setLinkCreating(true)
@@ -451,7 +529,11 @@ export default function AdminExamsPage() {
       if (!res.ok) throw new Error(json.error || 'Failed to create link')
       setLinkCreatedUrl(json.url)
       navigator.clipboard.writeText(json.url).catch(() => {})
-      addToast({ type: 'success', title: `Link copied — ${linkExpirySummary(json.expires_at)}${json.max_uses ? `, max ${json.max_uses} uses` : ''}` })
+      addToast({
+        type: json.delivery_status === 'failed' ? 'warning' : 'success',
+        title: `Link copied — ${linkExpirySummary(json.expires_at)}${json.max_uses ? `, max ${json.max_uses} uses` : ''}`,
+        ...(json.delivery_status === 'sent' ? { message: `Invite emailed to ${linkEmail.trim()}.` } : json.delivery_status === 'failed' ? { message: "The invite email couldn't be sent — share the copied link yourself." } : {}),
+      })
       void fetchLinks(linkExam.id)
     } catch (err: unknown) {
       addToast({ type: 'error', title: err instanceof Error ? err.message : 'Failed to create link' })
@@ -468,73 +550,74 @@ export default function AdminExamsPage() {
         credentials: 'include',
       })
       if (!res.ok) throw new Error('Failed to revoke link')
-      addToast({ type: 'success', title: 'Link revoked' })
+      addToast({ type: 'success', title: tx('assess.linkRevoked') })
       void fetchLinks(linkExam.id)
     } catch {
-      addToast({ type: 'error', title: 'Failed to revoke link' })
+      addToast({ type: 'error', title: tx('assess.failedToRevokeLink') })
     }
   }
 
-  const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: 'Title', sortable: true, cell: (r) => (
+  const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: tx('assessList.col.title'), sortable: true, cell: (r) => (
       <button
         type="button"
-        title="Open results"
+        title={tx('assess.openResults')}
         onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/admin/assessments/${r.id}/results`) }}
         className="font-medium text-left hover:text-primary hover:underline underline-offset-4 transition-colors"
       >
         {r.title}
       </button>
     ) },
-    { key: 'subject', header: 'Subject', sortable: true, cell: (r) => r.subject },
-    { key: 'tenant', header: 'Organization', sortable: true, cell: (r) => {
-      if (!r.tenant_id) return <span className="text-muted-foreground">Platform</span>
+    { key: 'subject', header: tx('assessList.col.subject'), sortable: true, cell: (r) => r.subject },
+    { key: 'tenant', header: tx('assessList.col.organization'), sortable: true, cell: (r) => {
+      if (!r.tenant_id) return <span className="text-muted-foreground">{tx('assess.platform')}</span>
       const tenant = tenants.find(t => t.id === r.tenant_id)
-      return tenant?.name || <span className="text-muted-foreground">Unknown</span>
+      if (!tenant && gate.user?.role !== 'superadmin') return <span>{tx('assess.yourOrganisation')}</span>
+      return tenant?.name || <span className="text-muted-foreground">{tx('assess.unknown')}</span>
     }},
-    { key: 'screening', header: 'Screening', sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
-    { key: 'level', header: 'Level', sortable: true, cell: (r) => r.level },
-    { key: 'duration', header: 'Duration', sortable: true, cell: (r) => `${r.duration} min` },
-    { key: 'questions', header: 'Questions', sortable: true, cell: (r) => r.questions },
-    { key: 'status', header: 'Status', cell: (r) => (
+    { key: 'screening', header: tx('assessList.col.screening'), sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
+    { key: 'level', header: tx('assessList.col.level'), sortable: true, cell: (r) => r.level },
+    { key: 'duration', header: tx('assessList.col.duration'), sortable: true, cell: (r) => tx('assessList.minutes', { n: r.duration }) },
+    { key: 'questions', header: tx('assessList.col.questions'), sortable: true, cell: (r) => r.questions },
+    { key: 'status', header: tx('assessList.col.status'), cell: (r) => (
       <Badge variant={r.published ? 'success' : 'secondary'}>
-        {r.published ? 'Published' : 'Draft'}
+        {r.published ? tx('assess.published') : tx('assessList.draft')}
       </Badge>
     )},
-    { key: 'stats', header: 'Stats', cell: (r) => (
+    { key: 'stats', header: tx('assessList.col.stats'), cell: (r) => (
       <div className="flex flex-col gap-0.5 text-xs text-muted-foreground whitespace-nowrap">
-        <span>{r.invites || 0} invites sent</span>
-        <span>{r.attempts || 0} submitted</span>
-        <span>{r.released || 0} released</span>
+        <span>{tx('assessList.statInvites', { n: r.invites || 0 })}</span>
+        <span>{tx('assessList.statSubmitted', { n: r.attempts || 0 })}</span>
+        <span>{tx('assessList.statReleased', { n: r.released || 0 })}</span>
       </div>
     )},
     { key: 'actions', header: '', cell: (r) => (
       <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="More options">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title={tx('assess.moreOptions')} aria-label={tx('assess.moreOptions')}>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuItem onSelect={() => setTimeout(() => openInviteModal(r), 0)} disabled={!r.published} className="gap-2">
-              <Send className="h-4 w-4" /> Invite Candidate
+              <Send className="h-4 w-4" /> {tx('assess.inviteCandidate')}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setTimeout(() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }, 0)} disabled={!r.published} className="gap-2">
-              <Users className="h-4 w-4" /> Bulk Invite
+              <Users className="h-4 w-4" /> {tx('assessList.bulkInvite')}
             </DropdownMenuItem>
             {r.published && (
               <DropdownMenuItem onSelect={() => setTimeout(() => openLinkDialog(r), 0)} className="gap-2">
-                <Link2 className="h-4 w-4" /> Copy Public Link
+                <Link2 className="h-4 w-4" /> {tx('assessList.shareLinks')}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/results`)} className="gap-2">
-              <Eye className="h-4 w-4" /> View Results
+              <Eye className="h-4 w-4" /> {tx('assessList.viewResults')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/edit`)} className="gap-2">
-              <Edit className="h-4 w-4" /> Edit Assessment
+              <Edit className="h-4 w-4" /> {tx('assessList.editAssessment')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive">
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4" /> {tx('assessList.delete')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -543,41 +626,51 @@ export default function AdminExamsPage() {
   ]
 
   const bulkActions: BulkAction[] = [
-    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+    { label: tx('assessList.delete'), variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
   ]
 
   if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <BookOpen className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Assessment Management</h1>
-            <p className="text-muted-foreground text-sm">{visibleExams.length} assessments</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
-            <Upload className="w-4 h-4" />Bulk Schedule
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
-            <LayoutDashboard className="w-4 h-4" />Pipeline
-          </Button>
-          <Button className="gap-2" onClick={openAddModal}>
-            <Plus className="w-4 h-4" />Add Assessment
-          </Button>
-        </div>
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          illustration="assessment"
+          className="mb-0"
+          title={tx('assess.assessments')}
+          description={tx('assess.buildTestsInviteCandidatesAnd')}
+          icon={<BookOpen />}
+          actions={
+            <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
+                <Upload className="w-4 h-4" />{tx('assessList.inviteCandidates')}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
+                <LayoutDashboard className="w-4 h-4" />{tx('assessList.pipeline')}
+              </Button>
+              <Button className="gap-2" onClick={openAddModal}>
+                <Plus className="w-4 h-4" />{tx('assessList.addAssessment')}
+              </Button>
+            </>
+          }
+        />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
-        <span className="text-sm font-medium text-muted-foreground">Created:</span>
-        <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
-        <span className="text-muted-foreground">to</span>
-        <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+      {!loading && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label={tx('assess.assessments')} value={visibleExams.length} icon={<BookOpen />} />
+          <StatCard label={tx('assess.published')} value={visibleExams.filter(e => e.published).length} icon={<CheckCircle2 />} />
+          <StatCard label={tx('assess.invitesSent')} value={visibleExams.reduce((n, e) => n + (e.invites || 0), 0)} icon={<Send />} />
+          <StatCard label={tx('assess.submitted')} value={visibleExams.reduce((n, e) => n + (e.attempts || 0), 0)} icon={<Users />} />
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-card p-3">
+        <span className="text-sm font-medium text-muted-foreground">{tx('assess.created')}</span>
+        <Input aria-label={tx('assess.createdFrom')} type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+        <span className="text-muted-foreground">{tx('assessList.to')}</span>
+        <Input aria-label={tx('assess.createdTo')} type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
         <div className="flex items-center gap-1">
           {([['7d', '7D'], ['30d', '30D'], ['90d', '90D'], ['year', 'Year']] as const).map(([val, label]) => (
             <Button key={val} size="sm" variant={datePreset === val ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => handleDatePreset(val)}>
@@ -587,80 +680,88 @@ export default function AdminExamsPage() {
         </div>
         {(dateFrom || dateTo) && (
           <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={clearDateFilter}>
-            Clear
+            {tx('assess.clear')}
           </Button>
         )}
       </div>
 
       {loading ? (
         <SkeletonTable rows={5} />
+      ) : loadError && exams.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title={tx('assess.couldnTLoadAssessments')}
+          description={tx('common.checkConnection')}
+          actionLabel={tx('common.tryAgain')}
+          onAction={() => void fetchExams()}
+        />
       ) : (
         <DataTable
           columns={columns}
           data={visibleExams}
-          searchPlaceholder="Search assessments..."
+          searchPlaceholder={tx('assessList.searchPlaceholder')}
           searchKeys={['title', 'subject', 'level', 'tenant_id']}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No assessments. Click 'Add Assessment' to create one."
+          emptyState={{ illustration: 'assessment' }} emptyMessage={tx('assess.noAssessmentsYetClickAdd')}
         />
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
+            <DialogTitle>{editingExam ? tx('assessList.editAssessment') : tx('assessList.createAssessment')}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4 py-4">
             <div className="col-span-1 sm:col-span-2 lg:col-span-3 grid gap-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. JavaScript Fundamentals" />
+              <Label htmlFor="title">{tx('common.title')}</Label>
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tx('assess.eGJavascriptFundamentals')} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="subject">Target Role / Subject</Label>
-              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. QA Engineer, Full Stack Developer" />
+              <Label htmlFor="subject">{tx('assess.targetRoleSubject')}</Label>
+              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={tx('assess.eGQaEngineerFull')} />
             </div>
             <div className="grid gap-2">
-              <Label>Complexity Level</Label>
+              <Label>{tx('assess.level')}</Label>
               <Select value={level} onValueChange={setLevel}>
-                <SelectTrigger>
+                <SelectTrigger aria-label={tx('assess.level')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Beginner">Junior / Beginner</SelectItem>
-                  <SelectItem value="Intermediate">Mid-Level</SelectItem>
-                  <SelectItem value="Advanced">Senior / Advanced</SelectItem>
+                  <SelectItem value="Beginner">{tx('assess.juniorBeginner')}</SelectItem>
+                  <SelectItem value="Intermediate">{tx('assess.midLevel')}</SelectItem>
+                  <SelectItem value="Advanced">{tx('assess.seniorAdvanced')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Degree (optional)</Label>
+              <Label>{tx('assess.degreeOptional')}</Label>
               <Select value={degreeType || 'any'} onValueChange={v => setDegreeType(v === 'any' ? '' : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any degree" />
+                <SelectTrigger aria-label={tx('assess.degreeOptional')}>
+                  <SelectValue placeholder={tx('assess.anyDegree')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Any degree</SelectItem>
+                  <SelectItem value="any">{tx('assess.anyDegree')}</SelectItem>
                   {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Branch (optional)</Label>
+              <Label>{tx('assess.branchOptional')}</Label>
               <Select value={branch || 'any'} onValueChange={v => setBranch(v === 'any' ? '' : v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="General / all branches" />
+                <SelectTrigger aria-label={tx('assess.branchOptional')}>
+                  <SelectValue placeholder={tx('assess.generalAllBranches')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">General / all branches</SelectItem>
+                  <SelectItem value="any">{tx('assess.generalAllBranches')}</SelectItem>
                   {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Screening Type</Label>
+              <Label>{tx('assess.screeningType')}</Label>
               <Select value={screeningType} onValueChange={setScreeningType}>
-                <SelectTrigger>
+                <SelectTrigger aria-label={tx('assess.screeningType')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -669,15 +770,15 @@ export default function AdminExamsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="duration">Duration (mins)</Label>
+              <Label htmlFor="duration">{tx('assess.durationMins')}</Label>
               <Input id="duration" type="number" min="0" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 0)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="startsAt">Available from (UTC, optional)</Label>
+              <Label htmlFor="startsAt">{tx('assess.availableFromUtcOptional')}</Label>
               <Input id="startsAt" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="endsAt">Submit-by deadline (UTC, optional)</Label>
+              <Label htmlFor="endsAt">{tx('assess.submitByDeadlineUtcOptional')}</Label>
               <Input id="endsAt" type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
             </div>
             <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireTokenLinks">
@@ -689,14 +790,90 @@ export default function AdminExamsPage() {
                 className="mt-1 h-4 w-4 rounded border-input accent-primary"
               />
               <span>
-                Require personal links
-                <span className="block text-xs text-muted-foreground font-normal">Disable legacy ?share=true URLs — candidates must use token links or invites.</span>
+                {tx('assess.requirePersonalLinks')}
+                <span className="block text-xs text-muted-foreground font-normal">{tx('assessList.requireLinksHint')}</span>
               </span>
             </label>
+            <div className="grid gap-2">
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="allowRetake">
+                <input
+                  id="allowRetake"
+                  type="checkbox"
+                  checked={allowRetake}
+                  onChange={(e) => {
+                    setAllowRetake(e.target.checked)
+                    if (e.target.checked && maxAttempts < 2) setMaxAttempts(2)
+                  }}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  {tx('assess.allowRetakes')}
+                  <span className="block text-xs text-muted-foreground font-normal">{tx('assess.candidatesCanSubmitAgainResults')}</span>
+                </span>
+              </label>
+              {allowRetake && (
+                <div className="grid gap-1.5 pl-6">
+                  <Label htmlFor="maxAttempts">{tx('assess.maxAttempts')}</Label>
+                  <Input
+                    id="maxAttempts"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={maxAttempts}
+                    onChange={(e) => setMaxAttempts(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-24"
+                    aria-describedby="maxAttemptsHint"
+                  />
+                  <p id="maxAttemptsHint" className="text-xs text-muted-foreground">{tx('assess.totalAttemptsPerCandidateIncluding')}</p>
+                </div>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="passingScore">{tx('assess.passMark')}</Label>
+                <Input
+                  id="passingScore"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={passingScore}
+                  onChange={(e) => setPassingScore(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  className="w-24"
+                  aria-describedby="passingScoreHint"
+                />
+                <p id="passingScoreHint" className="text-xs text-muted-foreground">{tx('assess.releasedScoresAtOrAbove')}</p>
+              </div>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="issueCertificates">
+                <input
+                  id="issueCertificates"
+                  type="checkbox"
+                  checked={issueCertificates}
+                  onChange={(e) => setIssueCertificates(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  {tx('assess.issueCertificates')}
+                  <span className="block text-xs text-muted-foreground font-normal">{tx('assess.candidatesWhoPassGetA')}</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="autoReleaseScores">
+                <input
+                  id="autoReleaseScores"
+                  type="checkbox"
+                  checked={autoReleaseScores}
+                  onChange={(e) => setAutoReleaseScores(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  {tx('assess.releaseScoresAutomaticallyWhenGrading')}
+                  <span className="block text-xs text-muted-foreground font-normal">{tx('assess.eachCandidateSeesTheirScore')}</span>
+                </span>
+              </label>
+            </div>
             <div className="sm:col-span-2 lg:col-span-3 rounded-lg border bg-muted/20 p-4 space-y-3">
               <div>
-                <p className="text-sm font-medium">Identity verification</p>
-                <p className="text-xs text-muted-foreground">Turn off either step to let candidates skip it. Both off = consent only, exam starts directly.</p>
+                <p className="text-sm font-medium">{tx('assess.identityVerification')}</p>
+                <p className="text-xs text-muted-foreground">{tx('assessList.identityHint')}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireIdVerification">
@@ -708,8 +885,8 @@ export default function AdminExamsPage() {
                   className="mt-1 h-4 w-4 rounded border-input accent-primary"
                 />
                 <span>
-                  Require ID verification
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture/upload a Government ID (OCR name match). Off = skip ID step.</span>
+                  {tx('assess.requireIdVerification')}
+                  <span className="block text-xs text-muted-foreground font-normal">{tx('assessList.idHint')}</span>
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireFaceCapture">
@@ -721,25 +898,44 @@ export default function AdminExamsPage() {
                   className="mt-1 h-4 w-4 rounded border-input accent-primary"
                 />
                 <span>
-                  Require face capture
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture a live selfie (biometric verify + enroll). Off = skip face step.</span>
+                  {tx('assess.requireFaceCapture')}
+                  <span className="block text-xs text-muted-foreground font-normal">{tx('assessList.faceHint')}</span>
                 </span>
               </label>
               </div>
+              {(requireIdVerification || requireFaceCapture) && (
+                <div className="grid gap-1.5 sm:max-w-sm">
+                  <Label htmlFor="noCameraPolicy">{tx('assess.ifTheCandidateHasNo')}</Label>
+                  <Select value={noCameraPolicy} onValueChange={(v) => setNoCameraPolicy(v === 'block' ? 'block' : 'allow_flag')}>
+                    <SelectTrigger id="noCameraPolicy" className="h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="allow_flag">{tx('assess.allowAndFlagForReview')}</SelectItem>
+                      <SelectItem value="block">{tx('assess.blockTheTest')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {noCameraPolicy === 'block'
+                      ? tx('assessList.noCameraBlockHint')
+                      : tx('assessList.noCameraAllowHint')}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="questions">Questions</Label>
+              <Label htmlFor="questions">{tx('assess.questions')}</Label>
               <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
             </div>
             <div className="sm:col-span-2 lg:col-span-3 grid gap-2">
-              <Label htmlFor="techStack">Topics / Skills (comma separated)</Label>
-              <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Selenium, TestNG, API Testing, SQL" />
+              <Label htmlFor="techStack">{tx('assess.topicsSkillsCommaSeparated')}</Label>
+              <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder={tx('assess.eGSeleniumTestngApi')} />
             </div>
             <div className="flex items-center justify-between mt-2 sm:col-span-2 lg:col-span-3">
               <div className="space-y-0.5">
-                <Label>Access Type</Label>
+                <Label>{tx('assess.access')}</Label>
                 <div className="text-sm text-muted-foreground">
-                  Who can take this assessment
+                  {tx('assess.whoCanTakeThisAssessment')}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -752,7 +948,7 @@ export default function AdminExamsPage() {
                       : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  Invite Only
+                  {tx('assess.inviteOnly')}
                 </button>
                 <button
                   type="button"
@@ -763,27 +959,27 @@ export default function AdminExamsPage() {
                       : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  Open to All
+                  {tx('assess.openToAll')}
                 </button>
               </div>
             </div>
             <div className="flex items-center justify-between mt-2 sm:col-span-2 lg:col-span-3">
               <div className="space-y-0.5">
-                <Label>Published</Label>
+                <Label>{tx('assess.published')}</Label>
                 <div className="text-sm text-muted-foreground">
-                  Make this assessment visible to candidates
+                  {tx('assess.makeThisAssessmentVisibleTo')}
                 </div>
               </div>
               <Switch checked={published} onCheckedChange={setPublished} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveExam} disabled={saving} className={!editingExam ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>{tx('common.cancel')}</Button>
+            <Button onClick={handleSaveExam} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {!editingExam && !saving && questions > 0 && <Wand2 className="mr-2 h-4 w-4" />}
               {!editingExam && !saving && questions === 0 && <Plus className="mr-2 h-4 w-4" />}
-              {editingExam ? 'Save Changes' : questions > 0 ? 'Generate with AI' : 'Create Blank Assessment'}
+              {editingExam ? tx('assessList.saveChanges') : questions > 0 ? tx('assessList.generateWithAi') : tx('assessList.createBlank')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -792,59 +988,59 @@ export default function AdminExamsPage() {
       <Sheet open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
         <SheetContent side="right" className="w-full sm:w-120 sm:max-w-md overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Invite Candidate</SheetTitle>
+            <SheetTitle>{tx('assess.inviteCandidate')}</SheetTitle>
             <SheetDescription>
-              Send an assessment invitation to a candidate for <strong>{invitingExam?.title}</strong>.
+              {rich('assessList.inviteFor', { title: <strong>{invitingExam?.title}</strong> })}
             </SheetDescription>
           </SheetHeader>
           {!generatedLink ? (
             <form onSubmit={handleSendInvite} className="space-y-4 px-4 pb-4">
               <div className="space-y-2">
-                <Label htmlFor="candName">Candidate Name <span className="text-muted-foreground">(Optional)</span></Label>
-                <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. John Doe" />
+                <Label htmlFor="candName">{tx('assess.candidateName')} <span className="text-muted-foreground">{tx('assess.optional')}</span></Label>
+                <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder={tx('assess.eGJohnDoe')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="candEmail">Email Address *</Label>
+                <Label htmlFor="candEmail">{tx('assess.emailAddress')}</Label>
                 <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="candCc">CC Email <span className="text-muted-foreground">(Optional)</span></Label>
+                <Label htmlFor="candCc">{tx('assess.ccEmail')} <span className="text-muted-foreground">{tx('assess.optional')}</span></Label>
                 <Input id="candCc" type="email" value={candCc} onChange={(e) => setCandCc(e.target.value)} placeholder="manager@company.com" />
-                <p className="text-xs text-muted-foreground">Copy this person on the invitation email</p>
+                <p className="text-xs text-muted-foreground">{tx('assess.copyThisPersonOnThe')}</p>
               </div>
               <SheetFooter>
-                <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>{tx('common.cancel')}</Button>
                 <Button type="submit" disabled={sendingInvite || !candEmail}>
                   {sendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Invite
+                  {tx('assess.sendInvite')}
                 </Button>
               </SheetFooter>
             </form>
           ) : (
             <div className="space-y-4 px-4 pb-4">
               <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-                <div className="flex items-center gap-2 text-green-600 mb-2">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
                   <CheckCircle2 className="h-5 w-5" />
-                  <p className="font-medium">Invitation sent!</p>
+                  <p className="font-medium">{tx('assess.invitationSent')}</p>
                 </div>
-                <p className="text-sm text-green-600/80">
-                  Link emailed to <strong>{candEmail}</strong>
+                <p className="text-sm text-green-700/80 dark:text-green-400/80">
+                  {rich('assessList.linkEmailedTo', { email: <strong>{candEmail}</strong> })}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Invite Link</Label>
+                <Label>{tx('assess.inviteLink')}</Label>
                 <div className="flex gap-2">
-                  <Input readOnly value={generatedLink} className="font-mono text-sm" />
-                  <Button variant="secondary" onClick={() => {
+                  <Input readOnly value={generatedLink} aria-label={tx('assess.inviteLink')} className="font-mono text-sm" />
+                  <Button variant="secondary" aria-label={tx('assess.copyLink')} onClick={() => {
                     navigator.clipboard.writeText(generatedLink)
-                    addToast({ type: 'success', title: 'Copied!' })
+                    addToast({ type: 'success', title: tx('assess.copied') })
                   }}>
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
               <SheetFooter>
-                <Button onClick={() => setIsInviteModalOpen(false)}>Done</Button>
+                <Button onClick={() => setIsInviteModalOpen(false)}>{tx('assess.done')}</Button>
               </SheetFooter>
             </div>
           )}
@@ -854,7 +1050,7 @@ export default function AdminExamsPage() {
       <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Bulk Invite Candidates — {bulkInviteExam?.title}</DialogTitle>
+            <DialogTitle>{tx('assessList.bulkTitle', { title: bulkInviteExam?.title ?? '' })}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
             {bulkResults ? (
@@ -862,25 +1058,25 @@ export default function AdminExamsPage() {
                 <div className={`rounded-lg border p-4 ${bulkResults.failed === 0 ? 'border-green-500/20 bg-green-500/10' : 'border-amber-500/20 bg-amber-500/10'}`}>
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    <p className="font-medium">{bulkResults.sent} invite(s) sent, {bulkResults.failed} failed</p>
+                    <p className="font-medium">{tx('assessList.bulkResult', { sent: bulkResults.sent, failed: bulkResults.failed })}</p>
                   </div>
                   {bulkResults.errors.length > 0 && (
                     <div className="text-xs text-muted-foreground space-y-1 max-h-32 overflow-y-auto">
-                      {bulkResults.errors.map((e, i) => <p key={i} className="text-red-500">{e}</p>)}
+                      {bulkResults.errors.map((e, i) => <p key={i} className="text-red-600 dark:text-red-400">{e}</p>)}
                     </div>
                   )}
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={() => setIsBulkInviteOpen(false)}>Done</Button>
+                  <Button onClick={() => setIsBulkInviteOpen(false)}>{tx('assess.done')}</Button>
                 </div>
               </div>
             ) : (
               <>
             <div className="grid gap-2">
-                  <Label>Paste CSV (email, name)</Label>
+                  <Label>{tx('assess.pasteCsvEmailName')}</Label>
                   <p className="text-xs text-muted-foreground">
-                    <strong>CSV:</strong> One candidate per line — <code>email,name</code> or <code>jane@example.com,Jane</code>
-                    <br />Names are optional. Header row is detected automatically.
+                    <strong>CSV:</strong> {tx('assess.oneCandidatePerLine')} <code>email,name</code> {tx('assessList.csvOr')} <code>jane@example.com,Jane</code>
+                    <br />{tx('assessList.csvNamesOptional')}
                   </p>
                   <div className="max-h-62.5 overflow-y-auto border rounded-md">
                     <Textarea
@@ -898,7 +1094,7 @@ export default function AdminExamsPage() {
                     setBulkCsvText(sample)
                     setBulkPreview(null)
                   }} className="gap-2">
-                    <Download className="h-3.5 w-3.5" /> Sample CSV
+                    <Download className="h-3.5 w-3.5" /> {tx('assessList.sampleCsv')}
                   </Button>
                   <input
                     id="bulk-file-input"
@@ -913,26 +1109,26 @@ export default function AdminExamsPage() {
                     }}
                   />
                   <Button variant="outline" size="sm" onClick={() => document.getElementById('bulk-file-input')?.click()} className="gap-2">
-                    <Upload className="h-3.5 w-3.5" /> Upload File
+                    <Upload className="h-3.5 w-3.5" /> {tx('assessList.uploadFile')}
                   </Button>
                   <Button onClick={() => {
                     const candidates = parseBulkCsv(bulkCsvText)
                     if (candidates.length === 0) {
-                      addToast({ type: 'error', title: 'No valid emails found in the CSV' })
+                      addToast({ type: 'error', title: tx('assess.noValidEmailsFoundIn') })
                       return
                     }
                     setBulkPreview(candidates)
                   }} disabled={!bulkCsvText.trim()} className="gap-2">
-                    Preview
+                    {tx('assess.preview')}
                   </Button>
                 </div>
                 {bulkPreview && (
                   <div className="border rounded-md p-3 bg-muted/20 space-y-2">
-                    <p className="text-sm font-medium">{bulkPreview.length} candidate(s) found</p>
+                    <p className="text-sm font-medium">{tx('assessList.candidatesFound', { count: bulkPreview.length })}</p>
                     <div className="max-h-48 overflow-y-auto space-y-1 text-xs">
                       {bulkPreview.map((c, i) => (
                         <div key={i} className="flex items-center gap-2 py-1 border-b border-border/40 last:border-0">
-                          <span className="font-mono text-primary shrink-0 w-6">{i + 1}.</span>
+                          <span className="tabular-nums text-primary shrink-0 w-6">{i + 1}.</span>
                           <span className="font-medium text-foreground truncate">{c.name}</span>
                           <span className="text-muted-foreground truncate ml-auto">{c.email}</span>
                         </div>
@@ -945,10 +1141,10 @@ export default function AdminExamsPage() {
           </div>
           {!bulkResults && (
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsBulkInviteOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setIsBulkInviteOpen(false)}>{tx('common.cancel')}</Button>
               <Button onClick={handleBulkInvite} disabled={bulkSending || !bulkPreview || bulkPreview.length === 0}>
                 {bulkSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                Send {bulkPreview?.length || 0} Invites
+                {tx('assessList.sendInvites', { count: bulkPreview?.length || 0 })}
               </Button>
             </DialogFooter>
           )}
@@ -958,11 +1154,11 @@ export default function AdminExamsPage() {
       <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
         <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Share Links — {linkExam?.title}</DialogTitle>
+            <DialogTitle>{tx('assessList.shareTitle', { title: linkExam?.title ?? '' })}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-5">
             <div className="grid gap-2">
-              <Label>Link type</Label>
+              <Label>{tx('assess.linkType')}</Label>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -973,7 +1169,7 @@ export default function AdminExamsPage() {
                       : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  Public — anyone with the link
+                  {tx('assess.publicAnyoneWithTheLink')}
                 </button>
                 <button
                   type="button"
@@ -984,18 +1180,18 @@ export default function AdminExamsPage() {
                       : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  Invited — single candidate
+                  {tx('assess.invitedSingleCandidate')}
                 </button>
               </div>
             </div>
             {linkType === 'invited' && (
               <div className="grid gap-2">
-                <Label htmlFor="linkEmail">Candidate email *</Label>
+                <Label htmlFor="linkEmail">{tx('assess.candidateEmail')}</Label>
                 <Input id="linkEmail" type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} placeholder="candidate@example.com" />
               </div>
             )}
             <div className="grid gap-2">
-              <Label>Expiry</Label>
+              <Label>{tx('assess.expiry')}</Label>
               <div className="flex gap-2 flex-wrap">
                 {([['1h', '1 hour'], ['24h', '24 hours'], ['7d', '7 days'], ['30d', '30 days'], ['never', 'Never']] as const).map(([val, label]) => (
                   <button
@@ -1020,25 +1216,25 @@ export default function AdminExamsPage() {
                       : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  Custom
+                  {tx('assess.custom')}
                 </button>
               </div>
               {linkPreset === 'custom' && (
-                <Input type="datetime-local" value={linkCustom} onChange={(e) => setLinkCustom(e.target.value)} className="max-w-60" />
+                <Input aria-label={tx('assess.customLinkExpiry')} type="datetime-local" value={linkCustom} onChange={(e) => setLinkCustom(e.target.value)} className="max-w-60" />
               )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="linkMaxUses">Max uses <span className="text-muted-foreground">(optional)</span></Label>
-              <Input id="linkMaxUses" type="number" min="1" value={linkMaxUses} onChange={(e) => setLinkMaxUses(e.target.value)} placeholder="Unlimited" className="max-w-40" />
+              <Label htmlFor="linkMaxUses">{tx('assess.maxUses')} <span className="text-muted-foreground">{tx('assess.optional2')}</span></Label>
+              <Input id="linkMaxUses" type="number" min="1" value={linkMaxUses} onChange={(e) => setLinkMaxUses(e.target.value)} placeholder={tx('assess.unlimited')} className="max-w-40" />
             </div>
             {linkCreatedUrl && (
               <div className="space-y-2">
-                <Label>New link</Label>
+                <Label>{tx('assess.newLink')}</Label>
                 <div className="flex gap-2">
-                  <Input readOnly value={linkCreatedUrl} className="font-mono text-sm break-all" />
-                  <Button variant="secondary" onClick={() => {
+                  <Input readOnly value={linkCreatedUrl} aria-label={tx('assess.assessmentLink')} className="font-mono text-sm break-all" />
+                  <Button variant="secondary" aria-label={tx('assess.copyLink')} onClick={() => {
                     navigator.clipboard.writeText(linkCreatedUrl)
-                    addToast({ type: 'success', title: 'Copied!' })
+                    addToast({ type: 'success', title: tx('assess.copied') })
                   }}>
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -1046,11 +1242,11 @@ export default function AdminExamsPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>Active links for this assessment</Label>
+              <Label>{tx('assess.activeLinksForThisAssessment')}</Label>
               {linkLoading ? (
-                <p className="text-sm text-muted-foreground">Loading links...</p>
+                <p className="text-sm text-muted-foreground">{tx('assess.loadingLinks')}</p>
               ) : linkRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No links yet. Create one below.</p>
+                <p className="text-sm text-muted-foreground">{tx('assessList.noLinks')}</p>
               ) : (
                 <div className="border rounded-md divide-y divide-border/40 max-h-72 overflow-y-auto">
                   {linkRows.map((l) => (
@@ -1064,10 +1260,10 @@ export default function AdminExamsPage() {
                         </span>
                         {!l.revoked && (
                           <>
-                            <Button size="sm" variant="ghost" className="h-7 shrink-0" onClick={() => void fetchUsage(linkExam?.id || '', l.id)}>
+                            <Button size="sm" variant="ghost" className="h-7 shrink-0" onClick={() => void fetchUsage(linkExam?.id || '', l.id)} aria-label={usageLinkId === l.id ? 'Hide link usage' : 'Show link usage'}>
                               {usageLinkId === l.id ? <ChevronUp className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-destructive shrink-0" onClick={() => handleRevokeLink(l.id)}>
+                            <Button size="sm" variant="ghost" className="h-7 text-destructive shrink-0" onClick={() => handleRevokeLink(l.id)} aria-label={tx('assess.revokeLink')}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </>
@@ -1077,21 +1273,21 @@ export default function AdminExamsPage() {
                       {usageLinkId === l.id && (
                         <div className="mt-2 border-t border-border/40 pt-2">
                           {usageLoading ? (
-                            <p className="text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Loading usage logs...</p>
+                            <p className="text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> {tx('assess.loadingUsageLogs')}</p>
                           ) : usageRows.length === 0 ? (
-                            <p className="text-muted-foreground">No usage recorded yet.</p>
+                            <p className="text-muted-foreground">{tx('assess.noUsageRecordedYet')}</p>
                           ) : (
                             <div className="space-y-1 max-h-48 overflow-y-auto">
-                              <div className="grid grid-cols-12 gap-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 pb-1 border-b border-border/30">
-                                <span className="col-span-2">Time</span>
+                              <div className="grid min-w-[560px] grid-cols-12 gap-2 text-[11px] font-medium text-muted-foreground px-2 pb-1 border-b border-border/30">
+                                <span className="col-span-2">{tx('assess.time')}</span>
                                 <span className="col-span-2">IP</span>
-                                <span className="col-span-2">Device</span>
-                                <span className="col-span-2">Browser</span>
+                                <span className="col-span-2">{tx('assess.device')}</span>
+                                <span className="col-span-2">{tx('assess.browser')}</span>
                                 <span className="col-span-2">OS</span>
-                                <span className="col-span-2">User</span>
+                                <span className="col-span-2">{tx('assess.user')}</span>
                               </div>
                               {usageRows.map((u) => (
-                                <div key={u.id} className="grid grid-cols-12 gap-2 px-2 py-1 rounded hover:bg-muted/30">
+                                <div key={u.id} className="grid min-w-[560px] grid-cols-12 gap-2 px-2 py-1 rounded hover:bg-muted/30">
                                   <span className="col-span-2 text-muted-foreground">{formatDateTime(u.accessed_at)}</span>
                                   <span className="col-span-2 font-mono text-muted-foreground">{u.ip_address || '—'}</span>
                                   <span className="col-span-2 flex items-center gap-1">
@@ -1114,10 +1310,10 @@ export default function AdminExamsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsLinkOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setIsLinkOpen(false)}>{tx('common.close')}</Button>
             <Button onClick={handleCreateLink} disabled={linkCreating || (linkType === 'invited' && !linkEmail.includes('@'))}>
               {linkCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-              Create & Copy Link
+              {tx('assessList.createCopyLink')}
             </Button>
           </DialogFooter>
         </DialogContent>

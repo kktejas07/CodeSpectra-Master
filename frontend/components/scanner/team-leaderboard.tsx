@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Loader2Icon } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
-import { Trophy, Flame, Star, Target, Medal, Award, Hash, Crosshair, Bug, Lock, Zap } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Trophy, Flame, Star, Target, Medal, Award, Hash } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface TeamMember {
   userId: string
@@ -24,8 +26,11 @@ interface TeamLeaderboardProps {
 }
 
 export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
+  const { t } = useT()
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(members || [])
   const [loading, setLoading] = useState(!members)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (members) {
@@ -33,16 +38,16 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
       return
     }
     setLoading(true)
+    setLoadError(false)
     fetch('/api/admin/teams/activity?weeks=12', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.userStats && Array.isArray(json.userStats)) {
-          setTeamMembers(json.userStats)
-        }
+      .then(async (r) => {
+        const json = await r.json().catch(() => null)
+        if (!r.ok || !json) throw new Error(t('tools.loadFailed'))
+        if (Array.isArray(json.userStats)) setTeamMembers(json.userStats)
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [members])
+  }, [members, reloadKey])
 
   const defaultMembers: TeamMember[] = teamMembers.length > 0 ? teamMembers : []
 
@@ -52,28 +57,31 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
     if (position === 0) return 'text-yellow-500'
     if (position === 1) return 'text-gray-400'
     if (position === 2) return 'text-orange-600'
-    return 'text-foreground/40'
+    return 'text-muted-foreground'
   }
 
-  const getQualityBadge = (score: number) => {
-    if (score >= 85) return { bg: 'bg-green-500/20', text: 'text-green-600', label: 'Excellent' }
-    if (score >= 80) return { bg: 'bg-blue-500/20', text: 'text-blue-600', label: 'Good' }
-    return { bg: 'bg-yellow-500/20', text: 'text-yellow-600', label: 'Fair' }
-  }
-
-  const teamAvgQuality =
-    sorted.length > 0
-      ? Math.round(sorted.reduce((sum, m) => sum + Math.min(95, 60 + m.total * 2), 0) / sorted.length)
-      : 0
   const totalBugsFixed = sorted.reduce((sum, m) => sum + m.fixes, 0)
-  const maxStreak = sorted.length > 0 ? Math.max(...sorted.map((m) => m.total * 3)) : 0
+  const totalScans = sorted.reduce((sum, m) => sum + m.scans, 0)
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Spinner className="h-6 w-6" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading leaderboard…</span>
+        <span className="ml-2 text-sm text-muted-foreground">{t('tools.loadingLeaderboard')}</span>
       </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <EmptyState
+        compact
+        illustration="error"
+        title={t('tools.couldntLoadTheLeaderboard')}
+        description={t('tools.checkYourConnectionAndTryAgain')}
+        actionLabel={t('common.tryAgain')}
+        onAction={() => setReloadKey((k) => k + 1)}
+      />
     )
   }
 
@@ -81,29 +89,23 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
     <div className="space-y-6">
       <div className="space-y-2">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <Trophy className="w-5 h-5" />
-          Team Leaderboard
-        </h3>
-        <p className="text-sm text-foreground/60">
+          <Trophy className="w-5 h-5" />{t('tools.teamLeaderboard')}</h3>
+        <p className="text-sm text-muted-foreground">
           {sorted.length > 0
-            ? `${sorted.length} team members ranked by contribution`
-            : 'No team members found — connect GitHub to see team activity'}
+            ? t('tools.countTeamMembersRankedByContribution', { count: sorted.length })
+            : t('tools.noTeamMembersFoundConnectGithubd25')}
         </p>
       </div>
 
       {sorted.length === 0 ? (
-        <Card className="bg-card/30 border border-border p-8 text-center">
-          <Trophy className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">No team data available.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
-            Connect GitHub integrations to see team activity.
-          </p>
-        </Card>
+        <EmptyState
+          illustration="leaderboard"
+          title={t('tools.noTeamActivityYet')}
+          description={t('tools.connectGithubToSeeScansReviews06b')}
+        />
       ) : (
         <div className="space-y-3">
           {sorted.map((member, index) => {
-            const qualityScore = Math.min(95, 60 + member.total * 2)
-            const qualityColor = getQualityBadge(qualityScore)
             const medalColor = getMedalColor(index)
 
             return (
@@ -112,9 +114,9 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
                   <div
                     className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 ${medalColor}`}
                   >
-                    {index === 0 && <Medal className="h-6 w-6" aria-label="First place" />}
-                    {index === 1 && <Award className="h-6 w-6" aria-label="Second place" />}
-                    {index === 2 && <Trophy className="h-6 w-6" aria-label="Third place" />}
+                    {index === 0 && <Medal className="h-6 w-6" aria-label={t('tools.firstPlace')} />}
+                    {index === 1 && <Award className="h-6 w-6" aria-label={t('tools.secondPlace')} />}
+                    {index === 2 && <Trophy className="h-6 w-6" aria-label={t('tools.thirdPlace')} />}
                     {index > 2 && (
                       <span className="flex items-center gap-0.5 text-sm font-bold tabular-nums">
                         <Hash className="h-4 w-4 opacity-70" />
@@ -128,29 +130,29 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
 
                     <div className="min-w-0">
                       <p className="font-semibold text-foreground truncate">{member.name}</p>
-                      <p className="text-xs text-foreground/50 truncate">{member.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                     </div>
                   </div>
 
                   <div className="hidden md:flex items-center gap-6">
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Scans</p>
+                      <p className="text-xs text-muted-foreground">{t('tools.scans')}</p>
                       <p className="text-lg font-bold text-foreground">{member.scans}</p>
                     </div>
 
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Reviews</p>
+                      <p className="text-xs text-muted-foreground">{t('tools.reviews')}</p>
                       <p className="text-lg font-bold text-foreground">{member.reviews}</p>
                     </div>
 
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Fixes</p>
+                      <p className="text-xs text-muted-foreground">{t('tools.fixes')}</p>
                       <p className="text-lg font-bold text-green-500">{member.fixes}</p>
                     </div>
 
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Total</p>
-                      <Badge className={`${qualityColor.bg} ${qualityColor.text} border-0`}>
+                      <p className="text-xs text-muted-foreground">{t('tools.total')}</p>
+                      <Badge variant="secondary" className="border-0 tabular-nums">
                         {member.total}
                       </Badge>
                     </div>
@@ -158,7 +160,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
 
                   <div className="md:hidden text-right">
                     <p className="text-sm font-bold text-foreground">{member.total}</p>
-                    <p className="text-xs text-foreground/50">contributions</p>
+                    <p className="text-xs text-muted-foreground">{t('tools.contributions')}</p>
                   </div>
                 </div>
               </Card>
@@ -168,60 +170,39 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-card/30 border border-border p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-500 flex justify-center gap-1">
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-amber-500 flex justify-center gap-1">
             <Trophy className="w-6 h-6" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Team Leader</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('tools.teamLeader')}</p>
           <p className="text-sm font-bold text-foreground truncate">{sorted[0]?.name || '—'}</p>
         </Card>
 
-        <Card className="bg-card/30 border border-border p-4 text-center">
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-foreground flex justify-center">
-            <Target className="w-6 h-6 text-blue-500" />
+            <Target className="w-6 h-6 text-primary" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Avg Team Quality</p>
-          <p className="text-sm font-bold text-foreground">{teamAvgQuality}%</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('tools.totalScans')}</p>
+          <p className="text-sm font-bold text-foreground">{totalScans}</p>
         </Card>
 
-        <Card className="bg-card/30 border border-border p-4 text-center">
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-green-500 flex justify-center">
             <Star className="w-6 h-6" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Total Bugs Fixed</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('tools.totalBugsFixed')}</p>
           <p className="text-sm font-bold text-foreground">{totalBugsFixed}</p>
         </Card>
 
-        <Card className="bg-card/30 border border-border p-4 text-center">
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-orange-500 flex justify-center">
             <Flame className="w-6 h-6" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Top Contributor</p>
-          <p className="text-sm font-bold text-foreground">{sorted[0]?.total || 0} pts</p>
+          <p className="text-xs text-muted-foreground mt-2">{t('tools.topContributor')}</p>
+          <p className="text-sm font-bold text-foreground">{sorted[0]?.total || 0}{' '}{t('tools.pts')}</p>
         </Card>
       </div>
 
-      <Card className="border border-purple-500/30 bg-linear-to-r from-purple-500/10 to-pink-500/10 p-4 space-y-3">
-        <h4 className="font-semibold text-foreground">Team Achievements</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Crosshair className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <span className="text-foreground">Quality goal</span>
-          </div>
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Bug className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
-            <span className="text-foreground">Bug hunters</span>
-          </div>
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="text-foreground">Security first</span>
-          </div>
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Zap className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
-            <span className="text-foreground">Quick fixers</span>
-          </div>
-        </div>
-      </Card>
     </div>
   )
 }

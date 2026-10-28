@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Search, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Star, Settings,
+  Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Star, Settings,
   Users, Lock, Plug, Gauge, Globe2, Shield, FileText, Building2,
   CreditCard, Bell, Database, Sparkles, Bot, Briefcase, Flame, MessageSquare,
   Camera, Layers, UserPlus, Award, ScanSearch, type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import {
   CommandDialog,
   CommandEmpty,
@@ -33,6 +34,7 @@ import {
   isJudge,
   type UserRole,
 } from '@/lib/rbac'
+import { useT } from '@/lib/i18n/client'
 
 type CommandMenuProps = {
   fullWidth?: boolean
@@ -127,6 +129,7 @@ export function CommandMenu({
   allowedRoutes,
   deniedRoutes,
 }: CommandMenuProps) {
+  const { t } = useT()
   const router = useRouter()
   const [open, setOpen] = useState(false)
 
@@ -230,9 +233,9 @@ export function CommandMenu({
   return (
     <>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search pages and commands..." />
+        <CommandInput placeholder={t('common.cmdPlaceholder')} />
         <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandEmpty>{t('common.cmdEmpty')}</CommandEmpty>
           <CommandGroup heading="Navigation">
             {commands.map((command) => (
               <CommandItem
@@ -252,13 +255,14 @@ export function CommandMenu({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-label={t('common.cmdOpenAria')}
         className={cn(
           'inline-flex items-center gap-2 text-sm rounded-lg border border-border/40 bg-background/90 hover:bg-muted/80 transition-colors group text-muted-foreground',
           fullWidth ? 'w-full justify-between px-3 py-2.5' : 'px-3 py-2',
           compact && 'lg:px-2 lg:py-2.5 lg:justify-center'
         )}
       >
-        <Search className="w-4 h-4 shrink-0 opacity-80" />
+        <AnimatedIcon name="search" className="opacity-80" />
         <span
           className={cn(
             'truncate text-left text-muted-foreground',
@@ -267,7 +271,7 @@ export function CommandMenu({
             fullWidth && compact && 'lg:hidden'
           )}
         >
-          Search…
+          {t('common.cmdSearch')}
         </span>
         <span
           className={cn(

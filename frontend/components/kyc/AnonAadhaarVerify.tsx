@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic'
 import { Loader2, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 type Revealed = {
   age_above_18?: boolean
@@ -29,6 +30,7 @@ type Sdk = {
   AnonAadhaarProvider: ComponentType<{ _useTestAadhaar?: boolean; children: ReactNode }>
   LogInWithAnonAadhaar: ComponentType<{
     nullifierSeed: number | bigint
+    signal?: string
     fieldsToReveal?: Array<
       'revealAgeAbove18' | 'revealGender' | 'revealPinCode' | 'revealState'
     >
@@ -38,12 +40,24 @@ type Sdk = {
 }
 
 function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVerified }: Props) {
+  const { t } = useT()
   const [sdk, setSdk] = useState<Sdk | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
   const [revealed, setRevealed] = useState<Revealed | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // SEC-026: the server-issued signal binds the proof to this account.
+  const [signal, setSignal] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/kyc/anon-aadhaar', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!cancelled && j && typeof j.signal === 'string') setSignal(j.signal) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -52,7 +66,7 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
         if (!cancelled) setSdk(m as unknown as Sdk)
       })
       .catch((e) => {
-        if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'SDK load failed')
+        if (!cancelled) setLoadErr(e instanceof Error ? e.message : t('exam.sdkLoadFailed'))
       })
     return () => {
       cancelled = true
@@ -63,18 +77,15 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
 
   if (loadErr) {
     return (
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
-        <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />
-        Anon Aadhaar SDK unavailable: {loadErr}. Run <code>yarn install</code> in frontend/.
-      </div>
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+        <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />{t('exam.aadhaarVerificationCouldntLoadRightNow0bb', { loadErr })}</div>
     )
   }
 
-  if (!sdk) {
+  if (!sdk || !signal) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading Anon Aadhaar…
-      </div>
+        <Loader2 className="h-4 w-4 animate-spin" />{' '}{t('exam.loadingAnonAadhaar')}</div>
     )
   }
 
@@ -96,22 +107,20 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
       />
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-teal-600" />
-          <span className="text-sm font-medium">Anon Aadhaar</span>
+          <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />
+          <span className="text-sm font-medium text-foreground">{t('exam.anonAadhaar')}</span>
           <Badge variant="outline" className="text-[10px]">
-            {useTestAadhaar ? 'Test mode' : 'Live UIDAI'}
+            {useTestAadhaar ? t('exam.testMode') : t('exam.liveUidai')}
           </Badge>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Scan Aadhaar QR. We learn age≥18, gender, state, PIN only — not your Aadhaar number.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('exam.scanAadhaarQrWeLearnAgede6')}</p>
         {done ? (
-          <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
+          <div className="flex items-start gap-2 rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600 dark:text-green-400" aria-hidden />
             <div>
-              <p className="font-medium">Verified</p>
+              <p className="font-medium text-foreground">{t('exam.verified')}</p>
               <p className="text-xs text-muted-foreground">
-                Age≥18: {revealed?.age_above_18 ? 'yes' : '—'}
+                Age≥18: {revealed?.age_above_18 ? t('exam.yes2') : '—'}
                 {revealed?.gender ? ` · ${revealed.gender}` : ''}
                 {revealed?.state ? ` · ${revealed.state}` : ''}
                 {revealed?.pincode ? ` · ${revealed.pincode}` : ''}
@@ -122,6 +131,7 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
           <div className="flex flex-wrap items-center gap-3">
             <LogInWithAnonAadhaar
               nullifierSeed={seedNum}
+              signal={signal}
               fieldsToReveal={[
                 'revealAgeAbove18',
                 'revealGender',
@@ -153,6 +163,7 @@ function ProofSync({
   setError: (v: string | null) => void
   onOk: (r: Revealed) => void
 }) {
+  const { t } = useT()
   const [anon] = sdk.useAnonAadhaar()
   const [, latest] = sdk.useProver()
   const [sent, setSent] = useState(false)
@@ -170,7 +181,7 @@ function ProofSync({
           body: JSON.stringify({ proof, purpose }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+        if (!res.ok) throw new Error(data.error || (res.status === 429 ? t('exam.tooManyRequestsWaitAMoment928') : t('exam.somethingWentWrongStatusPleaseTryb1e', { status: res.status })))
         onOk((data.revealed || {}) as Revealed)
       } catch (e) {
         setSent(false)

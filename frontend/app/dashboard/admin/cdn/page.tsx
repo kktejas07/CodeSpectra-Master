@@ -1,8 +1,8 @@
 'use client'
 import { formatDate } from '@/lib/format-datetime'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Card } from '@/components/ui/card'
+import { useState, useEffect } from 'react'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -15,6 +15,7 @@ import { Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle,
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { WorldMap } from '@/components/gamification/world-map'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface CloudflareData {
   configured: boolean
@@ -23,14 +24,6 @@ interface CloudflareData {
   timeSeries?: Array<{ datetime: string; requests: number; cached: number; bandwidth: number }>
   realtime?: { estimatedVisitorsPerMinute: number; requestsPerHour: number }
   error?: string
-}
-
-interface WafRule {
-  id: string
-  name: string
-  description: string
-  action: 'block' | 'challenge' | 'allow'
-  enabled: boolean
 }
 
 const COUNTRY_NAME_TO_CODE: Record<string, string> = {
@@ -76,19 +69,6 @@ export default function CdnAdminPage() {
   const [cfData, setCfData] = useState<CloudflareData | null>(null)
   const [cfLoading, setCfLoading] = useState(true)
 
-  const [wafRules, setWafRules] = useState<WafRule[]>(() => {
-    try {
-      const saved = localStorage.getItem('cs_waf_rules')
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    return [
-      { id: '1', name: 'SQL Injection Protection', description: 'Detects and blocks SQL injection attempt patterns in incoming requests.', action: 'block', enabled: true },
-      { id: '2', name: 'Cross-Site Scripting (XSS)', description: 'Sanitizes and blocks scripts sent through URL queries or POST payloads.', action: 'challenge', enabled: true },
-      { id: '3', name: 'Rate Limiting (Anti-DDoS)', description: 'Limits clients to maximum 120 requests/minute during surge periods.', action: 'block', enabled: true },
-      { id: '4', name: 'Bad Bot Ingress Blocker', description: 'Restricts unverified scrapers and vulnerability scanners from indexing pages.', action: 'challenge', enabled: false },
-    ]
-  })
-
   const fetchCfData = () => {
     fetch('/api/admin/cloudflare-analytics', { credentials: 'include' })
       .then(r => r.json())
@@ -124,62 +104,39 @@ export default function CdnAdminPage() {
     }
   }
 
-  const toggleWafRule = useCallback((id: string) => {
-    setWafRules(prev => {
-      const next = prev.map(rule => {
-        if (rule.id === id) {
-          const nextState = !rule.enabled
-          toast({
-            type: 'success',
-            title: `WAF Rule ${nextState ? 'Enabled' : 'Disabled'}`,
-            message: `Successfully modified security status for "${rule.name}"`,
-          })
-          return { ...rule, enabled: nextState }
-        }
-        return rule
-      })
-      try { localStorage.setItem('cs_waf_rules', JSON.stringify(next)) } catch {}
-      return next
-    })
-  }, [toast])
-
   const chartData = cfData?.timeSeries ? formatTimeSeriesData(cfData.timeSeries) : []
 
   return (
-    <div className="space-y-8">
-      {/* Title Header */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            CDN & Edge Operations
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Monitor global traffic, cache performance, and visitor geography in real-time.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="success" className="px-3 py-1 flex items-center gap-1">
+    <div className="space-y-6">
+      <PageHeader
+        illustration="analytics"
+        icon={<Globe2 />}
+        title="CDN and edge"
+        description="Traffic, cache performance and visitor geography from Cloudflare, plus cache purge and firewall rules."
+        actions={
+          <Badge variant="success" className="px-3 py-1 flex items-center gap-1.5">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            Edge Active
+            Edge active
           </Badge>
-        </div>
-      </div>
+        }
+        className="mb-0"
+      />
 
       {/* Real-time Visitors Banner */}
       {cfData?.configured && cfData.realtime && (
-        <Card className="p-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+        <Panel className="p-5 border-primary/20 bg-primary/5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-emerald-500/20">
-                <Users className="h-6 w-6 text-emerald-600" />
+              <div className="p-3 rounded-xl bg-primary/10 text-primary">
+                <Users className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Estimated Real-Time Activity</p>
+                <p className="text-sm font-medium text-muted-foreground">Estimated live activity</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-bold text-emerald-600">
+                  <span className="text-3xl font-bold tabular-nums text-foreground">
                     {cfData.realtime.estimatedVisitorsPerMinute.toLocaleString()}
                   </span>
                   <span className="text-sm text-muted-foreground">visitors/min</span>
@@ -189,70 +146,51 @@ export default function CdnAdminPage() {
             <div className="text-right">
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
-                {cfData.realtime.requestsPerHour.toLocaleString()} req/hr
+                <span className="tabular-nums">{cfData.realtime.requestsPerHour.toLocaleString()}</span> requests/hour
               </div>
               <p className="text-xs text-muted-foreground mt-1">Updated every 30s</p>
             </div>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Grid: 4 Metric Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Cache Hit Rate</span>
-            <div className="p-2 rounded-lg bg-primary/10 text-primary"><Zap className="h-4 w-4" /></div>
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold">{cfLoading ? '...' : cfData?.traffic?.cacheRatio != null ? `${cfData.traffic.cacheRatio}%` : 'N/A'}</span>
-            {!cfLoading && !cfData?.configured && <p className="text-xs text-muted-foreground mt-1">Configure Cloudflare</p>}
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Total Requests</span>
-            <div className="p-2 rounded-lg bg-fuchsia-500/10 text-fuchsia-500"><Activity className="h-4 w-4" /></div>
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold">{cfLoading ? '...' : cfData?.traffic?.requests?.toLocaleString() || 'N/A'}</span>
-            <p className="text-xs text-muted-foreground mt-1">{cfData?.traffic?.uniques?.toLocaleString()} unique visitors</p>
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Bandwidth</span>
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500"><Globe2 className="h-4 w-4" /></div>
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold">{cfLoading ? '...' : cfData?.traffic?.bytes != null ? `${(cfData.traffic.bytes / 1073741824).toFixed(1)} GB` : 'N/A'}</span>
-            <p className="text-xs text-indigo-500 mt-1">{cfData?.traffic?.cached?.toLocaleString()} requests cached</p>
-          </div>
-        </Card>
-
-        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Edge Nodes</span>
-            <div className="p-2 rounded-lg bg-destructive/10 text-destructive"><Shield className="h-4 w-4" /></div>
-          </div>
-          <div className="mt-4">
-            <span className="text-3xl font-bold">{cfData?.topCountries?.length || 0}</span>
-            <p className="text-xs text-muted-foreground mt-1">Countries served</p>
-          </div>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Cache hit rate"
+          icon={<Zap />}
+          value={cfLoading ? '...' : cfData?.traffic?.cacheRatio != null ? `${cfData.traffic.cacheRatio}%` : 'N/A'}
+          hint={!cfLoading && !cfData?.configured ? 'Configure Cloudflare' : undefined}
+        />
+        <StatCard
+          label="Total requests"
+          icon={<Activity />}
+          value={cfLoading ? '...' : cfData?.traffic?.requests?.toLocaleString() || 'N/A'}
+          hint={cfData?.traffic?.uniques != null ? `${cfData.traffic.uniques.toLocaleString()} unique visitors` : undefined}
+        />
+        <StatCard
+          label="Bandwidth"
+          icon={<Globe2 />}
+          value={cfLoading ? '...' : cfData?.traffic?.bytes != null ? `${(cfData.traffic.bytes / 1073741824).toFixed(1)} GB` : 'N/A'}
+          hint={cfData?.traffic?.cached != null ? `${cfData.traffic.cached.toLocaleString()} requests cached` : undefined}
+        />
+        <StatCard
+          label="Countries served"
+          icon={<Shield />}
+          value={cfData?.topCountries?.length || 0}
+          hint="From top visitor countries"
+        />
       </div>
 
       {/* Cloudflare not configured setup message */}
       {!cfLoading && cfData && !cfData.configured && (
-        <Card className="p-6 border border-amber-500/30 bg-amber-500/5">
+        <Panel className="border-amber-500/30 bg-amber-500/5">
           <div className="flex items-start gap-4">
-            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 shrink-0">
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 shrink-0">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div className="space-y-3 flex-1">
-              <h3 className="font-semibold text-lg">Cloudflare CDN Not Configured</h3>
+              <h3 className="font-semibold text-lg">Cloudflare is not connected yet</h3>
               {cfData.error && (
                 <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3 text-sm text-amber-700 dark:text-amber-300">
                   <strong>Error:</strong> {cfData.error}
@@ -281,18 +219,18 @@ export default function CdnAdminPage() {
               </Link>
             </div>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Traffic Chart */}
       {cfData?.configured && chartData.length > 0 && (
-        <Card className="p-6 border border-muted-foreground/10 bg-card/30">
+        <Panel>
           <div className="flex items-center gap-3 border-b border-muted/50 pb-4 mb-4">
-            <div className="p-2 rounded bg-teal-500/10 text-teal-500">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <TrendingUp className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg">Traffic Over Time</h3>
+              <h3 className="font-semibold text-lg">Traffic over time</h3>
               <p className="text-xs text-muted-foreground">Last 24 hours of HTTP requests (hourly buckets)</p>
             </div>
           </div>
@@ -301,12 +239,12 @@ export default function CdnAdminPage() {
               <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorCached" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -329,24 +267,24 @@ export default function CdnAdminPage() {
                     fontSize: '12px',
                   }}
                   labelFormatter={(label) => `Hour: ${label}`}
-                  formatter={(value, name) => [Number(value).toLocaleString(), name === 'requests' ? 'Total Requests' : 'Cached']}
+                  formatter={(value, name) => [Number(value).toLocaleString(), name === 'requests' ? 'Total requests' : 'Cached']}
                 />
-                <Area type="monotone" dataKey="requests" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorRequests)" />
-                <Area type="monotone" dataKey="cached" stroke="#10b981" fillOpacity={1} fill="url(#colorCached)" />
+                <Area type="monotone" dataKey="requests" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorRequests)" />
+                <Area type="monotone" dataKey="cached" stroke="#94a3b8" fillOpacity={1} fill="url(#colorCached)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
           <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-violet-500"></div>
-              Total Requests
+              <div className="w-3 h-3 rounded-full bg-primary"></div>
+              Total requests
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-              Cached Requests
+              <div className="w-3 h-3 rounded-full bg-slate-400"></div>
+              Cached requests
             </div>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Main content grid */}
@@ -354,22 +292,22 @@ export default function CdnAdminPage() {
         {/* Left Col: Purge Cache & WAF Configuration */}
         <div className="lg:col-span-2 space-y-6">
           {/* Purge Cache Panel */}
-          <Card className="p-6 border border-muted-foreground/10 bg-card/30 backdrop-blur-sm">
+          <Panel>
             <div className="flex items-center gap-3 border-b border-muted/50 pb-4 mb-4">
-              <div className="p-2 rounded bg-amber-500/10 text-amber-500">
+              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Purge Cache</h3>
+                <h3 className="font-semibold text-lg">Purge cache</h3>
                 <p className="text-xs text-muted-foreground">Remove stored copies of your files to force edge nodes to fetch the latest origin updates.</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground block mb-1">Purge by Path or Pattern</label>
+                <label className="text-xs font-semibold text-muted-foreground block mb-1">Purge by path or pattern</label>
                 <div className="flex gap-2">
-                  <input
+                  <input aria-label="Purge by path or pattern"
                     type="text"
                     placeholder="e.g. /static/css/* or /api/problems"
                     value={purgePath}
@@ -382,7 +320,7 @@ export default function CdnAdminPage() {
                     variant="outline"
                     className="flex items-center gap-1.5 shrink-0"
                   >
-                    {purging ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Purge Path'}
+                    {purging ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Purge path'}
                   </Button>
                 </div>
               </div>
@@ -390,7 +328,7 @@ export default function CdnAdminPage() {
               <div className="pt-2 border-t border-muted-foreground/10 flex items-center justify-between">
                 <div className="pr-4">
                   <h4 className="text-xs font-bold text-destructive flex items-center gap-1">
-                    <AlertTriangle className="h-3.5 w-3.5" /> DANGER ZONE
+                    <AlertTriangle className="h-3.5 w-3.5" /> Danger zone
                   </h4>
                   <p className="text-[11px] text-muted-foreground">This will invalidate all resources in edge nodes globally, inducing sudden high server load.</p>
                 </div>
@@ -400,63 +338,48 @@ export default function CdnAdminPage() {
                   variant="destructive"
                   className="flex items-center gap-1.5 shrink-0"
                 >
-                  {purging ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Purge All Content'}
+                  {purging ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Purge all content'}
                 </Button>
               </div>
             </div>
-          </Card>
+          </Panel>
 
           {/* Web Application Firewall (WAF) */}
-          <Card className="p-6 border border-muted-foreground/10 bg-card/30 backdrop-blur-sm">
+          <Panel>
             <div className="flex items-center gap-3 border-b border-muted/50 pb-4 mb-4">
-              <div className="p-2 rounded bg-indigo-500/10 text-indigo-500">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Shield className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Web Application Firewall (WAF)</h3>
-                <p className="text-xs text-muted-foreground">Manage active intrusion protection rules deployed at the CDN edge network layer.</p>
-                {!cfData?.configured && (
-                  <p className="text-[11px] text-amber-500 mt-1">
-                    WAF rules shown here are simulated and stored locally. Configure Cloudflare to manage real WAF rules.
-                  </p>
-                )}
+                <h3 className="font-semibold text-lg">Web application firewall (WAF)</h3>
+                <p className="text-xs text-muted-foreground">Firewall rules run at the Cloudflare edge.</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              {wafRules.map(rule => (
-                <div key={rule.id} className="flex items-start justify-between p-3 rounded-lg bg-card/50 border border-muted-foreground/5 hover:border-primary/10 transition-colors">
-                  <div className="space-y-1 pr-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{rule.name}</span>
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono tracking-wider px-1 py-0 border-primary/20 text-primary">
-                        {rule.action}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{rule.description}</p>
-                  </div>
-                  <Button
-                    onClick={() => toggleWafRule(rule.id)}
-                    variant={rule.enabled ? 'default' : 'outline'}
-                    className={`h-8 w-16 text-xs transition-all ${rule.enabled ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
-                  >
-                    {rule.enabled ? 'Active' : 'Off'}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </Card>
+            <p className="text-sm text-muted-foreground">
+              Managing WAF rules from CodeSpectra isn&apos;t available yet. Turn rules on or off in the{' '}
+              <a
+                href="https://dash.cloudflare.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Cloudflare dashboard<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+              .
+            </p>
+          </Panel>
         </div>
 
         {/* Right Col: Visitor Countries */}
         <div>
-          <Card className="p-6 border border-muted-foreground/10 bg-card/30 h-full flex flex-col">
+          <Panel className="h-full flex flex-col">
             <div className="flex items-center gap-3 border-b border-muted/50 pb-4 mb-4">
-              <div className="p-2 rounded bg-fuchsia-500/10 text-fuchsia-500">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Globe2 className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Visitor Countries</h3>
+                <h3 className="font-semibold text-lg">Visitor countries</h3>
                 <p className="text-xs text-muted-foreground">Top countries by request volume.</p>
               </div>
             </div>
@@ -474,25 +397,25 @@ export default function CdnAdminPage() {
                   />
                   <div className="space-y-2 mt-4">
                     {cfData.topCountries.slice(0, 10).map((c, i) => (
-                      <div key={c.country} className="flex items-center justify-between p-2 rounded-lg bg-card/50 border border-muted-foreground/5">
+                      <div key={c.country} className="flex items-center justify-between p-2 rounded-xl bg-muted/40 border border-border/60">
                         <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}</span>
-                          <MapPin className="h-4 w-4 text-fuchsia-500 shrink-0" />
+                          <span className="text-xs font-bold tabular-nums text-muted-foreground w-5">{i + 1}</span>
+                          <MapPin className="h-4 w-4 text-primary shrink-0" />
                           <p className="text-sm font-medium">{c.country}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold font-mono text-emerald-500">{c.requests.toLocaleString()}</p>
-                          <span className="text-[10px] text-muted-foreground">requests</span>
+                          <p className="text-sm font-semibold tabular-nums text-foreground">{c.requests.toLocaleString()}</p>
+                          <span className="text-[11px] text-muted-foreground">requests</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-10">No traffic data yet</p>
+                <EmptyState illustration="analytics" title="No traffic recorded yet" description="Data appears once Cloudflare reports requests." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </div>
-          </Card>
+          </Panel>
         </div>
       </div>
     </div>

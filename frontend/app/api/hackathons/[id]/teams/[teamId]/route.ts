@@ -1,7 +1,7 @@
 /**
  * /api/hackathons/[id]/teams/[teamId]
  *   GET    -> team detail with refreshed QR SVG
- *   PATCH  -> admin/tenant_admin: grant XP / push achievement / rename
+ *   PATCH  -> staff: grant XP / push achievement / rename; captain: rename only
  *   DELETE -> admin/tenant_admin: remove team (e.g. disqualified)
  *
  * PATCH body (any subset):
@@ -16,26 +16,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
 import { hackathons, hackathonTeams, newId, nowIso, xpToLevel, type HackathonAchievement } from '@/lib/db/qr-events'
+import { isHackathonStaff } from '@/lib/hackathons/access'
 
 export const runtime = 'nodejs'
 
-function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
-}
-
-async function resolveTeam(hackathonIdOrSlug: string, teamIdOrSlug: string) {
-  // Resolve the hackathon first (accepts UUID or slug) so we can scope the
-  // team query by `hackathon_id`. The previous implementation tried to query
-  // `hackathon_teams.hackathon.slug` which does not exist.
+async function resolveEventAndTeam(hackathonIdOrSlug: string, teamIdOrSlug: string) {
   const hk = await (await hackathons()).findOne({
     $or: [{ id: hackathonIdOrSlug }, { slug: hackathonIdOrSlug }],
   })
   if (!hk) return null
-  const col = await hackathonTeams()
-  return col.findOne({
+  const team = await (await hackathonTeams()).findOne({
     hackathon_id: hk.id,
     $or: [{ id: teamIdOrSlug }, { slug: teamIdOrSlug }],
   })
+  return team ? { hk, team } : null
 }
 
 export async function GET(
@@ -43,18 +37,22 @@ export async function GET(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
-  const team = await resolveTeam(id, teamId)
-  if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  const found = await resolveEventAndTeam(id, teamId)
+  if (!found) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
+  const { hk, team } = found
+  const staff = isHackathonStaff(user, hk)
+  if (hk.status === 'draft' && !staff) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   // Join token is a bearer credential for the share link — only admins or
   // members of the team may read it. Everyone else gets the team sans token.
   const isMember = Array.isArray(team.members) && team.members.some((m: { user_id?: string }) => m.user_id === user.id)
-  if (!isAdmin(user.role) && !isMember) {
-    const { qr_token: _qr, _id: _omit, ...clean } = team as typeof team & { _id?: unknown; qr_token?: string }
+  if (!staff && !isMember) {
+    const { qr_token: _qr, _id: _omit, verify_token: _vt, ...clean } = team as typeof team & { _id?: unknown; qr_token?: string; verify_token?: string }
     void _qr
     void _omit
+    void _vt
     return NextResponse.json({ team: clean })
   }
 
@@ -68,7 +66,7 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id, teamId } = await ctx.params
   let body: {
@@ -80,38 +78,37 @@ export async function PATCH(
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
-  const team = await resolveTeam(id, teamId)
-  if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  const found = await resolveEventAndTeam(id, teamId)
+  if (!found) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
+  const { hk, team } = found
 
   const isCaptain = Array.isArray(team.members) && team.members.some((m: { user_id?: string; role?: string }) => m.user_id === user.id && m.role === 'captain')
-  const userIsAdmin = isAdmin(user.role)
-
-  if (!userIsAdmin && !isCaptain) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const staff = isHackathonStaff(user, hk)
+  if (!staff && !isCaptain) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
-
-  // tenant_admin can only manage teams in their own tenant's hackathon
-  const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
-  if (user.role === 'tenant_admin' && user.tenantId && hk?.tenant_id !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // Points are server-awarded only: XP, achievements and counters are staff-only.
+  // A captain may only rename the team.
+  if (!staff && (body.xp_delta !== undefined || body.achievement !== undefined || body.submission !== undefined)) {
+    return NextResponse.json({ error: 'Only organisers can change XP or achievements' }, { status: 403 })
   }
 
   const $set: Record<string, unknown> = { updated_at: nowIso() }
   const $push: Record<string, unknown> = {}
   const $inc: Record<string, number> = {}
 
-  if (body.name) $set.name = body.name
-  if (typeof body.xp_delta === 'number' && Number.isFinite(body.xp_delta)) {
-    $inc.xp = body.xp_delta
+  if (typeof body.name === 'string' && body.name.trim()) $set.name = body.name.trim().slice(0, 80)
+  if (staff && typeof body.xp_delta === 'number' && Number.isFinite(body.xp_delta)) {
+    $inc.xp = Math.max(-10000, Math.min(10000, Math.round(body.xp_delta)))
   }
-  if (body.submission) $inc.submissions = 1
-  if (body.achievement) {
+  if (staff && body.submission === true) $inc.submissions = 1
+  if (staff && typeof body.achievement === 'string' && body.achievement.trim()) {
     const ach: HackathonAchievement = {
       id: newId(),
-      name: body.achievement.slice(0, 80),
+      name: body.achievement.trim().slice(0, 80),
       awarded_at: nowIso(),
     }
     $push.achievements = ach
@@ -144,17 +141,13 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
-  const team = await resolveTeam(id, teamId)
-  if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  // tenant_admin can only delete teams in their own tenant's hackathon
-  const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
-  if (user.role === 'tenant_admin' && user.tenantId && hk?.tenant_id !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const found = await resolveEventAndTeam(id, teamId)
+  if (!found) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
+  const { hk, team } = found
+  if (!isHackathonStaff(user, hk)) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   await (await hackathonTeams()).deleteOne({ id: team.id })
   return NextResponse.json({ ok: true })

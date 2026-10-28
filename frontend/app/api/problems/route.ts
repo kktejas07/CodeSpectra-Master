@@ -1,9 +1,11 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { requireAuth, requireAdmin } from '@/lib/route-auth'
+import { requireAdmin, getAPIUser, gateErrorBody } from '@/lib/route-auth'
+import { accessFor, getPackContext } from '@/lib/entitlements'
 import { problems, nowIso, newId, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { SEED_PROBLEMS_BULK } from '@/scripts/seed-problems-bulk'
 import { sanitizeRegex } from '@/lib/sanitize'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 async function ensureSeeded() {
   try {
@@ -43,23 +45,27 @@ export async function GET(request: NextRequest) {
     ? 0
     : Math.min(50, Math.max(1, Number(rawLimit) || 0))
 
-  const isAdmin = await (async () => {
-    const gate = await requireAdmin()
-    return !('error' in gate)
-  })()
+  const adminGate = await requireAdmin()
+  const isAdmin = !('error' in adminGate)
+  // Company admins see platform problems and their own company's, never other companies'.
+  const tenantScope =
+    isAdmin && 'user' in adminGate && adminGate.user.role === 'tenant_admin'
+      ? { $or: [{ tenant_id: { $exists: false } }, { tenant_id: null }, { tenant_id: adminGate.user.tenantId ?? '__none__' }] }
+      : null
 
   try {
     await ensureSeeded()
     const filter: Record<string, unknown> = { is_published: true }
 
     if (!isAdmin) {
+      // hackathon_only problems never list publicly (GET [slug] gates them per event).
       filter.$or = [
         { visibility: { $exists: false } },
         { visibility: 'public' },
-        { hackathon_id: null },
       ]
     }
 
+    if (tenantScope) filter.$and = [tenantScope]
     if (difficulty) filter.difficulty = difficulty
     if (search) filter.title = { $regex: sanitizeRegex(search), $options: 'i' }
     if (topicsParam) {
@@ -81,7 +87,19 @@ export async function GET(request: NextRequest) {
         seen.add(k)
         return true
       })
-      return NextResponse.json({ data: uniqueList, count: uniqueList.length })
+      // Pack locks for this viewer (the problem page and run / submit enforce them server-side).
+      const viewer = await getAPIUser().catch(() => null)
+      const ctx = await getPackContext(viewer).catch((e) => {
+        console.error('[problems] pack context failed:', e)
+        return null
+      })
+      const data = ctx
+        ? uniqueList.map((p) => {
+            const a = accessFor(ctx, { id: p.id, slug: p.slug, topics: p.topics })
+            return a.packIds.length ? { ...p, locked: a.locked, unlock_pack: a.locked ? a.unlockWith : null } : p
+          })
+        : uniqueList
+      return NextResponse.json({ data, count: data.length })
     }
   } catch (error) {
     console.warn('[CodeSpectra] problems GET (mongo unavailable, using seed):', error)
@@ -106,10 +124,15 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data: seedList, count: seedList.length })
 }
 
+/**
+ * POST /api/problems — admins only (SEC-037). The practice library and the
+ * platform knowledge index are curated: a learner account can't add to them
+ * (there is no learner authoring UI). requireAdmin also enforces admin 2FA.
+ */
 export async function POST(request: NextRequest) {
-  const gate = await requireAuth()
+  const gate = await requireAdmin()
   if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
+    return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   }
   try {
     const body = (await request.json()) as Partial<ProblemDoc>
@@ -146,13 +169,17 @@ export async function POST(request: NextRequest) {
       is_published: body.is_published !== false,
       visibility: body.visibility || 'public',
       hackathon_id: body.hackathon_id || null,
+      // Owner tenant: a tenant admin's problems stay editable by that tenant only.
+      ...(gate.user.role === 'tenant_admin' && gate.user.tenantId ? { tenant_id: gate.user.tenantId } : {}),
       created_by: gate.user.id,
       created_at: now,
       updated_at: now,
     }
     await col.insertOne(doc)
+    if (doc.is_published) knowledgeOnLibraryChange('problem', doc.id) // RAG-003: searchable within a minute
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[problems]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

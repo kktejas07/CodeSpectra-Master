@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface CodeDiffViewerProps {
   originalCode: string
@@ -24,6 +25,7 @@ export function CodeDiffViewer({
   title = 'Suggested Fix',
   description,
 }: CodeDiffViewerProps) {
+  const { t } = useT()
   const [showDiff, setShowDiff] = useState(true)
   const [copiedOriginal, setCopiedOriginal] = useState(false)
   const [copiedSuggested, setSuggestedCopied] = useState(false)
@@ -46,16 +48,14 @@ export function CodeDiffViewer({
   }
 
   return (
-    <Card className="bg-card/30 border border-border p-6 space-y-4">
+    <Card className="rounded-3xl p-6 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h3 className="font-semibold text-foreground">{title}</h3>
-          {description && <p className="text-sm text-foreground/60">{description}</p>}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
-        <div className={`px-3 py-1 rounded border text-sm font-medium ${getConfidenceColor(confidence)}`}>
-          {Math.round(confidence * 100)}% confident
-        </div>
+        <div className={`px-3 py-1 rounded border text-sm font-medium ${getConfidenceColor(confidence)}`}>{t('tools.nConfident', { n: Math.round(confidence * 100) })}</div>
       </div>
 
       {/* Toggle Diff View */}
@@ -63,9 +63,7 @@ export function CodeDiffViewer({
         onClick={() => setShowDiff(!showDiff)}
         className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition"
       >
-        {showDiff ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        {showDiff ? 'Hide' : 'Show'} side-by-side comparison
-      </button>
+        {showDiff ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}{t('tools.valueSideBySideComparison', { value: showDiff ? t('tools.hide') : t('tools.show') })}</button>
 
       {/* Code Comparison */}
       {showDiff ? (
@@ -73,10 +71,10 @@ export function CodeDiffViewer({
           {/* Original Code */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-foreground/60 uppercase">Original</p>
+              <p className="text-xs font-semibold text-muted-foreground">{t('tools.original')}</p>
               <button
                 onClick={() => copyCode(originalCode, setCopiedOriginal)}
-                className="p-1 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
+                className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
               >
                 {copiedOriginal ? (
                   <Check className="w-4 h-4 text-green-500" />
@@ -95,10 +93,10 @@ export function CodeDiffViewer({
           {/* Suggested Code */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-foreground/60 uppercase">Suggested</p>
+              <p className="text-xs font-semibold text-muted-foreground">{t('tools.suggested')}</p>
               <button
                 onClick={() => copyCode(suggestedCode, setSuggestedCopied)}
-                className="p-1 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
+                className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
               >
                 {copiedSuggested ? (
                   <Check className="w-4 h-4 text-green-500" />
@@ -117,7 +115,7 @@ export function CodeDiffViewer({
       ) : (
         /* Unified Code View */
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-foreground/60 uppercase">Updated Code</p>
+          <p className="text-xs font-semibold text-muted-foreground">{t('tools.updatedCode')}</p>
           <div className="bg-card border border-border rounded p-3 font-mono text-xs overflow-x-auto">
             <pre className="text-foreground/80 whitespace-pre-wrap wrap-break-word">
               {suggestedCode}
@@ -128,11 +126,9 @@ export function CodeDiffViewer({
 
       {/* Actions */}
       <div className="flex gap-2 pt-4 border-t border-border">
-        <Button onClick={onApply} className="flex-1" size="sm">
-          Apply This Fix
-        </Button>
+        <Button onClick={onApply} className="flex-1" size="sm">{t('tools.applyThisFix')}</Button>
         <Button variant="outline" size="sm" onClick={() => setShowDiff((v) => !v)}>
-          {showDiff ? 'Hide Diff' : 'Show Diff'}
+          {showDiff ? t('tools.hideDiff') : t('tools.showDiff')}
         </Button>
       </div>
     </Card>

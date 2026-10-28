@@ -14,6 +14,8 @@ import { useConfirm } from '@/lib/confirm-context'
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -80,15 +82,15 @@ type Tab = 'inventory' | 'audit'
 
 const SEVERITY_COLOR: Record<Finding['severity'], string> = {
   low: 'bg-muted text-muted-foreground',
-  medium: 'bg-amber-500/15 text-amber-500',
-  high: 'bg-orange-500/15 text-orange-500',
+  medium: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  high: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
   critical: 'bg-destructive/15 text-destructive',
 }
 
 const STATUS_COLOR: Record<InventoryItem['status'], string> = {
   active: 'bg-primary/15 text-primary border-primary/40',
   inactive: 'bg-muted text-muted-foreground border-border/60',
-  recommended: 'bg-sky-500/15 text-sky-500 border-sky-500/40',
+  recommended: 'bg-primary/5 text-primary border-dashed border-primary/40',
 }
 
 export default function AiInventoryPage() {
@@ -211,7 +213,7 @@ export default function AiInventoryPage() {
   }
 
   async function handleDeleteItem(item: InventoryItem) {
-    if (!await confirmDialog({ title: 'Confirmation', description: `Remove override / custom component "${item.name}"?` })) return
+    if (!await confirmDialog({ title: 'Remove this component?', description: `Remove the override or custom component "${item.name}"?` })) return
     setTogglingId(item.id)
     try {
       const res = await csrfFetch(`/api/ai-inventory/${encodeURIComponent(item.id)}`, {
@@ -221,7 +223,12 @@ export default function AiInventoryPage() {
         if (activeCategory) void loadCategory(activeCategory, true)
         void loadSummary()
         setActionMessage(`Removed override for "${item.name}"`)
+      } else {
+        const j = await res.json().catch(() => ({}))
+        setError(j.error || `Couldn't remove "${item.name}". Try again.`)
       }
+    } catch {
+      setError(`Couldn't remove "${item.name}". Check your connection and try again.`)
     } finally {
       setTogglingId(null)
     }
@@ -286,7 +293,7 @@ export default function AiInventoryPage() {
   }, [activeCategory, items, searchQuery, statusFilter])
 
   function getConfigurationUrl(it: InventoryItem): string | null {
-    if (it.category === 'llm_models') return '/dashboard/admin/settings/ai'
+    if (it.category === 'llm_models') return '/dashboard/admin/settings?section=llm'
     if (it.category === 'rag_docs') return '/dashboard/admin/rag'
     if (it.category === 'automations') return '/dashboard/admin/workflows'
     if (it.category === 'connectors') return '/dashboard/admin/integrations'
@@ -297,31 +304,34 @@ export default function AiInventoryPage() {
 
   return (
     <div className="space-y-6" data-testid="ai-inventory-page">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold">
-            <ScanLine className="h-7 w-7 text-primary" /> AI Inventory & Control Plane
+      <PageHeader
+        illustration="ai"
+        icon={<ScanLine />}
+        title={
+          <span className="inline-flex items-center gap-1.5">
+            AI inventory
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" aria-label="About AI inventory" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
                   <p className="text-xs max-w-62.5">
-                    Superadmin control plane: view auto-discovered AI assets, toggle features on/off, add custom endpoints, and review dependency vulnerabilities.
+                    View auto-discovered AI assets, switch features on or off, add custom endpoints and review dependency vulnerabilities.
                   </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage models, agents, automations, MCP connectors, and open-source integrations across CodeSpectra.
-          </p>
-        </div>
-        <Button onClick={() => setShowAddModal(true)} className="self-start sm:self-auto gap-1">
-          <Plus className="h-4 w-4" /> Add Component / Tool
-        </Button>
-      </header>
+          </span>
+        }
+        description="Manage models, agents, automations, MCP connectors and open-source integrations across CodeSpectra."
+        actions={
+          <Button onClick={() => setShowAddModal(true)} className="gap-1">
+            <Plus className="h-4 w-4" /> Add component or tool
+          </Button>
+        }
+        className="mb-0"
+      />
 
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
         <Button
@@ -330,7 +340,7 @@ export default function AiInventoryPage() {
           onClick={() => setTab('inventory')}
           data-testid="ai-inv-tab-inventory"
         >
-          Inventory & Controls
+          Inventory and controls
         </Button>
         <Button
           variant={tab === 'audit' ? 'default' : 'ghost'}
@@ -341,7 +351,7 @@ export default function AiInventoryPage() {
           }}
           data-testid="ai-inv-tab-audit"
         >
-          <ShieldAlert className="mr-1 h-3 w-3" /> Vulnerability Audit
+          <ShieldAlert className="mr-1 h-3 w-3" /> Vulnerability audit
         </Button>
         <div className="ml-auto flex items-center gap-2">
           <Button
@@ -361,7 +371,7 @@ export default function AiInventoryPage() {
       </div>
 
       {actionMessage && (
-        <Card className="border-primary/40 bg-primary/10 p-3 text-sm text-primary flex items-center justify-between">
+        <Card className="rounded-2xl border-primary/40 bg-primary/10 p-3 text-sm text-primary flex items-center justify-between">
           <span>{actionMessage}</span>
           <button type="button" onClick={() => setActionMessage(null)} className="text-xs font-semibold hover:underline">
             Dismiss
@@ -370,7 +380,7 @@ export default function AiInventoryPage() {
       )}
 
       {error && (
-        <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive flex items-center justify-between">
+        <Card className="rounded-2xl border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive flex items-center justify-between">
           <span>{error}</span>
           <button type="button" onClick={() => setError(null)} className="text-xs font-semibold hover:underline">
             Dismiss
@@ -380,22 +390,22 @@ export default function AiInventoryPage() {
 
       {tab === 'inventory' && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard label="Total AI Assets" value={totals.total} highlight />
-            <KpiCard label="Active In Production" value={totals.active} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <KpiCard label="Total AI assets" value={totals.total} highlight />
+            <KpiCard label="Active in production" value={totals.active} />
             <KpiCard
-              label="Inactive / Standby"
+              label="Inactive or on standby"
               value={Math.max(0, totals.total - totals.active - ((summary?.find((s) => s.id === 'web_scraping_tools')?.total ?? 0) + (summary?.find((s) => s.id === 'os_agent_frameworks')?.total ?? 0)))}
             />
             <KpiCard
-              label="Recommended Catalog"
+              label="Recommended catalog"
               value={(summary?.find((s) => s.id === 'web_scraping_tools')?.total ?? 0) + (summary?.find((s) => s.id === 'os_agent_frameworks')?.total ?? 0)}
             />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-            <Card className="overflow-hidden h-fit">
-              <p className="border-b border-border px-3 py-2 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground bg-muted/30">
+            <Panel className="overflow-hidden h-fit p-0">
+              <p className="border-b border-border px-4 py-2.5 text-xs font-semibold text-muted-foreground bg-muted/30">
                 Categories
               </p>
               {!summary ? (
@@ -413,14 +423,14 @@ export default function AiInventoryPage() {
                           setSearchQuery('')
                           setStatusFilter('all')
                         }}
-                        className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-muted/40 ${
+                        className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:bg-muted/60 ${
                           activeCategory === c.id ? 'bg-primary/10 font-medium text-primary border-l-2 border-primary' : ''
                         }`}
                         data-testid={`ai-inv-cat-${c.id}`}
                       >
                         <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
                         <span className="flex-1 truncate">{c.label}</span>
-                        <Badge variant="outline" className="text-[10px] shrink-0">
+                        <Badge variant="outline" className="text-[11px] tabular-nums shrink-0">
                           {c.active}/{c.total}
                         </Badge>
                       </button>
@@ -428,15 +438,15 @@ export default function AiInventoryPage() {
                   ))}
                 </ul>
               )}
-            </Card>
+            </Panel>
 
-            <Card className="overflow-hidden flex flex-col min-h-125">
+            <Panel className="overflow-hidden flex flex-col min-h-125 p-0">
               <div className="border-b border-border px-4 py-3 bg-muted/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm">
                     {summary?.find((s) => s.id === activeCategory)?.label ?? activeCategory ?? '—'}
                   </span>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs tabular-nums">
                     {filteredItems.length} items
                   </Badge>
                 </div>
@@ -447,18 +457,19 @@ export default function AiInventoryPage() {
                     <Input
                       type="text"
                       placeholder="Search items..."
+                      aria-label="Search items in this category"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="h-8 pl-8 text-xs"
                     />
                   </div>
-                  <div className="flex rounded-md border border-border bg-background p-0.5 text-[11px]">
+                  <div className="flex rounded-lg border border-border bg-background p-0.5 text-[11px]">
                     {(['all', 'active', 'inactive', 'recommended'] as const).map((st) => (
                       <button
                         key={st}
                         type="button"
                         onClick={() => setStatusFilter(st)}
-                        className={`px-2 py-0.5 rounded capitalize transition-colors ${
+                        className={`px-2 py-1 rounded-md capitalize transition-colors ${
                           statusFilter === st ? 'bg-primary text-primary-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
@@ -471,11 +482,11 @@ export default function AiInventoryPage() {
 
               {!activeCategory || loadingCat === activeCategory ? (
                 <div className="p-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading category components…
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading components…
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="p-12 text-center text-xs text-muted-foreground">
-                  No matching AI components found in this category.
+                  No components in this category match your search or filter. Clear the search or pick another status.
                 </div>
               ) : (
                 <ul className="divide-y divide-border/60">
@@ -485,7 +496,7 @@ export default function AiInventoryPage() {
                     return (
                       <li
                         key={it.id}
-                        className="grid gap-3 px-4 py-3.5 sm:grid-cols-[1fr_auto] hover:bg-muted/10 transition-colors items-start"
+                        className="grid gap-3 px-4 py-3.5 sm:grid-cols-[1fr_auto] hover:bg-muted/30 transition-colors items-start"
                         data-testid={`ai-inv-item-${it.id}`}
                       >
                         <div className="space-y-1">
@@ -498,14 +509,14 @@ export default function AiInventoryPage() {
                             )}
                             <Badge
                               variant="outline"
-                              className={`text-[10px] capitalize font-medium ${STATUS_COLOR[it.status]}`}
+                              className={`text-[11px] capitalize font-medium ${STATUS_COLOR[it.status]}`}
                             >
                               {it.status}
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground leading-relaxed">{it.purpose}</p>
-                          <p className="font-mono text-[10px] text-muted-foreground flex items-center gap-1.5 pt-0.5">
-                            <span className="text-primary/70">Module:</span> {it.module}
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-0.5">
+                            <span>Module:</span> <code className="font-mono">{it.module}</code>
                           </p>
                         </div>
 
@@ -536,7 +547,7 @@ export default function AiInventoryPage() {
                               variant="outline"
                               disabled={isToggling}
                               onClick={() => handleToggleStatus(it)}
-                              className="h-7 text-xs border-sky-500/50 text-sky-500 hover:bg-sky-500/10 gap-1"
+                              className="h-7 text-xs border-primary/40 text-primary hover:bg-primary/10 gap-1"
                             >
                               {isToggling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                               Activate
@@ -570,6 +581,7 @@ export default function AiInventoryPage() {
                               variant="ghost"
                               disabled={isToggling}
                               onClick={() => handleDeleteItem(it)}
+                              aria-label={`Delete ${it.name}`}
                               className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -581,13 +593,13 @@ export default function AiInventoryPage() {
                   })}
                 </ul>
               )}
-            </Card>
+            </Panel>
           </div>
         </>
       )}
 
       {tab === 'audit' && (
-        <Card className="space-y-4 p-5" data-testid="ai-inv-audit-panel">
+        <Panel className="space-y-4 p-5" data-testid="ai-inv-audit-panel">
           {auditLoading ? (
             <p className="text-xs text-muted-foreground flex items-center gap-2">
               <Loader2 className="inline h-4 w-4 animate-spin text-primary" /> Scanning project dependencies across PyPI and npm ecosystems…
@@ -596,9 +608,9 @@ export default function AiInventoryPage() {
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <ShieldAlert className="h-5 w-5 text-amber-500" /> Dependency Vulnerabilities & Audit
+                  <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400" /> Dependency vulnerabilities
                 </h2>
-                <Badge variant="outline" className="text-[11px] font-mono">
+                <Badge variant="outline" className="text-[11px] tabular-nums">
                   Scanned {formatDateTime(audit.scanned_at)}
                 </Badge>
                 <Badge className="ml-auto text-xs" variant={audit.python.count + audit.npm.count > 0 ? 'destructive' : 'secondary'}>
@@ -606,24 +618,24 @@ export default function AiInventoryPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground border-b border-border pb-3">{audit.note}</p>
-              <FindingTable title="Python Ecosystem (PyPI)" findings={audit.python.findings} onRemediate={(pkg) => { setReviewedFindings(prev => new Set(prev).add(pkg)); setActionMessage(`Marked "${pkg}" as reviewed`) }} reviewedSet={reviewedFindings} />
-              <FindingTable title="JavaScript Ecosystem (npm)" findings={audit.npm.findings} onRemediate={(pkg) => { setReviewedFindings(prev => new Set(prev).add(pkg)); setActionMessage(`Marked "${pkg}" as reviewed`) }} reviewedSet={reviewedFindings} />
+              <FindingTable title="Python packages (PyPI)" findings={audit.python.findings} onRemediate={(pkg) => { setReviewedFindings(prev => new Set(prev).add(pkg)); setActionMessage(`Marked "${pkg}" as reviewed`) }} reviewedSet={reviewedFindings} />
+              <FindingTable title="JavaScript packages (npm)" findings={audit.npm.findings} onRemediate={(pkg) => { setReviewedFindings(prev => new Set(prev).add(pkg)); setActionMessage(`Marked "${pkg}" as reviewed`) }} reviewedSet={reviewedFindings} />
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">No audit run yet.</p>
+            <p className="text-xs text-muted-foreground">No audit run yet. Select Refresh or reopen this tab to scan dependencies.</p>
           )}
-        </Card>
+        </Panel>
       )}
 
       {/* Add Custom Component Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-lg p-6 space-y-4 bg-background border border-border shadow-2xl">
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+          <DialogContent showCloseButton={false} className="block space-y-4 rounded-3xl p-6 sm:max-w-lg">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-lg font-bold">Register Custom AI Component</h3>
+              <DialogTitle className="text-lg font-bold">Register a custom AI component</DialogTitle>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
+                aria-label="Close"
                 className="text-muted-foreground hover:text-foreground text-sm font-semibold"
               >
                 ✕
@@ -634,15 +646,15 @@ export default function AiInventoryPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="font-medium text-foreground">Category *</label>
-                  <select
+                  <select aria-label="Category"
                     value={newTool.category}
                     onChange={(e) => setNewTool({ ...newTool, category: e.target.value })}
                     className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs"
                   >
-                    <option value="ai_skills">AI Skills</option>
-                    <option value="mcp_tools">MCP Tools</option>
-                    <option value="mcp_servers">MCP Servers</option>
-                    <option value="llm_models">LLM Models</option>
+                    <option value="ai_skills">AI skills</option>
+                    <option value="mcp_tools">MCP tools</option>
+                    <option value="mcp_servers">MCP servers</option>
+                    <option value="llm_models">LLM models</option>
                     <option value="agents">Agents</option>
                     <option value="automations">Automations</option>
                     <option value="connectors">Connectors</option>
@@ -651,8 +663,8 @@ export default function AiInventoryPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-medium text-foreground">Component Name *</label>
-                  <Input
+                  <label className="font-medium text-foreground">Component name *</label>
+                  <Input aria-label="Component name"
                     required
                     placeholder="e.g. Custom Scanner Endpoint"
                     value={newTool.name}
@@ -663,8 +675,8 @@ export default function AiInventoryPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-medium text-foreground">Purpose / Description *</label>
-                <Input
+                <label className="font-medium text-foreground">Purpose or description *</label>
+                <Input aria-label="Purpose or description"
                   required
                   placeholder="What does this component or tool do?"
                   value={newTool.purpose}
@@ -675,8 +687,8 @@ export default function AiInventoryPage() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className="font-medium text-foreground">Module Path / URL</label>
-                  <Input
+                  <label className="font-medium text-foreground">Module path or URL</label>
+                  <Input aria-label="Module path or URL"
                     placeholder="e.g. /api/ai/custom-tool"
                     value={newTool.module}
                     onChange={(e) => setNewTool({ ...newTool, module: e.target.value })}
@@ -685,8 +697,8 @@ export default function AiInventoryPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-medium text-foreground">Source Link (Optional)</label>
-                  <Input
+                  <label className="font-medium text-foreground">Source link (optional)</label>
+                  <Input aria-label="Source link (optional)"
                     placeholder="https://github.com/..."
                     value={newTool.source}
                     onChange={(e) => setNewTool({ ...newTool, source: e.target.value })}
@@ -701,13 +713,12 @@ export default function AiInventoryPage() {
                 </Button>
                 <Button type="submit" size="sm" disabled={addingTool}>
                   {addingTool && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
-                  Save Component
+                  Save component
                 </Button>
               </div>
             </form>
-          </Card>
-        </div>
-      )}
+          </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -722,12 +733,11 @@ function KpiCard({
   highlight?: boolean
 }) {
   return (
-    <Card className={`p-4 ${highlight ? 'border-primary/40 bg-primary/5' : ''}`}>
-      <p className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-3xl font-bold tabular-nums ${highlight ? 'text-primary' : ''}`}>
-        {value}
-      </p>
-    </Card>
+    <StatCard
+      label={label}
+      value={<span className={highlight ? 'text-primary' : undefined}>{value}</span>}
+      className={highlight ? 'border-primary/40 bg-primary/5' : undefined}
+    />
   )
 }
 
@@ -746,11 +756,11 @@ function FindingTable({
     <div className="space-y-2">
       <p className="text-xs font-semibold text-foreground">{title}</p>
       {findings.length === 0 ? (
-        <p className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-500">
+        <p className="inline-flex items-center gap-1 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-700 dark:text-green-300">
           <CheckCircle2 className="h-3.5 w-3.5" /> No known security issues in {title}
         </p>
       ) : (
-        <ul className="divide-y divide-border/60 rounded-md border border-border/60">
+        <ul className="divide-y divide-border/60 rounded-2xl border border-border/60">
           {findings.map((f) => (
             <li key={f.package + (f.cve ?? '')} className="grid gap-2 px-3.5 py-3 sm:grid-cols-[1fr_auto] items-center">
               <div className="space-y-1">
@@ -759,7 +769,7 @@ function FindingTable({
                   <span className="font-mono text-xs font-semibold">
                     {f.package} <span className="text-muted-foreground font-normal">({f.installed})</span>
                   </span>
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${SEVERITY_COLOR[f.severity]}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${SEVERITY_COLOR[f.severity]}`}>
                     {f.severity}
                   </span>
                   {f.cve && (
@@ -767,18 +777,18 @@ function FindingTable({
                       href={`https://nvd.nist.gov/vuln/detail/${f.cve}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] font-medium text-primary hover:underline"
+                      className="font-mono text-[11px] font-medium text-primary hover:underline"
                     >
                       {f.cve}
                     </a>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground leading-normal">{f.summary}</p>
-                <p className="text-xs font-mono text-primary font-medium">→ Recommended Fix: {f.fix}</p>
+                <p className="text-xs text-foreground font-medium">Recommended fix: <code className="font-mono text-primary">{f.fix}</code></p>
               </div>
               <div className="self-start sm:self-center">
                 {reviewedSet.has(f.package) ? (
-                  <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-500">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-700 dark:text-green-300">
                     <CheckCircle2 className="h-3 w-3" /> Reviewed
                   </span>
                 ) : (
@@ -788,7 +798,7 @@ function FindingTable({
                     onClick={() => onRemediate(f.package)}
                     className="h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
                   >
-                    Mark as Reviewed
+                    Mark as reviewed
                   </Button>
                 )}
               </div>

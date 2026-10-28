@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, nowIso } from '@/lib/db/qr-events'
-import { getMongoDb } from '@/lib/mongodb'
+import { users } from '@/lib/db/admin'
+import { isHackathonStaff } from '@/lib/hackathons/access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export async function POST(
@@ -15,7 +16,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
@@ -28,30 +29,36 @@ export async function POST(
   })
   if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
 
-  const isCaptain = Array.isArray(team.members) && team.members.some(m => m.user_id === user.id && m.role === 'captain')
-  if (!isAdmin(user.role) && !isCaptain) {
-    return NextResponse.json({ error: 'Only team captain or admins can add members' }, { status: 403 })
+  // Organisers only. Captains invite by email (teams/[teamId]/invite) so the
+  // person consents; force-adding someone else is not a captain power.
+  if (!isHackathonStaff(user, hk)) {
+    return NextResponse.json({ error: 'Only organisers can add members directly; captains can send an invite' }, { status: 403 })
   }
 
   if (team.members.length >= hk.max_per_team) {
-    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)` }, { status: 409 })
+    return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)`, code: 'hk_team_full_max', params: { max: Number(hk.max_per_team) } }, { status: 409 })
   }
 
-  const body = await req.json()
-  const targetIdentifier = typeof body?.user === 'string' ? body.user.trim() : null
-  if (!targetIdentifier) return NextResponse.json({ error: 'User identifier (name, email, or ID) is required' }, { status: 400 })
+  const body = await req.json().catch(() => ({}))
+  const targetIdentifier = typeof body?.user === 'string' ? body.user.trim().slice(0, 200) : null
+  if (!targetIdentifier) return NextResponse.json({ error: 'User email or ID is required' }, { status: 400 })
 
-  const db = await getMongoDb()
-  const foundUser = await db.collection('users').findOne({
+  // Exact id or exact (case-insensitive) email only — a name is not unique.
+  const exactEmail = new RegExp(`^${escapeRegex(targetIdentifier)}$`, 'i')
+  const foundUser = await (await users()).findOne({
     $or: [
       { id: targetIdentifier },
-      { email: { $regex: `^${targetIdentifier}$`, $options: 'i' } },
-      { name: { $regex: `^${targetIdentifier}$`, $options: 'i' } },
+      { _id: targetIdentifier },
+      ...(targetIdentifier.includes('@') ? [{ email: exactEmail }] : []),
     ],
-  })
+  } as Record<string, unknown>)
+  if (!foundUser) return NextResponse.json({ error: 'No user found with that email or ID' }, { status: 404 })
 
-  const targetUserId = foundUser ? (foundUser.id || foundUser._id.toString()) : targetIdentifier
-  const targetName = foundUser ? (foundUser.name || foundUser.email || targetIdentifier) : targetIdentifier
+  const targetUserId = String(foundUser.id || foundUser._id)
+  const targetName = foundUser.fullName || foundUser.name || foundUser.email || 'Member'
+  if ((hk.judges || []).includes(targetUserId)) {
+    return NextResponse.json({ error: 'Judges of this event cannot join a team' }, { status: 409 })
+  }
 
   if (team.members.some(m => m.user_id === targetUserId)) {
     return NextResponse.json({ error: 'User is already on this team' }, { status: 409 })
@@ -62,21 +69,21 @@ export async function POST(
     'members.user_id': targetUserId,
   })
 
+  // Never dissolve the person's existing team on their behalf: they leave it
+  // themselves (or accept an invite), then an organiser can add them.
   if (already) {
-    if (already.members.length === 1 && (already.submissions || 0) === 0) {
-      await teamsCol.deleteOne({ id: already.id })
-    } else {
-      return NextResponse.json({ error: `User is already on team "${already.name}"` }, { status: 409 })
-    }
+    return NextResponse.json({ error: `User is already on team "${already.name}". They need to leave it first.`, code: 'hk_user_on_other_team', params: { team: String(already.name) } }, { status: 409 })
   }
 
-  await teamsCol.updateOne(
-    { id: team.id },
+  // Atomic size cap: only push while the team is still under max_per_team.
+  const res = await teamsCol.updateOne(
+    { id: team.id, [`members.${Math.max(0, hk.max_per_team - 1)}`]: { $exists: false } } as Record<string, unknown>,
     {
-      $push: { members: { user_id: targetUserId, name: targetName, role: 'member' } as Record<string, unknown> },
+      $push: { members: { user_id: targetUserId, name: targetName, role: 'member' } as never },
       $set: { updated_at: nowIso() },
     },
   )
+  if (res.modifiedCount === 0) return NextResponse.json({ error: `Team is full (${hk.max_per_team} max)`, code: 'hk_team_full_max', params: { max: Number(hk.max_per_team) } }, { status: 409 })
 
   return NextResponse.json({ ok: true, member: { user_id: targetUserId, name: targetName, role: 'member' } })
 }
@@ -86,7 +93,7 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
 
   const { searchParams } = new URL(req.url)
@@ -106,8 +113,8 @@ export async function DELETE(
   const isCaptain = Array.isArray(team.members) && team.members.some(m => m.user_id === user.id && m.role === 'captain')
   const isSelf = user.id === removeUserId
 
-  if (!isAdmin(user.role) && !isCaptain && !isSelf) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isHackathonStaff(user, hk) && !isCaptain && !isSelf) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const updatedMembers = team.members.filter(m => m.user_id !== removeUserId)

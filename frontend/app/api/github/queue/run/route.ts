@@ -17,11 +17,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   const url = new URL(request.url)
-  const max = Number(url.searchParams.get('max') || 5)
+  const raw = Number(url.searchParams.get('max') || 5)
+  const max = Number.isFinite(raw) ? Math.min(20, Math.max(1, Math.floor(raw))) : 5
   const results = await processGithubScanQueueBatch(max)
   return NextResponse.json({ ok: true, processed: results.length, results })
 }
 
-export async function GET(request: Request) {
-  return POST(request)
-}

@@ -147,6 +147,15 @@ function extractError(res: { ok?: boolean; text?: string; json?: unknown; raw?: 
   return 'request failed'
 }
 
+/** Is any LLM provider with a key available right now? (AGT-024: not just OpenAI.) */
+export async function hasAnyAiProvider(): Promise<boolean> {
+  try {
+    return (await getAvailableProviders()).length > 0
+  } catch {
+    return false
+  }
+}
+
 /**
  * Get all available providers with their keys, respecting rate limits
  */
@@ -275,11 +284,9 @@ async function makeRequest(
  * marks rate-limited keys, and retries with backoff.
  */
 export async function providerFallbackComplete(args: BackendCompleteArgs): Promise<FallbackResult> {
-  const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
-  const backend = process.env.INTERNAL_BACKEND_URL
-    || ((process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production')
-      ? PROD_BACKEND
-      : 'http://localhost:8001')
+  // AGT-027: required in production (lib/ai/internal-backend-url), no baked-in host.
+  const { internalBackendUrl } = await import('@/lib/ai/internal-backend-url')
+  const backend = internalBackendUrl()
 
   // Get internal secret
   let internalSecret = process.env.INTERNAL_BACKEND_SECRET?.trim() || ''
@@ -411,10 +418,12 @@ export async function backendCompleteWithFallback(args: BackendCompleteArgs): Pr
   let success = true
   let error: string | undefined
   let parsedRes: any
+  let answered: { provider?: string; model?: string } = {}
 
   try {
     const result = await providerFallbackComplete(args)
     parsedRes = result.json
+    answered = { provider: result.provider, model: result.model }
     return {
       ok: true,
       json: result.json,
@@ -422,6 +431,7 @@ export async function backendCompleteWithFallback(args: BackendCompleteArgs): Pr
       raw: result.raw,
       provider: result.provider,
       model: result.model,
+      ...(result.usage ? { usage: result.usage } : {}),
     }
   } catch (e) {
     success = false
@@ -434,8 +444,9 @@ export async function backendCompleteWithFallback(args: BackendCompleteArgs): Pr
         try {
           const inputTokens = parsedRes?.usage?.input_tokens || parsedRes?.prompt_tokens || 0
           const outputTokens = parsedRes?.usage?.output_tokens || parsedRes?.completion_tokens || 0
-          const model = args.modelOverride || parsedRes?.model || 'unknown'
-          const provider = args.providerOverride || parsedRes?.provider || 'unknown'
+          // AGT-026: attribute cost to the model that actually answered (a fallback may have).
+          const model = answered.model || parsedRes?.model || args.modelOverride || 'unknown'
+          const provider = answered.provider || parsedRes?.provider || args.providerOverride || 'unknown'
           const totalTokens = inputTokens + outputTokens
           const cost = estimateAiCost(model, inputTokens, outputTokens)
 

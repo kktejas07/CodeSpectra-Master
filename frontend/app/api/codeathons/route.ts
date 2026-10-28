@@ -1,55 +1,43 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { getGeneralSettings } from '@/lib/platform-general-settings-server'
+import { knowledgeOnEventChange } from '@/lib/rag/hooks'
+import { createCodeathon } from '@/lib/services/codeathons'
+import { isTenantStaff, publicCodeathonView } from '@/lib/exam-access'
+import { codeathonListFilter } from '@/lib/hackathons/tenant-scope'
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
-    const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
-      ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
-      : {}
-    const data = await db.collection('codeathons').find(filter).toArray()
+    // Company admins: own organization only. Superadmin: everything, or ?tenant=global|<id>.
+    // Everyone else: published codeathons that are public or their organisation's (CORE-014).
+    const filter = codeathonListFilter(gate.user, new URL(request.url).searchParams.get('tenant'))
+    const docs = await db.collection('codeathons').find(filter).toArray()
+    // Participants never get hidden test cases (they are the grading key).
+    const data = docs.map((d) => (isTenantStaff(gate.user, d) ? d : publicCodeathonView(d)))
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  if (!isAdminCaller(gate.user)) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  }
+  // A company admin without an organization would create an unowned (platform) event.
+  if (gate.user.role === 'tenant_admin' && !gate.user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+  }
   try {
     const body = await request.json()
-    const db = await getMongoDb()
-    const now = new Date().toISOString()
-    const doc = {
-      id: crypto.randomUUID(),
-      title: body.title,
-      description: body.description || '',
-      difficulty: body.difficulty || 'Medium',
-      topics: body.topics || [],
-      rules: body.rules || '',
-      maxParticipants: body.maxParticipants || 0,
-      startDate: body.startDate || '',
-      endDate: body.endDate || '',
-      status: body.status || 'upcoming',
-      participants: 0,
-      prizePool: body.prizePool || '',
-      cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
-      problems: body.problems || [],
-      // New fields for team/individual mode
-      event_type: body.event_type || 'individual', // 'individual' | 'team'
-      team_size_min: body.team_size_min || 1,
-      team_size_max: body.team_size_max || 1,
-      problem_visibility: body.problem_visibility || 'during_contest', // 'during_contest' | 'after_start' | 'immediate'
-      tenant_id: gate.user.tenantId || null,
-      createdAt: now,
-      updatedAt: now,
-    }
-    await db.collection('codeathons').insertOne(doc)
-    return NextResponse.json(doc, { status: 201 })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+    // Shared with the admin agent: lib/services/codeathons createCodeathon.
+    const r = await createCodeathon(gate.user, body)
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+    return NextResponse.json(r.data, { status: 201 })
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function DELETE(request: Request) {
@@ -58,9 +46,13 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
     const db = await getMongoDb()
+    const existing = await db.collection('codeathons').findOne({ id })
+    if (!existing) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
+    if (!isTenantStaff(gate.user, existing)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     await db.collection('codeathons').deleteOne({ id })
+    knowledgeOnEventChange('codeathon', id)
     return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

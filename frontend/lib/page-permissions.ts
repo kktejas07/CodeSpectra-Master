@@ -11,6 +11,7 @@
  */
 
 import type { UserRole } from '@/lib/types/rbac-types'
+import { resolveRouteAccess } from '@/lib/page-access-map'
 
 export interface PagePermission {
   route: string
@@ -38,13 +39,9 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/security/scans',
   '/dashboard/admin/feedback',
 
-  // Hackathons, Problems & Proctoring
-  '/dashboard/admin/hackathons',
-  '/dashboard/admin/hackathons/create',
-  '/dashboard/admin/hackathons/edit',
-  '/dashboard/admin/codeathons',
+  // Hackathons, Problems & Proctoring (hackathon/codeathon admin is in EVENT_ADMIN_ROUTES)
   '/dashboard/admin/question-bank',
-  '/dashboard/admin/assessments/bulk',
+  // '/dashboard/admin/assessments/bulk' is open to company admins (CORE-009): the API scopes them to their tests.
   '/dashboard/admin/assessments/pipeline',
   '/dashboard/admin/proctor',
   '/dashboard/admin/certificates',
@@ -57,7 +54,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   // Hiring & ATS
   '/dashboard/admin/jobs',
   '/dashboard/admin/resumes',
-  '/dashboard/admin/predictive-validity',
+  '/dashboard/admin/talent',
 
   // KYC & Verification
   '/dashboard/admin/kyc',
@@ -65,11 +62,18 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   // AI & Generation Tools
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
+  '/dashboard/admin/ai-usage',
   '/dashboard/admin/question-generator',
+  '/dashboard/admin/question-bot',
+  // Wave 15 assistants: switches, caps and run log (lib/assistants).
+  '/dashboard/admin/assistants',
+  '/dashboard/admin/interview-sim',
+  '/dashboard/admin/company-patterns',
   '/dashboard/admin/courses',
   '/dashboard/admin/courses/[id]',
-  '/dashboard/admin/workflows',
   '/dashboard/admin/cron-jobs',
+  '/dashboard/admin/automations',
+  '/dashboard/admin/agent-loops',
 
   // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
@@ -78,25 +82,39 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/integrations',
   '/dashboard/admin/cdn',
   '/dashboard/admin/speed-insights',
+  '/dashboard/admin/sso',
   '/dashboard/admin/announcements',
   '/dashboard/admin/newsletter',
+  '/dashboard/admin/events-feed',
   '/dashboard/admin/content-studio',
   '/dashboard/admin/blog',
+  '/dashboard/admin/learn',
   '/dashboard/admin/signals',
+  '/dashboard/admin/problems',
+  '/dashboard/admin/social',
+  '/dashboard/admin/digest',
   '/dashboard/admin/resources',
   '/dashboard/admin/billing',
+  '/dashboard/admin/marketplace',
+  '/dashboard/admin/mentors',
+  '/dashboard/admin/pro-certs',
+  '/dashboard/admin/study-plans',
+  '/dashboard/admin/leagues',
   '/dashboard/admin/help',
-  '/dashboard/admin/sso',
 ]
 
 export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'System', firstRoute: '/dashboard/admin/system' },
   { label: 'Hackathons', firstRoute: '/dashboard/admin/hackathons' },
-  { label: 'Billing', firstRoute: '/dashboard/admin/pricing' },
+  // /dashboard/admin/pricing only redirects to Plans and has no sidebar link, so the section starts at Plans.
+  { label: 'Billing', firstRoute: '/dashboard/admin/plans' },
   { label: 'Hiring', firstRoute: '/dashboard/admin/jobs' },
-  { label: 'AI Tools', firstRoute: '/dashboard/admin/rag' },
-  { label: 'Learning Admin', firstRoute: '/dashboard/admin/courses' },
+  { label: 'AI tools', firstRoute: '/dashboard/admin/rag' },
+  { label: 'Learning', firstRoute: '/dashboard/admin/courses' },
+  { label: 'Automation', firstRoute: '/dashboard/admin/cron-jobs' },
   { label: 'Infrastructure', firstRoute: '/dashboard/admin/settings' },
+  { label: 'Content', firstRoute: '/dashboard/admin/announcements' },
+  { label: 'Commerce and help', firstRoute: '/dashboard/admin/billing' },
   { label: 'Organization', firstRoute: '/dashboard/admin/team' },
 ]
 
@@ -105,8 +123,8 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Practice', firstRoute: '/dashboard/arena' },
   { label: 'Events', firstRoute: '/dashboard/events' },
   { label: 'Courses', firstRoute: '/dashboard/courses' },
-  { label: 'Discover', firstRoute: '/dashboard/quizzes' },
-  { label: 'My Activity', firstRoute: '/dashboard/courses/my' },
+  { label: 'Discover', firstRoute: '/dashboard/articles' },
+  { label: 'My activity', firstRoute: '/dashboard/courses/my' },
   { label: 'Career', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats', firstRoute: '/dashboard/leaderboard' },
@@ -116,16 +134,50 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
 ]
 
 /**
+ * Hackathon + codeathon admin. Company admins (tenant_admin) manage their own
+ * organization's events here (every API scopes them to their tenant);
+ * superadmin keeps the global view with an organization filter. Sub-pages
+ * ([id], report, edit/[id]) match by prefix.
+ */
+export const EVENT_ADMIN_ROUTES: string[] = [
+  '/dashboard/admin/hackathons',
+  '/dashboard/admin/hackathons/create',
+  '/dashboard/admin/hackathons/edit',
+  '/dashboard/admin/codeathons',
+  // Hosted contests (lib/contests): /api/contests* scope company admins to their organisation.
+  '/dashboard/admin/contests',
+]
+
+/**
  * Routes accessible to tenant_admin and above.
  */
 export const TENANT_ADMIN_ROUTES: string[] = [
+  ...EVENT_ADMIN_ROUTES,
   '/dashboard/admin/team',
   '/dashboard/admin/team/activity',
   '/dashboard/admin/assessments',
   '/dashboard/interviews/feedback',
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
+  // Hiring analytics: /api/admin/predictive-validity scopes tenant admins to their own tests.
+  '/dashboard/admin/predictive-validity',
   '/dashboard/admin/sme-review',
+  // Admin AI copilot: every /api/admin/agent route scopes tenant admins to their organisation.
+  '/dashboard/admin/agent',
+  // Hiring agents (sourcer, scheduler, author, integrity): /api/admin/hiring-agents scopes tenant admins to their organisation.
+  '/dashboard/admin/hiring-agents',
+  // Knowledge sources for the copilot: /api/admin/knowledge scopes tenant admins to their organisation.
+  '/dashboard/admin/knowledge',
+  // Workflow builder: /api/workflows scopes tenant admins to their organisation's workflows.
+  '/dashboard/admin/workflows',
+  // College / company licences: /api/licences* scopes tenant admins to their own organisation.
+  '/dashboard/admin/licences',
+  // Connected apps (Slack, Teams, Google Classroom, LTI): /api/integrations/tenant* scope to the admin's organisation.
+  '/dashboard/admin/connected-apps',
+  // New cohort: POST /api/cohorts requires an organisation admin.
+  '/dashboard/cohorts/new',
+  // Org onboarding checklist: /api/assistants/onboarding scopes tenant admins to their own organisation.
+  '/dashboard/admin/onboarding',
 ]
 
 /**
@@ -150,6 +202,9 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/challenges',
   '/dashboard/tracks',
   '/dashboard/100-days',
+  // Personalised study plan (APIs scope every read/write to the signed-in learner)
+  '/dashboard/study-plan',
+  '/dashboard/study-plan/practice/[id]',
 
   // Events & Competitions
   '/dashboard/events',
@@ -161,12 +216,22 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/courses',
   '/dashboard/courses/my',
   '/dashboard/courses/wishlist',
+  // Cohort courses (APIs check membership / staff / organisation admin per cohort)
+  '/dashboard/cohorts',
+  '/dashboard/cohorts/[id]',
+  '/dashboard/cohorts/grading',
   '/dashboard/interview-prep',
 
-  // Discover (Unstop-style hubs)
+  // Discover (Unstop-style hubs). /dashboard/quizzes redirects to company tests (not in the nav).
   '/dashboard/quizzes',
   '/dashboard/articles',
   '/dashboard/resources',
+  // Community (APIs scope reads to readable categories; moderation is checked server-side)
+  '/dashboard/community',
+  '/dashboard/community/new',
+  '/dashboard/community/t/[id]',
+  '/dashboard/community/groups/[id]',
+  '/dashboard/community/moderation',
 
   // My Activity
   '/dashboard/activity/recent',
@@ -175,15 +240,53 @@ export const ALL_USER_ROUTES: string[] = [
   
   // Career & Hiring
   '/dashboard/jobs',
+  '/dashboard/jobs/for-you',
+  // Live hiring drives: candidates (/drives) and organisers / invigilators (/live-drives);
+  // /api/live-drives* checks roster, organiser (campus / ATS role) or invigilator server-side.
+  '/dashboard/drives',
+  '/dashboard/drives/[id]',
+  '/dashboard/live-drives',
+  '/dashboard/live-drives/[id]',
+  // Campus placement: /api/campus* checks college membership / placement-team role server-side.
+  '/dashboard/campus',
+  '/dashboard/placement',
+  '/dashboard/placement/drives/[id]',
   '/dashboard/interviews',
   '/dashboard/interviews/ai-mock',
   '/dashboard/interviews/ai-mock/setup',
+  '/dashboard/interview-sim',
+  '/dashboard/interview-sim/[sessionId]',
   '/dashboard/mock-tests',
+  '/dashboard/mock-tests/history',
+  '/dashboard/company-tests',
+  '/dashboard/company-tests/[patternId]',
   '/dashboard/resumes',
   '/dashboard/assessments',
   '/dashboard/assessments/ai-fluency',
   '/dashboard/assessments/ai-fluency/setup',
   '/dashboard/certifications',
+  '/dashboard/certifications/proctored',
+  '/dashboard/certifications/proctored/[slug]',
+  '/dashboard/passport',
+
+  // Hiring pipeline (ATS). Open to any signed-in role here because interviewers
+  // and clients are ordinary users; membership + ATS role are enforced server-side
+  // (app/dashboard/hiring/layout.tsx and requireAts in every /api/ats route).
+  '/dashboard/hiring',
+  '/dashboard/hiring/jobs',
+  '/dashboard/hiring/jobs/[id]',
+  '/dashboard/hiring/jobs/[id]/matches',
+  '/dashboard/hiring/candidates',
+  '/dashboard/hiring/candidates/[id]',
+  '/dashboard/hiring/approvals',
+  '/dashboard/hiring/interviews',
+  '/dashboard/hiring/analytics',
+  '/dashboard/hiring/team',
+  '/dashboard/hiring/clients',
+  '/dashboard/hiring/settings',
+  '/dashboard/hiring/client',
+  '/dashboard/hiring/client/jobs/[id]',
+  '/dashboard/hiring/talent',
 
   // Tools
   '/dashboard/scanner',
@@ -192,6 +295,7 @@ export const ALL_USER_ROUTES: string[] = [
 
   // Stats & Progress
   '/dashboard/leaderboard',
+  '/dashboard/leagues',
   '/dashboard/achievements',
   '/dashboard/skill-analytics',
 
@@ -201,11 +305,27 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/calendar',
   '/dashboard/billing',
   '/dashboard/pricing',
+  '/dashboard/checkout',
   '/dashboard/settings',
   '/dashboard/settings/ai',
+  '/dashboard/settings/accessibility',
+  '/dashboard/settings/whatsapp-practice',
+  '/dashboard/settings/guardians',
 
   // Referrals
   '/dashboard/referrals',
+
+  // Marketplace buyer orders (APIs scope every read to the buyer)
+  '/dashboard/orders',
+  '/dashboard/orders/[id]',
+
+  // Marketplace seller area (any signed-in user can apply; APIs require an approved seller)
+  '/dashboard/seller',
+  '/dashboard/seller/apply',
+
+  // Mentoring (any signed-in user; APIs check the mentor / the booking's learner or mentor)
+  '/dashboard/mentor',
+  '/dashboard/sessions/[id]',
 
   // Agent (LAST)
   '/dashboard/agent',
@@ -218,43 +338,11 @@ export const ALL_USER_ROUTES: string[] = [
 ]
 
 /**
- * Get the required role for a given route.
+ * Get the required (sidebar-audience) role for a given route — resolved from
+ * the one route → access map (lib/page-access-map.ts), most specific entry wins.
  */
 export function getRequiredRoleForRoute(pathname: string): UserRole {
-  const base = pathname.split('?')[0]
-
-  // Exact matches first — a child page registered with its own role (e.g.
-  // superadmin-only /dashboard/admin/assessments/bulk under tenant_admin
-  // /dashboard/admin/assessments) must not be shadowed by a parent prefix.
-  if (TENANT_ADMIN_ROUTES.includes(base)) return 'tenant_admin'
-  if (ADMIN_ONLY_ROUTES.includes(base)) return 'superadmin'
-  if (JUDGE_ROUTES.includes(base)) return 'judge'
-  if (ALL_USER_ROUTES.includes(base)) return 'user'
-
-  // Tenant admin routes (check first so /dashboard/admin/team matches before /dashboard/admin catch-all)
-  for (const route of TENANT_ADMIN_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'tenant_admin'
-  }
-
-  // Admin routes → superadmin
-  for (const route of ADMIN_ONLY_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'superadmin'
-  }
-
-  // Judge routes
-  for (const route of JUDGE_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'judge'
-  }
-
-  // All authenticated user routes
-  for (const route of ALL_USER_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'user'
-  }
-
-  // Default: any /dashboard/* route requires at least user auth
-  if (base.startsWith('/dashboard/')) return 'user'
-
-  return 'user'
+  return resolveRouteAccess(pathname.split('?')[0])?.navRole ?? 'user'
 }
 
 /** Platform-operator console. DB grants must not open these for non-superadmins. */
@@ -272,7 +360,7 @@ export function isPlatformAdminRoute(pathname: string): boolean {
  */
 export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard': 'Overview',
-  '/dashboard/admin': 'Admin Overview',
+  '/dashboard/admin': 'Admin overview',
   '/dashboard/admin/system': 'Operations',
   '/dashboard/admin/proctor': 'Proctor',
   '/dashboard/admin/certificates': 'Certificates',
@@ -283,43 +371,57 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',
-  '/dashboard/admin/feedback': 'Feedback & Reports',
-  '/dashboard/admin/security/email-monitoring': 'Email Monitoring',
-  '/dashboard/admin/security/scans': 'Security Scans',
-  '/dashboard/admin/settings': 'Platform Settings',
+  '/dashboard/admin/feedback': 'Feedback & reports',
+  '/dashboard/admin/security/email-monitoring': 'Email monitoring',
+  '/dashboard/admin/security/scans': 'Security scans',
+  '/dashboard/admin/settings': 'Platform settings',
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',
-  '/dashboard/admin/settings/kyc': 'KYC Providers',
+  '/dashboard/admin/settings/kyc': 'KYC providers',
   '/dashboard/admin/jobs': 'Jobs',
   '/dashboard/admin/resumes': 'Resumes',
   '/dashboard/admin/codeathons': 'Codeathons',
+  '/dashboard/admin/contests': 'Contests',
   '/dashboard/admin/coupons': 'Coupons',
   '/dashboard/admin/assessments': 'Assessments',
-  '/dashboard/admin/assessments/bulk': 'Bulk Schedule',
+  '/dashboard/admin/assessments/bulk': 'Invite candidates',
   '/dashboard/admin/assessments/pipeline': 'Pipeline',
-  '/dashboard/admin/speed-insights': 'Speed Insights',
-  '/dashboard/admin/cdn': 'CDN & Edge',
+  '/dashboard/admin/speed-insights': 'Speed insights',
+  '/dashboard/admin/cdn': 'CDN & edge',
   '/dashboard/admin/workflows': 'Workflows',
-  '/dashboard/admin/cron-jobs': 'Cron Jobs',
-  '/dashboard/admin/question-generator': 'Question Generator',
-  '/dashboard/admin/courses': 'Course Management',
-  '/dashboard/admin/courses/[id]': 'Edit Course',
-  '/dashboard/admin/hackathons/create': 'Create Hackathon',
-  '/dashboard/admin/hackathons/edit': 'Edit Hackathon',
+  '/dashboard/admin/cron-jobs': 'Cron jobs',
+  '/dashboard/admin/automations': 'Automations',
+  '/dashboard/admin/agent-loops': 'Agent loops',
+  '/dashboard/admin/question-generator': 'Question generator',
+  '/dashboard/admin/question-bot': 'Question bot',
+  '/dashboard/admin/assistants': 'Assistants',
+  '/dashboard/admin/onboarding': 'Get set up',
+  '/dashboard/admin/interview-sim': 'Mock interviews',
+  '/dashboard/admin/company-patterns': 'Company patterns',
+  '/dashboard/admin/courses': 'Course management',
+  '/dashboard/admin/courses/[id]': 'Edit course',
+  '/dashboard/admin/hackathons/create': 'Create hackathon',
+  '/dashboard/admin/hackathons/edit': 'Edit hackathon',
   '/dashboard/admin/hackathons': 'Hackathons',
   '/dashboard/admin/announcements': 'Announcements',
   '/dashboard/admin/newsletter': 'Newsletter',
-  '/dashboard/admin/content-studio': 'Content Studio',
+  '/dashboard/admin/events-feed': 'Events feed',
+  '/dashboard/admin/content-studio': 'Content studio',
   '/dashboard/admin/blog': 'Blog',
+  '/dashboard/admin/learn': 'Learn hub',
   '/dashboard/admin/signals': 'Signals',
-  '/dashboard/admin/resources': 'Resources / Ebooks',
+  '/dashboard/admin/problems': 'Problems review',
+  '/dashboard/admin/social': 'Social studio',
+  '/dashboard/admin/digest': 'Daily digest',
+  '/dashboard/admin/resources': 'Resources and ebooks',
   '/dashboard/admin/rag': 'RAG',
-  '/dashboard/admin/ai-inventory': 'AI Inventory',
+  '/dashboard/admin/ai-inventory': 'AI inventory',
+  '/dashboard/admin/ai-usage': 'AI spend',
   '/dashboard/admin/permissions': 'Permissions',
-  '/dashboard/admin/plans': 'Plans & Pricing',
+  '/dashboard/admin/plans': 'Plans & pricing',
   '/dashboard/admin/team': 'Team',
-  '/dashboard/admin/teams': 'Tenant Teams',
-  '/dashboard/admin/team/activity': 'Team Activity',
-  '/dashboard/admin/kyc': 'KYC Verification',
+  '/dashboard/admin/teams': 'Tenant teams',
+  '/dashboard/admin/team/activity': 'Team activity',
+  '/dashboard/admin/kyc': 'KYC verification',
   '/dashboard/arena': 'Arena',
   '/dashboard/problems': 'Problems',
   '/dashboard/tracks': 'Tracks',
@@ -328,6 +430,16 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/courses': 'Courses',
   '/dashboard/courses/my': 'My Courses',
   '/dashboard/courses/wishlist': 'Watchlist',
+  '/dashboard/cohorts': 'Cohorts',
+  '/dashboard/cohorts/[id]': 'Cohort',
+  '/dashboard/cohorts/new': 'New cohort',
+  '/dashboard/cohorts/grading': 'Grading queue',
+  '/dashboard/community': 'Community',
+  '/dashboard/community/new': 'New thread',
+  '/dashboard/community/t/[id]': 'Thread',
+  '/dashboard/community/groups/[id]': 'Study group',
+  '/dashboard/community/moderation': 'Community moderation',
+  '/dashboard/admin/connected-apps': 'Connected apps',
   '/dashboard/quizzes': 'Quizzes',
   '/dashboard/articles': 'Articles',
   '/dashboard/resources': 'Resources',
@@ -337,22 +449,55 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/skill-analytics': 'Skill Analytics',
   '/dashboard/identity-verify': 'Identity Verify',
   '/dashboard/leaderboard': 'Leaderboard',
+  '/dashboard/leagues': 'Leagues',
+  '/dashboard/campus': 'Campus',
+  '/dashboard/placement': 'Placement console',
+  '/dashboard/placement/drives/[id]': 'Placement drive',
+  '/dashboard/drives': 'Hiring drives',
+  '/dashboard/drives/[id]': 'Hiring drive',
+  '/dashboard/live-drives': 'Live drives',
+  '/dashboard/live-drives/[id]': 'Live drive control room',
+  '/dashboard/admin/leagues': 'Leagues',
   '/dashboard/achievements': 'Achievements',
   '/dashboard/certifications': 'Certifications',
+  '/dashboard/certifications/proctored': 'Proctored certifications',
+  '/dashboard/certifications/proctored/[slug]': 'Certification',
+  '/dashboard/passport': 'Skill passport',
   '/dashboard/pricing': 'Pricing',
+  '/dashboard/checkout': 'Checkout',
   '/dashboard/challenges': 'Challenges',
   '/dashboard/interviews': 'Interviews',
   '/dashboard/interviews/ai-mock': 'AI Mock Interview',
   '/dashboard/interviews/ai-mock/setup': 'AI Mock Setup',
+  '/dashboard/interview-sim': 'Mock interview',
+  '/dashboard/interview-sim/[sessionId]': 'Mock interview session',
   '/dashboard/mock-tests': 'Mock Tests',
+  '/dashboard/mock-tests/history': 'Mock Test History',
+  '/dashboard/company-tests': 'Company tests',
+  '/dashboard/company-tests/[patternId]': 'Company practice test',
   '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',
-  '/dashboard/recruiter-analytics': 'Recruiter Analytics',
+  '/dashboard/recruiter-analytics': 'Recruiter analytics',
   '/dashboard/profile': 'Profile',
   '/dashboard/settings': 'Settings',
   '/dashboard/settings/ai': 'AI Settings',
+  '/dashboard/settings/accessibility': 'Accessibility',
+  '/dashboard/settings/whatsapp-practice': 'WhatsApp practice',
+  '/dashboard/settings/guardians': 'Parent reports',
   '/dashboard/billing': 'Billing',
+  '/dashboard/orders': 'My orders',
+  '/dashboard/orders/[id]': 'Order',
+  '/dashboard/seller': 'Seller dashboard',
+  '/dashboard/seller/apply': 'Sell on CodeSpectra',
+  '/dashboard/admin/marketplace': 'Marketplace',
+  '/dashboard/admin/mentors': 'Mentors',
+  '/dashboard/admin/pro-certs': 'Certifications (proctored)',
+  '/dashboard/admin/study-plans': 'Study plans',
+  '/dashboard/study-plan': 'Study plan',
+  '/dashboard/study-plan/practice/[id]': 'Practice set',
+  '/dashboard/mentor': 'Mentoring',
+  '/dashboard/sessions/[id]': 'Mentoring session',
   '/dashboard/notifications': 'Notifications',
   '/dashboard/calendar': 'Calendar',
   '/dashboard/notifications/preferences': 'Notification Preferences',
@@ -362,6 +507,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/events': 'Events',
   '/dashboard/jobs': 'Jobs',
+  '/dashboard/jobs/for-you': 'Jobs for you',
   '/dashboard/assessments': 'Assessments',
   '/dashboard/assessments/ai-fluency': 'AI Fluency',
   '/dashboard/assessments/ai-fluency/setup': 'AI Fluency Setup',
@@ -369,13 +515,33 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/100-days': '100 Days',
   '/dashboard/judge': 'Judge Dashboard',
   '/dashboard/cad': 'CAD Editor',
-  '/dashboard/admin/billing': 'Billing Admin',
-  '/dashboard/admin/help': 'Help Center',
-  '/dashboard/admin/sso': 'SSO Config',
-  '/dashboard/admin/question-bank': 'Question Bank',
-  '/dashboard/admin/hiring-manager-report': 'Hiring Report',
-  '/dashboard/admin/predictive-validity': 'Predictive Validity',
-  '/dashboard/admin/sme-review': 'SME Review',
+  '/dashboard/admin/billing': 'Billing admin',
+  '/dashboard/admin/licences': 'Licences',
+  '/dashboard/admin/help': 'Help center',
+  '/dashboard/admin/sso': 'SSO config',
+  '/dashboard/admin/question-bank': 'Question bank',
+  '/dashboard/admin/hiring-manager-report': 'Hiring report',
+  '/dashboard/admin/predictive-validity': 'Predictive validity',
+  '/dashboard/admin/sme-review': 'SME review',
+  '/dashboard/admin/agent': 'AI copilot',
+  '/dashboard/admin/hiring-agents': 'Hiring agents',
+  '/dashboard/admin/knowledge': 'Knowledge',
+  '/dashboard/hiring': 'Hiring',
+  '/dashboard/hiring/jobs': 'Hiring jobs',
+  '/dashboard/hiring/jobs/[id]': 'Job pipeline',
+  '/dashboard/hiring/jobs/[id]/matches': 'Best matches',
+  '/dashboard/hiring/candidates': 'Candidates',
+  '/dashboard/hiring/candidates/[id]': 'Candidate',
+  '/dashboard/hiring/approvals': 'Approvals',
+  '/dashboard/hiring/interviews': 'My interviews',
+  '/dashboard/hiring/analytics': 'Hiring analytics',
+  '/dashboard/hiring/team': 'Hiring team',
+  '/dashboard/hiring/clients': 'Clients',
+  '/dashboard/hiring/settings': 'Hiring settings',
+  '/dashboard/hiring/client': 'Client portal',
+  '/dashboard/hiring/client/jobs/[id]': 'Client review',
+  '/dashboard/hiring/talent': 'Talent search',
+  '/dashboard/admin/talent': 'Talent search',
   '/companies': 'Companies',
 }
 

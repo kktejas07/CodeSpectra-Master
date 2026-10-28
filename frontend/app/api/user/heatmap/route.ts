@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     }
 
     const [scanMap, reviewMap, fixMap, challengeMap] = await Promise.all([
-      buildDateMap('scan_comments', 'scan'),
+      buildDateMap('code_scans', 'scan'),
       buildDateMap('code_review_comments', 'review'),
       buildDateMap('suggested_fixes', 'fix'),
       buildDateMap('submissions', 'challenge'),

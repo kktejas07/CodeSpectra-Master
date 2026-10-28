@@ -21,6 +21,9 @@ export type SecurityEventType =
   | 'auth.captcha_failed'
   | 'admin.block_ip'
   | 'admin.unblock_ip'
+  | 'auth.oauth_link_reset'
+  | 'auth.email_change'
+  | 'auth.ip_autoblock_skipped'
 
 export interface SecurityEventDoc {
   id: string

@@ -9,7 +9,7 @@ async function createAccounts() {
   try {
     await client.connect()
     const db = client.db(DB_NAME)
-    const users = db.collection('users')
+    const users = db.collection('user')
 
     // 1. Judge Account
     const judgeEmail = 'test-judge@example.com'

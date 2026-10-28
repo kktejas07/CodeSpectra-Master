@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 import { exportUsersToXLS } from '@/lib/export-excel'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface User {
   id: string
@@ -56,6 +58,7 @@ export function UserManagementTable({
   onBulkRoleChange,
   onExportXLS,
 }: UserManagementTableProps) {
+  const { t } = useAdminT()
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -131,32 +134,32 @@ export function UserManagementTable({
       <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search users by name or email..."
+          <Input aria-label={t('userTable.searchAria')}
+            placeholder={t('userTable.searchPlaceholder')}
             className="pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="All Roles" />
+          <SelectTrigger aria-label={t('userTable.filterRole')} className="w-[160px]">
+            <SelectValue placeholder={t('userTable.allRoles')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="superadmin">Superadmin</SelectItem>
-            <SelectItem value="tenant_admin">Tenant admin</SelectItem>
-            <SelectItem value="user">User</SelectItem>
+            <SelectItem value="all">{t('userTable.allRoles')}</SelectItem>
+            <SelectItem value="superadmin">{t('userTable.roleSuperadmin')}</SelectItem>
+            <SelectItem value="tenant_admin">{t('userTable.roleTenantAdmin')}</SelectItem>
+            <SelectItem value="user">{t('userTable.roleUser')}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-35">
-            <SelectValue placeholder="All Status" />
+          <SelectTrigger aria-label={t('common.filterByStatus')} className="w-35">
+            <SelectValue placeholder={t('userTable.allStatuses')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="all">{t('userTable.allStatuses')}</SelectItem>
+            <SelectItem value="active">{t('userTable.active')}</SelectItem>
+            <SelectItem value="inactive">{t('userTable.inactive')}</SelectItem>
           </SelectContent>
         </Select>
         <Button
@@ -167,91 +170,96 @@ export function UserManagementTable({
 
         >
           <Download className="w-4 h-4 text-primary" />
-          Export XLS
+          {t('userTable.exportXls')}
         </Button>
       </div>
 
       {someSelected && (
         <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
-          <span className="text-sm font-medium">{selected.size} selected</span>
+          <span className="text-sm font-medium">{t('userTable.selected', { count: selected.size })}</span>
           <div className="flex-1" />
           <Button variant="outline" size="sm" onClick={handleExportSelected}>
             <Download className="w-3.5 h-3.5 mr-1" />
-            Export Selected (XLS)
+            {t('userTable.exportSelected')}
           </Button>
           {onBulkRoleChange && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Shield className="w-3.5 h-3.5 mr-1" />
-                  Change role
+                  {t('userTable.changeRole')}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'user'); setSelected(new Set()) }}>
-                  Set as User
+                  {t('userTable.setUser')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'tenant_admin'); setSelected(new Set()) }}>
-                  Set as Org Admin
+                  {t('userTable.setOrgAdmin')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'superadmin'); setSelected(new Set()) }}>
-                  Set as Platform Admin
+                  {t('userTable.setPlatformAdmin')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
           {onBulkDelete && (
-            <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => { onBulkDelete(Array.from(selected)); setSelected(new Set()) }}>
+            <Button variant="outline" size="sm" className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => { onBulkDelete(Array.from(selected)); setSelected(new Set()) }}>
               <Trash2 className="w-3.5 h-3.5 mr-1" />
-              Delete
+              {t('common.delete')}
             </Button>
           )}
         </div>
       )}
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden rounded-2xl border-border/70">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[880px]">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="w-10 py-3 px-4">
+                <th className="sticky left-0 z-10 w-10 bg-muted py-3 px-4">
                   <button
                     onClick={toggleSelectAll}
                     className="text-muted-foreground hover:text-foreground transition-colors"
-                    aria-label={allSelected ? 'Deselect all' : 'Select all'}
+                    aria-label={allSelected ? t('userTable.deselectAll') : t('userTable.selectAll')}
                   >
                     {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                   </button>
                 </th>
-                <th className="text-left py-3 px-4 font-semibold">User</th>
-                <th className="text-left py-3 px-4 font-semibold">Email</th>
-                <th className="text-left py-3 px-4 font-semibold">Role</th>
-                <th className="text-left py-3 px-4 font-semibold">Status</th>
-                <th className="text-left py-3 px-4 font-semibold">Joined</th>
-                <th className="text-left py-3 px-4 font-semibold">Last Active</th>
-                <th className="text-right py-3 px-4 font-semibold">Actions</th>
+                <th className="sticky left-10 z-10 bg-muted text-left py-3 px-4 font-semibold">{t('userTable.colUser')}</th>
+                <th className="text-left py-3 px-4 font-semibold">{t('common.email')}</th>
+                <th className="text-left py-3 px-4 font-semibold">{t('common.role')}</th>
+                <th className="text-left py-3 px-4 font-semibold">{t('common.status')}</th>
+                <th className="text-left py-3 px-4 font-semibold">{t('userTable.colJoined')}</th>
+                <th className="text-left py-3 px-4 font-semibold">{t('userTable.colLastActive')}</th>
+                <th className="text-right py-3 px-4 font-semibold">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                    No users found
+                  <td colSpan={8} className="p-0">
+                    <EmptyState
+                      variant="search"
+                      title={t('userTable.noUsers')}
+                      description={t('userTable.noUsersHint')}
+                      className="border-0 bg-transparent py-6 md:py-8"
+                    />
                   </td>
                 </tr>
               ) : (
                 paginatedUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                    <td className="py-3 px-4">
+                  <tr key={user.id} className="group border-b border-border hover:bg-muted/50 transition-colors">
+                    <td className="sticky left-0 z-10 w-10 bg-card py-3 px-4 group-hover:bg-muted">
                       <button
                         onClick={() => toggleUser(user.id)}
                         className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={selected.has(user.id) ? 'Deselect' : 'Select'}
+                        aria-label={t(selected.has(user.id) ? 'userTable.deselect' : 'userTable.select', { name: user.name || user.email })}
                       >
                         {selected.has(user.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                       </button>
                     </td>
-                    <td className="py-3 px-4 font-medium">{user.name}</td>
+                    <td className="sticky left-10 z-10 max-w-[12rem] truncate bg-card py-3 px-4 font-medium group-hover:bg-muted">{user.name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                     <td className="py-3 px-4">
                       <Badge variant={getRoleColor(user.role)}>
@@ -260,7 +268,7 @@ export function UserManagementTable({
                     </td>
                     <td className="py-3 px-4">
                       <Badge variant={user.status === 'active' ? 'success' : 'secondary'}>
-                        {user.status}
+                        {user.status === 'active' ? t('userTable.active') : user.status === 'inactive' ? t('userTable.inactive') : user.status}
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-muted-foreground text-xs">{user.joinedAt}</td>
@@ -268,33 +276,33 @@ export function UserManagementTable({
                     <td className="py-3 px-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" title="More options">
+                          <Button variant="ghost" size="sm" title={t('userTable.moreOptions')} aria-label={t('userTable.moreOptionsFor', { name: user.name || user.email })}>
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => onEdit?.(user)}>
                             <Edit2 className="w-4 h-4 mr-2" />
-                            Edit profile
+                            {t('userTable.editProfile')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onRoleChange?.(user)}>
                             <Shield className="w-4 h-4 mr-2" />
-                            Change role
+                            {t('userTable.changeRole')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onResetPassword?.(user.id)}>
                             <KeyRound className="w-4 h-4 mr-2" />
-                            Reset password
+                            {t('userTable.resetPassword')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onSendResetEmail?.(user.id)}>
                             <Mail className="w-4 h-4 mr-2" />
-                            Send password reset email
+                            {t('userTable.sendReset')}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onDelete?.(user.id)}
                             className="text-red-600 dark:text-red-400"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Delete User
+                            {t('userTable.deleteUser')}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -309,25 +317,25 @@ export function UserManagementTable({
 
       {filteredUsers.length > 0 && (
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <p>Page {safePage} of {totalPages}</p>
+          <p>{t('userTable.page', { page: safePage, total: totalPages })}</p>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
               <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
-                <ChevronLeft className="h-3 w-3 mr-1" />Prev
+                <ChevronLeft className="h-3 w-3 mr-1" />{t('userTable.prev')}
               </Button>
               <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
-                Next<ChevronRight className="h-3 w-3 ml-1" />
+                {t('common.next')}<ChevronRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
             <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger className="h-8 w-25 text-xs">
+              <SelectTrigger aria-label={t('userTable.rowsPerPage')} className="h-8 w-25 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="10">10 per page</SelectItem>
-                <SelectItem value="15">15 per page</SelectItem>
-                <SelectItem value="25">25 per page</SelectItem>
-                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="10">{t('userTable.perPage', { count: 10 })}</SelectItem>
+                <SelectItem value="15">{t('userTable.perPage', { count: 15 })}</SelectItem>
+                <SelectItem value="25">{t('userTable.perPage', { count: 25 })}</SelectItem>
+                <SelectItem value="50">{t('userTable.perPage', { count: 50 })}</SelectItem>
               </SelectContent>
             </Select>
           </div>

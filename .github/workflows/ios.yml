@@ -1,0 +1,130 @@
+# CodeSpectra iOS (Capacitor shell in mobile/capacitor/ios).
+# Manual only. Always: sync + unsigned simulator build (compiles the Swift).
+# When the signing + App Store Connect secrets exist: signed archive → TestFlight
+# (fastlane, mobile/capacitor/ios/App/fastlane/Fastfile).
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   APPLE_TEAM_ID                       Apple Developer team id (10 chars)
+#   ASC_KEY_ID, ASC_ISSUER_ID           App Store Connect API key (Users and Access → Integrations, role App Manager)
+#   ASC_KEY_P8_B64                      base64 of the AuthKey_XXXX.p8
+#   IOS_GOOGLE_SERVICE_INFO_PLIST_B64   base64 of GoogleService-Info.plist (Firebase iOS app ai.codespectra.app; push)
+#   Signing — either fastlane match:
+#     MATCH_GIT_URL, MATCH_PASSWORD, MATCH_GIT_BASIC_AUTHORIZATION
+#   or manual:
+#     IOS_DIST_CERT_P12_B64, IOS_DIST_CERT_PASSWORD, IOS_PROVISION_PROFILE_B64, IOS_PROVISION_PROFILE_NAME
+# Variables (optional): CS_IAP_ENABLED = YES only once StoreKit purchases are integrated.
+name: iOS build
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload to TestFlight (needs the signing + ASC secrets)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile/capacitor
+    env:
+      FASTLANE_VERSION: 2.227.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/capacitor/package-lock.json
+
+      - name: Install (pinned, from lockfile)
+        run: npm ci --no-audit --no-fund
+
+      - name: Unit tests (config scripts)
+        run: npm test
+
+      - name: Capacitor sync (iOS)
+        run: npx cap sync ios
+
+      - name: Firebase config (push)
+        env:
+          GS_PLIST: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST_B64 }}
+        run: |
+          if [ -n "$GS_PLIST" ]; then
+            echo "$GS_PLIST" | base64 -d > ios/App/App/GoogleService-Info.plist
+          else
+            echo "::warning::IOS_GOOGLE_SERVICE_INFO_PLIST_B64 not set — the build has no push."
+          fi
+
+      - name: Resolve Swift packages
+        working-directory: mobile/capacitor/ios/App
+        run: xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+
+      - name: Simulator build (unsigned)
+        working-directory: mobile/capacitor/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+
+      - name: Signing secrets present?
+        id: secrets
+        env:
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          ASC: ${{ secrets.ASC_KEY_P8_B64 }}
+          MATCH: ${{ secrets.MATCH_GIT_URL }}
+          P12: ${{ secrets.IOS_DIST_CERT_P12_B64 }}
+        run: |
+          if [ "${{ inputs.upload }}" = "true" ] && [ -n "$TEAM" ] && [ -n "$ASC" ] && { [ -n "$MATCH" ] || [ -n "$P12" ]; }; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Signing / App Store Connect secrets not set (or upload off) — skipping TestFlight."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install fastlane (pinned)
+        if: steps.secrets.outputs.present == 'true'
+        run: gem install fastlane -v "$FASTLANE_VERSION" --no-document
+
+      - name: Archive + upload to TestFlight
+        if: steps.secrets.outputs.present == 'true'
+        working-directory: mobile/capacitor/ios/App
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          IOS_DIST_CERT_P12_B64: ${{ secrets.IOS_DIST_CERT_P12_B64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISION_PROFILE_B64: ${{ secrets.IOS_PROVISION_PROFILE_B64 }}
+          IOS_PROVISION_PROFILE_NAME: ${{ secrets.IOS_PROVISION_PROFILE_NAME }}
+          CS_IAP_ENABLED: ${{ vars.CS_IAP_ENABLED || 'NO' }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+          FASTLANE_HIDE_CHANGELOG: '1'
+        run: fastlane ios beta
+
+      - name: Remove key material
+        if: always()
+        run: rm -f ios/App/App/GoogleService-Info.plist
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          name: codespectra-ios-${{ github.run_number }}
+          path: mobile/capacitor/ios/App/build/*.dSYM.zip
+          if-no-files-found: ignore
+          retention-days: 14

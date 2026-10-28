@@ -1,18 +1,21 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
   CheckCircle2, ExternalLink, ShieldCheck, AlertTriangle, Loader2,
   Info, RefreshCcw, Globe, FileCheck, Eye, Clock, RotateCcw
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader, Panel } from '@/components/app/page-kit'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 // Helper to render warnings (handles both strings and Didit warning objects)
 function renderWarning(w: unknown): string {
@@ -68,6 +71,9 @@ interface SessionResponse {
 }
 
 export default function IdentityVerificationPage() {
+  const apiError = useApiError()
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const [status, setStatus] = useState<KycStatus | null>(null)
@@ -118,14 +124,14 @@ export default function IdentityVerificationPage() {
         credentials: 'include',
       })
       const data = await res.json() as SessionResponse & { error?: string }
-      if (!res.ok) throw new Error(data.error || 'Failed to start verification')
+      if (!res.ok) throw new Error(apiError(data, t('account.failedToStartVerification')))
 
       // Redirect to Didit's hosted verification page (most reliable across browsers)
       if (data.url) {
         window.location.href = data.url
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to start verification')
+      setError(e instanceof Error ? e.message : t('account.failedToStartVerification'))
       setStarting(false)
     }
   }
@@ -136,20 +142,20 @@ export default function IdentityVerificationPage() {
       const identityVerifyTour: TourStep[] = [
         {
           target: '[data-tour="identity-verify-header"]',
-          title: 'Verify Identity to Unlock',
-          description: 'This page runs one-time KYC for every user to unlock exams and gated features.',
+          title: t('account.verifyYourIdentity'),
+          description: t('account.thisPageRunsOneTimeKyc9e8'),
           position: 'bottom',
         },
         {
           target: '[data-tour="identity-verify-start"]',
-          title: 'Start Verification Flow',
-          description: 'Start verification to open the secure Didit page and get results in seconds.',
+          title: t('account.startVerification'),
+          description: t('account.thisOpensTheSecureDiditVerificationeaf'),
           position: 'top',
         },
         {
           target: '[data-tour="identity-verify-features"]',
-          title: 'Tip: Prepare ID First',
-          description: 'Tip: keep a government ID and selfie ready — this panel lists the ID, liveness, face, and fraud checks.',
+          title: t('account.haveYourIdReady'),
+          description: t('account.tipKeepAGovernmentIdAndf77'),
           position: 'top',
         },
       ]
@@ -182,12 +188,9 @@ export default function IdentityVerificationPage() {
   if (identityProvider === 'off') {
     return (
       <div className="space-y-4 py-16 text-center" data-testid="identity-verify-page">
-        <ShieldCheck className="h-12 w-12 text-muted-foreground" />
-        <h1 className="text-2xl font-bold">Identity verification is off</h1>
-        <p className="text-sm text-muted-foreground">
-          SuperAdmin disabled full KYC for this platform. Exam/profile Aadhaar may still use Anon Aadhaar
-          if enabled under Purpose routing.
-        </p>
+        <ShieldCheck className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden />
+        <h1 className="text-2xl font-bold text-foreground">{t('account.identityVerificationIsOff')}</h1>
+        <p className="mx-auto max-w-[60ch] text-sm text-muted-foreground">{t('account.fullIdentityVerificationIsntTurnedOnd1d')}</p>
       </div>
     )
   }
@@ -195,13 +198,12 @@ export default function IdentityVerificationPage() {
   if (identityProvider === 'digilocker') {
     return (
       <div className="space-y-4 py-16 text-center" data-testid="identity-verify-page">
-        <ShieldCheck className="h-12 w-12 text-primary" />
-        <h1 className="text-2xl font-bold">DigiLocker KYC</h1>
-        <p className="text-sm text-muted-foreground">
-          DigiLocker is selected for identity verification but the OAuth flow is not wired yet.
-          Switch Purpose routing back to Didit, or check back after DigiLocker credentials are connected.
-        </p>
-        <Badge variant="outline">Coming soon</Badge>
+        <ShieldCheck className="mx-auto h-12 w-12 text-primary" aria-hidden />
+        <h1 className="text-2xl font-bold text-foreground">{t('account.digilockerVerification')}</h1>
+        <p className="mx-auto max-w-[60ch] text-sm text-muted-foreground">{t('account.verificationThroughDigilockerIsntAvailab2e1')}</p>
+        <Button asChild variant="outline">
+          <Link href="/dashboard">{t('account.backToDashboard')}</Link>
+        </Button>
       </div>
     )
   }
@@ -214,20 +216,20 @@ export default function IdentityVerificationPage() {
     const isPending = status.kyc_status === 'pending'
     return (
       <div className="space-y-6" data-testid="identity-verify-page">
-        <div className={`rounded-xl border p-8 ${isReview ? 'border-amber-400/40 bg-amber-400/5' : 'border-blue-400/40 bg-blue-400/5'}`}>
+        <div className={`rounded-3xl border p-6 sm:p-8 ${isReview ? 'border-amber-500/30 bg-amber-500/5' : 'border-primary/30 bg-primary/5'}`}>
           <div className="text-center mb-6">
             {isReview ? (
-              <Eye className="h-12 w-12 text-amber-400 mb-3" />
+              <Eye className="mx-auto h-12 w-12 text-amber-600 dark:text-amber-400 mb-3" aria-hidden />
             ) : (
-              <Clock className="h-12 w-12 text-blue-400 mb-3" />
+              <Clock className="mx-auto h-12 w-12 text-primary mb-3" aria-hidden />
             )}
             <h1 className="text-2xl font-bold text-foreground mb-1">
-              {isReview ? 'Under Review' : 'Verification Pending'}
+              {isReview ? t('account.underReview') : t('account.verificationPending')}
             </h1>
             <p className="text-muted-foreground">
               {isReview 
-                ? 'Your verification is being reviewed by our team. We\'ll notify you once a decision is made.'
-                : 'Your verification is being processed. This usually takes a few seconds.'}
+                ? t('account.yourVerificationIsBeingReviewedBy565')
+                : t('account.yourVerificationIsBeingProcessedThis6c1')}
             </p>
           </div>
 
@@ -235,111 +237,108 @@ export default function IdentityVerificationPage() {
           {status.result && (
             <div className="space-y-4">
               {/* Document Info */}
-              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <FileCheck className="h-4 w-4" /> Document Information
-                </h3>
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/60">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <FileCheck className="h-4 w-4" />{' '}{t('account.documentInformation')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   {status.result.full_name && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Full Name</p>
-                      <p className="font-medium">{status.result.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.fullName')}</p>
+                      <p className="font-medium text-foreground">{status.result.full_name}</p>
                     </div>
                   )}
                   {status.result.document_type && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Document Type</p>
-                      <p className="font-medium">{status.result.document_type}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.documentType')}</p>
+                      <p className="font-medium text-foreground">{status.result.document_type}</p>
                     </div>
                   )}
                   {status.result.document_number && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Document Number</p>
+                      <p className="text-xs text-muted-foreground">{t('account.documentNumber')}</p>
                       <p className="font-medium font-mono text-xs">{status.result.document_number}</p>
                     </div>
                   )}
                   {status.result.date_of_birth && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Date of Birth</p>
-                      <p className="font-medium">{status.result.date_of_birth}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.dateOfBirth')}</p>
+                      <p className="font-medium text-foreground">{status.result.date_of_birth}</p>
                     </div>
                   )}
                   {status.result.gender && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Gender</p>
-                      <p className="font-medium">{status.result.gender}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.gender')}</p>
+                      <p className="font-medium text-foreground">{status.result.gender}</p>
                     </div>
                   )}
                   {status.result.issuing_state && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Issuing Country</p>
-                      <p className="font-medium">{status.result.issuing_state}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.issuingCountry')}</p>
+                      <p className="font-medium text-foreground">{status.result.issuing_state}</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Biometric Checks */}
-              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4" /> Biometric Verification
-                </h3>
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/60">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" />{' '}{t('account.biometricVerification')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   {status.result.liveness_score !== undefined && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Liveness Score</p>
-                      <p className="font-medium">{status.result.liveness_score}/100</p>
+                      <p className="text-xs text-muted-foreground">{t('account.livenessScore')}</p>
+                      <p className="font-medium tabular-nums text-foreground">{status.result.liveness_score}/100</p>
                     </div>
                   )}
                   {status.result.liveness_method && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Liveness Method</p>
-                      <p className="font-medium">{status.result.liveness_method}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.livenessMethod')}</p>
+                      <p className="font-medium text-foreground">{status.result.liveness_method}</p>
                     </div>
                   )}
                   {status.result.face_match_similarity !== undefined && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Face Match</p>
-                      <p className="font-medium">{status.result.face_match_similarity}%</p>
+                      <p className="text-xs text-muted-foreground">{t('account.faceMatch')}</p>
+                      <p className="font-medium tabular-nums text-foreground">{status.result.face_match_similarity}%</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Device & IP Info */}
-              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Globe className="h-4 w-4" /> Device & Location
-                </h3>
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/60">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Globe className="h-4 w-4" />{' '}{t('account.deviceAndLocation')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   {status.result.ip_address && (
                     <div>
-                      <p className="text-xs text-muted-foreground">IP Address</p>
+                      <p className="text-xs text-muted-foreground">{t('account.ipAddress')}</p>
                       <p className="font-medium font-mono text-xs">{status.result.ip_address}</p>
                     </div>
                   )}
                   {status.result.ip_city && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="font-medium">{status.result.ip_city}, {status.result.ip_country}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.location')}</p>
+                      <p className="font-medium text-foreground">{status.result.ip_city}, {status.result.ip_country}</p>
                     </div>
                   )}
                   {status.result.device && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Device</p>
-                      <p className="font-medium">{status.result.device}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.device')}</p>
+                      <p className="font-medium text-foreground">{status.result.device}</p>
                     </div>
                   )}
                   {status.result.browser && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Browser</p>
-                      <p className="font-medium">{status.result.browser}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.browser')}</p>
+                      <p className="font-medium text-foreground">{status.result.browser}</p>
                     </div>
                   )}
                   {status.result.vpn_detected !== undefined && (
                     <div>
-                      <p className="text-xs text-muted-foreground">VPN Detected</p>
-                      <p className="font-medium">{status.result.vpn_detected ? 'Yes' : 'No'}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.vpnDetected')}</p>
+                      <p className="font-medium text-foreground">{status.result.vpn_detected ? t('account.yes') : t('account.no')}</p>
                     </div>
                   )}
                 </div>
@@ -347,11 +346,10 @@ export default function IdentityVerificationPage() {
 
               {/* Warnings */}
               {status.result.warnings && status.result.warnings.length > 0 && (
-                <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-amber-600">
-                    <AlertTriangle className="h-4 w-4" /> Warnings
-                  </h3>
-                  <ul className="list-disc pl-4 text-xs text-amber-600 space-y-1">
+                <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/25">
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />{' '}{t('account.warnings')}</h3>
+                  <ul className="list-disc pl-4 text-xs text-amber-700 dark:text-amber-400 space-y-1">
                     {status.result.warnings.map((w, i) => (
                       <li key={i}>{renderWarning(w)}</li>
                     ))}
@@ -364,27 +362,26 @@ export default function IdentityVerificationPage() {
 
               {/* Document Images */}
               {(status.result?.front_image || status.result?.back_image || status.result?.portrait_image) && (
-                <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <FileCheck className="h-4 w-4" /> Submitted Documents
-                  </h3>
+                <div className="mt-4 p-4 rounded-2xl bg-background/60 border border-border/60">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <FileCheck className="h-4 w-4" />{' '}{t('account.submittedDocuments')}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {status.result?.front_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID Front</p>
-                        <img src={status.result?.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{t('account.idFront')}</p>
+                        <img src={status.result?.front_image} alt={t('account.idFront')} className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.back_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID Back</p>
-                        <img src={status.result?.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{t('account.idBack')}</p>
+                        <img src={status.result?.back_image} alt={t('account.idBack')} className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.portrait_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Portrait</p>
-                        <img src={status.result?.portrait_image} alt="Portrait" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{t('account.portrait')}</p>
+                        <img src={status.result?.portrait_image} alt={t('account.portrait')} className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                   </div>
@@ -392,18 +389,15 @@ export default function IdentityVerificationPage() {
               )}
 
           {status.created_at && (
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              Submitted on {formatDate(status.created_at, undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            <p className="text-xs text-muted-foreground text-center mt-4">{t('account.submittedOn')}{' '}{formatDate(status.created_at, undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
 
           <div className="flex items-center justify-center gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={refreshStatus}>
-              <RefreshCcw className="h-4 w-4 mr-1" />Refresh Status
-            </Button>
+              <RefreshCcw className="h-4 w-4 mr-1" />{t('account.refreshStatus')}</Button>
             <Button size="sm" onClick={startVerification}>
-              <RotateCcw className="h-4 w-4 mr-1" />Retake Verification
-            </Button>
+              <RotateCcw className="h-4 w-4 mr-1" />{t('account.retakeVerification')}</Button>
           </div>
         </div>
       </div>
@@ -414,122 +408,119 @@ export default function IdentityVerificationPage() {
   if (status?.verified) {
     return (
       <div className="space-y-6" data-testid="identity-verify-page">
-        <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/5 p-8">
+        <div className="rounded-3xl border border-green-500/30 bg-green-500/5 p-6 sm:p-8">
           <div className="text-center mb-6">
-            <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-3" />
-            <h1 className="text-2xl font-bold text-foreground mb-1">Identity Verified</h1>
-            <p className="text-muted-foreground">Your identity has been verified successfully.</p>
+            <CheckCircle2 className="mx-auto h-12 w-12 text-green-600 dark:text-green-400 mb-3" aria-hidden />
+            <h1 className="text-2xl font-bold text-foreground mb-1">{t('account.identityVerified')}</h1>
+            <p className="text-muted-foreground">{t('account.yourIdentityHasBeenVerifiedSuccessfully')}</p>
           </div>
 
           {/* Verification Details */}
           {status.result && (
             <div className="space-y-4">
               {/* Document Info */}
-              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <FileCheck className="h-4 w-4" /> Document Information
-                </h3>
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/60">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <FileCheck className="h-4 w-4" />{' '}{t('account.documentInformation')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   {status.result.full_name && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Full Name</p>
-                      <p className="font-medium">{status.result.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.fullName')}</p>
+                      <p className="font-medium text-foreground">{status.result.full_name}</p>
                     </div>
                   )}
                   {status.result.document_type && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Document Type</p>
-                      <p className="font-medium">{status.result.document_type}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.documentType')}</p>
+                      <p className="font-medium text-foreground">{status.result.document_type}</p>
                     </div>
                   )}
                   {status.result.document_number && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Document Number</p>
+                      <p className="text-xs text-muted-foreground">{t('account.documentNumber')}</p>
                       <p className="font-medium font-mono text-xs">{status.result.document_number}</p>
                     </div>
                   )}
                   {status.result.date_of_birth && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Date of Birth</p>
-                      <p className="font-medium">{status.result.date_of_birth}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.dateOfBirth')}</p>
+                      <p className="font-medium text-foreground">{status.result.date_of_birth}</p>
                     </div>
                   )}
                   {status.result.gender && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Gender</p>
-                      <p className="font-medium">{status.result.gender}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.gender')}</p>
+                      <p className="font-medium text-foreground">{status.result.gender}</p>
                     </div>
                   )}
                   {status.result.issuing_state && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Issuing Country</p>
-                      <p className="font-medium">{status.result.issuing_state}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.issuingCountry')}</p>
+                      <p className="font-medium text-foreground">{status.result.issuing_state}</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Biometric Checks */}
-              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4" /> Biometric Verification
-                </h3>
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/60">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" />{' '}{t('account.biometricVerification')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   {status.result.liveness_score !== undefined && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Liveness Score</p>
-                      <p className="font-medium">{status.result.liveness_score}/100</p>
+                      <p className="text-xs text-muted-foreground">{t('account.livenessScore')}</p>
+                      <p className="font-medium tabular-nums text-foreground">{status.result.liveness_score}/100</p>
                     </div>
                   )}
                   {status.result.liveness_method && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Liveness Method</p>
-                      <p className="font-medium">{status.result.liveness_method}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.livenessMethod')}</p>
+                      <p className="font-medium text-foreground">{status.result.liveness_method}</p>
                     </div>
                   )}
                   {status.result.face_match_similarity !== undefined && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Face Match</p>
-                      <p className="font-medium">{status.result.face_match_similarity}%</p>
+                      <p className="text-xs text-muted-foreground">{t('account.faceMatch')}</p>
+                      <p className="font-medium tabular-nums text-foreground">{status.result.face_match_similarity}%</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Device & IP Info */}
-              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Globe className="h-4 w-4" /> Device & Location
-                </h3>
+              <div className="p-4 rounded-2xl bg-background/60 border border-border/60">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Globe className="h-4 w-4" />{' '}{t('account.deviceAndLocation')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   {status.result.ip_address && (
                     <div>
-                      <p className="text-xs text-muted-foreground">IP Address</p>
+                      <p className="text-xs text-muted-foreground">{t('account.ipAddress')}</p>
                       <p className="font-medium font-mono text-xs">{status.result.ip_address}</p>
                     </div>
                   )}
                   {status.result.ip_city && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="font-medium">{status.result.ip_city}, {status.result.ip_country}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.location')}</p>
+                      <p className="font-medium text-foreground">{status.result.ip_city}, {status.result.ip_country}</p>
                     </div>
                   )}
                   {status.result.device && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Device</p>
-                      <p className="font-medium">{status.result.device}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.device')}</p>
+                      <p className="font-medium text-foreground">{status.result.device}</p>
                     </div>
                   )}
                   {status.result.browser && (
                     <div>
-                      <p className="text-xs text-muted-foreground">Browser</p>
-                      <p className="font-medium">{status.result.browser}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.browser')}</p>
+                      <p className="font-medium text-foreground">{status.result.browser}</p>
                     </div>
                   )}
                   {status.result.vpn_detected !== undefined && (
                     <div>
-                      <p className="text-xs text-muted-foreground">VPN Detected</p>
-                      <p className="font-medium">{status.result.vpn_detected ? 'Yes' : 'No'}</p>
+                      <p className="text-xs text-muted-foreground">{t('account.vpnDetected')}</p>
+                      <p className="font-medium text-foreground">{status.result.vpn_detected ? t('account.yes') : t('account.no')}</p>
                     </div>
                   )}
                 </div>
@@ -537,11 +528,10 @@ export default function IdentityVerificationPage() {
 
               {/* Warnings */}
               {status.result.warnings && status.result.warnings.length > 0 && (
-                <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
-                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-amber-600">
-                    <AlertTriangle className="h-4 w-4" /> Warnings
-                  </h3>
-                  <ul className="list-disc pl-4 text-xs text-amber-600 space-y-1">
+                <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/25">
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-4 w-4" />{' '}{t('account.warnings')}</h3>
+                  <ul className="list-disc pl-4 text-xs text-amber-700 dark:text-amber-400 space-y-1">
                     {status.result.warnings.map((w, i) => (
                       <li key={i}>{renderWarning(w)}</li>
                     ))}
@@ -552,45 +542,43 @@ export default function IdentityVerificationPage() {
           )}
 
           {status.created_at && (
-            <p className="text-xs text-muted-foreground text-center mt-4">
-
+            <>
               {/* Document Images */}
               {(status.result?.front_image || status.result?.back_image || status.result?.portrait_image) && (
-                <div className="p-4 rounded-lg bg-background/50 border border-border/50">
-                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <FileCheck className="h-4 w-4" /> Submitted Documents
-                  </h3>
+                <div className="mt-4 p-4 rounded-2xl bg-background/60 border border-border/60">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <FileCheck className="h-4 w-4" />{' '}{t('account.submittedDocuments')}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {status.result?.front_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID Front</p>
-                        <img src={status.result?.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{t('account.idFront')}</p>
+                        <img src={status.result?.front_image} alt={t('account.idFront')} className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.back_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID Back</p>
-                        <img src={status.result?.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{t('account.idBack')}</p>
+                        <img src={status.result?.back_image} alt={t('account.idBack')} className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.portrait_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Portrait</p>
-                        <img src={status.result?.portrait_image} alt="Portrait" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">{t('account.portrait')}</p>
+                        <img src={status.result?.portrait_image} alt={t('account.portrait')} className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              Verified on {formatDate(status.created_at, undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
+              <p className="text-xs text-muted-foreground text-center mt-4">{t('account.verifiedOn')}{' '}{formatDate(status.created_at, undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+            </>
           )}
 
           <div className="text-center mt-4">
             <Button variant="outline" size="sm" onClick={refreshStatus}>
-              <RefreshCcw className="h-4 w-4 mr-1" />Refresh Status
-            </Button>
+              <RefreshCcw className="h-4 w-4 mr-1" />{t('account.refreshStatus')}</Button>
           </div>
         </div>
       </div>
@@ -601,82 +589,83 @@ export default function IdentityVerificationPage() {
   return (
     <div className="space-y-6" data-testid="identity-verify-page">
       <div data-tour="identity-verify-header">
-        <h1 className="text-2xl font-bold">Identity Verification</h1>
-        <p className="text-sm text-muted-foreground">
-          Verify your identity to access all platform features. Full KYC via Didit (chosen in SuperAdmin → KYC → Purpose routing).
-        </p>
+        <PageHeader
+          className="mb-0"
+          icon={<ShieldCheck aria-hidden />}
+          title={t('account.identityVerification')}
+          description={t('account.verifyYourIdentityOnceToUnlock8fa')}
+        />
       </div>
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 text-destructive p-3 text-sm flex items-center gap-2">
+        <div role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/10 text-destructive p-3 text-sm flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
       {/* Features */}
-      <Card className="p-6" data-tour="identity-verify-features">
-        <h2 className="text-lg font-semibold mb-4">What's included</h2>
+      <Panel data-tour="identity-verify-features">
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t('account.whatsIncluded')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex items-start gap-3">
             <FileCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium">ID Verification</p>
-              <p className="text-xs text-muted-foreground">Verify any government-issued ID from 220+ countries</p>
+              <p className="text-sm font-medium text-foreground">{t('account.idVerification')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.aPhotoOfYourPassportNationalf24')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium">Liveness Check</p>
-              <p className="text-xs text-muted-foreground">AI-powered passive liveness detection (iBeta certified)</p>
+              <p className="text-sm font-medium text-foreground">{t('account.livenessCheck')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.aShortSelfieCheckThatYou0a3')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <Globe className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium">Face Match</p>
-              <p className="text-xs text-muted-foreground">Compare your selfie with ID photo (handles old photos)</p>
+              <p className="text-sm font-medium text-foreground">{t('account.faceMatch')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.yourSelfieIsComparedWithThe605')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium">IP Analysis</p>
-              <p className="text-xs text-muted-foreground">Detect VPN, proxy, and Tor usage for fraud prevention</p>
+              <p className="text-sm font-medium text-foreground">{t('account.ipAnalysis')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.yourIpAddressApproximateLocationAnddf2')}</p>
             </div>
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {/* How it works */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">How it works</h2>
+      <Panel>
+        <h2 className="text-lg font-semibold text-foreground mb-4">{t('account.howItWorks')}</h2>
         <div className="space-y-3">
           {[
-            { step: 1, title: 'Click "Start Verification"', desc: 'A secure modal opens in your browser' },
-            { step: 2, title: 'Upload your ID', desc: 'Take a photo of your government-issued ID document' },
-            { step: 3, title: 'Take a selfie', desc: 'The system verifies you\'re a real person (passive, no head turns needed)' },
-            { step: 4, title: 'Done!', desc: 'Results are instant — typically under 30 seconds' },
+            { step: 1, title: t('account.selectStartIdentityVerification'), desc: t('account.youAreTakenToOurVerificationfa4') },
+            { step: 2, title: t('account.uploadYourId'), desc: t('account.takeAPhotoOfYourGovernmente59') },
+            { step: 3, title: t('account.takeASelfie'), desc: t('account.theSystemVerifiesYoureARealf84') },
+            { step: 4, title: t('account.done'), desc: t('account.youReturnHereAndSeeYourcc0') },
           ].map((item) => (
             <div key={item.step} className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <span className="text-xs font-semibold text-primary">{item.step}</span>
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <span className="text-xs font-semibold tabular-nums text-primary">{item.step}</span>
               </div>
               <div>
-                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-sm font-medium text-foreground">{item.title}</p>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
               </div>
             </div>
           ))}
         </div>
-      </Card>
+      </Panel>
 
       {/* Privacy note */}
-      <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-        <strong>Privacy:</strong> Your documents are processed securely and encrypted. We don't store raw images — only verification results. Data is retained according to our privacy policy.
-      </div>
+      <div className="rounded-2xl border border-border/70 bg-muted/40 p-4 text-xs text-muted-foreground">
+        <strong className="text-foreground">{t('account.whatWeCollect')}</strong>{' '}{t('account.ourVerificationPartnerDiditProcessesYoura68')}</div>
 
       {/* Start button */}
       <Button
@@ -691,9 +680,7 @@ export default function IdentityVerificationPage() {
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
         ) : (
           <ExternalLink className="h-4 w-4 mr-2" />
-        )}
-        Start Identity Verification
-      </Button>
+        )}{t('account.startIdentityVerification')}</Button>
     </div>
   )
 }

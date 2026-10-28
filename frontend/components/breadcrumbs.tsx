@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -68,6 +69,7 @@ export type BreadcrumbsProps = {
 
 export function Breadcrumbs({ homeHref = '/dashboard', className }: BreadcrumbsProps) {
   const pathname = usePathname()
+  const { t, td } = useT()
   const basePath = pathname.split('?')[0]
 
   const crumbs = useMemo(() => {
@@ -76,23 +78,24 @@ export function Breadcrumbs({ homeHref = '/dashboard', className }: BreadcrumbsP
 
     return segments.map((segment, index) => {
       const href = '/' + segments.slice(0, index + 1).join('/')
-      const label = labelForSegment(segment)
+      const english = labelForSegment(segment)
+      const label = td(`nav.label:${english}`, english)
       const isLast = index === segments.length - 1
       return { href, label, isLast }
     })
-  }, [basePath])
+  }, [basePath, td])
 
   if (crumbs.length === 0) {
     return (
-      <nav aria-label="Breadcrumb" className={cn('flex min-w-0 items-center', className)}>
-        <span className="truncate text-sm font-medium text-foreground">Home</span>
+      <nav aria-label={t('nav.breadcrumb')} className={cn('flex min-w-0 items-center', className)}>
+        <span className="truncate text-sm font-medium text-foreground">{t('nav.home')}</span>
       </nav>
     )
   }
 
   return (
     <nav
-      aria-label="Breadcrumb"
+      aria-label={t('nav.breadcrumb')}
       className={cn(
         'flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto text-sm lg:gap-2',
         className
@@ -101,10 +104,10 @@ export function Breadcrumbs({ homeHref = '/dashboard', className }: BreadcrumbsP
       <Link
         href={homeHref}
         className="flex shrink-0 items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-        title="Home"
+        title={t('nav.home')}
       >
         <Home className="h-4 w-4" />
-        <span className="sr-only">Home</span>
+        <span className="sr-only">{t('nav.home')}</span>
       </Link>
 
       {crumbs.map((crumb) => (

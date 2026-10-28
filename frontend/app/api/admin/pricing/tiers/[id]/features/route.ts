@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { pricingTiers } from '@/lib/db/misc'
 import { getMongoDb } from '@/lib/mongodb'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const doc = { ...body, tier_id: id, id: crypto.randomUUID(), created_at: new Date().toISOString() }
     const db = await getMongoDb()
     await db.collection('tier_features').insertOne(doc as any)
+    await auditAdmin(gate.user, 'admin.pricing_tier.feature_add', 'pricing', `tier/${id}`, undefined, 'warning')
     return NextResponse.json({ data: doc }, { status: 201 })
   } catch (error) {
     console.error('[CodeSpectra] Error creating tier feature:', error)

@@ -3,7 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
-import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
+import { getUserAiCredits, spendAiCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -106,12 +106,12 @@ function validateQuiz(data: Record<string, unknown> | null): QuizQuestion[] | nu
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -120,13 +120,12 @@ export async function POST(req: NextRequest) {
   if (balance < 1) {
     return NextResponse.json({ error: 'Insufficient AI credits' }, { status: 402 })
   }
-  await deductUserAiCredits(user.id, 1)
 
   let body: Req
   try {
     body = (await req.json()) as Req
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const count = Math.max(1, Math.min(10, body.count || 5))
@@ -191,5 +190,9 @@ Make the questions challenging but fair.`
     return NextResponse.json({ error: 'AI returned an invalid response. Please try again.' }, { status: 502 })
   }
 
-  return NextResponse.json({ questions })
+  // Charge only after a usable result (atomic; fails if the balance ran out meanwhile).
+  const spent = await spendAiCredits(user.id, 1)
+  if (!spent.ok) return NextResponse.json({ error: 'Insufficient AI credits' }, { status: 402 })
+
+  return NextResponse.json({ questions, credits_remaining: spent.balance })
 }

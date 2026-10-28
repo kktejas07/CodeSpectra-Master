@@ -17,9 +17,11 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { resumeSeconds, shouldAutoComplete } from '@/lib/courses/watch-progress'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { QuizComponent, type QuizQuestion } from '@/components/courses/QuizComponent'
-import { quizLessonId, parseQuizLessonId, fallbackModuleQuiz } from '@/lib/courses/module-quiz'
+import { QuizComponent, type QuizQuestion, type QuizGradeResult } from '@/components/courses/QuizComponent'
+import { quizLessonId, parseQuizLessonId } from '@/lib/courses/module-quiz'
 import { stripEmbeddedQuizzes, stripQuizSlides } from '@/lib/courses/strip-embedded-quizzes'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Resource {
   title?: string
@@ -76,6 +78,7 @@ function formatDuration(seconds: number): string {
 // Queries the admin jobs endpoint scoped by ?courseId (readable by any
 // authenticated user); degrades to a generic pending note when unreadable.
 function LessonVideoStatus({ courseId, onRetryHint }: { courseId: string; onRetryHint?: string }) {
+  const { t } = useT()
   const [state, setState] = useState<{ loading: boolean; jobs: any[]; unreadable: boolean }>({
     loading: true, jobs: [], unreadable: false,
   })
@@ -93,54 +96,54 @@ function LessonVideoStatus({ courseId, onRetryHint }: { courseId: string; onRetr
   }, [courseId])
 
   const box = (children: React.ReactNode) => (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-6 bg-black text-muted-foreground">
+    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-6 bg-black text-white/70">
       <Play className="h-10 w-10 opacity-40" />
       {children}
     </div>
   )
   if (state.loading) {
-    return box(<p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking video status…</p>)
+    return box(<p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{' '}{t('learning.checkingVideoStatus')}</p>)
   }
   if (state.unreadable) {
-    return box(<p className="text-sm">MP4 not generated yet — the video may still be rendering. Check back soon.</p>)
+    return box(<p className="text-sm">{t('learning.mp4NotGeneratedYetTheVideo353')}</p>)
   }
   const job = state.jobs[0]
   if (!job) {
-    return box(<p className="text-sm">MP4 not generated yet. Ask an admin to generate videos from Course Generator.</p>)
+    return box(<p className="text-sm">{t('learning.mp4NotGeneratedYetAskAn484')}</p>)
   }
   const done = Number(job.completedItems || 0)
   const total = Number(job.totalItems || 0)
   const status = String(job.status || '')
   if (status === 'failed' || Number(job.failedItems || 0) > 0) {
     return box(<>
-      <p className="text-sm text-red-400 font-medium">Video generation failed{(job.error || '') ? `: ${String(job.error).slice(0, 160)}` : total ? ` — ${done}/${total} lessons rendered` : ''}</p>
-      <p className="text-xs opacity-70">Ask an admin to retry from Course Generator{onRetryHint ? ` (${onRetryHint})` : ''}.</p>
+      <p className="text-sm text-red-400 font-medium">{t('learning.videoGenerationFailed')}{(job.error || '') ? `: ${String(job.error).slice(0, 160)}` : total ? t('learning.doneTotalLessonsRendered', { done, total }) : ''}</p>
+      <p className="text-xs opacity-70">{t('learning.askAnAdminToRetryFrom425')}{onRetryHint ? ` (${onRetryHint})` : ''}.</p>
     </>)
   }
   if (status === 'completed') {
     return box(<>
-      <p className="text-sm">Render finished but this lesson has no video — it may have failed individually.</p>
-      <p className="text-xs opacity-70">Ask an admin to retry from Course Generator.</p>
+      <p className="text-sm">{t('learning.renderFinishedButThisLessonHasa48')}</p>
+      <p className="text-xs opacity-70">{t('learning.askAnAdminToRetryFrom677')}</p>
     </>)
   }
   // pending | running
   const queuedMs = Date.now() - Date.parse(String(job.startedAt || '') || String(Date.now()))
   if (status === 'pending' && Number.isFinite(queuedMs) && queuedMs > 10 * 60 * 1000) {
     return box(<>
-      <p className="text-sm text-amber-400 font-medium">Worker may be offline — job queued {Math.round(queuedMs / 60000)} min ago with no progress.</p>
-      <p className="text-xs opacity-70">Ask an admin to check the course worker, then retry from Course Generator.</p>
+      <p className="text-sm text-amber-400 font-medium">{t('learning.workerMayBeOfflineJobQueued4dd', { n: Math.round(queuedMs / 60000) })}</p>
+      <p className="text-xs opacity-70">{t('learning.askAnAdminToCheckThe8e8')}</p>
     </>)
   }
   if (status === 'running' && total > 0) {
     return box(<>
-      <p className="text-sm">Video {Math.min(done + 1, total)} of {total} rendered…</p>
+      <p className="text-sm">{t('learning.videoValueOfTotalRendered', { value: Math.min(done + 1, total), total })}</p>
       <div className="w-48 h-1.5 rounded-full bg-white/10 overflow-hidden">
         <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, Math.round((done / total) * 100))}%` }} />
       </div>
       <p className="text-xs opacity-70">{done}/{total} lessons done — check back soon.</p>
     </>)
   }
-  return box(<p className="text-sm">Video queued — waiting for the course worker… check back soon.</p>)
+  return box(<p className="text-sm">{t('learning.videoQueuedWaitingForTheCoursed67')}</p>)
 }
 
 function resolveMediaUrl(url?: string | null): string | undefined {
@@ -166,6 +169,8 @@ let lessonShellCache: {
 } | null = null
 
 export default function LessonPlayerPage({ params }: { params: Promise<{ id: string, lessonId: string }> }) {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const router = useRouter()
@@ -180,6 +185,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['0']))
   const [viewMode, setViewMode] = useState<'video' | 'text'>('video')
   const [quizScores, setQuizScores] = useState<Record<number, number>>({})
+  // Sections the server counts as passed (includes legacy passes saved without a score).
+  const [passedSections, setPassedSections] = useState<Set<number>>(new Set())
+  const sectionPassed = (i: number) => passedSections.has(i) || (quizScores[i] ?? 0) >= 80
   const [startAt, setStartAt] = useState(() => resumeSeconds(cached?.positions?.[lessonId]))
   const [seekNonce, setSeekNonce] = useState(0)
   const lastPos = useRef(0)
@@ -188,6 +196,12 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const positionsRef = useRef<Record<string, number>>(cached?.positions ?? {})
   const lessonIdRef = useRef(lessonId)
   lessonIdRef.current = lessonId
+  // Completion is decided by the server from recorded activity; these only pace retries.
+  const lastCompleteTry = useRef(0)
+  const readEndReached = useRef(false)
+  const completingRef = useRef(false)
+  const readEndRef = useRef<HTMLDivElement | null>(null)
+  const completeRef = useRef<((id: string, mode: 'watched' | 'read', position?: number) => Promise<boolean>) | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -202,6 +216,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       const done: string[] = completionsData?.completedLessons || []
       setCompletedLessons(new Set(done))
       if (progressData?.quizScores) setQuizScores(progressData.quizScores)
+      if (Array.isArray(progressData?.completedModules)) setPassedSections(new Set((progressData.completedModules as unknown[]).map(Number).filter((n) => Number.isFinite(n))))
       const positions = { ...positionsRef.current, ...(progressData?.lessonPositions || {}) }
       positionsRef.current = positions
       if (courseData.data) {
@@ -219,6 +234,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     lastPos.current = 0
     lastSave.current = 0
+    lastCompleteTry.current = 0
+    readEndReached.current = false
     autoCompleted.current = completedLessons.has(lessonId)
     setStartAt(resumeSeconds(positionsRef.current[lessonId]))
     setViewMode('video')
@@ -262,6 +279,37 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     }
   }, [courseId, lessonId])
 
+  // Reading mode: send an activity heartbeat every 10 s while the tab is visible, and
+  // once the end of the text has been on screen, ask the server to record completion.
+  useEffect(() => {
+    if (viewMode !== 'text' || parseQuizLessonId(lessonId) != null || !course) return
+    let stopped = false
+    const tryComplete = () => {
+      if (!readEndReached.current || Date.now() - lastCompleteTry.current < 10_000) return
+      void completeRef.current?.(lessonId, 'read')
+    }
+    const beat = async () => {
+      if (stopped || document.visibilityState !== 'visible') return
+      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId }),
+      }).catch(() => {})
+      if (!stopped) tryComplete()
+    }
+    void beat()
+    const timer = setInterval(() => { void beat() }, 10_000)
+    let io: IntersectionObserver | null = null
+    const el = readEndRef.current
+    if (el && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting)) { readEndReached.current = true; tryComplete() }
+      })
+      io.observe(el)
+    }
+    return () => { stopped = true; clearInterval(timer); io?.disconnect() }
+  }, [viewMode, courseId, lessonId, course])
+
   if (!course && (loading || !gate.ready)) {
     return (
       <div className="w-full h-screen flex flex-col bg-background">
@@ -285,8 +333,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background gap-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Course not found</h2>
-        <Button onClick={() => router.push('/dashboard/courses')}>Back to Courses</Button>
+        <h2 className="text-xl font-semibold">{tr('learning.courseNotFound')}</h2>
+        <Button onClick={() => router.push('/dashboard/courses')}>{tr('learning.backToCourses')}</Button>
       </div>
     )
   }
@@ -299,11 +347,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const quizSectionIndex = parseQuizLessonId(lessonId)
   const isQuizMode = quizSectionIndex != null
   const quizSection = isQuizMode ? sections[quizSectionIndex] : null
-  const quizQuestions: QuizQuestion[] = quizSection
-    ? (Array.isArray(quizSection.quiz) && quizSection.quiz.length
-        ? quizSection.quiz as QuizQuestion[]
-        : fallbackModuleQuiz(quizSection.title, quizSection.lessons, course.title) as QuizQuestion[])
-    : []
+  // Questions come without answers; the server grades them (quiz-submit).
+  const quizQuestions: QuizQuestion[] = quizSection && Array.isArray(quizSection.quiz) ? quizSection.quiz : []
 
   const allLessons = sections.flatMap(s => s.lessons)
   const activeIndex = allLessons.findIndex(l => l.id === lessonId)
@@ -329,7 +374,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       const sec = sections[sIdx]
       const lastId = sec.lessons[sec.lessons.length - 1]?.id
       if (activeLesson?.id === lastId) {
-        nextLesson = { id: quizLessonId(sIdx), title: "Let's test your understanding!", slug: quizLessonId(sIdx) } as Lesson
+        nextLesson = { id: quizLessonId(sIdx), title: tr('learning.letsTestYourUnderstanding'), slug: quizLessonId(sIdx) } as Lesson
       }
     }
   }
@@ -338,8 +383,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background gap-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Lesson not found</h2>
-        <Button onClick={() => router.push(`/dashboard/courses/${courseId}`)}>Back to Course</Button>
+        <h2 className="text-xl font-semibold">{tr('learning.lessonNotFound')}</h2>
+        <Button onClick={() => router.push(`/dashboard/courses/${courseId}`)}>{tr('learning.backToCourse')}</Button>
       </div>
     )
   }
@@ -351,17 +396,43 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const seekToTime = (sec: number) => { setStartAt(sec); setSeekNonce(n => n + 1) }
 
 
-  const markComplete = (id: string) => {
-    setCompletedLessons(prev => new Set([...prev, id]))
-    csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
+  /** Ask the server to record completion; it checks watch/read time it has recorded itself. */
+  const requestCompletion = async (id: string, mode: 'watched' | 'read', position?: number): Promise<boolean> => {
+    if (completingRef.current || completedLessons.has(id)) return completedLessons.has(id)
+    completingRef.current = true
+    lastCompleteTry.current = Date.now()
+    try {
+      const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId: id, mode, ...(position != null ? { position: Math.floor(position) } : {}) }),
+      })
+      const j = await res.json().catch(() => null)
+      if (!res.ok || !j?.completed) return false
+      setCompletedLessons(prev => new Set([...prev, id]))
+      if (lessonShellCache?.courseId === courseId) {
+        lessonShellCache = { ...lessonShellCache, completions: [...new Set([...lessonShellCache.completions, id])] }
+      }
+      addToast({ title: tr('learning.lessonComplete'), type: 'success' })
+      return true
+    } catch {
+      return false
+    } finally {
+      completingRef.current = false
+    }
+  }
+
+  completeRef.current = requestCompletion
+
+  const gradeQuiz = async (answers: Record<number, number>): Promise<QuizGradeResult> => {
+    const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/quiz-submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lessonId: id }),
-    }).catch(() => {})
-    if (lessonShellCache?.courseId === courseId) {
-      lessonShellCache = { ...lessonShellCache, completions: [...new Set([...lessonShellCache.completions, id])] }
-    }
-    addToast({ title: 'Lesson marked as complete!', type: 'success' })
+      body: JSON.stringify({ sectionIndex: quizSectionIndex, answers }),
+    })
+    const j = await res.json().catch(() => null)
+    if (!res.ok || !j?.success) throw new Error(apiError(j, tr('learning.couldNotCheckYourAnswersTry223')))
+    return { score: j.score, total: j.total, passed: j.passed, results: j.results }
   }
 
   const savePosition = (t: number, duration: number) => {
@@ -378,9 +449,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify({ lessonId, position: pos }),
       }).catch(() => {})
     }
-    if (!autoCompleted.current && shouldAutoComplete(t, duration)) {
-      autoCompleted.current = true
-      markComplete(lessonId)
+    // Near the end: ask the server (it also checks recorded watch time). Retry at most every 15 s.
+    if (!autoCompleted.current && shouldAutoComplete(t, duration) && now - lastCompleteTry.current >= 15_000) {
+      void requestCompletion(lessonId, 'watched', t).then(ok => { if (ok) autoCompleted.current = true })
     }
   }
 
@@ -400,13 +471,13 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       {/* ── Top Navigation Bar ── */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border/40 bg-card shrink-0 shadow-sm z-20 relative">
         <div className="flex items-center gap-4">
-          <Link href={`/dashboard/courses/${courseId}`} className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-5 w-5" />
+          <Link href={`/dashboard/courses/${courseId}`} aria-label={tr('learning.backToCourse')} className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-5 w-5" aria-hidden />
           </Link>
           <div className="hidden sm:block">
             <h1 className="font-semibold text-sm line-clamp-1">{course.title}</h1>
             <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-              <span>{isQuizMode ? (quizSection?.title || "Module quiz") : activeLesson?.title}</span>
+              <span>{isQuizMode ? (quizSection?.title || tr('learning.moduleQuiz')) : activeLesson?.title}</span>
             </p>
           </div>
         </div>
@@ -414,17 +485,14 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
         <div className="flex items-center gap-3">
           {/* Progress / Mark Complete */}
           {isDone ? (
-            <div className="hidden sm:flex items-center gap-2 text-emerald-500 font-medium text-sm px-3 py-1.5 bg-emerald-500/10 rounded-full">
-              <CheckCircle className="h-4 w-4" /> Completed
-            </div>
-          ) : (
-            <Button size="sm" variant="outline" className="hidden sm:flex h-8 text-xs font-medium" onClick={() => markComplete(activeLesson!.id)}>
-              Mark as Complete
-            </Button>
-          )}
+            <div className="hidden sm:flex items-center gap-2 text-green-700 dark:text-green-400 font-medium text-sm px-3 py-1.5 bg-green-500/10 rounded-full">
+              <CheckCircle className="h-4 w-4" />{' '}{tr('learning.completed')}</div>
+          ) : !isQuizMode ? (
+            <p className="hidden sm:block text-xs text-muted-foreground">{tr('learning.watchToTheEndOrReadc10')}</p>
+          ) : null}
 
           {/* Toggle Sidebar on Mobile/Desktop */}
-          <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label={tr('learning.toggleLessonList')} aria-expanded={sidebarOpen}>
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
@@ -432,14 +500,14 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* ── Main Video Area ── */}
-        <main className="flex-1 flex flex-col min-w-0 bg-black/5 dark:bg-black/40">
+        <main className="flex-1 flex flex-col min-w-0 bg-muted/40">
           <div className="flex-1 p-0 sm:p-4 lg:p-6 overflow-y-auto">
             <div className="w-full space-y-6">
               
               {/* Content Header & Toggle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-bold">{isQuizMode ? "Let's test your understanding!" : activeLesson?.title}</h2>
+                  <h2 className="text-2xl font-bold">{isQuizMode ? tr('learning.letsTestYourUnderstanding') : activeLesson?.title}</h2>
                 </div>
                 
                 {(!isQuizMode && activeLesson && (activeLesson?.textContent || activeLesson?.script?.length)) && (
@@ -453,8 +521,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <BookOpen className="w-4 h-4" /> Text Lesson
-                    </button>
+                      <BookOpen className="w-4 h-4" />{' '}{tr('learning.textLesson')}</button>
                     <button
                       onClick={() => setViewMode('video')}
                       className={cn(
@@ -464,8 +531,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <Play className="w-4 h-4" /> Video Lesson
-                    </button>
+                      <Play className="w-4 h-4" />{' '}{tr('learning.videoLesson')}</button>
                   </div>
                 )}
               </div>
@@ -474,17 +540,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
               {isQuizMode ? (
                 <div className="mt-6 rounded-2xl border border-border/40 bg-card p-6 shadow-sm">
                   <div className="mb-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-primary">Module quiz</p>
-                    <h2 className="text-2xl font-bold mt-1">Let&apos;s test your understanding!</h2>
+                    <p className="text-xs font-semibold text-primary">{tr('learning.moduleQuiz')}</p>
+                    <h2 className="text-2xl font-bold mt-1">{tr('learning.letsTestYourUnderstanding')}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {quizSection?.title || 'This module'} — answer to unlock the next module.
-                    </p>
+                      {quizSection?.title || tr('learning.thisModule')}{' '}{tr('learning.answerToUnlockTheNextModule')}</p>
                     {quizSectionIndex != null && quizScores[quizSectionIndex] != null && (
-                      <p className="text-sm text-emerald-600 mt-2">Best score: {quizScores[quizSectionIndex]}%</p>
+                      <p className="text-sm tabular-nums text-green-700 dark:text-green-400 mt-2">{tr('learning.bestScoreValue', { value: quizScores[quizSectionIndex] })}</p>
                     )}
                   </div>
                   {quizQuestions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Quiz questions are not ready yet.</p>
+                    <p className="text-sm text-muted-foreground">{tr('learning.quizQuestionsAreNotReadyYet')}</p>
                   ) : (
                     <QuizComponent
                       questions={quizQuestions}
@@ -504,39 +569,23 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           ? `Review lesson: ${quizSection.lessons[0].title}`
                           : 'Review module lessons'
                       }
-                      onComplete={async (score, total) => {
+                      grade={gradeQuiz}
+                      onComplete={(score, total) => {
                         const pct = Math.round((score / total) * 100)
                         if (quizSectionIndex == null) return
-                        setQuizScores(prev => ({ ...prev, [quizSectionIndex]: pct }))
-                        try {
-                          await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              quizScores: { ...quizScores, [quizSectionIndex]: pct },
-                              ...(pct >= 80
-                                ? { completedModules: Array.from(new Set([
-                                    ...((await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})))?.completedModules || []),
-                                    quizSectionIndex,
-                                  ])) }
-                                : {}),
-                            }),
-                          })
-                        } catch {}
+                        setQuizScores(prev => ({ ...prev, [quizSectionIndex]: Math.max(prev[quizSectionIndex] ?? 0, pct) }))
                         if (pct >= 80) {
-                          addToast({ title: `Passed! ${pct}% — module unlocked`, type: 'success' })
+                          addToast({ title: tr('learning.passedWithPctNextModuleUnlocked', { pct }), type: 'success' })
                           if (quizNextHref) setTimeout(() => router.push(quizNextHref), 800)
                         } else {
-                          addToast({ title: `${pct}% — need 80% to pass. Review and retry.`, type: 'error' })
+                          addToast({ title: tr('learning.pctYouNeed80ToPassa8d', { pct }), type: 'error' })
                         }
                       }}
                     />
                   )}
                   <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
-                    <Button variant="outline" disabled={!quizPrevHref} onClick={() => quizPrevHref && router.push(quizPrevHref)}>Previous</Button>
-                    <Button disabled={!quizNextHref || (quizSectionIndex != null && (quizScores[quizSectionIndex] ?? 0) < 80)} onClick={() => quizNextHref && router.push(quizNextHref)}>
-                      Next Module
-                    </Button>
+                    <Button variant="outline" disabled={!quizPrevHref} onClick={() => quizPrevHref && router.push(quizPrevHref)}>{tr('common.previous')}</Button>
+                    <Button disabled={!quizNextHref || (quizSectionIndex != null && !sectionPassed(quizSectionIndex))} onClick={() => quizNextHref && router.push(quizNextHref)}>{tr('learning.nextModule')}</Button>
                   </div>
                 </div>
               ) : (
@@ -554,7 +603,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         startAt={startAt}
                         captionsSrc={resolveMediaUrl(activeLesson?.captionsUrl)}
                         onProgress={savePosition}
-                        onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
+                        onEnded={() => { if (!isDone) void requestCompletion(activeLesson.id, 'watched', lastPos.current) }}
                         transcriptSlides={activeLesson?.script}
                         lessonDuration={activeLesson?.duration}
                         onSeekTime={seekToTime}
@@ -569,7 +618,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         className="w-full h-full"
                         startAt={startAt}
                         onProgress={savePosition}
-                        onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
+                        onEnded={() => { if (!isDone) void requestCompletion(activeLesson.id, 'watched', lastPos.current) }}
                         transcriptSlides={activeLesson?.script}
                         lessonDuration={activeLesson?.duration}
                         onSeekTime={seekToTime}
@@ -589,6 +638,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           || 'No text content available for this lesson.',
                       )}
                     </ReactMarkdown>
+                    <div ref={readEndRef} aria-hidden className="h-px" />
                   </div>
                 )}
               </div>
@@ -599,7 +649,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                 <div className="mt-6 grid gap-4 lg:grid-cols-2">
                   {(activeLesson.chapters?.length || 0) > 0 && (
                     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
-                      <h3 className="text-sm font-semibold mb-3">Chapters</h3>
+                      <h3 className="text-sm font-semibold mb-3">{tr('learning.chapters')}</h3>
                       <ul className="space-y-1">
                         {(activeLesson.chapters || []).map((ch, i) => {
                           const sec = Number(ch?.startSec)
@@ -630,10 +680,10 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   )}
                   {(activeLesson.takeaways?.length || 0) > 0 && (
                     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
-                      <h3 className="text-sm font-semibold mb-3">Key takeaways</h3>
+                      <h3 className="text-sm font-semibold mb-3">{tr('learning.keyTakeaways')}</h3>
                       <ul className="space-y-2 text-sm text-muted-foreground">
                         {(activeLesson.takeaways || []).filter(Boolean).map((t, i) => (
-                          <li key={i} className="flex gap-2"><CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" /><span>{String(t).slice(0, 500)}</span></li>
+                          <li key={i} className="flex gap-2"><CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-primary" aria-hidden /><span>{String(t).slice(0, 500)}</span></li>
                         ))}
                       </ul>
                     </div>
@@ -641,16 +691,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   {!!activeLesson.quickCheck && (
                     !!((activeLesson.quickCheck.recall || '') || (activeLesson.quickCheck.apply || '') || (activeLesson.quickCheck.stretch || ''))) && (
                     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm lg:col-span-2">
-                      <h3 className="text-sm font-semibold mb-3">Quick check</h3>
+                      <h3 className="text-sm font-semibold mb-3">{tr('learning.quickCheck')}</h3>
                       <div className="grid gap-3 sm:grid-cols-3 text-sm">
                         {(activeLesson.quickCheck.recall || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Recall</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.recall).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">{tr('learning.recall')}</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.recall).slice(0, 500)}</p></div>
                         )}
                         {(activeLesson.quickCheck.apply || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Apply</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.apply).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">{tr('learning.apply')}</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.apply).slice(0, 500)}</p></div>
                         )}
                         {(activeLesson.quickCheck.stretch || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Stretch</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.stretch).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">{tr('learning.stretch')}</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.stretch).slice(0, 500)}</p></div>
                         )}
                       </div>
                     </div>
@@ -660,11 +710,10 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                       <div className="flex items-start gap-3">
                         <Play className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
                         <div className="flex-1">
-                          <h3 className="text-sm font-semibold mb-1">Up next{nextLesson?.title ? `: ${nextLesson.title}` : ''}</h3>
+                          <h3 className="text-sm font-semibold mb-1">{tr('learning.upNext')}{nextLesson?.title ? `: ${nextLesson.title}` : ''}</h3>
                           <p className="text-sm text-muted-foreground">{String(activeLesson.nextTeaser).slice(0, 500)}</p>
                           {nextLessonUrl && (
-                            <Link href={nextLessonUrl} className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-primary hover:underline">
-                              Continue to next lesson <span aria-hidden="true">→</span>
+                            <Link href={nextLessonUrl} className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-primary hover:underline">{tr('learning.continueToNextLesson')}{' '}<span aria-hidden="true">→</span>
                             </Link>
                           )}
                         </div>
@@ -695,18 +744,11 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                       variant="outline" 
                       disabled={!prevLesson}
                       onClick={() => router.push(`/dashboard/courses/${courseId}/lesson/${prevLesson?.id}`)}
-                    >
-                      Previous
-                    </Button>
+                    >{tr('common.previous')}</Button>
                     <Button 
                       disabled={!nextLesson}
-                      onClick={() => {
-                        if (!isDone) markComplete(activeLesson!.id)
-                        router.push(`/dashboard/courses/${courseId}/lesson/${nextLesson?.id}`)
-                      }}
-                    >
-                      {isDone ? 'Next Lesson' : 'Complete & Continue'}
-                    </Button>
+                      onClick={() => router.push(`/dashboard/courses/${courseId}/lesson/${nextLesson?.id}`)}
+                    >{tr('learning.nextLesson')}</Button>
                   </div>
                 </div>
               </div>
@@ -721,7 +763,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}>
           <div className="px-5 py-4 border-b border-border/40 shrink-0 bg-muted/20 flex items-center justify-between">
-            <h3 className="font-semibold">Course Content</h3>
+            <h3 className="text-base font-semibold">{tr('learning.courseContent')}</h3>
             <span className="text-xs text-muted-foreground font-medium bg-background px-2 py-1 rounded-md border border-border/50">
               {completedLessons.size} / {allLessons.length}
             </span>
@@ -737,12 +779,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                     className="w-full flex items-center justify-between px-5 py-3.5 bg-card hover:bg-muted/30 transition-colors text-left"
                   >
                     <div>
-                      <p className="font-medium text-sm text-foreground/90 leading-tight">
-                        Section {sIdx + 1}: {section.title}
+                      <p className="font-medium text-sm text-foreground/90 leading-tight">{tr('learning.section')}{' '}{sIdx + 1}: {section.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {section.lessons.length} lessons
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{tr('learning.countLessons', { count: section.lessons.length })}</p>
                     </div>
                     {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
                   </button>
@@ -768,7 +807,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                             <div className={cn(
                               "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
                               isCompleted 
-                                ? "bg-emerald-500 border-emerald-500 text-white" 
+                                ? "bg-green-600 border-green-600 text-white" 
                                 : isActive 
                                   ? "border-primary bg-primary/20 text-primary"
                                   : "border-muted-foreground/30 text-transparent"
@@ -787,7 +826,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                               <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground font-medium">
                                 <span className="flex items-center gap-1">
                                   {lesson.type === 'video' || lesson.videoType ? <Play className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
-                                  {lesson.videoType === 'ai' ? 'AI Video' : lesson.type === 'video' ? 'Video' : 'Article'}
+                                  {lesson.videoType === 'ai' ? tr('learning.aiVideo') : lesson.type === 'video' ? tr('learning.video') : tr('learning.article')}
                                 </span>
                                 {lesson.duration && (
                                   <>
@@ -810,18 +849,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         {isQuizMode && quizSectionIndex === sIdx && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                         <div className={cn(
                           "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center",
-                          quizScores[sIdx] != null && quizScores[sIdx] >= 80
-                            ? "bg-emerald-500 border-emerald-500 text-white"
-                            : "border-violet-500/50 text-violet-500"
+                          sectionPassed(sIdx)
+                            ? "bg-green-600 border-green-600 text-white"
+                            : "border-primary/50 text-primary"
                         )}>
-                          {quizScores[sIdx] != null && quizScores[sIdx] >= 80 ? <CheckCircle className="h-3 w-3" /> : <Puzzle className="h-2.5 w-2.5" />}
+                          {sectionPassed(sIdx) ? <CheckCircle className="h-3 w-3" /> : <Puzzle className="h-2.5 w-2.5" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={cn("text-sm leading-snug", isQuizMode && quizSectionIndex === sIdx ? "font-semibold text-primary" : "text-foreground/80 font-medium")}>
-                            Let&apos;s test your understanding!
-                          </p>
+                          <p className={cn("text-sm leading-snug", isQuizMode && quizSectionIndex === sIdx ? "font-semibold text-primary" : "text-foreground/80 font-medium")}>{tr('learning.letsTestYourUnderstanding')}</p>
                           <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground font-medium">
-                            <span>Quiz · ~1 min</span>
+                            <span>{tr('learning.quiz1Min')}</span>
                             {quizScores[sIdx] != null && <span>· {quizScores[sIdx]}%</span>}
                           </div>
                         </div>

@@ -1,75 +1,15 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, isAdminCaller, isSuperAdminCaller } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { getGeneralSettings } from '@/lib/platform-general-settings-server'
-import { backendComplete } from '@/lib/ai/backend'
-import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
-import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
-import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
-import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
-import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
+import { knowledgeOnTestChange } from '@/lib/rag/hooks'
+import { isExamStaff } from '@/lib/exam-access'
+import { createExam, updateExam } from '@/lib/services/exams'
+import { errorBody } from '@/lib/services/result'
+import { revokeExamCertificates } from '@/lib/db/certifications'
+import { writeAuditLog, auditLogAction } from '@/lib/db/misc'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
-
-interface QuestionDoc {
-  id: string
-  type: QuestionType
-  title: string
-  prompt: string
-  options?: string[]
-  answer?: string
-  score: number
-  test_cases?: { input: string; output: string }[]
-  tolerance?: number
-  pairs?: { left: string; right: string }[]
-  matrix?: { rows: string[]; columns: string[] }
-  table?: { columns: string[]; rows: string[] }
-  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
-  image_url?: string
-  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
-  language?: string
-  starter_code?: string
-}
-
-const CODE_BLOCK_RE = /```(?:json)?\s*([\s\S]*?)```/
-
-function tryParseJsonArray(s: string): unknown[] | null {
-  const trimmed = s.trim()
-  try {
-    const parsed = JSON.parse(trimmed)
-    if (Array.isArray(parsed)) return parsed
-    if (parsed && typeof parsed === 'object') {
-      for (const key of ['questions', 'data', 'items', 'results']) {
-        if (Array.isArray(parsed[key])) return parsed[key]
-      }
-    }
-  } catch { /* ignore */ }
-  const match = trimmed.match(CODE_BLOCK_RE)
-  if (match) {
-    try {
-      const inner = JSON.parse(match[1].trim())
-      if (Array.isArray(inner)) return inner
-    } catch { /* ignore */ }
-  }
-  const arrMatch = trimmed.match(/\[[\s\S]*?\]/)
-  if (arrMatch) {
-    try {
-      const inner = JSON.parse(arrMatch[0])
-      if (Array.isArray(inner)) return inner
-    } catch { /* ignore */ }
-  }
-  return null
-}
-
-const VALID_TYPES: QuestionType[] = BANK_QUESTION_TYPES
-
-function normalizeQuestion(raw: Record<string, unknown>): QuestionDoc {
-  // Injection-safe passthrough (see lib/grading.ts sanitizeExamQuestion): keeps
-  // known scalars + structured fields (pairs/matrix/table/regions/tolerance),
-  // drops operator keys and blobs. Override id + canonicalize type after.
-  const clean = sanitizeExamQuestion(raw)
-  return { ...clean, id: crypto.randomUUID(), type: canonicalType(clean.type, 'mcq') } as unknown as QuestionDoc
-}
 
 export async function GET() {
   const gate = await requireAuth()
@@ -84,9 +24,9 @@ export async function GET() {
 
     // Non-admin users see open exams + exams they were invited to or have submitted
     let filter: Record<string, unknown> = {}
-    if (gate.user.role === 'superadmin') {
+    if (isSuperAdminCaller(gate.user)) {
       filter = {}
-    } else if (gate.user.role === 'tenant_admin') {
+    } else if (gate.user.role === 'tenant_admin' && isAdminCaller(gate.user)) { // SEC-029
       // Tenant admins only see exams created within their organization
       filter = gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null }
     } else {
@@ -160,7 +100,7 @@ export async function GET() {
         : 0
 
       const isReleased = userSub?.score_released === true
-      const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
+      const isAdmin = isAdminCaller(gate.user)
       // Non-admins must never receive answer keys via the list endpoint.
       // ponytail: the old destructure (`...safeExam`) dropped questionList
       // in BOTH branches, so the admin edit page always saw Questions (0).
@@ -181,7 +121,7 @@ export async function GET() {
 
     return NextResponse.json({ data: examsList })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to fetch exams'
+    const msg = 'Failed to fetch exams'
     console.error('[CodeSpectra] GET /api/exams error:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -191,162 +131,15 @@ export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isAdminCaller(user)) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const body = await request.json()
-    const db = await getMongoDb()
-    const now = new Date().toISOString()
-    const numQuestions = body.questions || 5
-    const stacks = body.techStack || ['General']
-    const degreeType = String(body.degree_type || '').toLowerCase() || undefined
-    const branch = String(body.branch || '').toLowerCase() || undefined
-    const screeningType = ['aptitude', 'technical', 'coding', 'mixed'].includes(String(body.screening_type))
-      ? String(body.screening_type)
-      : 'mixed'
-    // Types the AI generator can author reliably (hotspot needs an image URL
-    // and Likert/rating are unscored — admins author those directly).
-    const typePoolByScreening: Record<string, QuestionType[]> = {
-      aptitude: ['mcq', 'true_false', 'yes_no', 'multiple_response', 'numeric', 'short_answer', 'ordering'],
-      technical: ['mcq', 'multiple_response', 'true_false', 'fill_blanks', 'numeric', 'short_answer', 'matching', 'matrix', 'table_fill'],
-      coding: ['coding', 'debugging', 'code_completion', 'output_prediction', 'code_review', 'sql', 'mcq'],
-      mixed: ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'numeric', 'short_answer', 'ordering', 'ranking', 'matching', 'matrix', 'table_fill', 'coding', 'debugging', 'code_completion', 'output_prediction', 'code_review', 'sql', 'refactoring', 'test_case_writing', 'descriptive'],
-    }
-    const allowedTypes = typePoolByScreening[screeningType]
-    let questionList: QuestionDoc[] = []
-
-    // 1) Prefer auto-picking from the question bank (branch/degree aware).
-    if (numQuestions > 0 && body.auto_pick !== false) {
-      try {
-        const picked = await sampleFromBank({
-          branch,
-          degree_type: degreeType,
-          types: allowedTypes,
-          count: numQuestions,
-        })
-        questionList = picked.map((b) => bankToExamQuestion(b) as unknown as QuestionDoc)
-      } catch (e) {
-        console.error('[exams] bank auto-pick failed:', e)
-      }
-    }
-
-    // 2) Top up any shortfall with AI generation.
-    const remaining = numQuestions - questionList.length
-    if (remaining > 0) {
-      try {
-        const typesStr = allowedTypes.join('|')
-        const topicsList = stacks.join(', ')
-        const aiPrompt = 'Generate a ' + body.level + ' level assessment for: ' + (body.subject || 'General') + '.\n' +
-          'Topics/skills to assess: ' + topicsList + '.\n' +
-          'Duration: ' + (body.duration || 60) + ' minutes.\n' +
-          'Number of questions: ' + remaining + '.\n\n' +
-          'REQUIREMENTS:\n' +
-          '- Each question must test a DIFFERENT specific concept or skill\n' +
-          '- Questions must be realistic, practical, and job-relevant — like a real screening test\n' +
-          '- Write clear, specific questions with well-crafted wrong options that seem plausible (good distractors)\n' +
-          '- Include a mix of conceptual, practical, scenario-based, and coding questions\n' +
-          '- Coding questions should describe a real task with expected output or behavior\n' +
-          'TYPE RULES:\n' + buildTypeInstructions(allowedTypes) + '\n' +
-          buildExtraFieldHint(allowedTypes) + '\n\n' +
-          'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number' + (allowedTypes.includes('coding') ? ', test_cases?:[{input:string, output:string}] (coding only)' : '') + '}.\n' +
-          'Never repeat content. Return exactly ' + remaining + ' items.'
-        const aiRes = await backendComplete({
-          systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
-          userMessage: aiPrompt,
-          responseFormat: 'json',
-          ...(await platformModelOverrides()),
-        })
-        const rawJson = aiRes.ok ? (aiRes.json || (aiRes.text ? tryParseJsonArray(aiRes.text) : null)) : null
-        if (rawJson && Array.isArray(rawJson) && rawJson.length > 0) {
-          const aiQuestions = (rawJson as Array<Record<string, unknown>>).map((q: Record<string, unknown>) => normalizeQuestion(q as Record<string, unknown>))
-          questionList = [...questionList, ...aiQuestions].slice(0, numQuestions)
-        }
-      } catch {
-        // AI fallback
-      }
-    }
-
-    if (questionList.length === 0 && numQuestions > 0) {
-      // Last-resort template questions. Only types this template can build
-      // correctly are eligible; anything else would emit a malformed doc.
-      const buildable = ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'coding', 'descriptive'] as const
-      const filtered = allowedTypes.filter((t) => (buildable as readonly string[]).includes(t))
-      const typesPool: QuestionType[] = filtered.length ? filtered : ['mcq']
-      for (let i = 0; i < numQuestions; i++) {
-        const stack = stacks[i % stacks.length]
-        const type = typesPool[i % typesPool.length]
-        const sub = ['Fundamentals', 'Best Practices', 'Problem Solving', 'Debugging', 'Architecture', 'Performance'][i % 6]
-        const q: QuestionDoc = {
-          id: crypto.randomUUID(),
-          type,
-          title: `${stack} ${sub}: Question ${i + 1}`,
-          prompt: '',
-          score: 10,
-        }
-        if (type === 'coding') {
-          q.prompt = `Write a ${stack} function that demonstrates ${sub.toLowerCase()} at a ${body.level || 'Beginner'} level. Include input validation, edge cases, and follow best practices.`
-        } else if (type === 'yes_no') {
-          q.prompt = `In ${stack}, does ${sub.toLowerCase()} warrant extra attention at a ${body.level || 'Beginner'} level?`
-          q.options = ['Yes', 'No']
-          q.answer = 'Yes'
-        } else if (type === 'true_false') {
-          q.prompt = `In ${stack}, ${sub.toLowerCase()} is an important concept that every ${body.level || 'Beginner'} should know. Determine if the following statement is true or false.`
-          q.options = ['True', 'False']
-          q.answer = 'True'
-        } else if (type === 'multiple_response') {
-          q.prompt = `Which of the following are valid approaches for ${sub.toLowerCase()} in ${stack}? (Select all that apply)`
-          q.options = [`Standard ${stack} approach`, `Alternative valid method`, `Common best practice`, `This is incorrect for ${stack}`, `Outdated technique`]
-          q.answer = `Standard ${stack} approach, Alternative valid method, Common best practice`
-        } else if (type === 'descriptive') {
-          q.prompt = `Explain the concept of ${sub.toLowerCase()} in the context of ${stack}. Describe best practices, common pitfalls, and provide a real-world example.`
-        } else if (type === 'fill_blanks') {
-          q.prompt = `In ${stack}, the process of ${sub.toLowerCase()} involves using ___ to ensure quality and ___ for maintainability.`
-          q.options = [`testing`, `standards`, `automation`, `documentation`, `reviews`]
-          q.answer = 'testing, documentation'
-        } else {
-          q.prompt = `Which of the following best describes ${sub.toLowerCase()} in ${stack}?`
-          q.options = [
-            `The standard approach for ${sub.toLowerCase()} in ${stack}`,
-            `An outdated pattern no longer recommended`,
-            `A technique used only in legacy systems`,
-            `A concept unrelated to ${stack}`,
-          ]
-          q.answer = `The standard approach for ${sub.toLowerCase()} in ${stack}`
-        }
-        questionList.push(q)
-      }
-    }
-
-    const doc = {
-      id: crypto.randomUUID(),
-      title: body.title,
-      subject: body.subject || '',
-      level: body.level || 'Beginner',
-      degree_type: degreeType,
-      branch,
-      screening_type: screeningType,
-      techStack: stacks,
-      duration: body.duration || 60,
-      starts_at: body.starts_at || null,
-      ends_at: body.ends_at || null,
-      require_token_links: body.require_token_links === true,
-      require_id_verification: body.require_id_verification === false ? false : true,
-      require_face_capture: body.require_face_capture === false ? false : true,
-      questions: numQuestions,
-      questionList,
-      access_type: body.access_type || 'invite_only',
-      published: body.published ?? false,
-      cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
-      attempts: 0,
-      avgScore: 0,
-      created_by: user.id,
-      tenant_id: user.tenantId || null,
-      createdAt: now,
-      updatedAt: now,
-    }
-    await db.collection('exams').insertOne(doc)
-    return NextResponse.json(doc, { status: 201 })
+    // Business logic (plan limit, bank pick + AI top-up, tenant) lives in lib/services/exams.
+    const r = await createExam(user, body)
+    if (!r.ok) return NextResponse.json(errorBody(r), { status: r.status })
+    return NextResponse.json(r.data, { status: r.status })
   } catch (e) {
     console.error('[exams] POST error:', e)
     return NextResponse.json({ error: 'Failed to create' }, { status: 500 })
@@ -357,47 +150,87 @@ export async function PATCH(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isAdminCaller(user)) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const body = await request.json()
-    const { id, ...updates } = body
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-    const db = await getMongoDb()
-    if (user.role === 'tenant_admin' && user.tenantId) {
-      const exam = await db.collection('exams').findOne({ id })
-      if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-    // Harden the generic passthrough (see lib/grading.ts sanitizeExamQuestionList):
-    // a crafted PATCH must not smuggle operator keys or blobs into the exam doc.
-    if (Array.isArray(updates.questionList)) {
-      updates.questionList = sanitizeExamQuestionList(updates.questionList)
-    }
-    await db.collection('exams').updateOne({ id }, { $set: { ...updates, updatedAt: new Date().toISOString() } })
+    const id = typeof body?.id === 'string' ? body.id : ''
+    const r = await updateExam(user, id, body)
+    if (!r.ok) return NextResponse.json(errorBody(r), { status: r.status })
     return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function DELETE(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isAdminCaller(user)) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
     const db = await getMongoDb()
-    if (user.role === 'tenant_admin' && user.tenantId) {
-      const exam = await db.collection('exams').findOne({ id })
-      if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const exam = await db.collection('exams').findOne({ id })
+    if (!exam) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
+    // Tenant-scoped: superadmin, or a tenant_admin of this exam's tenant (a
+    // missing tenantId never matches).
+    if (!isExamStaff(user, exam)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+
+    // No soft-delete pattern exists for exams, so delete the dependents in the
+    // same handler — before the exam itself, so a failure part-way leaves the
+    // exam in place and the delete can simply be retried.
+    const examUrl = new RegExp(`/assessment/${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[/?#]|$)`)
+    const examFilter = { exam_id: id }
+    const removed: Record<string, number> = {}
+
+    // Certificates outlive the exam as records, but must stop verifying as
+    // valid: revoke them (the public verify page then shows "Revoked on …").
+    // First, so a failure leaves everything in place for a retry.
+    const subIds = (await db.collection('exam_submissions')
+      .find(examFilter, { projection: { _id: 0, id: 1 } }).toArray()).map((s) => String(s.id))
+    const archivedIds = (await db.collection('exam_submission_attempts')
+      .find(examFilter, { projection: { _id: 0, id: 1 } }).toArray()).map((s) => String(s.id))
+    const revoked = await revokeExamCertificates(id, [...subIds, ...archivedIds], user.id, 'Test deleted')
+    removed.certificates_revoked = revoked
+    if (revoked > 0) {
+      await writeAuditLog({
+        ...auditLogAction('certificate.revoke', 'success', user.id, clientLimiterKeyFromRequest(request, null), `exam/${id}`, 'certificate', 'warning', `Test deleted: ${revoked} certificate(s) revoked`),
+        tenant_id: user.role === 'tenant_admin' ? user.tenantId ?? null : null,
+      })
     }
+
+    const del = async (col: string, filter: Record<string, unknown>) => {
+      removed[col] = (await db.collection(col).deleteMany(filter)).deletedCount
+    }
+    await del('exam_submissions', examFilter)
+    await del('exam_submission_attempts', examFilter)
+    // Uploaded answer / CAD files in the private bucket go with their records.
+    const { deleteBlobsFor } = await import('@/lib/storage/blobs')
+    const blobFailures = await deleteBlobsFor(db.collection('exam_submission_files'), examFilter)
+    if (blobFailures) removed.file_objects_failed = blobFailures
+    await del('exam_submission_files', examFilter)
+    await del('exam_drafts', examFilter)
+    await del('exam_identity_checks', examFilter)
+    await del('assessment_link_usage', examFilter)
+    await del('assessment_links', examFilter)
+    await del('proctor_events', { session_kind: 'exam', session_id: id })
+    // Invites for this exam only. Multi-step invites that also point at other
+    // assessments keep those steps; only this exam's step is pulled.
+    await del('candidate_invites', { $or: [{ exam_id: id }, { target_url: examUrl }] })
+    await db.collection('candidate_invites').updateMany(
+      { 'assigned_assessments.target_url': examUrl },
+      { $pull: { assigned_assessments: { target_url: examUrl } } } as never,
+    )
     await db.collection('exams').deleteOne({ id })
-    return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+    knowledgeOnTestChange(id, exam.tenant_id)
+    console.info(`[exams] DELETE ${id} by ${user.id}: removed`, removed)
+    return NextResponse.json({ ok: true, removed })
+  } catch (e) {
+    console.error('[exams] DELETE error:', e)
+    return NextResponse.json({ error: 'Failed to delete assessment' }, { status: 500 })
+  }
 }

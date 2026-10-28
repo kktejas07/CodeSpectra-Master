@@ -11,6 +11,8 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { MessageSquareWarning, HelpCircle, Send, MessageSquare, Loader2, Inbox } from 'lucide-react'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { CheckCircle2, Bug } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Feedback {
@@ -119,7 +121,7 @@ export default function AdminFeedbackPage() {
   }, [replyText, addToast])
 
   const handleDelete = useCallback(async (ids: string[]) => {
-    const ok = await confirm({ title: 'Delete Feedback?', description: `Delete ${ids.length} item(s)?`, confirmText: 'Delete', destructive: true })
+    const ok = await confirm({ title: 'Delete feedback?', description: `Delete ${ids.length} item(s)?`, confirmText: 'Delete', destructive: true })
     if (!ok) return
     let successCount = 0
     for (const id of ids) {
@@ -134,7 +136,7 @@ export default function AdminFeedbackPage() {
   const columns: DataTableColumn<Feedback>[] = useMemo(() => [
     {
       key: 'type', header: 'Type', sortable: true,
-      cell: (item) => <Badge variant={item.type === 'bug' ? 'destructive' : item.type === 'complaint' ? 'secondary' : 'default'} className="capitalize text-[10px]">{item.type}</Badge>
+      cell: (item) => <Badge variant={item.type === 'bug' ? 'destructive' : item.type === 'complaint' ? 'secondary' : 'default'} className="capitalize text-[11px]">{item.type}</Badge>
     },
     {
       key: 'content', header: 'Content',
@@ -143,7 +145,8 @@ export default function AdminFeedbackPage() {
           <div className="max-w-xs truncate text-sm flex-1" title={displayContent(item.content)}>{displayContent(item.content)}</div>
           <button
             onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === item._id ? null : item._id); setReplyText('') }}
-            className="text-xs text-primary hover:underline shrink-0"
+            className="shrink-0 rounded text-xs font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+            aria-expanded={expandedId === item._id}
           >
             {expandedId === item._id ? 'Close' : 'View'}
           </button>
@@ -165,14 +168,15 @@ export default function AdminFeedbackPage() {
       key: 'source', header: 'Source', sortable: true,
       cell: (item) => (
         item.source
-          ? <Badge variant="outline" className="text-[10px] capitalize">{item.source}</Badge>
+          ? <Badge variant="outline" className="text-[11px] capitalize">{item.source}</Badge>
           : <span className="text-[11px] text-muted-foreground">—</span>
       )
     },
     {
       key: 'status', header: 'Status', sortable: true,
       cell: (item) => (
-        <Badge variant={item.status === 'open' ? 'outline' : 'secondary'} className="capitalize text-[10px] cursor-pointer"
+        <Badge variant={item.status === 'open' ? 'outline' : 'secondary'} className="capitalize text-[11px] cursor-pointer"
+          title="Click to toggle open / resolved"
           onClick={(e) => { e.stopPropagation(); void handleUpdateStatus(item._id, item.status === 'open' ? 'resolved' : 'open') }}>
           {item.status}
         </Badge>
@@ -185,8 +189,8 @@ export default function AdminFeedbackPage() {
   ], [handleUpdateStatus])
 
   const bulkActions: BulkAction[] = useMemo(() => [
-    { label: 'Mark Resolved', onClick: async (ids) => { for (const id of ids) await handleUpdateStatus(id, 'resolved') },
-      icon: <Badge variant="secondary" className="h-4 w-4 p-0 mr-1 flex items-center justify-center rounded-full">✓</Badge> },
+    { label: 'Mark resolved', onClick: async (ids) => { for (const id of ids) await handleUpdateStatus(id, 'resolved') },
+      icon: <CheckCircle2 className="mr-1 h-3.5 w-3.5" aria-hidden /> },
     { label: 'Delete', onClick: (ids) => handleDelete(ids), destructive: true },
   ], [handleUpdateStatus, handleDelete])
 
@@ -196,38 +200,43 @@ export default function AdminFeedbackPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <MessageSquareWarning className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="flex items-center gap-1.5 text-3xl font-bold text-foreground">
-              Feedback & Reports
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p className="text-xs max-w-62.5">View and manage user feedback. Click a row to expand and reply.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </h1>
-            <p className="text-sm text-muted-foreground">Monitor platform issues reported by users</p>
-          </div>
+      <PageHeader
+        illustration="inbox"
+        title={
+          <>
+            Feedback and reports
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label="About feedback" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-62.5">View and manage user feedback. Click View on a row to read it in full and reply.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        }
+        description="Bugs, complaints and suggestions people have sent in. Reply to close the loop."
+        icon={<MessageSquareWarning />}
+      />
+
+      {!loadError && !loading && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="Open" value={data.filter((f) => f.status === 'open').length} icon={<Inbox />} />
+          <StatCard label="Resolved" value={data.filter((f) => f.status === 'resolved').length} icon={<CheckCircle2 />} />
+          <StatCard label="Bug reports" value={data.filter((f) => f.type === 'bug').length} icon={<Bug />} />
         </div>
-      </div>
+      )}
 
       {/* Error state */}
       {loadError && !loading && (
-        <div className="rounded-xl border border-border/60 bg-card/50 p-8 text-center">
-          <Inbox className="h-10 w-10 mb-3 text-muted-foreground" />
-          <p className="text-sm font-medium text-muted-foreground">No feedback data available</p>
-          <p className="text-xs text-muted-foreground mt-1">The feedback collection may not exist yet. Try again later.</p>
+        <Panel className="flex flex-col items-center p-8 text-center">
+          <Inbox className="mb-3 h-10 w-10 text-muted-foreground" aria-hidden />
+          <p className="text-sm font-medium text-foreground">Feedback couldn&apos;t be loaded</p>
+          <p className="mt-1 text-xs text-muted-foreground">If nobody has sent feedback yet there may be nothing to show. Try again in a moment.</p>
           <Button variant="outline" size="sm" className="mt-4" onClick={() => void fetchData()}>Retry</Button>
-        </div>
+        </Panel>
       )}
 
       {/* Table — no Card wrapper needed */}
@@ -239,19 +248,19 @@ export default function AdminFeedbackPage() {
             bulkActions={bulkActions}
             searchPlaceholder="Search feedback, reporter, source..."
             searchKeys={['content', 'user_name', 'user_email', 'source', 'type', 'status']}
-            emptyMessage="No feedback reports found."
+            emptyState={{ illustration: 'inbox' }} emptyMessage="No feedback yet. Reports people send from the app will appear here."
             loading={loading}
           />
 
           {/* Expanded detail panel */}
           {expandedFeedback && (
-            <div className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
+            <Panel className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Feedback Detail</h3>
+                <h3 className="text-base font-semibold text-foreground">Feedback detail</h3>
                 <Button variant="ghost" size="sm" onClick={() => { setExpandedId(null); setReplyText('') }}>Close</Button>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Full Content</p>
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">Full message</p>
                 <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{displayContent(expandedFeedback.content)}</p>
                 {(expandedFeedback.entityType || expandedFeedback.entityTitle) && (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -280,10 +289,10 @@ export default function AdminFeedbackPage() {
                 </div>
               </div>
               {expandedFeedback.admin_reply ? (
-                <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <MessageSquare className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-semibold text-primary">Admin Response</span>
+                    <span className="text-xs font-semibold text-primary">Admin reply</span>
                     {expandedFeedback.replied_at && (
                       <span className="text-[10px] text-muted-foreground">{formatDateTime(expandedFeedback.replied_at)}</span>
                     )}
@@ -296,18 +305,19 @@ export default function AdminFeedbackPage() {
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder="Write your response..."
-                    className="w-full min-h-[80px] rounded-lg border border-border bg-background p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                    aria-label="Reply to this feedback"
+                    className="w-full min-h-[80px] resize-none rounded-xl border border-input bg-background p-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                   <div className="flex gap-2">
                     <Button size="sm" disabled={replying || !replyText.trim()} onClick={() => void handleReply(expandedFeedback._id)}>
                       {replying ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
-                      Send Reply
+                      Send reply
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setExpandedId(null); setReplyText('') }}>Cancel</Button>
                   </div>
                 </div>
               )}
-            </div>
+            </Panel>
           )}
         </div>
       )}

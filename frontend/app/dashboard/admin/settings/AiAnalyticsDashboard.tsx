@@ -39,14 +39,17 @@ export function AiAnalyticsDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'models' | 'providers'>('overview')
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = async () => {
     try {
       const res = await fetch('/api/admin/platform/ai-usage', { credentials: 'include' })
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || `Couldn't load AI usage (HTTP ${res.status}).`)
       if (json.summary) setData(json)
+      setError(null)
     } catch (e) {
-      console.error('Failed to fetch AI usage data:', e)
+      setError(e instanceof Error ? e.message : "Couldn't load AI usage.")
     }
   }
 
@@ -62,23 +65,34 @@ export function AiAnalyticsDashboard() {
 
   if (loading) {
     return (
-      <Card className="rounded-xl border-border/60 p-6 flex items-center justify-center min-h-[300px]">
+      <Card className="rounded-3xl border-border/70 p-6 flex items-center justify-center min-h-[300px]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </Card>
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    if (!error) return null
+    return (
+      <Card role="alert" className="rounded-3xl border-border/70 p-6 mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-destructive">{error}</p>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
+          Try again
+        </Button>
+      </Card>
+    )
+  }
 
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16']
+  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-4))', 'hsl(var(--chart-3))', 'hsl(var(--chart-5))', '#f97316', 'hsl(var(--muted-foreground))']
 
   return (
-    <Card className="rounded-xl border-border/60 p-6 mt-6">
-      <div className="flex items-center justify-between mb-6">
+    <Card className="rounded-3xl border-border/70 p-6 mt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-foreground">AI Usage Analytics</h3>
-          <Badge variant="secondary" className="text-[10px]">30 Days</Badge>
+          <h3 className="font-semibold text-foreground">AI usage</h3>
+          <Badge variant="secondary" className="text-[10px]">Last 30 days</Badge>
         </div>
         <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
           <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
@@ -88,33 +102,33 @@ export function AiAnalyticsDashboard() {
       
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="p-4 rounded-lg bg-card/40 border border-border/50">
-          <p className="text-xs text-muted-foreground mb-1">Total Tokens</p>
-          <p className="text-2xl font-bold">{data.summary.totalTokens.toLocaleString()}</p>
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/60">
+          <p className="text-xs text-muted-foreground mb-1">Total tokens</p>
+          <p className="text-2xl font-bold tabular-nums">{data.summary.totalTokens.toLocaleString()}</p>
         </div>
-        <div className="p-4 rounded-lg bg-card/40 border border-border/50">
-          <p className="text-xs text-muted-foreground mb-1">Est. Cost</p>
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/60">
+          <p className="text-xs text-muted-foreground mb-1">Estimated cost</p>
           <div className="flex items-center gap-1">
-            <DollarSign className="h-4 w-4 text-emerald-500" />
-            <p className="text-2xl font-bold">{data.summary.totalCost.toFixed(4)}</p>
+            <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <p className="text-2xl font-bold tabular-nums">{data.summary.totalCost.toFixed(4)}</p>
           </div>
         </div>
-        <div className="p-4 rounded-lg bg-card/40 border border-border/50">
-          <p className="text-xs text-muted-foreground mb-1">Total Requests</p>
-          <p className="text-2xl font-bold">{data.summary.requestsCount.toLocaleString()}</p>
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/60">
+          <p className="text-xs text-muted-foreground mb-1">Total requests</p>
+          <p className="text-2xl font-bold tabular-nums">{data.summary.requestsCount.toLocaleString()}</p>
         </div>
-        <div className="p-4 rounded-lg bg-card/40 border border-border/50">
-          <p className="text-xs text-muted-foreground mb-1">Avg Latency</p>
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/60">
+          <p className="text-xs text-muted-foreground mb-1">Avg latency</p>
           <div className="flex items-center gap-1">
             <Zap className="h-4 w-4 text-amber-500" />
-            <p className="text-2xl font-bold">{data.summary.avgLatency}ms</p>
+            <p className="text-2xl font-bold tabular-nums">{data.summary.avgLatency}ms</p>
           </div>
         </div>
-        <div className="p-4 rounded-lg bg-card/40 border border-border/50">
-          <p className="text-xs text-muted-foreground mb-1">Success Rate</p>
+        <div className="p-4 rounded-2xl bg-muted/30 border border-border/60">
+          <p className="text-xs text-muted-foreground mb-1">Success rate</p>
           <div className="flex items-center gap-1">
-            <CheckCircle className="h-4 w-4 text-emerald-500" />
-            <p className="text-2xl font-bold">{data.summary.successRate}%</p>
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <p className="text-2xl font-bold tabular-nums">{data.summary.successRate}%</p>
           </div>
         </div>
       </div>
@@ -123,8 +137,8 @@ export function AiAnalyticsDashboard() {
       <div className="flex gap-1 mb-6 border-b border-border/50">
         {[
           { id: 'overview', label: 'Overview' },
-          { id: 'models', label: 'By Model' },
-          { id: 'providers', label: 'By Provider' },
+          { id: 'models', label: 'By model' },
+          { id: 'providers', label: 'By provider' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -144,12 +158,12 @@ export function AiAnalyticsDashboard() {
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <p className="text-sm font-medium mb-4">Daily Token Usage</p>
+            <p className="text-sm font-medium mb-4">Daily token usage</p>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.dailyChartData}>
-                  <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                     labelStyle={{ color: 'hsl(var(--foreground))' }}
@@ -161,7 +175,7 @@ export function AiAnalyticsDashboard() {
           </div>
           
           <div>
-            <p className="text-sm font-medium mb-4">Usage by Feature</p>
+            <p className="text-sm font-medium mb-4">Usage by feature</p>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -199,9 +213,9 @@ export function AiAnalyticsDashboard() {
 
       {activeTab === 'models' && (
         <div className="space-y-4">
-          <p className="text-sm font-medium">Model Usage Statistics</p>
+          <p className="text-sm font-medium">Usage by model</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[760px]">
               <thead>
                 <tr className="border-b border-border/50">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Model</th>
@@ -209,7 +223,7 @@ export function AiAnalyticsDashboard() {
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Requests</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Tokens</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Cost</th>
-                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Avg Latency</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Avg latency</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Success</th>
                 </tr>
               </thead>
@@ -220,12 +234,12 @@ export function AiAnalyticsDashboard() {
                     <td className="py-3 px-4">
                       <Badge variant="outline" className="text-[10px]">{model.provider}</Badge>
                     </td>
-                    <td className="py-3 px-4 text-right">{model.requests.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right">{model.tokens.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right font-mono">${model.cost.toFixed(4)}</td>
-                    <td className="py-3 px-4 text-right">{model.avgLatency}ms</td>
-                    <td className="py-3 px-4 text-right">
-                      <span className={model.successRate >= 95 ? 'text-emerald-500' : model.successRate >= 80 ? 'text-amber-500' : 'text-red-500'}>
+                    <td className="py-3 px-4 text-right tabular-nums">{model.requests.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">{model.tokens.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right font-mono tabular-nums">${model.cost.toFixed(4)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">{model.avgLatency}ms</td>
+                    <td className="py-3 px-4 text-right tabular-nums">
+                      <span className={model.successRate >= 95 ? 'text-green-600 dark:text-green-400' : model.successRate >= 80 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}>
                         {model.successRate}%
                       </span>
                     </td>
@@ -239,12 +253,12 @@ export function AiAnalyticsDashboard() {
 
       {activeTab === 'providers' && (
         <div className="space-y-4">
-          <p className="text-sm font-medium">Provider Usage Statistics</p>
+          <p className="text-sm font-medium">Usage by provider</p>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.providerStats}>
-                <XAxis dataKey="provider" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                <XAxis dataKey="provider" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
@@ -255,11 +269,11 @@ export function AiAnalyticsDashboard() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {data.providerStats.map((provider, index) => (
-              <div key={index} className="p-4 rounded-lg bg-card/40 border border-border/50">
+              <div key={index} className="p-4 rounded-2xl bg-muted/30 border border-border/60">
                 <p className="text-sm font-medium capitalize">{provider.provider}</p>
                 <p className="text-xs text-muted-foreground">{provider.requests.toLocaleString()} requests</p>
                 <p className="text-xs text-muted-foreground">{provider.tokens.toLocaleString()} tokens</p>
-                <p className="text-xs font-mono text-emerald-500">${provider.cost.toFixed(4)}</p>
+                <p className="text-xs font-mono text-green-600 dark:text-green-400">${provider.cost.toFixed(4)}</p>
               </div>
             ))}
           </div>

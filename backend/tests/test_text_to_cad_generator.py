@@ -38,7 +38,11 @@ def test_internal_ai_text_to_cad_endpoint(client):
         "unit_system": "metric",
         "viva_required": True,
     }
-    response = client.post("/internal/ai/cad/generate-text-to-cad", json=request_data)
+    response = client.post(
+        "/internal/ai/cad/generate-text-to-cad",
+        json=request_data,
+        headers={"x-internal-secret": "test-internal-secret"},
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is True
@@ -55,7 +59,13 @@ def test_item_bank_cad_step_generate_endpoint(client):
         "unit_system": "metric",
         "points": 100.0,
     }
-    response = client.post("/api/item-bank/cad-step/generate", json=request_data)
+    # SEC-003: anonymous callers are refused; the Next.js route sends the secret.
+    assert client.post("/api/item-bank/cad-step/generate", json=request_data).status_code == 401
+    response = client.post(
+        "/api/item-bank/cad-step/generate",
+        json=request_data,
+        headers={"x-internal-secret": "test-internal-secret"},
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is True

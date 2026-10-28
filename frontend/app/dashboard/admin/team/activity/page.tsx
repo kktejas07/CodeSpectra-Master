@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
@@ -21,6 +20,9 @@ import {
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface DayData {
   date: string
@@ -62,6 +64,7 @@ export default function TeamActivityPage() {
   const [userStats, setUserStats] = useState<UserStat[]>([])
   const [recentActivity, setRecentActivity] = useState<ActivityEvent[]>([])
   const [totalMembers, setTotalMembers] = useState(0)
+  const { t } = useAdminT()
 
   useEffect(() => {
     if (!gate.ready) return
@@ -103,24 +106,26 @@ export default function TeamActivityPage() {
   )
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/admin/team">
-            <Button variant="outline" size="icon" className="h-8 w-8" title="Back">
-              <ArrowLeft className="h-4 w-4" />
+    <div className="space-y-6">
+      <PageHeader
+        illustration="team"
+        title={t('teamActivity.title')}
+        description={t('teamActivity.description')}
+        icon={<Activity />}
+        actions={
+          <>
+            <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+              <Users className="h-4 w-4" aria-hidden />
+              <span className="text-sm font-medium tabular-nums">{t('teamActivity.members', { count: totalMembers })}</span>
+            </Badge>
+            <Button variant="outline" size="sm" className="gap-1.5" title={t('teamActivity.back')} asChild>
+              <Link href="/dashboard/admin/team">
+                <ArrowLeft className="h-4 w-4" aria-hidden /> {t('teamActivity.backToTeam')}
+              </Link>
             </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Team Activity</h1>
-            <p className="text-muted-foreground mt-1">Track your team&apos;s contribution activity</p>
-          </div>
-        </div>
-        <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
-          <Users className="h-4 w-4" />
-          <span className="text-sm font-medium">{totalMembers} members</span>
-        </Badge>
-      </div>
+          </>
+        }
+      />
 
       <ContributionGraph
         cells={heatmap?.cells ?? null}
@@ -132,22 +137,22 @@ export default function TeamActivityPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/60 p-6">
+        <Panel>
           <div className="mb-4 flex items-center gap-2">
             <Trophy className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Top contributors</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('teamActivity.topContributors')}</h2>
           </div>
           {userStats.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No activity data yet</p>
+            <EmptyState illustration="team" title={t('teamActivity.noActivity')} description={t('teamActivity.noActivityDesc')} className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {userStats.slice(0, 10).map((user, idx) => (
                 <div key={user.userId} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                      idx === 0 ? 'bg-amber-500/20 text-amber-600' :
-                      idx === 1 ? 'bg-slate-400/20 text-slate-500' :
-                      idx === 2 ? 'bg-orange-400/20 text-orange-500' :
+                      idx === 0 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-400' :
+                      idx === 1 ? 'bg-muted-foreground/15 text-muted-foreground' :
+                      idx === 2 ? 'bg-orange-400/20 text-orange-700 dark:text-orange-400' :
                       'bg-muted text-muted-foreground'
                     }`}>
                       {idx + 1}
@@ -157,41 +162,41 @@ export default function TeamActivityPage() {
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Activity className="h-3 w-3" />{user.scans}
+                  <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                    <span className="flex items-center gap-1" title={t('teamActivity.scans')}>
+                      <Activity className="h-3 w-3" aria-hidden />{user.scans}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Code2 className="h-3 w-3" />{user.reviews}
+                    <span className="flex items-center gap-1" title={t('teamActivity.reviews')}>
+                      <Code2 className="h-3 w-3" aria-hidden />{user.reviews}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Zap className="h-3 w-3" />{user.fixes}
+                    <span className="flex items-center gap-1" title={t('teamActivity.fixes')}>
+                      <Zap className="h-3 w-3" aria-hidden />{user.fixes}
                     </span>
                     <Badge variant="secondary" className="ml-1 text-xs">
-                      {user.total} total
+                      {t('teamActivity.total', { n: user.total })}
                     </Badge>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </Card>
+        </Panel>
 
-        <Card className="border-border/60 p-6">
+        <Panel>
           <div className="mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Recent team activity</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('teamActivity.recent')}</h2>
           </div>
           {recentActivity.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No recent activity</p>
+            <EmptyState variant="notifications" title={t('teamActivity.noRecent')} description={t('teamActivity.noRecentDesc')} className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="relative space-y-0 border-l border-border pl-5">
               {recentActivity.slice(0, 8).map((event, idx) => (
                 <div key={idx} className="relative pb-4 last:pb-0">
                   <span className={`absolute -left-[21px] top-1 flex h-3 w-3 rounded-full border-2 border-background ${
-                    event.type === 'scan' ? 'bg-blue-500' :
-                    event.type === 'review' ? 'bg-green-500' :
-                    'bg-purple-500'
+                    event.type === 'scan' ? 'bg-primary' :
+                    event.type === 'review' ? 'bg-primary/50' :
+                    'bg-muted-foreground'
                   }`} />
                   <p className="font-medium text-foreground text-sm">{event.title}</p>
                   <p className="text-xs text-muted-foreground">{event.meta}</p>
@@ -200,7 +205,7 @@ export default function TeamActivityPage() {
               ))}
             </div>
           )}
-        </Card>
+        </Panel>
       </div>
     </div>
   )

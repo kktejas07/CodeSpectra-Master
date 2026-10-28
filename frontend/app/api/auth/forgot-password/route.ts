@@ -4,7 +4,8 @@ import { getMongoDb } from '@/lib/mongodb'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForRequester } from '@/lib/i18n/recipient'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   const ipCheck = await rateLimitRedis(`forgot-pw:ip:${ipKey}`, 3, 60_000)
   if (!ipCheck.ok) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.` },
+      { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: ipCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -25,24 +26,28 @@ export async function POST(request: Request) {
     email = String(body.email || '').toLowerCase().trim()
     turnstileToken = String(body.turnstileToken || '')
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
 
   if (!email) {
-    return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Email is required', code: 'auth_email_required' }, { status: 400 })
   }
 
   // Cloudflare Turnstile verification (fail-closed when configured)
   const { verifyTurnstileToken, isCaptchaConfigured } = await import('@/lib/captcha/turnstile')
   if (await isCaptchaConfigured()) {
     if (!turnstileToken) {
-      return NextResponse.json({ error: 'Captcha verification required' }, { status: 403 })
+      return NextResponse.json({ error: 'Captcha verification required', code: 'auth_captcha_required' }, { status: 403 })
     }
     const captchaResult = await verifyTurnstileToken(turnstileToken)
     if (!captchaResult.ok) {
-      return NextResponse.json({ error: 'Captcha verification failed' }, { status: 403 })
+      return NextResponse.json({ error: 'Captcha verification failed', code: 'auth_captcha_failed' }, { status: 403 })
     }
   }
+
+  // Per-email cap so one inbox can't be flooded.
+  const emailCheck = await rateLimitRedis(`forgot-pw:email:${email}`, 3, 3600_000)
+  if (!emailCheck.ok) return NextResponse.json({ success: true })
 
   const db = await getMongoDb()
   const user = await db.collection('user').findOne({ email })
@@ -70,8 +75,14 @@ export async function POST(request: Request) {
   const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const resetLink = `${origin}/auth/reset-password?oobCode=${token}`
 
-  const template = emailTemplates.passwordReset(resetLink)
-  await sendEmail(email, template)
+  const template = emailTemplatesFor(await localeForRequester(email)).passwordReset(resetLink)
+  // Same response whether or not the email exists or the send failed —
+  // a 500 only for real accounts would reveal which emails are registered.
+  try {
+    await sendEmail(email, template)
+  } catch (e) {
+    console.error('[forgot-password] send failed:', e)
+  }
 
   return NextResponse.json({ success: true })
 }

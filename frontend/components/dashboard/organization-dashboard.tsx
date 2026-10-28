@@ -15,9 +15,12 @@ import {
   Plus,
   ArrowRight,
   Loader2,
-  AlertTriangle,
   LayoutDashboard,
 } from 'lucide-react'
+import { PageHeader, Panel } from '@/components/app/page-kit'
+import { Illustration } from '@/components/illustrations/spot'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface OrgOverview {
   org: { id: string; name: string; slug: string; plan: string } | null
@@ -39,6 +42,7 @@ interface OrgOverview {
 }
 
 export function OrganizationDashboard() {
+  const { t } = useT()
   const [data, setData] = useState<OrgOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,7 +56,7 @@ export function OrganizationDashboard() {
         if (json.error) setError(json.error)
         setData(json)
       })
-      .catch(() => { if (!cancelled) setError('Failed to load organization data') })
+      .catch(() => { if (!cancelled) setError(t('dash.failedToLoadOrganizationData')) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
@@ -67,59 +71,57 @@ export function OrganizationDashboard() {
 
   if (error && !data?.org) {
     return (
-      <Card className="border-border/60 p-8 max-w-lg mx-auto mt-8">
+      <Panel className="mx-auto mt-8 max-w-lg p-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <AlertTriangle className="h-8 w-8 text-amber-500" />
-          <h2 className="text-lg font-semibold">Organization not linked</h2>
+          <Illustration name="error" className="w-36" />
+          <h2 className="text-lg font-semibold text-foreground">{t('dash.organizationNotLinked')}</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
-          <Link href="/dashboard/support">
-            <Button variant="outline" size="sm" className="mt-2">Contact support</Button>
-          </Link>
+          <Button variant="outline" size="sm" className="mt-2" asChild>
+            <Link href="/dashboard/support">{t('dash.contactSupport')}</Link>
+          </Button>
         </div>
-      </Card>
+      </Panel>
     )
   }
 
   const stats = [
-    { label: 'Assessments', value: data?.assessments.total ?? 0, icon: FileText, href: '/dashboard/admin/assessments', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-    { label: 'Candidates', value: data?.candidates.total ?? 0, icon: UserPlus, href: '/dashboard/admin/assessments', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { label: 'Team members', value: data?.members.total ?? 0, icon: Users, href: '/dashboard/admin/team', color: 'text-sky-500', bg: 'bg-sky-500/10' },
-    { label: 'Avg score', value: data?.assessments.avgScore ?? 0, suffix: '%', icon: TrendingUp, href: '/dashboard/recruiter-analytics', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+    { label: t('dash.assessments'), value: data?.assessments.total ?? 0, icon: FileText, href: '/dashboard/admin/assessments' },
+    { label: t('dash.candidates'), value: data?.candidates.total ?? 0, icon: UserPlus, href: '/dashboard/admin/assessments' },
+    { label: t('dash.teamMembers'), value: data?.members.total ?? 0, icon: Users, href: '/dashboard/admin/team' },
+    { label: t('dash.averageScore'), value: data?.assessments.avgScore ?? 0, suffix: '%', icon: TrendingUp, href: '/dashboard/recruiter-analytics' },
   ]
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{data?.org?.name || 'Organization'}</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Organization overview
-            </p>
-          </div>
-        </div>
-        {data?.org?.plan && (
-          <Badge variant="outline" className="gap-1.5 px-3 py-1.5 capitalize">
-            {data.org.plan} plan
-          </Badge>
-        )}
-      </div>
+      <PageHeader
+        illustration="team"
+        className="mb-0"
+        icon={<Building2 />}
+        title={data?.org?.name || t('dash.organization')}
+        description={
+          <span className="inline-flex items-center gap-1.5">
+            <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />{t('dash.yourOrganizationAtAGlanceAssessmentsa7b')}</span>
+        }
+        actions={data?.org?.plan ? (
+          <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1.5 capitalize">{t('dash.planPlan', { plan: data.org.plan })}</Badge>
+        ) : undefined}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(({ label, value, suffix, icon: Icon, href, color, bg }) => (
-          <Link key={label} href={href}>
-            <Card className="border-border/60 p-4 hover:border-primary/30 transition-colors">
+      <div className="cs-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map(({ label, value, suffix, icon: Icon, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="group rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <Card className="h-full rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
               <div className="flex items-center gap-4">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${bg}`}>
-                  <Icon className={`h-6 w-6 ${color}`} />
-                </div>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-                  <p className="text-2xl font-bold text-foreground">{value}{suffix || ''}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                  <p className="text-3xl font-bold tabular-nums tracking-tight text-foreground">{value}{suffix || ''}</p>
                 </div>
               </div>
             </Card>
@@ -129,32 +131,28 @@ export function OrganizationDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/60 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-primary" /> Recent assessments
-              </h2>
-              <Link href="/dashboard/admin/assessments">
-                <Badge variant="outline" className="text-xs font-normal gap-1 cursor-pointer">
-                  Manage all <ArrowRight className="h-3 w-3" />
-                </Badge>
-              </Link>
+          <Card className="rounded-3xl border-border/70 p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <ClipboardList className="h-5 w-5 text-primary" aria-hidden />{' '}{t('dash.recentAssessments')}</h2>
+              <Button variant="ghost" size="sm" className="gap-1 text-sm" asChild>
+                <Link href="/dashboard/admin/assessments">{t('dash.manageAll')}{' '}<ArrowRight className="h-3 w-3" />
+                </Link>
+              </Button>
             </div>
             {(data?.recent?.length ?? 0) === 0 ? (
-              <div className="py-8 text-center">
-                <FileText className="mx-auto h-8 w-8 text-muted-foreground/40 mb-3" />
-                <p className="text-sm text-muted-foreground">No assessments yet. Create your first one to start screening candidates.</p>
-                <Link href="/dashboard/admin/assessments">
-                  <Button size="sm" className="mt-4 gap-1.5">
-                    <Plus className="h-4 w-4" /> Add Assessment
-                  </Button>
-                </Link>
-              </div>
+              <EmptyState illustration="assessment"
+                title={t('dash.noAssessmentsYet')}
+                description={t('dash.createYourFirstOneToStart2b1')}
+                actionLabel={t('dash.addAssessment')}
+                actionHref="/dashboard/admin/assessments"
+                className="py-10 md:py-10"
+              />
             ) : (
-              <div className="divide-y divide-border/60">
+              <div className="divide-y divide-border/70">
                 {data!.recent.map((e) => (
                   <Link key={e.id} href={`/dashboard/admin/assessments/${e.id}/edit`}>
-                    <div className="flex items-center justify-between py-3 transition-colors hover:bg-muted/20 rounded-md px-2 -mx-2">
+                    <div className="-mx-2 flex items-center justify-between rounded-xl px-2 py-3 transition-colors duration-200 hover:bg-primary/5">
                       <div className="min-w-0">
                         <p className="font-medium text-foreground text-sm truncate">{e.title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
@@ -162,9 +160,9 @@ export function OrganizationDashboard() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs text-muted-foreground">{e.attempts} attempts</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{t('dash.attemptsAttempts', { attempts: e.attempts })}</span>
                         <Badge variant={e.published ? 'default' : 'secondary'} className="text-[10px]">
-                          {e.published ? 'Published' : 'Draft'}
+                          {e.published ? t('dash.published') : t('dash.draft')}
                         </Badge>
                       </div>
                     </div>
@@ -176,30 +174,28 @@ export function OrganizationDashboard() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-border/60 p-5 space-y-3">
+          <Card className="space-y-3 rounded-3xl border-border/70 p-6">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold text-foreground">Team</h2>
+              <Users className="h-4 w-4 text-primary" aria-hidden />
+              <h2 className="text-sm font-semibold text-foreground">{t('dash.team')}</h2>
             </div>
-            <p className="text-xs text-muted-foreground">Manage your organization&apos;s members and roles.</p>
-            <Link href="/dashboard/admin/team">
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
-                <Users className="h-3.5 w-3.5" /> Manage team
-              </Button>
-            </Link>
+            <p className="text-sm text-muted-foreground">{t('dash.manageYourOrganizationsMembersAndRoles')}</p>
+            <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
+              <Link href="/dashboard/admin/team">
+                <Users className="h-3.5 w-3.5" />{' '}{t('dash.manageTeam')}</Link>
+            </Button>
           </Card>
 
-          <Card className="border-border/60 p-5 space-y-3">
+          <Card className="space-y-3 rounded-3xl border-border/70 p-6">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold text-foreground">Hiring insights</h2>
+              <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
+              <h2 className="text-sm font-semibold text-foreground">{t('dash.hiringInsights')}</h2>
             </div>
-            <p className="text-xs text-muted-foreground">Track candidate performance and screening effectiveness.</p>
-            <Link href="/dashboard/recruiter-analytics">
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
-                <TrendingUp className="h-3.5 w-3.5" /> Recruiter analytics
-              </Button>
-            </Link>
+            <p className="text-sm text-muted-foreground">{t('dash.trackCandidatePerformanceAndScreeningEff')}</p>
+            <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
+              <Link href="/dashboard/recruiter-analytics">
+                <TrendingUp className="h-3.5 w-3.5" />{' '}{t('dash.recruiterAnalytics')}</Link>
+            </Button>
           </Card>
         </div>
       </div>

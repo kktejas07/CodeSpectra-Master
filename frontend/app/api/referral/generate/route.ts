@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/admin'
+import { randomInt } from 'crypto'
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
+    code += chars[randomInt(chars.length)]
   }
   return code
 }
@@ -19,7 +20,7 @@ export async function POST() {
   try {
     const db = await getMongoDb()
     const col = db.collection('referrals')
-    const existing = await col.findOne({ referrer_id: gate.user.id })
+    const existing = await col.findOne({ referrer_id: gate.user.id, kind: { $ne: 'redemption' } })
     if (existing) {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
       return NextResponse.json({ code: existing.referral_code, url: `${baseUrl}/auth/signup?ref=${existing.referral_code}` })

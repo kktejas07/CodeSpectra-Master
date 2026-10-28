@@ -9,7 +9,6 @@ import {
   Plus,
   BarChart3,
   FileText,
-  Settings,
   Users,
   Shield,
   Activity,
@@ -23,36 +22,37 @@ import {
 import { Github } from '@/components/ui/brand-icons'
 import { cn } from '@/lib/utils'
 import { parseScannerMode, scannerHref, type ScannerMode } from '@/lib/scanner-modes'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 type Item = { mode: ScannerMode; label: string; icon: ReactNode }
 
-const PRIMARY: Item[] = [
-  { mode: 'manual', label: 'Manual Analysis', icon: <Code2 className="h-4 w-4" /> },
-  { mode: 'github', label: 'GitHub Repos', icon: <Github className="h-4 w-4" /> },
-  { mode: 'dependencies', label: 'Dependency Scan', icon: <Package className="h-4 w-4" /> },
-  { mode: 'secrets', label: 'Secret Detection', icon: <Key className="h-4 w-4" /> },
-  { mode: 'trends', label: 'Trends', icon: <BarChart3 className="h-4 w-4" /> },
-  { mode: 'quality-gates', label: 'Quality Gates', icon: <Plus className="h-4 w-4" /> },
-  { mode: 'review', label: 'Code Review', icon: <FileText className="h-4 w-4" /> },
-  { mode: 'chat', label: 'Codebase Chat', icon: <MessageSquare className="h-4 w-4" /> },
-]
+// Trends, code review and configuration are hidden: they had no saved data
+// behind them (the page shows a "not available yet" state on direct links).
+const PRIMARY = (t: Translator): Item[] => ([
+  { mode: 'manual', label: t('dash.manualAnalysis'), icon: <Code2 className="h-4 w-4" /> },
+  { mode: 'github', label: t('dash.githubRepos'), icon: <Github className="h-4 w-4" /> },
+  { mode: 'dependencies', label: t('dash.dependencyScan'), icon: <Package className="h-4 w-4" /> },
+  { mode: 'secrets', label: t('dash.secretDetection'), icon: <Key className="h-4 w-4" /> },
+  { mode: 'quality-gates', label: t('dash.qualityGates'), icon: <Plus className="h-4 w-4" /> },
+  { mode: 'chat', label: t('dash.codebaseChat'), icon: <MessageSquare className="h-4 w-4" /> },
+])
 
-const QUALITY: Item[] = [
-  { mode: 'metrics', label: 'Metrics Browser', icon: <Zap className="h-4 w-4" /> },
-  { mode: 'hotspots', label: 'Security Hotspots', icon: <Shield className="h-4 w-4" /> },
-  { mode: 'ratings', label: 'Quality Ratings', icon: <BarChart3 className="h-4 w-4" /> },
-  { mode: 'activity', label: 'Activity Timeline', icon: <Activity className="h-4 w-4" /> },
-  { mode: 'architecture', label: 'Architecture', icon: <GitBranch className="h-4 w-4" /> },
-  { mode: 'pr', label: 'PR Integration', icon: <GitPullRequest className="h-4 w-4" /> },
-  { mode: 'branches', label: 'Branch Analytics', icon: <GitBranch className="h-4 w-4" /> },
-]
+const QUALITY = (t: Translator): Item[] => ([
+  { mode: 'metrics', label: t('dash.metricsBrowser'), icon: <Zap className="h-4 w-4" /> },
+  { mode: 'hotspots', label: t('dash.securityHotspots'), icon: <Shield className="h-4 w-4" /> },
+  { mode: 'ratings', label: t('dash.qualityRatings'), icon: <BarChart3 className="h-4 w-4" /> },
+  { mode: 'activity', label: t('dash.activityTimeline'), icon: <Activity className="h-4 w-4" /> },
+  { mode: 'architecture', label: t('dash.architecture'), icon: <GitBranch className="h-4 w-4" /> },
+  { mode: 'pr', label: t('dash.prIntegration'), icon: <GitPullRequest className="h-4 w-4" /> },
+  { mode: 'branches', label: t('dash.branchAnalytics'), icon: <GitBranch className="h-4 w-4" /> },
+])
 
-const FOOTER: Item[] = [
-  { mode: 'config', label: 'Configuration', icon: <Settings className="h-4 w-4" /> },
-  { mode: 'reports', label: 'Reports', icon: <FileText className="h-4 w-4" /> },
-  { mode: 'insights', label: 'Insights', icon: <BarChart3 className="h-4 w-4" /> },
-  { mode: 'team', label: 'Team', icon: <Users className="h-4 w-4" /> },
-]
+const FOOTER = (t: Translator): Item[] => ([
+  { mode: 'reports', label: t('dash.reports'), icon: <FileText className="h-4 w-4" /> },
+  { mode: 'insights', label: t('dash.insights'), icon: <BarChart3 className="h-4 w-4" /> },
+  { mode: 'team', label: t('dash.team'), icon: <Users className="h-4 w-4" /> },
+])
 
 function NavLink({
   item,
@@ -70,7 +70,7 @@ function NavLink({
     <Link href={href} title={item.label} onClick={onPick}>
       <div
         className={cn(
-          'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+          'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-200',
           collapsed && 'lg:justify-center lg:px-2',
           active
             ? 'bg-primary/10 font-medium text-primary'
@@ -93,6 +93,7 @@ export function ScannerSidebarNav({
   homeHref: string
   onNavigate: () => void
 }) {
+  const { t } = useT()
   const searchParams = useSearchParams()
   const current = parseScannerMode(searchParams.get('mode'))
 
@@ -113,22 +114,18 @@ export function ScannerSidebarNav({
           )}
         >
           <ArrowLeft className="h-4 w-4 shrink-0" />
-          <span className={cn('font-medium', collapsed && 'lg:sr-only')}>
-            Back to dashboard
-          </span>
+          <span className={cn('font-medium', collapsed && 'lg:sr-only')}>{t('dash.backToDashboard')}</span>
         </Link>
         <p
           className={cn(
-            'mt-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80',
+            'mt-1 px-2 text-xs font-semibold text-muted-foreground',
             collapsed && 'lg:sr-only'
           )}
-        >
-          Scanner
-        </p>
+        >{t('dash.scanner')}</p>
       </div>
 
       <div className="space-y-0.5 px-2 py-2">
-        {PRIMARY.map((item) => (
+        {PRIMARY(t).map((item) => (
           <NavLink
             key={item.mode}
             item={item}
@@ -141,14 +138,12 @@ export function ScannerSidebarNav({
         <div className={cn('my-2 border-t border-border/40 pt-2', collapsed && 'lg:mx-0')}>
           <p
             className={cn(
-              'mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70',
+              'mb-1 px-2 text-xs font-semibold text-muted-foreground',
               collapsed && 'lg:sr-only'
             )}
-          >
-            Quality analysis
-          </p>
+          >{t('dash.qualityAnalysis')}</p>
           <div className="space-y-0.5">
-            {QUALITY.map((item) => (
+            {QUALITY(t).map((item) => (
               <NavLink
                 key={item.mode}
                 item={item}
@@ -160,7 +155,7 @@ export function ScannerSidebarNav({
           </div>
         </div>
 
-        {FOOTER.map((item) => (
+        {FOOTER(t).map((item) => (
           <NavLink
             key={item.mode}
             item={item}

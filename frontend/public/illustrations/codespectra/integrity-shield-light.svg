@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 220" fill="none" role="img"><title>Proctoring radar logging integrity events with timestamps</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#5b84ff"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8"/><stop offset=".5" stop-color="#2f5be7"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
+  .surf{fill:#f8fafc;stroke:#64748b;stroke-opacity:.7}
+  .ln{stroke:#64748b;stroke-opacity:.6;fill:none}
+  .txt{fill:#64748b;opacity:.75}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+    .tag,.num,.row,.ev,.pass,.f{opacity:1!important}
+    .ck,.ok{stroke-dashoffset:0!important}
+    .gauge{stroke-dashoffset:36!important}
+    .pkt{offset-distance:50%}
+  }
+
+  .sweep{transform-origin:150px 112px;animation:spin 4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ev{opacity:0;animation:ev 6s ease-out infinite}
+  .e2{animation-delay:2s}.e3{animation-delay:4s}
+  @keyframes ev{0%{opacity:0}6%{opacity:1}30%{opacity:1}40%,100%{opacity:0}}
+  .ring{fill:none;stroke:#2f5be7;stroke-opacity:.35}
+  @media (prefers-reduced-motion: reduce){.e2,.e3{opacity:0!important}}
+</style><circle class="ring" cx="150" cy="96" r="84"/><circle class="ring" cx="150" cy="96" r="56"/><circle class="ring" cx="150" cy="96" r="28"/><clipPath id="rad"><circle cx="150" cy="96" r="84"/></clipPath><g clip-path="url(#rad)"><path class="sweep" style="transform-origin:150px 96px" d="M150 96 L150 12 A84 84 0 0 1 223 54 Z" fill="#2f5be7" opacity=".16"/></g><path d="M150 64 l28 10 v20 c0 18-12 30-28 36 c-16-6-28-18-28-36 v-20z" fill="url(#mint)" stroke="#3b82f6" stroke-width="1.5"/><path d="M138 96l8 8 16-16" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/><g class="ev e1"><rect x="64.7" y="186" width="170.6" height="26" rx="13" fill="#f8fafc" stroke="#f59e0b" stroke-width="1.5"/><circle cx="78.7" cy="199" r="5" fill="#f59e0b"/><text x="89.7" y="203.5" font-family="ui-sans-serif,system-ui" font-size="13" fill="#64748b">Tab switch at 14:22</text></g><g class="ev e2"><rect x="86.9" y="186" width="126.2" height="26" rx="13" fill="#f8fafc" stroke="#ef4444" stroke-width="1.5"/><circle cx="100.9" cy="199" r="5" fill="#ef4444"/><text x="111.9" y="203.5" font-family="ui-sans-serif,system-ui" font-size="13" fill="#64748b">Paste blocked</text></g><g class="ev e3"><rect x="68.39999999999999" y="186" width="163.20000000000002" height="26" rx="13" fill="#f8fafc" stroke="#2f5be7" stroke-width="1.5"/><circle cx="82.39999999999999" cy="199" r="5" fill="#2f5be7"/><text x="93.39999999999999" y="203.5" font-family="ui-sans-serif,system-ui" font-size="13" fill="#64748b">Face matched to ID</text></g></svg>

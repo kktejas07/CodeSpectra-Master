@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,14 +13,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react'
+import { Database, Loader2, Trash2, Pencil, Sparkles, ChevronLeft, ChevronRight, X, Eye, CheckCircle2 } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 import { metaFor, QUESTION_TYPES } from '@/lib/question-types'
+import { extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 /** Structured fields (pairs/matrix/table/hotspot/scale/tolerance/coding) are
  * authored as JSON in the bank form and merged into the payload on save. */
-interface StructuredFields {
+interface StructuredFields extends ExtendedQuestionFields {
   tolerance?: number
   pairs?: { left: string; right: string }[]
   matrix?: { rows: string[]; columns: string[] }
@@ -31,11 +36,23 @@ interface StructuredFields {
   starter_code?: string
 }
 
-const STRUCTURED_TYPES = ['matching', 'drag_drop', 'matrix', 'table_fill', 'hotspot', 'numeric', 'likert', 'rating']
+const STRUCTURED_TYPES = ['matching', 'drag_drop', 'matrix', 'table_fill', 'hotspot', 'numeric', 'likert', 'rating', 'theory_to_code', 'reverse_coding', 'system_design', 'case_study', 'video_response', 'file_upload', 'typing_test']
+
+/** Wave-6 JSON shapes, shown as the placeholder for those types. */
+const EXTENDED_HINT: Record<string, string> = {
+  theory_to_code: '{"language":"python","test_cases":[{"input":"3","output":"6","hidden":true}]}',
+  reverse_coding: '{"test_cases":[{"input":"2 3","output":"5"},{"input":"10 4","output":"14","hidden":true}],"reference_solution":{"language":"python","code":"a,b=map(int,input().split())\nprint(a+b)"},"black_box_runs":10}',
+  system_design: '{"rubric":"- Requirements (2)\n- Data model (3)","allow_diagram":true}',
+  case_study: '{"sub_questions":[{"id":"s1","type":"mcq","prompt":"…","options":["A","B","C","D"],"answer":"B","points":5},{"id":"s2","type":"numeric","prompt":"…","answer":"42","points":5}]}',
+  video_response: '{"video":{"max_seconds":120,"retakes":1,"allow_text_alternative":true}}',
+  file_upload: '{"upload":{"allowed":["pdf","image"],"max_mb":5}}',
+  typing_test: '{"typing":{"passage":"…","min_wpm":35,"min_accuracy":92}}',
+  likert: '{"scale":{"min":1,"max":5},"trait":"Conscientiousness","reverse_scored":false}',
+}
 
 const STRUCTURED_HINT = '{"pairs":[{"left":"A","right":"1"}],"matrix":{"rows":["r1"],"columns":["T","F"]},"table":{"rows":["r1"]},"scale":{"min":1,"max":5},"image_url":"https://...","regions":[{"id":"r1","x":10,"y":10,"w":15,"h":15,"label":"L"}],"tolerance":0.5,"language":"python","starter_code":"..."}'
 
-interface BankQuestion {
+interface BankQuestion extends ExtendedQuestionFields {
   id: string
   title: string
   question: string
@@ -54,6 +71,7 @@ interface BankQuestion {
   level?: string
   assessment_category?: string
   source: string
+  review_status?: 'draft' | 'approved'
   tolerance?: number
   pairs?: { left: string; right: string }[]
   matrix?: { rows: string[]; columns: string[] }
@@ -80,6 +98,7 @@ const EMPTY_FORM = {
 }
 
 export default function QuestionBankPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
 
@@ -151,9 +170,29 @@ export default function QuestionBankPage() {
   const categoryLabel = (id: string) => ASSESSMENT_CATEGORIES.find(c => c.id === id)?.label || id
 
   const handleDelete = async (q: BankQuestion) => {
-    await csrfFetch(`/api/question-bank?id=${q.id}`, { method: 'DELETE', credentials: 'include' })
-    addToast({ type: 'success', title: 'Question deleted' })
+    const res = await csrfFetch(`/api/question-bank?id=${q.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => null)
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({})) as { error?: string } | undefined
+      addToast({ type: 'error', title: tx('qbank.failedToDeleteQuestion'), message: err?.error })
+      return
+    }
+    addToast({ type: 'success', title: tx('qbank.questionDeleted') })
     fetchRows(); fetchStats()
+  }
+
+  // AI-generated and imported questions stay out of exams until approved.
+  const handleApprove = async (q: BankQuestion) => {
+    const res = await csrfFetch(`/api/question-bank?id=${q.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ ...q, review_status: 'approved' }),
+    }).catch(() => null)
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({})) as { error?: string } | undefined
+      addToast({ type: 'error', title: tx('qbank.failedToApproveQuestion'), message: err?.error })
+      return
+    }
+    addToast({ type: 'success', title: tx('qbank.questionApproved'), message: tx('qbank.examsCanNowPickIt') })
+    fetchRows()
   }
 
   const openEdit = (q?: BankQuestion) => {
@@ -168,6 +207,7 @@ export default function QuestionBankPage() {
       ...(q.regions ? { regions: q.regions } : {}),
       ...(q.language ? { language: q.language } : {}),
       ...(q.starter_code ? { starter_code: q.starter_code } : {}),
+      ...extendedFieldsOf(q as unknown as Record<string, unknown>),
     } : {}
     setForm(q ? {
       title: q.title, question: q.question, type: q.type, options: (q.options || []).join('\n'), answer: q.answer || '',
@@ -181,7 +221,7 @@ export default function QuestionBankPage() {
 
   const handleSave = async () => {
     if (!form.question.trim()) {
-      addToast({ type: 'error', title: 'Question prompt is required' })
+      addToast({ type: 'error', title: tx('qbank.questionPromptIsRequired') })
       return
     }
     let structured: StructuredFields = {}
@@ -191,7 +231,7 @@ export default function QuestionBankPage() {
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error()
         structured = parsed as StructuredFields
       } catch {
-        addToast({ type: 'error', title: 'Advanced fields must be a valid JSON object' })
+        addToast({ type: 'error', title: tx('qbank.advancedFieldsMustBeA') })
         return
       }
     }
@@ -208,18 +248,22 @@ export default function QuestionBankPage() {
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `/api/question-bank?id=${editing.id}` : '/api/question-bank'
     try {
-      await csrfFetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) })
+      const res = await csrfFetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error || '')
+      }
       addToast({ type: 'success', title: editing ? 'Question updated' : 'Question added' })
       setEditOpen(false)
       fetchRows(); fetchStats()
-    } catch {
-      addToast({ type: 'error', title: editing ? 'Failed to update question' : 'Failed to add question' })
+    } catch (e) {
+      addToast({ type: 'error', title: editing ? 'Failed to update question' : 'Failed to add question', message: e instanceof Error && e.message ? e.message : undefined })
     }
   }
 
   const handleAiGenerate = async () => {
     if (!aiForm.branch && !aiForm.subject.trim()) {
-      addToast({ type: 'error', title: 'Pick a branch or type a subject' })
+      addToast({ type: 'error', title: tx('qbank.pickABranchOrType') })
       return
     }
     setAiBusy(true)
@@ -244,7 +288,7 @@ export default function QuestionBankPage() {
     if (!importText.trim()) return
     setImportBusy(true)
     try {
-      const res = await fetch('/api/question-bank/import', {
+      const res = await csrfFetch('/api/question-bank/import', {
         method: 'POST', headers: { 'Content-Type': 'text/plain' }, credentials: 'include', body: importText,
       })
       const json = await res.json()
@@ -271,150 +315,155 @@ export default function QuestionBankPage() {
   if (!gate.ready) return null
 
   const totalPages = Math.max(1, Math.ceil(total / limit))
-  const diffColor = (d: string) => d === 'Hard' ? 'bg-red-500/20 text-red-700' : d === 'Medium' ? 'bg-yellow-500/20 text-yellow-700' : 'bg-green-500/20 text-green-700'
+  const diffColor = (d: string) => d === 'Hard' ? 'border-transparent bg-red-500/15 text-red-700 dark:text-red-300' : d === 'Medium' ? 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'border-transparent bg-green-500/15 text-green-700 dark:text-green-300'
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Database className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Engineering Question Bank</h1>
-            <p className="text-muted-foreground text-sm">{stats ? `${stats.total} questions in bank` : `${total} shown`}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => setAiOpen(true)}>
-            <Sparkles className="w-4 h-4" />Generate with AI
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
-            <FileUp className="w-4 h-4" />Import
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={rows.length === 0}>
-            <Download className="w-4 h-4" />Export
-          </Button>
-          <Button className="gap-2" onClick={() => openEdit()}>
-            <Plus className="w-4 h-4" />Add Question
-          </Button>
-        </div>
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          illustration="assessment"
+          icon={<Database />}
+          title={tx('qbank.questionBank')}
+          description={stats ? `${stats.total} engineering questions you can reuse across assessments.` : `${total} questions shown. Reuse them across assessments.`}
+          actions={
+            <>
+              <Button variant="outline" className="gap-2" onClick={() => setAiOpen(true)}>
+                <Sparkles className="w-4 h-4" />Generate with AI
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+                <AnimatedIcon name="upload" />Import
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={handleExport} disabled={rows.length === 0}>
+                <AnimatedIcon name="download" />Export
+              </Button>
+              <Button className="gap-2" onClick={() => openEdit()}>
+                <AnimatedIcon name="create-new-folder" />Add question
+              </Button>
+            </>
+          }
+          className="mb-0"
+        />
       </div>
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total</p>
-            <p className="text-2xl font-bold">{stats.total}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Easy / Medium / Hard</p>
-            <p className="text-2xl font-bold">{stats.byDifficulty.Easy || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Medium || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Hard || 0}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Branches covered</p>
-            <p className="text-2xl font-bold">{Object.keys(stats.byBranch).length}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {Object.entries(stats.byBranch).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([b, c]) => `${branchLabel(b)} ${c}`).join(' · ')}
-            </p>
-          </CardContent></Card>
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Coding / MCQ</p>
-            <p className="text-2xl font-bold">{stats.byType.coding || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byType.mcq || 0}</p>
-          </CardContent></Card>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label={tx('qbank.totalQuestions')} value={stats.total} />
+          <StatCard
+            label={tx('qbank.easyMediumHard')}
+            value={<>{stats.byDifficulty.Easy || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Medium || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Hard || 0}</>}
+          />
+          <StatCard
+            label={tx('qbank.branchesCovered')}
+            value={Object.keys(stats.byBranch).length}
+            hint={<span className="block truncate">{Object.entries(stats.byBranch).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([b, c]) => `${branchLabel(b)} ${c}`).join(' · ')}</span>}
+            className="min-w-0 [&>div]:min-w-0"
+          />
+          <StatCard
+            label={tx('qbank.codingMcq')}
+            value={<>{stats.byType.coding || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byType.mcq || 0}</>}
+          />
         </div>
       )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <Select value={branchFilter || 'all'} onValueChange={v => { setBranchFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
+          <SelectTrigger aria-label={tx('qbank.filterByBranch')} className="h-9 w-[160px] text-sm"><SelectValue placeholder={tx('qbank.allBranches')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All branches</SelectItem>
+            <SelectItem value="all">{tx('qbank.allBranches')}</SelectItem>
             {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={degreeFilter || 'all'} onValueChange={v => { setDegreeFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-35 text-sm"><SelectValue placeholder="All degrees" /></SelectTrigger>
+          <SelectTrigger aria-label={tx('qbank.filterByDegree')} className="h-9 w-35 text-sm"><SelectValue placeholder={tx('qbank.allDegrees')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All degrees</SelectItem>
+            <SelectItem value="all">{tx('qbank.allDegrees')}</SelectItem>
             {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={difficultyFilter || 'all'} onValueChange={v => { setDifficultyFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All difficulty" /></SelectTrigger>
+          <SelectTrigger aria-label={tx('qbank.filterByDifficulty')} className="h-9 w-[130px] text-sm"><SelectValue placeholder={tx('qbank.allDifficulty')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All difficulty</SelectItem>
+            <SelectItem value="all">{tx('qbank.allDifficulty')}</SelectItem>
             {['Easy', 'Medium', 'Hard'].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={typeFilter || 'all'} onValueChange={v => { setTypeFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
+          <SelectTrigger aria-label={tx('qbank.filterByType')} className="h-9 w-[130px] text-sm"><SelectValue placeholder={tx('qbank.allTypes')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="all">{tx('qbank.allTypes')}</SelectItem>
             {BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={levelFilter || 'all'} onValueChange={v => { setLevelFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
+          <SelectTrigger aria-label={tx('qbank.filterByLevel')} className="h-9 w-[120px] text-sm"><SelectValue placeholder={tx('qbank.allLevels')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All levels</SelectItem>
+            <SelectItem value="all">{tx('qbank.allLevels')}</SelectItem>
             {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={industryFilter || 'all'} onValueChange={v => { setIndustryFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
+          <SelectTrigger aria-label={tx('qbank.filterByIndustry')} className="h-9 w-[150px] text-sm"><SelectValue placeholder={tx('qbank.allIndustries')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All industries</SelectItem>
+            <SelectItem value="all">{tx('qbank.allIndustries')}</SelectItem>
             {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={categoryFilter || 'all'} onValueChange={v => { setCategoryFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectTrigger aria-label={tx('qbank.filterByCategory')} className="h-9 w-[130px] text-sm"><SelectValue placeholder={tx('qbank.allCategories')} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">{tx('qbank.allCategories')}</SelectItem>
             {ASSESSMENT_CATEGORIES.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input
-          placeholder="Search questions, subjects, tags..."
+        <Input aria-label={tx('qbank.searchQuestionsSubjectsTags')}
+          placeholder={tx('qbank.searchQuestionsSubjectsTags2')}
           className="h-9 flex-1 min-w-50 text-sm"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1) }}
         />
-        <p className="text-xs text-muted-foreground ml-auto">{total} question{total !== 1 ? 's' : ''}</p>
+        <p className="text-xs tabular-nums text-muted-foreground ml-auto">{total} question{total !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Panel className="overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[880px]">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Question</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Branch</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Level</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Subject</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Difficulty</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Type</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Industry</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Marks</th>
-                <th className="text-right py-3 px-4 font-semibold text-xs">Actions</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('qbank.question')}</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('qbank.branch')}</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('qbank.level')}</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('qbank.subject')}</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('qbank.difficulty')}</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('common.type')}</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('qbank.industry')}</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">{tx('qbank.marks')}</th>
+                <th className="text-right py-3 px-4 font-medium text-xs text-muted-foreground">{tx('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr><td colSpan={9} className="p-4"><SkeletonTable rows={5} /></td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
-                  No questions found. Add one, import a CSV/JSON, or generate with AI.
+                <tr><td colSpan={9} className="p-0">
+                  <EmptyState
+                    illustration="search"
+                    variant="search"
+                    title={tx('qbank.noQuestionsMatchTheseFilters')}
+                    description={tx('qbank.clearAFilterAddA')}
+                    className="border-0 bg-transparent py-6 md:py-8"
+                  />
                 </td></tr>
               ) : rows.map(r => (
-                <tr key={r.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">
                   <td className="py-3 px-4 max-w-[320px]">
-                    <p className="font-medium truncate">{r.title}</p>
+                    <p className="font-medium truncate">
+                      {r.review_status === 'draft' && <Badge variant="outline" className="mr-1.5 border-amber-500/40 text-amber-700 dark:text-amber-300 align-middle">{tx('qbank.needsReview')}</Badge>}
+                      {r.title}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{r.question}</p>
                   </td>
                   <td className="py-3 px-4">{r.branch ? <Badge variant="outline">{branchLabel(r.branch)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
@@ -423,12 +472,15 @@ export default function QuestionBankPage() {
                   <td className="py-3 px-4"><Badge className={diffColor(r.difficulty)}>{r.difficulty}</Badge></td>
                   <td className="py-3 px-4 text-xs">{r.type}</td>
                   <td className="py-3 px-4 text-xs truncate max-w-[130px]">{r.industry ? industryLabel(r.industry) : <span className="text-muted-foreground text-xs">—</span>}</td>
-                  <td className="py-3 px-4 text-xs">{r.marks}</td>
+                  <td className="py-3 px-4 text-xs tabular-nums">{r.marks}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="inline-flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setViewing(r); setViewOpen(true) }} title="View"><Eye className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Edit"><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(r)} title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setViewing(r); setViewOpen(true) }} title={tx('qbank.view')} aria-label={tx('qbank.viewQuestion')}><Eye className="w-3.5 h-3.5" /></Button>
+                      {r.review_status === 'draft' && (
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleApprove(r)} title={tx('qbank.approveForExams')} aria-label={tx('qbank.approveQuestionForExams')}><CheckCircle2 className="w-3.5 h-3.5" /></Button>
+                      )}
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title={tx('common.edit')} aria-label={tx('qbank.editQuestion')}><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(r)} title={tx('common.delete')} aria-label={tx('qbank.deleteQuestion')}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -436,12 +488,12 @@ export default function QuestionBankPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Panel>
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">Page {page} of {totalPages}</p>
+          <p className="text-xs tabular-nums text-muted-foreground">Page {page} of {totalPages}</p>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-3 w-3 mr-1" />Prev
@@ -455,34 +507,34 @@ export default function QuestionBankPage() {
 
       {/* Add / Edit modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Question' : 'Add Question'}</DialogTitle>
-            <DialogDescription>Create or update an engineering question.</DialogDescription>
+            <DialogTitle>{editing ? 'Edit question' : 'Add question'}</DialogTitle>
+            <DialogDescription>{tx('qbank.createOrUpdateAnEngineering')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Short Title</Label>
-              <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g., Time complexity of binary search" />
+              <Label>{tx('qbank.shortTitle')}</Label>
+              <Input aria-label={tx('qbank.shortTitle')} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={tx('qbank.eGTimeComplexityOf')} />
             </div>
             <div className="space-y-2">
-              <Label>Question</Label>
-              <Textarea value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} rows={3} placeholder="Full question prompt" />
+              <Label>{tx('qbank.question')}</Label>
+              <Textarea aria-label={tx('qbank.question')} value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} rows={3} placeholder={tx('qbank.fullQuestionPrompt')} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Type</Label>
+                <Label>{tx('common.type')}</Label>
                 <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as QuestionType })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('common.type')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>{QUESTION_TYPES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Difficulty</Label>
+                <Label>{tx('qbank.difficulty')}</Label>
                 <Select value={form.difficulty} onValueChange={v => setForm({ ...form, difficulty: v as 'Easy' | 'Medium' | 'Hard' })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('qbank.difficulty')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Easy">Easy</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Hard">Hard</SelectItem>
+                    <SelectItem value="Easy">{tx('qbank.easy')}</SelectItem><SelectItem value="Medium">{tx('qbank.medium')}</SelectItem><SelectItem value="Hard">{tx('qbank.hard')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -495,42 +547,42 @@ export default function QuestionBankPage() {
             )}
             {STRUCTURED_TYPES.includes(form.type) && (
               <div className="space-y-2">
-                <Label>Advanced fields (JSON) <span className="text-muted-foreground font-normal">— pairs / matrix / table / hotspot / scale / tolerance / language</span></Label>
-                <Textarea value={form.structured} onChange={e => setForm({ ...form, structured: e.target.value })} rows={4} className="font-mono text-xs" placeholder={STRUCTURED_HINT} />
-                <p className="text-xs text-muted-foreground">Optional. Use the assessment editor for a guided UI of these fields.</p>
+                <Label>{tx('qbank.advancedFieldsJson')} <span className="text-muted-foreground font-normal">{tx('qbank.pairsMatrixTableHotspotScale')}</span></Label>
+                <Textarea value={form.structured} onChange={e => setForm({ ...form, structured: e.target.value })} rows={4} className="font-mono text-xs" placeholder={EXTENDED_HINT[form.type] || STRUCTURED_HINT} />
+                <p className="text-xs text-muted-foreground">{tx('qbank.optionalUseTheAssessmentEditor')}</p>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Correct Answer</Label>
-                <Input value={form.answer} onChange={e => setForm({ ...form, answer: e.target.value })} placeholder="Correct option text or explanation" />
+                <Label>{tx('qbank.correctAnswer')}</Label>
+                <Input aria-label={tx('qbank.correctAnswer')} value={form.answer} onChange={e => setForm({ ...form, answer: e.target.value })} placeholder={tx('qbank.correctOptionTextOrExplanation')} />
               </div>
               <div className="space-y-2">
-                <Label>Marks</Label>
-                <Input type="number" min={1} value={form.marks} onChange={e => setForm({ ...form, marks: Number(e.target.value) || 10 })} />
+                <Label>{tx('qbank.marks')}</Label>
+                <Input aria-label={tx('qbank.marks')} type="number" min={1} value={form.marks} onChange={e => setForm({ ...form, marks: Number(e.target.value) || 10 })} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Explanation</Label>
-              <Textarea value={form.explanation} onChange={e => setForm({ ...form, explanation: e.target.value })} rows={2} placeholder="Optional — shown after answering" />
+              <Label>{tx('qbank.explanation')}</Label>
+              <Textarea aria-label={tx('qbank.explanation')} value={form.explanation} onChange={e => setForm({ ...form, explanation: e.target.value })} rows={2} placeholder={tx('qbank.optionalShownAfterAnswering')} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Branch</Label>
+                <Label>{tx('qbank.branch')}</Label>
                 <Select value={form.branch} onValueChange={v => setForm({ ...form, branch: v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="General" /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('qbank.branch')} className="h-9 text-sm"><SelectValue placeholder={tx('qbank.general')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">General / None</SelectItem>
+                    <SelectItem value="all">{tx('qbank.generalNone')}</SelectItem>
                     {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Degree</Label>
+                <Label>{tx('qbank.degree')}</Label>
                 <Select value={form.degree_type} onValueChange={v => setForm({ ...form, degree_type: v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any degree" /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('qbank.degree')} className="h-9 text-sm"><SelectValue placeholder={tx('qbank.anyDegree')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Any degree</SelectItem>
+                    <SelectItem value="all">{tx('qbank.anyDegree')}</SelectItem>
                     {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -538,61 +590,61 @@ export default function QuestionBankPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div className="space-y-2">
-                <Label>Industry</Label>
+                <Label>{tx('qbank.industry')}</Label>
                 <Select value={form.industry || 'none'} onValueChange={v => setForm({ ...form, industry: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('qbank.industry')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="none">{tx('qbank.none')}</SelectItem>
                     {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Level</Label>
+                <Label>{tx('qbank.level')}</Label>
                 <Select value={form.level || 'none'} onValueChange={v => setForm({ ...form, level: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('qbank.level')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="none">{tx('qbank.none')}</SelectItem>
                     {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label>{tx('qbank.category')}</Label>
                 <Select value={form.assessment_category || 'none'} onValueChange={v => setForm({ ...form, assessment_category: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('qbank.category')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="none">{tx('qbank.none')}</SelectItem>
                     {ASSESSMENT_CATEGORIES.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Subject / Topic</Label>
-              <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="e.g., Data Structures, Thermodynamics" />
+              <Label>{tx('qbank.subjectOrTopic')}</Label>
+              <Input aria-label={tx('qbank.subjectOrTopic')} value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder={tx('qbank.eGDataStructuresThermodynamics')} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Tech Stack (comma separated)</Label>
-                <Input value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder="e.g., Java, React" />
+                <Label>{tx('qbank.techStackCommaSeparated')}</Label>
+                <Input aria-label={tx('qbank.techStackCommaSeparated')} value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder={tx('qbank.eGJavaReact')} />
               </div>
               <div className="space-y-2">
-                <Label>Tags (comma separated)</Label>
-                <Input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="e.g., arrays, dp" />
+                <Label>{tx('qbank.tagsCommaSeparated')}</Label>
+                <Input aria-label={tx('qbank.tagsCommaSeparated')} value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="e.g., arrays, dp" />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editing ? 'Save Changes' : 'Add Question'}</Button>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>{tx('common.cancel')}</Button>
+            <Button onClick={handleSave}>{editing ? 'Save changes' : 'Add question'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* View modal */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-primary" />
@@ -606,7 +658,7 @@ export default function QuestionBankPage() {
                 </span>
               )}
             </DialogTitle>
-            <DialogDescription>Read-only view of the question and its answer.</DialogDescription>
+            <DialogDescription>{tx('qbank.readOnlyViewOfThe')}</DialogDescription>
           </DialogHeader>
           {viewing && (
             <div className="space-y-4 py-2 text-sm">
@@ -617,19 +669,19 @@ export default function QuestionBankPage() {
               </div>
               {viewing.options && viewing.options.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Options</p>
+                  <p className="text-xs font-semibold text-muted-foreground">{tx('qbank.options')}</p>
                   {viewing.options.map((opt, i) => (
                     <p key={i} className="rounded-md border border-border px-3 py-1.5">{opt}</p>
                   ))}
                 </div>
               )}
               <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4">
-                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Answer</p>
+                <p className="text-xs font-semibold text-green-700 dark:text-green-300">{tx('qbank.answer')}</p>
                 <p className="mt-1 leading-relaxed">{viewing.answer || '—'}</p>
               </div>
               {viewing.explanation && (
                 <div className="rounded-lg border border-border p-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explanation</p>
+                  <p className="text-xs font-semibold text-muted-foreground">{tx('qbank.explanation')}</p>
                   <p className="mt-1 leading-relaxed">{viewing.explanation}</p>
                 </div>
               )}
@@ -642,7 +694,7 @@ export default function QuestionBankPage() {
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setViewOpen(false)}>Close</Button>
+            <Button onClick={() => setViewOpen(false)}>{tx('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -651,49 +703,49 @@ export default function QuestionBankPage() {
       <Dialog open={aiOpen} onOpenChange={setAiOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />Generate with AI</DialogTitle>
-            <DialogDescription>Bulk-generate MNC-standard questions into the bank.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />{tx('qbank.generateWithAi')}</DialogTitle>
+            <DialogDescription>{tx('qbank.bulkGenerateMncStandardQuestions')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Branch</Label>
+              <Label>{tx('qbank.branch')}</Label>
               <Select value={aiForm.branch || 'all'} onValueChange={v => setAiForm({ ...aiForm, branch: v === 'all' ? '' : v })}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select branch" /></SelectTrigger>
+                <SelectTrigger aria-label={tx('qbank.branch')} className="h-9 text-sm"><SelectValue placeholder={tx('qbank.selectBranch')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">None (subject-driven)</SelectItem>
+                  <SelectItem value="all">{tx('qbank.noneSubjectDriven')}</SelectItem>
                   {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Subject / Topic</Label>
-              <Input value={aiForm.subject} onChange={e => setAiForm({ ...aiForm, subject: e.target.value })} placeholder="e.g., Binary Trees, Thermodynamics" />
+              <Label>{tx('qbank.subjectOrTopic')}</Label>
+              <Input aria-label={tx('qbank.subjectOrTopic')} value={aiForm.subject} onChange={e => setAiForm({ ...aiForm, subject: e.target.value })} placeholder={tx('qbank.eGBinaryTreesThermodynamics')} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Difficulty</Label>
+                <Label>{tx('qbank.difficulty')}</Label>
                 <Select value={aiForm.difficulty} onValueChange={v => setAiForm({ ...aiForm, difficulty: v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label={tx('qbank.difficulty')} className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="mixed">Mixed</SelectItem>
-                    <SelectItem value="Easy">Easy</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Hard">Hard</SelectItem>
+                    <SelectItem value="mixed">{tx('qbank.mixed')}</SelectItem>
+                    <SelectItem value="Easy">{tx('qbank.easy')}</SelectItem><SelectItem value="Medium">{tx('qbank.medium')}</SelectItem><SelectItem value="Hard">{tx('qbank.hard')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Count</Label>
-                <Input type="number" min={1} max={1000} value={aiForm.count} onChange={e => setAiForm({ ...aiForm, count: Number(e.target.value) || 25 })} />
+                <Label>{tx('qbank.count')}</Label>
+                <Input aria-label={tx('qbank.count')} type="number" min={1} max={1000} value={aiForm.count} onChange={e => setAiForm({ ...aiForm, count: Number(e.target.value) || 25 })} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Question types (comma separated)</Label>
-              <Input value={aiForm.types} onChange={e => setAiForm({ ...aiForm, types: e.target.value })} placeholder="mcq,true_false,coding" />
+              <Label>{tx('qbank.questionTypesCommaSeparated')}</Label>
+              <Input aria-label={tx('qbank.questionTypesCommaSeparated')} value={aiForm.types} onChange={e => setAiForm({ ...aiForm, types: e.target.value })} placeholder="mcq,true_false,coding" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAiOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setAiOpen(false)}>{tx('common.cancel')}</Button>
             <Button className="gap-2" onClick={handleAiGenerate} disabled={aiBusy}>
-              {aiBusy ? <><Loader2 className="w-4 h-4 animate-spin" />Generating...</> : <><Sparkles className="w-4 h-4" />Generate</>}
+              {aiBusy ? <><Loader2 className="w-4 h-4 animate-spin" />{tx('qbank.generating')}</> : <><Sparkles className="w-4 h-4" />{tx('qbank.generate')}</>}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -703,16 +755,16 @@ export default function QuestionBankPage() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Import Questions</DialogTitle>
-            <DialogDescription>Paste JSON array or CSV (header: question,title,type,options,answer,explanation,difficulty,branch,degree_type,subject,tags,marks). Options pipe-delimited.</DialogDescription>
+            <DialogTitle>{tx('qbank.importQuestions')}</DialogTitle>
+            <DialogDescription>{tx('qbank.pasteJsonArrayOrCsv')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">
             <Textarea value={importText} onChange={e => setImportText(e.target.value)} rows={10} placeholder='[{"question":"...","type":"mcq","options":["A","B","C","D"],"answer":"A","difficulty":"Easy","branch":"cse"}]' />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportOpen(false)}><X className="w-3.5 h-3.5 mr-1" />Cancel</Button>
+            <Button variant="outline" onClick={() => setImportOpen(false)}><X className="w-3.5 h-3.5 mr-1" />{tx('common.cancel')}</Button>
             <Button className="gap-2" onClick={handleImport} disabled={importBusy || !importText.trim()}>
-              {importBusy ? <><Loader2 className="w-4 h-4 animate-spin" />Importing...</> : <><FileUp className="w-4 h-4" />Import</>}
+              {importBusy ? <><Loader2 className="w-4 h-4 animate-spin" />{tx('qbank.importing')}</> : <><AnimatedIcon name="upload" />{tx('qbank.import')}</>}
             </Button>
           </DialogFooter>
         </DialogContent>

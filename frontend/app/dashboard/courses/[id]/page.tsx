@@ -1,5 +1,6 @@
 'use client'
 
+import { useHref } from '@/hooks/use-browser-value'
 import { useEffect, useState, use, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -23,9 +24,12 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { pickResumeLessonId } from '@/lib/courses/watch-progress'
 import { cn } from '@/lib/utils'
+import { StatCard } from '@/components/app/page-kit'
 import { Player } from '@remotion/player'
 import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
-import { QuizComponent, type QuizQuestion } from '@/components/courses/QuizComponent'
+import { QuizComponent, type QuizQuestion, type QuizGradeResult } from '@/components/courses/QuizComponent'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Resource {
   title?: string
@@ -99,8 +103,11 @@ function formatDuration(seconds: number): string {
 }
 
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
+  const { t: tr, fmt } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
+  const pageHref = useHref()
   const resolved = use(params)
   const courseId = resolved.id
 
@@ -113,6 +120,8 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
   const [progress, setProgress] = useState<Progress | null>(null)
   const [showQuiz, setShowQuiz] = useState<number | null>(null)
+  const [certificate, setCertificate] = useState<{ verifyUrl: string } | null>(null)
+  const [claiming, setClaiming] = useState(false)
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
 
@@ -123,20 +132,20 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       const courseDetailTour: TourStep[] = [
         {
           target: '[data-tour="course-detail-header"]',
-          title: 'Course Details At Glance',
-          description: 'This page shows one course content, ratings, and enrollment options for learners deciding what to study.',
+          title: tr('learning.courseDetailsAtGlance'),
+          description: tr('learning.thisPageShowsOneCourseContentdb8'),
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-enroll"]',
-          title: 'Enroll or Resume Learning',
-          description: 'Enroll free to unlock lessons, or resume where you stopped to keep progressing.',
+          title: tr('learning.enrollOrResumeLearning'),
+          description: tr('learning.enrollFreeToUnlockLessonsOr92e'),
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-curriculum"]',
-          title: 'Finish Lessons, Earn Certificate',
-          description: 'Complete lessons in order and pass module quizzes to unlock your verified certificate.',
+          title: tr('learning.finishLessonsEarnCertificate'),
+          description: tr('learning.completeLessonsInOrderAndPasscb6'),
           position: 'top',
         },
       ]
@@ -150,7 +159,9 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
-    ]).then(([courseData, progressData, enrollData, completionsData]) => {
+      fetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([courseData, progressData, enrollData, completionsData, certData]) => {
+      if (certData?.certificate?.verifyUrl) setCertificate({ verifyUrl: certData.certificate.verifyUrl })
       if (courseData.data) {
         setCourse(courseData.data)
       }
@@ -169,28 +180,39 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     .finally(() => setLoading(false))
   }, [courseId])
 
-  // Save progress
-  const saveProgress = async (updates: Partial<Progress>) => {
-    if (!enrolled) return
-    try {
-      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      })
-    } catch {}
+  // Module quizzes are graded on the server; the response says what was right.
+  const gradeQuiz = (sectionIndex: number) => async (answers: Record<number, number>): Promise<QuizGradeResult> => {
+    const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/quiz-submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionIndex, answers }),
+    })
+    const j = await res.json().catch(() => null)
+    if (!res.ok || !j?.success) throw new Error(apiError(j, tr('learning.couldNotCheckYourAnswersTry223')))
+    if (j.passed) {
+      setProgress(prev => ({
+        ...(prev || { completedModules: [], quizScores: {}, currentModule: 0, skippedToFinal: false }),
+        completedModules: Array.from(new Set([...(prev?.completedModules || []), sectionIndex])),
+        quizScores: { ...(prev?.quizScores || {}), [sectionIndex]: Math.max(prev?.quizScores?.[sectionIndex] ?? 0, j.score) },
+      }))
+    }
+    return { score: j.score, total: j.total, passed: j.passed, results: j.results }
   }
 
-  const markComplete = async (lessonId: string) => {
-    const newCompleted = new Set([...completedLessons, lessonId])
-    setCompletedLessons(newCompleted)
+  // Issue (or fetch the existing) certificate; verified via /cert/verify/[token].
+  const claimCertificate = async () => {
+    setClaiming(true)
     try {
-      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId }),
-      })
-    } catch {}
+      const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { method: 'POST' })
+      const j = await res.json().catch(() => null)
+      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(apiError(j, tr('learning.couldNotIssueYourCertificate')))
+      setCertificate({ verifyUrl: j.certificate.verifyUrl })
+      addToast({ type: 'success', title: tr('learning.yourCertificateIsReady') })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : tr('learning.couldNotIssueYourCertificate') })
+    } finally {
+      setClaiming(false)
+    }
   }
 
   // Check if module is complete (all lessons done + quiz passed)
@@ -251,15 +273,15 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
         body: JSON.stringify({ courseId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Wishlist update failed')
+      if (!res.ok) throw new Error(apiError(data, tr('learning.wishlistUpdateFailed')))
       setSaved(!!data.saved)
       addToast({
-        title: data.saved ? 'Added to wishlist' : 'Removed from wishlist',
+        title: data.saved ? tr('learning.addedToWishlist') : tr('learning.removedFromWishlist'),
         type: 'success',
       })
     } catch (e: any) {
       setSaved(!next)
-      addToast({ title: e?.message || 'Could not update wishlist', type: 'error' })
+      addToast({ title: e?.message || tr('learning.couldNotUpdateWishlist'), type: 'error' })
     }
   }
 
@@ -270,7 +292,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       if (!channel || channel === 'native') {
         if (navigator.share) {
           await navigator.share({ title, url, text: course?.description || '' })
-          addToast({ title: 'Shared', type: 'success' })
+          addToast({ title: tr('learning.shared'), type: 'success' })
           setShareOpen(false)
           return
         }
@@ -287,28 +309,28 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
         return
       }
       await navigator.clipboard.writeText(url)
-      addToast({ title: 'Link copied to clipboard', type: 'success' })
+      addToast({ title: tr('learning.linkCopiedToClipboard'), type: 'success' })
       setShareOpen(false)
     } catch (e: any) {
       if (e?.name === 'AbortError') return
-      addToast({ title: 'Could not share', type: 'error' })
+      addToast({ title: tr('learning.couldNotShare'), type: 'error' })
     }
   }
 
 
 const handleEnroll = async () => {
     setEnrolled(true)
-    addToast({ title: `Enrolling in ${course?.title}...`, type: 'info' })
+    addToast({ title: tr('learning.enrollingInTitle', { title: course?.title }), type: 'info' })
     try {
       const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, {
         method: 'POST',
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Enrollment failed')
-      addToast({ title: `Enrolled in ${course?.title}`, type: 'success' })
+      if (!res.ok) throw new Error(apiError(data, tr('learning.enrollmentFailed')))
+      addToast({ title: tr('learning.enrolledInTitle', { title: course?.title }), type: 'success' })
     } catch (e: any) {
       setEnrolled(false)
-      addToast({ title: e.message || 'Enrollment failed', type: 'error' })
+      addToast({ title: e.message || tr('learning.enrollmentFailed'), type: 'error' })
     }
   }
 
@@ -333,8 +355,8 @@ const handleEnroll = async () => {
   if (!course) return (
     <div className="flex flex-col items-center justify-center py-32 gap-4">
       <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-      <h2 className="text-xl font-semibold">Course not found</h2>
-      <Link href="/dashboard/courses"><Button variant="outline">Browse Courses</Button></Link>
+      <h2 className="text-xl font-semibold">{tr('learning.courseNotFound')}</h2>
+      <Button variant="outline" asChild><Link href="/dashboard/courses">{tr('learning.browseCourses')}</Link></Button>
     </div>
   )
 
@@ -365,149 +387,148 @@ const handleEnroll = async () => {
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons.size / totalLessons) * 100) : 0
 
   // Career outcomes based on tags
-  const careerMap: Record<string, { title: string; growth: string; salary: string; color: string }[]> = {
+  const careerMap: Record<string, { title: string; color: string }[]> = {
     CPP: [
-      { title: 'Software Engineer', growth: '+28%', salary: '$85k–$130k', color: 'from-blue-500/20 to-blue-600/5' },
-      { title: 'Systems Programmer', growth: '+22%', salary: '$90k–$140k', color: 'from-indigo-500/20 to-indigo-600/5' },
+      { title: tr('learning.softwareEngineer'), color: 'from-primary/15 to-primary/5' },
+      { title: tr('learning.systemsProgrammer'), color: 'from-primary/15 to-primary/5' },
     ],
     Python: [
-      { title: 'Data Scientist', growth: '+35%', salary: '$90k–$145k', color: 'from-yellow-500/20 to-yellow-600/5' },
-      { title: 'ML Engineer', growth: '+42%', salary: '$110k–$170k', color: 'from-orange-500/20 to-orange-600/5' },
+      { title: tr('learning.dataScientist'), color: 'from-yellow-500/20 to-yellow-600/5' },
+      { title: tr('learning.mlEngineer'), color: 'from-orange-500/20 to-orange-600/5' },
     ],
     Web: [
-      { title: 'Frontend Engineer', growth: '+25%', salary: '$75k–$125k', color: 'from-cyan-500/20 to-cyan-600/5' },
-      { title: 'Full Stack Developer', growth: '+30%', salary: '$85k–$145k', color: 'from-teal-500/20 to-teal-600/5' },
+      { title: tr('learning.frontendEngineer'), color: 'from-primary/15 to-primary/5' },
+      { title: tr('learning.fullStackDeveloper'), color: 'from-primary/15 to-primary/5' },
     ]
   }
   const careerTag = (course.tags || []).find(t => careerMap[t])
   const careers = careerTag ? careerMap[careerTag] : [
-    { title: 'Software Engineer', growth: '+25%', salary: '$80k–$130k', color: 'from-blue-500/20 to-blue-600/5' },
-    { title: 'Tech Lead', growth: '+30%', salary: '$100k–$160k', color: 'from-purple-500/20 to-purple-600/5' },
+    { title: tr('learning.softwareEngineer'), color: 'from-primary/15 to-primary/5' },
+    { title: tr('learning.techLead'), color: 'from-primary/15 to-primary/5' },
   ]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="space-y-6">
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden bg-linear-to-br from-slate-950 via-[#0d1b3e] to-slate-900 text-white">
-        {/* Ambient glow blobs */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-0 left-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary via-blue-700 to-blue-950 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
+        {/* soft dot field + glow */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-30 [mask-image:radial-gradient(70%_90%_at_85%_20%,#000_20%,transparent_75%)]"
+          style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+        />
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-72 w-72 rounded-full bg-blue-300/25 blur-3xl" />
 
-        <div className="px-4 sm:px-6 lg:px-8 py-10 pb-16 relative z-10" data-tour="course-detail-header">
+        <div className="px-6 py-8 sm:px-8 lg:px-10 lg:py-10 relative z-10" data-tour="course-detail-header">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-sm text-white/50 mb-8">
+          <nav aria-label={tr('learning.breadcrumb')} className="flex items-center gap-2 text-sm text-white/75 mb-8">
             <Link href="/dashboard/courses" className="hover:text-white flex items-center gap-1 transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" /> Courses
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-white/70">{course.title}</span>
-          </div>
+              <ArrowLeft className="h-3.5 w-3.5" />{' '}{tr('learning.courses')}</Link>
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            <span className="text-white truncate">{course.title}</span>
+          </nav>
 
           <div className="grid lg:grid-cols-5 gap-10 items-center">
             {/* Left: course info */}
             <div className="lg:col-span-3 space-y-6">
               {/* Category + level badge */}
               <div className="flex flex-wrap items-center gap-3">
-                <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30 px-3 py-1">
-                  {course.category || course.tags?.[0] || 'Course'}
+                <Badge variant="secondary" className="bg-white/15 text-white border-white/30 px-3 py-1">
+                  {course.category || course.tags?.[0] || tr('learning.course')}
                 </Badge>
-                <Badge variant="secondary" className="bg-white/10 text-white/80 border-white/20 capitalize px-3 py-1">
-                  {course.level || 'All levels'}
+                <Badge variant="secondary" className="bg-white/10 text-white border-white/25 capitalize px-3 py-1">
+                  {course.level || tr('learning.allLevels')}
                 </Badge>
               </div>
 
-              <h1 className="text-4xl md:text-5xl font-black leading-tight tracking-tight">
+              <h1 className="text-3xl md:text-5xl font-black leading-tight tracking-tight text-balance">
                 {course.title}
               </h1>
 
-              <p className="text-white/70 text-lg leading-relaxed max-w-2xl">
+              <p className="text-white/85 text-lg leading-relaxed max-w-2xl">
                 {course.description}
               </p>
 
               {/* Rating + enrolled */}
               <div className="flex flex-wrap items-center gap-5">
-                <div className="flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/20 text-amber-400 px-4 py-2 rounded-full text-sm font-semibold">
-                  <Star className="h-4 w-4 fill-amber-400" />
-                  {course.rating || 4.5}
-                  <span className="text-amber-400/60 font-normal">/ 5.0</span>
+                {course.rating ? (
+                <div className="flex items-center gap-1.5 bg-white/15 border border-white/25 text-white px-4 py-2 rounded-full text-sm font-semibold tabular-nums">
+                  <Star className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
+                  {course.rating}
+                  <span className="text-white/75 font-normal">/ 5.0</span>
                 </div>
-                <div className="flex items-center gap-2 text-white/60 text-sm">
+                ) : null}
+                <div className="flex items-center gap-2 text-white/80 text-sm tabular-nums">
                   <Users className="h-4 w-4" />
                   {course.enrolled > 0
-                    ? `${course.enrolled.toLocaleString()} learners enrolled`
-                    : 'Be among the first to enroll'}
+                    ? tr('learning.nLearnersEnrolled', { n: course.enrolled })
+                    : tr('learning.beAmongTheFirstToEnroll')}
                 </div>
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <Clock className="h-4 w-4" />
-                  {hoursOfContent}h of content
-                </div>
+                <div className="flex items-center gap-2 text-white/80 text-sm tabular-nums">
+                  <Clock className="h-4 w-4" />{tr('learning.hoursofcontentHOfContent', { hoursOfContent })}</div>
               </div>
 
               {/* CTA */}
               <div className="flex flex-wrap items-center gap-3 pt-2" data-tour="course-detail-enroll">
                 {enrolled ? (
                   <Button
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-emerald-500/20 rounded-xl"
+                    className="bg-white text-[#2448c9] hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
                     onClick={() => {
                       if (continueLesson) {
                         router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)
                       }
                     }}
                   >
-                    <Play className="h-5 w-5 mr-2" /> Continue Learning
-                  </Button>
+                    <Play className="h-5 w-5 mr-2" />{' '}{tr('learning.continueLearning')}</Button>
                 ) : (
                   <Button
                     onClick={handleEnroll}
-                    className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-blue-600/20 rounded-xl"
+                    className="bg-white text-[#2448c9] hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
                   >
-                    <Zap className="h-5 w-5 mr-2" /> Enroll Now — Free
-                  </Button>
+                    <Zap className="h-5 w-5 mr-2" />{' '}{tr('learning.enrollForFree')}</Button>
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
-                      aria-label={saved ? 'Remove from wishlist' : 'Add to wishlist'}
+                      aria-label={saved ? tr('learning.removeFromWishlist') : tr('learning.addToWishlist')}
                       onClick={toggleWishlist}
                       className={cn(
-                        'h-12 w-12 rounded-xl border flex items-center justify-center transition-all',
-                        saved ? 'border-red-500/50 bg-red-500/10 text-red-400' : 'border-white/20 bg-white/5 text-white/60 hover:border-white/40 hover:text-white'
+                        'h-12 w-12 rounded-xl border flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
+                        saved ? 'border-white/60 bg-white text-red-600' : 'border-white/30 bg-white/10 text-white hover:border-white/60 hover:bg-white/15'
                       )}
                     >
-                      <Heart className={cn('h-5 w-5', saved && 'fill-red-400')} />
+                      <Heart className={cn('h-5 w-5', saved && 'fill-red-600')} />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
-                    <p>{saved ? 'Remove from wishlist' : 'Add to wishlist'}</p>
+                    <p>{saved ? tr('learning.removeFromWishlist') : tr('learning.addToWishlist')}</p>
                   </TooltipContent>
                 </Tooltip>
                 <AddToCalendarButton
                   courseTitle={course.title}
-                  courseUrl={typeof window !== 'undefined' ? window.location.href : ''}
+                  courseUrl={pageHref}
                 />
                 <div className="relative">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        aria-label="Share course"
+                        aria-label={tr('learning.shareCourse')}
                         onClick={() => setShareOpen(v => !v)}
-                        className="h-12 w-12 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-white/60 hover:border-white/40 hover:text-white transition-all"
+                        className="h-12 w-12 rounded-xl border border-white/30 bg-white/10 flex items-center justify-center text-white hover:border-white/60 hover:bg-white/15 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                       >
                         <Share2 className="h-5 w-5" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                      <p>Share course</p>
+                      <p>{tr('learning.shareCourse')}</p>
                     </TooltipContent>
                   </Tooltip>
                   {shareOpen && (
-                    <div className="absolute left-0 top-14 z-30 w-52 rounded-xl border border-border bg-card shadow-xl p-2 space-y-1">
+                    <div className="absolute left-0 top-14 z-30 w-52 rounded-2xl border border-border bg-card text-foreground shadow-xl p-2 space-y-1">
                       <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted text-left" onClick={() => shareCourse('copy')}>
-                        <Copy className="h-4 w-4" /> Copy link
-                      </button>
+                        <Copy className="h-4 w-4" />{' '}{tr('learning.copyLink')}</button>
                       <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted text-left" onClick={() => shareCourse('linkedin')}>
                         <Link2 className="h-4 w-4" /> LinkedIn
                       </button>
@@ -515,8 +536,7 @@ const handleEnroll = async () => {
                         <Share2 className="h-4 w-4" /> X / Twitter
                       </button>
                       <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted text-left" onClick={() => shareCourse('native')}>
-                        <Share2 className="h-4 w-4" /> More…
-                      </button>
+                        <Share2 className="h-4 w-4" />{' '}{tr('learning.more')}</button>
                     </div>
                   )}
                 </div>
@@ -525,57 +545,47 @@ const handleEnroll = async () => {
 
             {/* Right: thumbnail preview */}
             <div className="lg:col-span-2">
-              <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50 bg-black">
-                <div className="relative aspect-video bg-linear-to-br from-blue-600 to-purple-700 flex items-center justify-center">
+              <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg shadow-blue-950/40 bg-blue-950">
+                <div className="relative aspect-video bg-linear-to-br from-primary to-blue-950 flex items-center justify-center">
                   <img
                     src={course.image || '/courses/cpp.jpg'}
                     alt={course.title}
                     className="absolute inset-0 w-full h-full object-cover opacity-40"
                   />
-                  <div className="relative z-10 flex flex-col items-center gap-3 text-white cursor-pointer" onClick={() => continueLesson && router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)}>
-                    <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 transition-transform hover:scale-110">
-                      <Play className="h-8 w-8 fill-white ml-1" />
+                  <button type="button" disabled={!continueLesson} className="relative z-10 flex flex-col items-center gap-3 rounded-2xl text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white disabled:cursor-default" onClick={() => continueLesson && router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)}>
+                    <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 transition-transform duration-200 hover:scale-110 motion-reduce:hover:scale-100">
+                      <Play className="h-8 w-8 fill-white ml-1" aria-hidden />
                     </div>
-                    <p className="text-sm font-medium opacity-80">Start Course</p>
-                  </div>
+                    <p className="text-sm font-medium text-white/90">{tr('learning.startCourse')}</p>
+                  </button>
                 </div>
                 {/* Course title bar below video */}
-                <div className="px-5 py-4 bg-slate-900/80 backdrop-blur-sm">
+                <div className="px-5 py-4 bg-blue-950/90 backdrop-blur-sm">
                   <p className="font-semibold text-white text-sm truncate">{course.title}</p>
-                  <p className="text-xs text-white/50 mt-0.5">Learn at your own pace</p>
+                  <p className="text-xs text-white/75 mt-0.5">{tr('learning.learnAtYourOwnPace')}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom wave */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
       </div>
 
       {/* ── Stats bar ── */}
-      <div className="bg-card border-b border-border/60">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 divide-x divide-border/60">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { icon: Layers, label: 'Modules', value: sections.length || 1, color: 'text-purple-500' },
-              { icon: BookOpen, label: 'Lessons', value: totalLessons || course.sessions || 0, color: 'text-blue-500' },
-              { icon: Clock, label: 'Hours', value: hoursOfContent, color: 'text-orange-500' },
-              { icon: Users, label: 'Enrolled', value: course.enrolled > 0 ? `${(course.enrolled / 1000).toFixed(1)}k` : '0', color: 'text-green-500' },
-              { icon: Award, label: 'Certificate', value: 'Yes', color: 'text-pink-500' },
+              { icon: Layers, label: tr('learning.modules'), value: sections.length || 1 },
+              { icon: BookOpen, label: tr('learning.lessons'), value: totalLessons || course.sessions || 0 },
+              { icon: Clock, label: tr('learning.hours'), value: hoursOfContent },
+              { icon: Users, label: tr('learning.enrolled'), value: course.enrolled > 0 ? (course.enrolled >= 1000 ? `${(course.enrolled / 1000).toFixed(1)}k` : fmt.number(course.enrolled)) : '0' },
+              { icon: Award, label: tr('learning.certificate'), value: 'Yes' },
             ].map((s, i) => (
-              <div key={i} className="flex flex-col items-center justify-center py-5 px-4 gap-1">
-                <s.icon className={cn('h-5 w-5 mb-1', s.color)} />
-                <p className="text-xl font-bold">{s.value}</p>
-                <p className="text-xs text-muted-foreground font-medium">{s.label}</p>
-              </div>
+              <StatCard key={i} label={s.label} value={s.value} icon={<s.icon />} />
             ))}
-          </div>
-        </div>
       </div>
 
       {/* ── Main Content ── */}
-      <div className="px-4 sm:px-6 lg:px-8 py-10" data-tour="course-detail-curriculum">
+      <div className="pt-4" data-tour="course-detail-curriculum">
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left col — main content */}
@@ -583,29 +593,29 @@ const handleEnroll = async () => {
 
             {/* Progress bar (if enrolled) */}
             {enrolled && totalLessons > 0 && (
-              <div className="bg-card rounded-2xl border border-border/60 p-5">
+              <div className="bg-card rounded-3xl border border-border/70 p-5">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="font-semibold">Your Progress</p>
-                  <p className="text-sm font-bold text-primary">{progressPercent}%</p>
+                  <p className="font-semibold">{tr('learning.yourProgress')}</p>
+                  <p className="text-sm font-bold tabular-nums text-primary">{progressPercent}%</p>
                 </div>
-                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-2.5 bg-muted rounded-full overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent} aria-label={tr('learning.courseProgress')}>
                   <div
-                    className="h-full bg-linear-to-r from-blue-500 to-purple-500 transition-all duration-700 rounded-full"
+                    className="h-full bg-primary transition-all duration-700 motion-reduce:transition-none rounded-full"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">{completedLessons.size} / {totalLessons} lessons completed</p>
+                <p className="text-xs text-muted-foreground tabular-nums mt-2">{tr('learning.sizeOfTotallessonsLessonsCompleted', { size: completedLessons.size, totalLessons })}</p>
               </div>
             )}
 
             {/* Video Player Panel - Removed, moved to dedicated lesson page */}
 
-            {/* MP4 readiness — soft-launch signal */}
+            {/* Video readiness */}
             {totalLessons > 0 && (
               <div className={cn(
                 'rounded-2xl border p-4 flex flex-wrap items-center justify-between gap-3',
                 lessonsWithVideo >= totalLessons
-                  ? 'border-emerald-500/30 bg-emerald-500/10'
+                  ? 'border-green-500/30 bg-green-500/10'
                   : lessonsWithVideo > 0
                     ? 'border-amber-500/30 bg-amber-500/10'
                     : 'border-border/60 bg-muted/40'
@@ -613,45 +623,41 @@ const handleEnroll = async () => {
                 <div>
                   <p className="text-sm font-semibold">
                     {lessonsWithVideo >= totalLessons
-                      ? 'All lesson videos ready'
+                      ? tr('learning.allLessonVideosReady')
                       : lessonsWithVideo > 0
-                        ? 'Videos generating — soft launch'
-                        : 'Videos not ready yet'}
+                        ? tr('learning.someLessonVideosAreStillBeing86f')
+                        : tr('learning.lessonVideosHaventBeenAddedYet')}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {lessonsWithVideo} / {totalLessons} lessons have MP4s ({videosReadyPct}%).{' '}
-                    {lessonsWithVideo < totalLessons
-                      ? 'You can enroll and start modules that are ready; certificate unlocks when you finish.'
-                      : 'Full course is live for enrollment and certification.'}
+                  <p className="text-xs text-muted-foreground tabular-nums mt-0.5">{tr('learning.lessonswithvideoOfTotallessonsLessonsHavd9a', { lessonsWithVideo, totalLessons, videosReadyPct })}{' '}{lessonsWithVideo < totalLessons
+                      ? tr('learning.youCanEnrollNowAndStart199')
+                      : tr('learning.theWholeCourseIsReadyIncluding44d')}
                   </p>
                 </div>
-                <Link href="/dashboard/courses/wishlist" className="text-xs font-medium text-primary hover:underline">
-                  View wishlist
-                </Link>
+                <Link href="/dashboard/courses/wishlist" className="text-xs font-medium text-primary hover:underline">{tr('learning.viewWishlist')}</Link>
               </div>
             )}
 
             {/* About the course */}
             <section>
-              <h2 className="text-2xl font-bold mb-4">About the course</h2>
-              <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+              <h2 className="text-xl font-semibold mb-4">{tr('learning.aboutTheCourse')}</h2>
+              <div className="rounded-3xl border border-border/70 bg-card p-6 space-y-4">
                 <p className="text-muted-foreground leading-relaxed">
-                  {course.description || `${course.title} is a structured, hands-on program with short video lessons, practice, and a verified certificate when you finish.`}
+                  {course.description || tr('learning.titleIsAStructuredHandsOn325', { title: course.title })}
                 </p>
 </div>
             </section>
 
             {/* Skills you'll learn — Unstop-style check pills */}
             <section>
-              <h2 className="text-2xl font-bold mb-2">Skills you will learn</h2>
-              <p className="text-sm text-muted-foreground mb-5">Practical abilities you pick up across the modules</p>
+              <h2 className="text-xl font-semibold mb-2">{tr('learning.skillsYouWillLearn')}</h2>
+              <p className="text-sm text-muted-foreground mb-5">{tr('learning.practicalAbilitiesYouPickUpAcross780')}</p>
               <div className="flex flex-wrap gap-2.5">
                 {(course.tags?.length ? course.tags : whatYoullLearn.slice(0, 8)).map((item, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-3.5 py-1.5 text-sm font-medium text-sky-700 dark:text-sky-300"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1.5 text-sm font-medium text-primary"
                   >
-                    <Check className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" strokeWidth={3} />
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
                     {item}
                   </span>
                 ))}
@@ -660,11 +666,11 @@ const handleEnroll = async () => {
 
             {/* What you'll learn — outcomes */}
             <section>
-              <h2 className="text-2xl font-bold mb-6">What you'll learn</h2>
+              <h2 className="text-xl font-semibold mb-4">{tr('learning.whatYoullLearn')}</h2>
               <div className="grid sm:grid-cols-2 gap-3">
                 {whatYoullLearn.map((item, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-card border border-border/50 rounded-xl p-4 hover:border-primary/30 transition-colors">
-                    <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div key={i} className="flex items-start gap-3 bg-card border border-border/70 rounded-2xl p-4 hover:border-primary/30 transition-colors">
+                    <CheckCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" aria-hidden />
                     <span className="text-sm font-medium leading-relaxed">{item}</span>
                   </div>
                 ))}
@@ -675,19 +681,20 @@ const handleEnroll = async () => {
             {sections.length > 0 && (
               <section>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">Course Curriculum</h2>
-                  <p className="text-sm text-muted-foreground">{totalLessons} lessons · {formatDuration(totalDuration)} total</p>
+                  <h2 className="text-xl font-semibold">{tr('learning.courseCurriculum')}</h2>
+                  <p className="text-sm text-muted-foreground tabular-nums">{tr('learning.totallessonsLessonsValueTotal', { totalLessons, value: formatDuration(totalDuration) })}</p>
                 </div>
                 <div className="space-y-3">
                   {sections.map((section, sIdx) => {
                     const isOpen = openSections.has(String(sIdx))
                     const sectionDuration = section.lessons.reduce((acc, l) => acc + (l.duration || 0), 0)
                     return (
-                      <div key={section.slug} className="rounded-xl border border-border/60 overflow-hidden bg-card">
+                      <div key={section.slug} className="rounded-2xl border border-border/70 overflow-hidden bg-card">
                         {/* Section header */}
                         <button
                           onClick={() => toggleSection(String(sIdx))}
-                          className="w-full flex items-center justify-between px-5 py-4 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                          aria-expanded={isOpen}
+                          className="w-full flex items-center justify-between px-5 py-4 bg-muted/30 hover:bg-muted/50 transition-colors text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">
@@ -695,8 +702,7 @@ const handleEnroll = async () => {
                             </div>
                             <div>
                               <p className="font-semibold">{section.title}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {section.lessons.length} lessons{sectionDuration > 0 ? ` · ${formatDuration(sectionDuration)}` : ''}
+                              <p className="text-xs text-muted-foreground mt-0.5">{tr('learning.countLessons', { count: section.lessons.length })}{sectionDuration > 0 ? ` · ${formatDuration(sectionDuration)}` : ''}
                               </p>
                             </div>
                           </div>
@@ -728,7 +734,7 @@ const handleEnroll = async () => {
                                   {/* Status icon */}
                                   <div className={cn(
                                     'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold',
-                                    isDone ? 'bg-emerald-500/15 text-emerald-500' : 'bg-muted text-muted-foreground'
+                                    isDone ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'
                                   )}>
                                     {isDone ? <CheckCircle className="h-4 w-4" /> :
                                      isLocked ? <Lock className="h-3.5 w-3.5" /> :
@@ -744,10 +750,10 @@ const handleEnroll = async () => {
 
                                   <div className="flex items-center gap-3 shrink-0">
                                     {lesson.free && !enrolled && (
-                                      <Badge className="text-[10px] bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-2 py-0.5">Free</Badge>
+                                      <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20 px-2 py-0.5">Free</Badge>
                                     )}
                                     {lesson.duration && (
-                                      <span className="text-xs text-muted-foreground">{formatDuration(lesson.duration)}</span>
+                                      <span className="text-xs text-muted-foreground tabular-nums">{formatDuration(lesson.duration)}</span>
                                     )}
                                   </div>
                                 </button>
@@ -762,10 +768,9 @@ const handleEnroll = async () => {
                             <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-2">
                                 <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-sm font-medium">Module Quiz</span>
+                                <span className="text-sm font-medium">{tr('learning.moduleQuiz')}</span>
                                 {isModuleComplete(sIdx) && (
-                                  <Badge className="text-xs bg-emerald-500 text-emerald-700">
-                                    Passed: {progress?.quizScores?.[sIdx] || 0}%
+                                  <Badge className="text-xs tabular-nums bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30">{tr('learning.passed')}{' '}{progress?.quizScores?.[sIdx] || 0}%
                                   </Badge>
                                 )}
                               </div>
@@ -775,7 +780,7 @@ const handleEnroll = async () => {
                                   size="sm"
                                   onClick={() => setShowQuiz(showQuiz === sIdx ? null : sIdx)}
                                 >
-                                  {showQuiz === sIdx ? 'Hide Quiz' : 'Take Quiz'}
+                                  {showQuiz === sIdx ? tr('learning.hideQuiz') : tr('learning.takeQuiz')}
                                 </Button>
                               )}
                             </div>
@@ -792,22 +797,16 @@ const handleEnroll = async () => {
                                     ? `Review: ${section.lessons[0].title}`
                                     : 'Review module lessons'
                                 }
+                                grade={gradeQuiz(sIdx)}
                                 onComplete={(score, total) => {
-                                  if (score >= total * 0.8) {
-                                    addToast({ type: 'success', title: `Passed! ${Math.round(score/total*100)}%` })
-                                    saveProgress({
-                                      completedModules: [...(progress?.completedModules || []), sIdx],
-                                      quizScores: { ...(progress?.quizScores || {}), [sIdx]: Math.round(score/total*100) },
-                                    })
-                                  } else {
-                                    addToast({ type: 'error', title: `Not yet — ${Math.round(score/total*100)}% (need 80%)` })
-                                  }
-                                  setShowQuiz(null)
+                                  const pct = Math.round((score / total) * 100)
+                                  if (pct >= 80) addToast({ type: 'success', title: tr('learning.passedWithPct', { pct }) })
+                                  else addToast({ type: 'error', title: tr('learning.notYetPctYouNeed80', { pct }) })
                                 }}
                               />
                             )}
                             {isModuleComplete(sIdx) && !showQuiz && (
-                              <p className="text-xs text-muted-foreground">Module completed. Proceed to next module.</p>
+                              <p className="text-xs text-muted-foreground">{tr('learning.moduleCompleteMoveOnToThe24b')}</p>
                             )}
                           </div>
                         )}
@@ -820,27 +819,15 @@ const handleEnroll = async () => {
 
             {/* Career Outcomes */}
             <section>
-              <h2 className="text-2xl font-bold mb-2">Career Growth After This Course</h2>
-              <p className="text-muted-foreground mb-6">Skills that unlock new opportunities</p>
+              <h2 className="text-xl font-semibold mb-2">{tr('learning.rolesThisCourseHelpsWith')}</h2>
+              <p className="text-muted-foreground mb-5">{tr('learning.skillsFromThisCourseAreUsedc27')}</p>
               <div className="grid sm:grid-cols-2 gap-4">
                 {careers.map((c, i) => (
-                  <div key={i} className={cn('rounded-2xl p-5 bg-linear-to-br border border-border/60 hover:shadow-lg transition-all', c.color)}>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-                        <TrendingUp className="h-5 w-5 text-foreground" />
-                      </div>
-                      <h3 className="font-bold">{c.title}</h3>
+                  <div key={i} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card p-5">
+                    <div className="w-11 h-11 rounded-xl border border-primary/20 bg-primary/10 text-primary flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5" aria-hidden />
                     </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Job Growth</span>
-                        <span className="font-bold text-emerald-500">{c.growth}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Avg. Salary</span>
-                        <span className="font-semibold">{c.salary}</span>
-                      </div>
-                    </div>
+                    <h3 className="text-base font-semibold text-foreground">{c.title}</h3>
                   </div>
                 ))}
               </div>
@@ -848,7 +835,7 @@ const handleEnroll = async () => {
 
             {/* FAQ */}
             <section>
-              <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+              <h2 className="text-xl font-semibold mb-4">{tr('learning.frequentlyAskedQuestions')}</h2>
               <div className="space-y-3">
                 {[
                   { q: 'Who is this course for?', a: `This course is designed for learners at ${course.level || 'all'} levels. Whether you're just starting or upskilling, the content is structured to help you grow step by step.` },
@@ -857,10 +844,10 @@ const handleEnroll = async () => {
                   { q: 'Will I get a certificate?', a: 'Yes. After completing all lessons, you\'ll receive a verified certificate you can share on LinkedIn and add to your resume.' },
                   { q: 'Can I watch on mobile?', a: 'Absolutely. The platform is fully responsive and all videos play natively on mobile, tablet, and desktop.' },
                 ].map((faq, i) => (
-                  <details key={i} className="group rounded-xl border border-border/60 bg-card overflow-hidden">
+                  <details key={i} className="group rounded-2xl border border-border/70 bg-card overflow-hidden">
                     <summary className="flex items-center justify-between p-5 cursor-pointer font-semibold hover:bg-muted/40 transition-colors list-none [&::-webkit-details-marker]:hidden">
                       {faq.q}
-                      <ChevronDown className="h-5 w-5 text-muted-foreground group-open:rotate-180 transition-transform duration-300 shrink-0 ml-4" />
+                      <ChevronDown className="h-5 w-5 text-muted-foreground group-open:rotate-180 transition-transform duration-300 motion-reduce:transition-none shrink-0 ml-4" />
                     </summary>
                     <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border/50 pt-4">
                       {faq.a}
@@ -875,43 +862,41 @@ const handleEnroll = async () => {
           <div className="space-y-6">
             <div className="sticky top-6 space-y-5">
               {/* Enroll card */}
-              <Card className="border-border/60 shadow-xl overflow-hidden">
-                <div className="h-1 bg-linear-to-r from-blue-500 via-purple-500 to-pink-500" />
+              <Card className="rounded-3xl border-border/70 overflow-hidden">
+                <div className="h-1 bg-primary" />
                 <div className="p-6 space-y-5">
                   <div>
                     <p className="text-3xl font-black text-foreground">Free</p>
-                    <p className="text-sm text-muted-foreground mt-1">Full lifetime access</p>
+                    <p className="text-sm text-muted-foreground mt-1">{tr('learning.fullLifetimeAccess')}</p>
                   </div>
 
                   {enrolled ? (
                     <Button
-                      className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl"
+                      className="w-full h-12 font-semibold rounded-xl"
                       onClick={() => {
                         if (continueLesson) {
                           router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)
                         }
                       }}
                     >
-                      <Play className="h-5 w-5 mr-2 fill-white" /> Continue Learning
-                    </Button>
+                      <Play className="h-5 w-5 mr-2 fill-current" />{' '}{tr('learning.continueLearning')}</Button>
                   ) : (
                     <Button onClick={handleEnroll} className="w-full h-12 font-semibold rounded-xl">
-                      <Zap className="h-5 w-5 mr-2" /> Start Learning Now
-                    </Button>
+                      <Zap className="h-5 w-5 mr-2" />{' '}{tr('learning.startLearning')}</Button>
                   )}
 
                   <Button variant="outline" className="w-full h-11 rounded-xl" asChild>
-                    <Link href="/dashboard/courses">Browse Other Courses</Link>
+                    <Link href="/dashboard/courses">{tr('learning.browseOtherCourses')}</Link>
                   </Button>
 
                   <div className="pt-2 space-y-3 text-sm">
                     {[
-                      { icon: BookOpen, text: `${totalLessons || course.sessions || 0} lessons included` },
-                      { icon: Clock, text: `${hoursOfContent} hours of content` },
+                      { icon: BookOpen, text: tr('learning.valueLessonsIncluded', { value: totalLessons || course.sessions || 0 }) },
+                      { icon: Clock, text: tr('learning.hoursofcontentHoursOfContent', { hoursOfContent }) },
                       { icon: Layers, text: `${sections.length || 1} modules` },
-                      { icon: Award, text: 'Certificate of completion' },
-                      { icon: Download, text: 'Downloadable resources' },
-                      { icon: Shield, text: 'Lifetime access' },
+                      { icon: Award, text: tr('learning.certificateOfCompletion') },
+                      { icon: Download, text: tr('learning.downloadableResources') },
+                      { icon: Shield, text: tr('learning.lifetimeAccess') },
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-3 text-muted-foreground">
                         <item.icon className="h-4 w-4 shrink-0 text-primary/70" />
@@ -923,15 +908,15 @@ const handleEnroll = async () => {
               </Card>
 
               {/* Course highlights */}
-              <Card className="border-border/60 p-5 space-y-4">
-                <h3 className="font-bold text-base">Course Details</h3>
+              <Card className="rounded-3xl border-border/70 p-5 space-y-4">
+                <h3 className="font-semibold text-base">{tr('learning.courseDetails')}</h3>
                 <div className="space-y-3 text-sm">
                   {[
-                    { label: 'Level', value: course.level || 'All levels', icon: BarChart2 },
-                    { label: 'Duration', value: `${hoursOfContent} hours`, icon: Clock },
-                    { label: 'Rating', value: `${course.rating || 4.5} / 5.0`, icon: Star },
-                    { label: 'Instructor', value: course.instructor || 'CodeSpectra', icon: GraduationCap },
-                    { label: 'Language', value: 'English', icon: BookMarked },
+                    { label: tr('learning.level2'), value: course.level || 'All levels', icon: BarChart2 },
+                    { label: tr('learning.duration'), value: `${hoursOfContent} hours`, icon: Clock },
+                    { label: tr('learning.rating'), value: course.rating ? `${course.rating} / 5.0` : 'Not rated yet', icon: Star },
+                    { label: tr('learning.instructor'), value: course.instructor || 'CodeSpectra', icon: GraduationCap },
+                    { label: tr('common.language'), value: 'English', icon: BookMarked },
                   ].map((row, i) => (
                     <div key={i} className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-muted-foreground">
@@ -948,38 +933,44 @@ const handleEnroll = async () => {
         </div>
 
         {/* ── Certificate Section ── */}
-        <div className="mt-20 rounded-3xl overflow-hidden relative bg-linear-to-br from-slate-900 via-[#0d1b3e] to-slate-950 text-white px-8 md:px-14 py-14">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/20 rounded-full blur-[80px] pointer-events-none" />
+        <div className="mt-16 rounded-3xl overflow-hidden relative bg-linear-to-br from-primary via-blue-700 to-blue-950 text-white px-6 sm:px-8 md:px-14 py-12 md:py-14 shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
+          <div aria-hidden className="absolute -top-16 -right-10 w-80 h-80 bg-blue-300/25 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/15 border border-amber-400/20 text-amber-300 text-sm font-semibold">
-                <Award className="h-4 w-4" /> Verified Certificate
-              </div>
-              <h2 className="text-3xl md:text-4xl font-black leading-tight">
-                Earn a certificate worth adding to your portfolio
-              </h2>
-              <p className="text-white/70 leading-relaxed">
-                Complete {course.title} and receive a verifiable certificate. Showcase it on LinkedIn, add it to your resume, and stand out to recruiters worldwide.
-              </p>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 border border-white/30 text-white text-sm font-semibold">
+                <Award className="h-4 w-4 text-amber-300" aria-hidden />{' '}{tr('learning.verifiedCertificate')}</div>
+              <h2 className="text-3xl md:text-4xl font-black leading-tight">{tr('learning.earnACertificateWorthAddingTo0b7')}</h2>
+              <p className="text-white/85 leading-relaxed">{tr('learning.finishTitleAndGetACertificateb81', { title: course.title })}</p>
               <ul className="space-y-3">
                 {['Shareable on LinkedIn & resume', 'Unique online verification link', 'Printable high-resolution PDF'].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-white/80">
-                    <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />
+                  <li key={i} className="flex items-center gap-3 text-white/90">
+                    <CheckCircle className="h-5 w-5 text-white shrink-0" aria-hidden />
                     {item}
                   </li>
                 ))}
               </ul>
-              {!enrolled && (
-                <Button onClick={handleEnroll} className="h-12 px-8 font-semibold rounded-xl bg-white text-slate-900 hover:bg-white/90">
-                  Get Certified — Free
+              {!enrolled ? (
+                <Button onClick={handleEnroll} className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">{tr('learning.getCertifiedForFree')}</Button>
+              ) : certificate ? (
+                <Button asChild className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">
+                  <Link href={certificate.verifyUrl}>{tr('learning.viewYourCertificate')}</Link>
                 </Button>
+              ) : progressPercent >= 100 ? (
+                <Button
+                  onClick={() => void claimCertificate()}
+                  disabled={claiming}
+                  className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90"
+                >
+                  {claiming ? tr('learning.issuing') : tr('learning.getYourCertificate')}
+                </Button>
+              ) : (
+                <p className="text-sm text-white/85">{tr('learning.finishEveryLessonAndModuleQuiz2ec', { progressPercent })}</p>
               )}
             </div>
 
             {/* Real SuperAdmin template + SAMPLE watermark */}
-            <div className="flex justify-center transform rotate-1 hover:rotate-0 transition-transform duration-500">
+            <div className="flex justify-center rotate-1 hover:rotate-0 transition-transform duration-500 motion-reduce:rotate-0">
               <CourseCertificatePreview
                 courseTitle={course.title}
                 recipientName={gate.user?.name || gate.user?.email?.split("@")[0] || undefined}

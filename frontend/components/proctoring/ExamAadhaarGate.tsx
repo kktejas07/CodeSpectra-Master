@@ -1,27 +1,40 @@
 'use client'
 
+import { useBrowserValue } from '@/hooks/use-browser-value'
 import { useEffect, useState } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
+import { X, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AnonAadhaarVerify } from '@/components/kyc/AnonAadhaarVerify'
-import { AadhaarIDVerificationModal } from '@/components/proctoring/AadhaarIDVerificationModal'
+import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
+import { useT } from '@/lib/i18n/client'
 
 type ExamMode = 'anon_aadhaar' | 'ocr_face' | 'off'
 
 /**
  * Exam gate: uses SuperAdmin exam_aadhaar purpose setting.
  * - anon_aadhaar → ZK prove
- * - ocr_face → existing OCR + face modal
- * - off → auto-pass
+ * - ocr_face → ID card photo + live selfie, the same capture flow as the
+ *   test's own identity check (stored for this attempt via /api/exams/[id]/identity)
+ * - off → nothing extra to check; says so (never reports a check that didn't happen)
  */
 export function ExamAadhaarGate({
   onVerified,
   onCancel,
+  examId,
+  examTitle = 'this test',
 }: {
   onVerified: () => void
   onCancel: () => void
+  /** The exam being taken; needed for the card + selfie mode. */
+  examId?: string
+  examTitle?: string
 }) {
+  const { t } = useT()
   const [mode, setMode] = useState<ExamMode | null>(null)
+  // The ocr_face branch renders IdentityVerification, which traps focus itself.
+  const panelRef = useFocusTrap<HTMLDivElement>(!(mode === 'ocr_face' && !!examId), onCancel)
+  const search = useBrowserValue(() => window.location.search, '')
   const [seed, setSeed] = useState('314159265358979')
   const [testMode, setTestMode] = useState(true)
 
@@ -31,52 +44,74 @@ export function ExamAadhaarGate({
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return
-        const m = (d.exam_aadhaar || 'ocr_face') as ExamMode
+        const m = (d.exam_aadhaar || 'off') as ExamMode
         if (d.anon_aadhaar_nullifier_seed) setSeed(String(d.anon_aadhaar_nullifier_seed))
         if (typeof d.anon_aadhaar_test_mode === 'boolean') setTestMode(d.anon_aadhaar_test_mode)
-        if (m === 'off') {
-          onVerified()
-          return
-        }
         setMode(m)
       })
       .catch(() => {
-        if (!cancelled) setMode('ocr_face')
+        // Settings unreachable: behave like the platform default ('off').
+        if (!cancelled) setMode('off')
       })
     return () => {
       cancelled = true
     }
-  }, [onVerified])
+  }, [])
 
   if (!mode) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div className="flex items-center gap-2 rounded-xl bg-background p-6 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading exam ID settings…
+        <div ref={panelRef} role="dialog" aria-modal="true" aria-label={t('exam.loadingIdCheck')} className="flex items-center gap-2 rounded-2xl border border-border bg-card p-6 text-sm text-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />{' '}{t('exam.loadingIdCheck2')}</div>
+      </div>
+    )
+  }
+
+  if (mode === 'ocr_face' && examId) {
+    const qs = search ? new URLSearchParams(search) : null
+    return (
+      <IdentityVerification
+        examId={examId}
+        examTitle={examTitle}
+        inviteToken={qs?.get('inviteToken') || null}
+        linkToken={qs?.get('link') || null}
+        onCancel={onCancel}
+        onComplete={() => onVerified()}
+      />
+    )
+  }
+
+  if (mode === 'off' || mode === 'ocr_face') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exam-id-none-title">
+        <div ref={panelRef} className="relative w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
+            <h2 id="exam-id-none-title" className="text-base font-bold text-foreground">{t('exam.noExtraIdCheckNeeded')}</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">{t('exam.thisTestDoesntAskForAn89d')}</p>
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" onClick={onCancel}>{t('common.close')}</Button>
+          </div>
         </div>
       </div>
     )
   }
 
-  if (mode === 'ocr_face') {
-    return <AadhaarIDVerificationModal onVerified={() => onVerified()} onCancel={onCancel} />
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="relative w-full max-w-lg space-y-4 rounded-xl border border-border bg-background p-6 shadow-xl">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="exam-aadhaar-title" className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
         <button
           type="button"
-          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+          aria-label={t('common.close')}
+          className="absolute right-3 top-3 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onCancel}
         >
           <X className="h-4 w-4" />
         </button>
         <div>
-          <h2 className="text-base font-bold">Exam identity (Anon Aadhaar)</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Privacy-preserving Aadhaar proof. Does not replace full KYC on Identity Verify.
-          </p>
+          <h2 id="exam-aadhaar-title" className="text-base font-bold text-foreground">{t('exam.examIdentityAnonAadhaar')}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t('exam.privacyPreservingAadhaarProofDoesNotf0a')}</p>
         </div>
         <AnonAadhaarVerify
           purpose="exam"
@@ -84,9 +119,7 @@ export function ExamAadhaarGate({
           useTestAadhaar={testMode}
           onVerified={() => onVerified()}
         />
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>{t('common.cancel')}</Button>
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,6 +11,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader, Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Problem {
   id: string
@@ -58,7 +62,7 @@ function CountdownTimer({ target }: { target: string }) {
   if (time.days === 0 && time.hours === 0 && time.minutes === 0 && time.seconds === 0) return null
 
   return (
-    <div className="flex items-center gap-1.5 text-xs">
+    <div className="flex items-center gap-1.5 text-xs tabular-nums">
       {time.days > 0 && <span className="font-mono font-semibold">{time.days}d</span>}
       <span className="font-mono font-semibold">{String(time.hours).padStart(2, '0')}</span>
       <span className="text-muted-foreground">:</span>
@@ -70,20 +74,25 @@ function CountdownTimer({ target }: { target: string }) {
 }
 
 export default function CodeathonsPage() {
+  const { formatDate } = useLocaleDates()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [filter, setFilter] = useState({ status: '', difficulty: '' })
 
   useEffect(() => {
+    setLoadError(false)
     fetch('/api/codeathons')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => { if (json.data) setCodeathons(json.data) })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -91,20 +100,20 @@ export default function CodeathonsPage() {
       const codeathonsTour: TourStep[] = [
         {
           target: '[data-tour="codeathons-header"]',
-          title: 'Codeathons',
-          description: 'Compete in coding competitions, solve challenges, and win prizes.',
+          title: tr('compete.codeathons'),
+          description: tr('compete.competeInCodingCompetitionsSolveChalleng20a'),
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathons-filters"]',
-          title: 'Filter Codeathons',
-          description: 'Filter competitions by status and difficulty level.',
+          title: tr('compete.filterCodeathons'),
+          description: tr('compete.filterCompetitionsByStatusAndDifficultyb54'),
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathons-grid"]',
-          title: 'Codeathon List',
-          description: 'Browse upcoming and ongoing coding competitions.',
+          title: tr('compete.codeathonList'),
+          description: tr('compete.browseUpcomingAndOngoingCodingCompetitio'),
           position: 'bottom',
         },
       ]
@@ -117,16 +126,16 @@ export default function CodeathonsPage() {
   )
 
   const getStatusColor = (s: string) => {
-    if (s === 'active' || s === 'ongoing') return 'bg-green-500/20 text-green-700 border-green-500/30'
-    if (s === 'upcoming') return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    if (s === 'active' || s === 'ongoing') return 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400'
+    if (s === 'upcoming') return 'bg-primary/10 text-primary border-primary/30'
+    return 'bg-muted text-muted-foreground border-border'
   }
 
   const getDifficultyColor = (d: string) => {
-    if (d === 'Hard') return 'bg-red-500/20 text-red-700 border-red-500/30'
-    if (d === 'Easy') return 'bg-green-500/20 text-green-700 border-green-500/30'
-    if (d === 'Mixed') return 'bg-purple-500/20 text-purple-700 border-purple-500/30'
-    return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    if (d === 'Hard') return 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400'
+    if (d === 'Easy') return 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400'
+    if (d === 'Mixed') return 'bg-primary/10 text-primary border-primary/30'
+    return 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400'
   }
 
   const isActive = (c: Codeathon) => {
@@ -160,21 +169,26 @@ export default function CodeathonsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2" data-tour="codeathons-header">
-          <h1 className="text-3xl font-bold">Codeathons</h1>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Compete in coding competitions, solve challenges, and win prizes</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <div data-tour="codeathons-header">
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            illustration="hackathon"
+            className="mb-0"
+            icon={<Trophy />}
+            description={tr('compete.joinLiveCodingCompetitionsAndProve884')}
+            title={<span className="inline-flex items-center gap-2">{tr('compete.codeathons')}<TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" aria-label={tr('compete.aboutCodeathons')} />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-62.5">{tr('compete.competeInCodingCompetitionsSolveChalleng881')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider></span>}
+          />
         </div>
-        <p className="text-sm text-muted-foreground mt-1">Join live coding competitions and prove your skills</p>
       </div>
 
       {/* Filters */}
@@ -182,46 +196,55 @@ export default function CodeathonsPage() {
         <select
           value={filter.status}
           onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label={tr('compete.filterByStatus')}
+          className="h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
         >
-          <option value="">All Status</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="active">Active</option>
-          <option value="ended">Ended</option>
+          <option value="">{tr('compete.allStatuses')}</option>
+          <option value="upcoming">{tr('compete.upcoming')}</option>
+          <option value="active">{tr('compete.active')}</option>
+          <option value="ended">{tr('compete.ended')}</option>
         </select>
         <select
           value={filter.difficulty}
           onChange={e => setFilter(f => ({ ...f, difficulty: e.target.value }))}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label={tr('compete.filterByDifficulty')}
+          className="h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
         >
-          <option value="">All Levels</option>
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
-          <option value="Mixed">Mixed</option>
+          <option value="">{tr('compete.allLevels')}</option>
+          <option value="Easy">{tr('compete.easy')}</option>
+          <option value="Medium">{tr('compete.medium')}</option>
+          <option value="Hard">{tr('compete.hard')}</option>
+          <option value="Mixed">{tr('compete.mixed')}</option>
         </select>
       </div>
 
-      {codeathons.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <Trophy className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No codeathons available yet.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Check back soon for upcoming competitions</p>
-        </Card>
+      {loadError && codeathons.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title={tr('compete.couldntLoadCodeathons')}
+          description={tr('compete.checkYourConnectionAndTryAgain')}
+          actionLabel={tr('common.tryAgain')}
+          onAction={() => setReloadKey(k => k + 1)}
+        />
+      ) : codeathons.length === 0 ? (
+        <EmptyState illustration="hackathon"
+          title={tr('compete.noCodeathonsYet')}
+          description={tr('compete.upcomingCompetitionsWillShowUpHeread5')}
+          actionLabel={tr('compete.practiseProblems')}
+          actionHref="/dashboard/problems"
+        />
       ) : filtered.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <p className="text-muted-foreground">No codeathons match your filters.</p>
-        </Card>
+        <EmptyState variant="search" title={tr('compete.noCodeathonsMatch')} description={tr('compete.tryADifferentStatusOrLevel')} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="codeathons-grid">
+        <div className="cs-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3 lg:gap-5" data-tour="codeathons-grid">
           {filtered.map(h => (
-            <Card key={h.id} className="border-border/60 p-5 hover:border-primary/30 transition-colors flex flex-col">
+            <Card key={h.id} className="flex flex-col gap-0 rounded-3xl p-6 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
               {/* Header */}
               <div className="mb-3 flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-foreground line-clamp-1">{h.title}</h3>
+                <h3 className="text-base font-semibold text-foreground line-clamp-1">{h.title}</h3>
                 <div className="flex gap-1.5 shrink-0">
                   <Badge variant="outline" className={getStatusColor(isActive(h) ? 'active' : isUpcoming(h) ? 'upcoming' : h.status)}>
-                    {isActive(h) ? 'Live' : isUpcoming(h) ? 'Upcoming' : h.status}
+                    {isActive(h) ? tr('compete.live') : isUpcoming(h) ? tr('compete.upcoming') : <span className="capitalize">{h.status}</span>}
                   </Badge>
                 </div>
               </div>
@@ -249,7 +272,7 @@ export default function CodeathonsPage() {
                   </Badge>
                 )}
                 {h.problems && h.problems.length > 0 && (
-                  <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" />{h.problems.length} problems</span>
+                  <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" />{tr('compete.countProblems', { count: h.problems.length })}</span>
                 )}
               </div>
 
@@ -257,13 +280,13 @@ export default function CodeathonsPage() {
               <div className="mb-3">
                 {isUpcoming(h) && h.startDate ? (
                   <div className="flex items-center gap-2 text-xs">
-                    <Clock className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-muted-foreground">Starts in</span>
+                    <Clock className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-muted-foreground">{tr('compete.startsIn')}</span>
                     <CountdownTimer target={h.startDate} />
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{h.startDate ? formatDate(h.startDate) : 'TBA'}</span>
+                  <div className="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{h.startDate ? formatDate(h.startDate) : tr('compete.tba')}</span>
                     <span className="flex items-center gap-1"><Users className="h-3 w-3" />{h.participants || 0}{h.maxParticipants ? `/${h.maxParticipants}` : ''}</span>
                   </div>
                 )}
@@ -285,7 +308,7 @@ export default function CodeathonsPage() {
                   className="w-full"
                   onClick={() => router.push(`/dashboard/codeathons/${h.id}`)}
                 >
-                  {h.registered ? 'Open' : 'Register'}
+                  {h.registered ? tr('compete.open') : tr('compete.register')}
                   <ChevronRight className="h-3.5 w-3.5 ml-1" />
                 </Button>
               </div>

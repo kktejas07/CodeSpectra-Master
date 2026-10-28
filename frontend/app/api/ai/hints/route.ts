@@ -16,14 +16,14 @@ interface HintReq {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'hints_model')
 
   const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -32,14 +32,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = (await req.json()) as HintReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const slug = (body.problem_slug || '').trim()
   if (!slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
 
   const probsCol = await problems()
   const p = await probsCol.findOne({ slug })
-  if (!p) return NextResponse.json({ error: 'problem not found' }, { status: 404 })
+  if (!p) return NextResponse.json({ error: 'problem not found', code: 'problem_not_found' }, { status: 404 })
 
   try {
     const result = await backendPost<{ hint: string; hint_level: number }>(
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
     return NextResponse.json(result)
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'AI hints failed' }, { status: 500 })
+    console.error('[ai/hints]', err)
+    return NextResponse.json({ error: 'AI hints failed' }, { status: 500 })
   }
 }

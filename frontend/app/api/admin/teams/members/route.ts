@@ -1,11 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/route-auth'
-import { users as getUsersCollection } from '@/lib/db/admin'
+import { requireAdmin, type APIUser } from '@/lib/route-auth'
+import { createOrgInvitation, checkSeatLimit } from '@/lib/org-invitations'
+import { auditAdmin } from '@/lib/admin-audit'
+import crypto from 'node:crypto'
+import { users as getUsersCollection, tenants } from '@/lib/db/admin'
 import bcrypt from 'bcryptjs'
-import { getAdminAuthInstance } from '@/lib/firebase-admin'
-import { getMongoDb } from '@/lib/mongodb'
+import { normalizeUserRole } from '@/lib/rbac'
+import { existingAccountInviteAction, passwordProblem } from '@/lib/auth-account'
+import { revokeAllUserSessions } from '@/lib/session'
+import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForEmail } from '@/lib/i18n/recipient'
+
+/** Existing accounts join only by accepting an invitation (D30/D31). */
+async function inviteExisting(caller: APIUser, tenantId: string, email: string, role: 'user' | 'tenant_admin') {
+  const seatDenied = await checkSeatLimit(caller, tenantId)
+  if (seatDenied) return NextResponse.json(seatDenied, { status: 402 })
+  const { invitation, emailed } = await createOrgInvitation({
+    tenantId,
+    email,
+    role,
+    invitedBy: { id: caller.id, name: caller.fullName || caller.name, email: caller.email },
+  })
+  await auditAdmin(caller, 'admin.org.invite', 'organization', `tenant/${tenantId}`, `${email} as ${role}`)
+  return NextResponse.json({ invited: true, emailed, invitation }, { status: 202 })
+}
 
 function parseEmail(s: string | null | undefined): string | null {
   const e = (s || '').trim().toLowerCase()
@@ -69,15 +89,22 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed'
+    const msg = 'Failed'
     console.error('[CodeSpectra] admin/teams/members GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
 
 /**
- * POST /api/admin/teams/members — tenant_admin creates a member in their own
- * tenant (always role `user`; tenant admins cannot promote roles).
+ * POST /api/admin/teams/members — add someone to an organisation.
+ *
+ * - New email: creates the account in the org (role `user`; a superadmin may
+ *   choose `tenant_admin`). No password given ⇒ a set-password link is sent.
+ * - Existing account already in this org: nothing changes.
+ * - Existing account with no org: a tenant admin can't move it silently — an
+ *   organisation invitation is emailed and the person must accept it.
+ * - Account in another org, or a superadmin: refused (superadmins may move
+ *   accounts between orgs, never a superadmin).
  */
 export async function POST(request: NextRequest) {
   const gate = await requireAdmin()
@@ -87,7 +114,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const email = parseEmail(body.email)
@@ -96,121 +123,99 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const userCol = await getUsersCollection()
-    const me = await userCol.findOne({ id: gate.user.id })
-    let tenantId: string | null = (me?.tenantId as string | null) ?? null
-    if (!tenantId) tenantId = (me?.organizationId as string | null) ?? null
-
-    if (gate.user.role === 'superadmin' && body.tenantId) tenantId = body.tenantId
+    const isSuper = gate.user.role === 'superadmin'
+    let tenantId: string | null = isSuper
+      ? (typeof body.tenantId === 'string' && body.tenantId.trim()) || gate.user.tenantId || null
+      : gate.user.tenantId || null
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'You must belong to an organization to add members.' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: 'You must belong to an organization to add members.' }, { status: 400 })
     }
+    const tenantDoc = await (await tenants()).findOne({ id: tenantId })
+    if (!tenantDoc || tenantDoc.is_active === false) {
+      return NextResponse.json({ error: 'Organization not found or not active' }, { status: 400 })
+    }
+    tenantId = tenantDoc.id
+    const orgName = tenantDoc.name || 'your organization'
 
     // Superadmin may provision the new member as an org admin; tenant admins always add plain users.
     const requestedRole = (body.role || '').trim().toLowerCase()
-    const memberRole = gate.user.role === 'superadmin' && requestedRole === 'tenant_admin' ? 'tenant_admin' : 'user'
+    const memberRole = isSuper && requestedRole === 'tenant_admin' ? 'tenant_admin' : 'user'
 
-    const existing = await userCol.findOne({ email })
+    const userCol = await getUsersCollection()
+    const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const existing = await userCol.findOne({ $or: [{ email }, { email: { $regex: `^${escaped}$`, $options: 'i' } }] } as never)
     if (existing) {
-      const isSuperAdminCaller = gate.user.role === 'superadmin'
-      // Cross-tenant takeover guard: a non-superadmin may not pull a user that
-      // belongs to another organization into their own (would overwrite tenantId
-      // and demote foreign admins to 'user').
-      const victimTenant =
-        ((existing.tenantId as string | null) ?? (existing.organizationId as string | null) ?? null)
-      if (!isSuperAdminCaller && victimTenant && victimTenant !== tenantId) {
-        return NextResponse.json(
-          { error: 'user belongs to another organization' },
-          { status: 403 },
-        )
+      const existingId = existing.id || String(existing._id)
+      const action = existingAccountInviteAction({ role: gate.user.role, tenantId }, existing)
+      if (action === 'forbidden') {
+        return NextResponse.json({ error: 'This person belongs to another organization.' }, { status: 403 })
       }
-      // Never touch the tenantId (or role) of an existing superadmin.
-      const setUpdate: Record<string, unknown> = { updatedAt: new Date() }
-      if (existing.role !== 'superadmin') {
-        setUpdate.tenantId = tenantId
-        setUpdate.role = memberRole
+      if (action === 'needs_consent') {
+        return inviteExisting(gate.user, tenantId, email, 'user')
       }
-      await userCol.updateOne({ email }, { $set: setUpdate })
-      return NextResponse.json({ user: { id: existing.id || String(existing._id), email, already_existed: true } }, { status: 200 })
-    }
-
-    // Create via Firebase first (password hashing + account linkage)
-    const adminAuth = await getAdminAuthInstance()
-    let newUserId: string
-    if (adminAuth) {
-      try {
-        const rec = await adminAuth.createUser({
-          email,
-          password: body.password && body.password.length >= 8 ? body.password : undefined,
-          displayName: (body.name || '').trim() || email.split('@')[0] || 'User',
-        })
-        newUserId = rec.uid
-      } catch (e: any) {
-        if (e?.code === 'auth/email-already-exists') {
-          const existingUser = await adminAuth.getUserByEmail(email)
-          await userCol.updateOne(
-            { email },
-            { $set: { tenantId, updatedAt: new Date() } },
-          )
-          return NextResponse.json({ user: { id: existingUser.uid, email, already_existed: true } }, { status: 200 })
+      // link: superadmin, or already a member of this org
+      if (isSuper && normalizeUserRole(existing.role) !== 'superadmin') {
+        const set: Record<string, unknown> = {}
+        if ((existing.tenantId ?? existing.organizationId ?? null) !== tenantId) set.tenantId = tenantId
+        if (memberRole === 'tenant_admin' && normalizeUserRole(existing.role) !== 'tenant_admin') set.role = 'tenant_admin'
+        if (Object.keys(set).length) {
+          await userCol.updateOne({ _id: existing._id } as never, { $set: { ...set, updatedAt: new Date() } })
+          await revokeAllUserSessions(existingId).catch(() => {})
+          if (set.tenantId !== undefined) await import('@/lib/agent/schedule-guard').then((m) => m.disableSchedulesCreatedBy(existingId)).catch(() => 0)
+          await auditAdmin(gate.user, 'admin.member.move', 'user', `user/${existingId}`, Object.entries(set).map(([k, v]) => `${k}=${String(v)}`).join(' '), 'warning')
         }
-        throw e
       }
-    } else {
-      newUserId = `local-${crypto.randomUUID()}`
+      return NextResponse.json({ user: { id: existingId, email, already_existed: true } }, { status: 200 })
     }
 
-    const db = await getMongoDb()
-    const passwordHash = await bcrypt.hash(
-      body.password && body.password.length >= 8 ? body.password : `temp-${Math.random().toString(36).slice(2)}A1!`,
-      10,
-    )
-    const fullName = (body.name || '').trim() || email.split('@')[0] || 'User'
+    const fullName = (body.name || '').trim().slice(0, 120) || email.split('@')[0] || 'User'
+    const password = typeof body.password === 'string' && body.password ? body.password : ''
+    if (password) {
+      const problem = passwordProblem(password)
+      if (problem) return NextResponse.json({ error: problem }, { status: 400 })
+    }
 
-    await db.collection('user').updateOne(
-      { email },
-      {
-        $set: {
-          id: newUserId,
-          email,
-          name: fullName,
-          fullName,
-          passwordHash,
-          role: memberRole,
-          tenantId,
-          updatedAt: new Date(),
-        },
-        $setOnInsert: { _id: newUserId, createdAt: new Date() },
-      },
-      { upsert: true },
-    )
+    const seatDenied = await checkSeatLimit(gate.user, tenantId)
+    if (seatDenied) return NextResponse.json(seatDenied, { status: 402 })
 
-    // Send welcome email with credentials
-    const tempPassword = body.password && body.password.length >= 8 ? body.password : null
+    // Sign-in is local (bcrypt) — no Firebase user needed.
+    const newUserId = crypto.randomUUID()
+    const now = new Date()
+    await userCol.insertOne({
+      _id: newUserId,
+      id: newUserId,
+      email,
+      name: fullName,
+      fullName,
+      ...(password ? { passwordHash: await bcrypt.hash(password, 12) } : {}),
+      role: memberRole,
+      tenantId,
+      emailVerified: false,
+      session_version: 1,
+      createdAt: now,
+      updatedAt: now,
+    } as never)
+
+    const roleName = memberRole === 'tenant_admin' ? 'Organization Admin' : 'Team Member'
+    let emailSent = false
     try {
-      const { tenants: tenantsCol } = await import('@/lib/db/admin')
-      const tenantDoc = await (await tenantsCol()).findOne({ id: tenantId })
-      const orgName = tenantDoc?.name || 'your organization'
-      const emailResult = await sendEmail(
-        email,
-        emailTemplates.accountCredentials({
-          name: fullName,
-          email,
-          orgName,
-          role: memberRole === 'tenant_admin' ? 'Organization Admin' : 'Team Member',
-        }),
-      )
-
+      if (password) {
+        const r = await sendEmail(email, emailTemplatesFor(await localeForEmail(email)).accountCredentials({ name: fullName, email, orgName, role: roleName }))
+        emailSent = !!r?.success
+      } else {
+        const hours = 72
+        const setupUrl = await issuePasswordSetupLink(newUserId, hours)
+        const r = await sendEmail(email, accountSetupEmail({ name: fullName, orgName, role: roleName, setupUrl, validHours: hours }))
+        emailSent = !!r?.success
+      }
     } catch (e) {
       console.error(`[Members] Welcome email to ${email} failed:`, e)
     }
 
-    return NextResponse.json({ user: { id: newUserId, email, full_name: fullName, role: memberRole, tenant_id: tenantId } }, { status: 201 })
+    await auditAdmin(gate.user, 'admin.member.create', 'user', `user/${newUserId}`, `email=${email} role=${memberRole} tenant=${tenantId}`)
+    return NextResponse.json({ user: { id: newUserId, email, full_name: fullName, role: memberRole, tenant_id: tenantId }, welcomeEmailSent: emailSent }, { status: 201 })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to add member'
+    const msg = 'Failed to add member'
     console.error('[CodeSpectra] admin/teams/members POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

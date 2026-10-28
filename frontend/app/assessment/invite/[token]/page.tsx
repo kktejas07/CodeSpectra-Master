@@ -5,9 +5,13 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
+import { Code2, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useAuth } from '@/lib/auth-context'
+import { SoftGlow } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
+import { Scene } from '@/components/illustrations/scenes'
+import { useT } from '@/lib/i18n/client'
 
 interface AssessmentStepData {
   id: string
@@ -20,6 +24,7 @@ interface AssessmentStepData {
 
 export default function CandidateInviteLandingPage() {
   const { user } = useAuth()
+  const { t, rich } = useT()
   const params = useParams()
   const router = useRouter()
   const token = params?.token as string
@@ -50,7 +55,7 @@ export default function CandidateInviteLandingPage() {
         if (!res.ok) {
           if (json.is_used) setIsUsed(true)
           if (json.is_expired) setIsExpired(true)
-          throw new Error(json.error || 'Invalid or expired invitation link.')
+          throw new Error(json.error || t('assessment.inviteInvalidExpired'))
         }
         setCandidateData({
           email: json.email,
@@ -61,7 +66,7 @@ export default function CandidateInviteLandingPage() {
           allowed_languages: json.allowed_languages,
         })
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Verification failed')
+        setError(e instanceof Error ? e.message : t('assessment.verificationFailed'))
       } finally {
         setLoading(false)
       }
@@ -77,11 +82,11 @@ export default function CandidateInviteLandingPage() {
         method: 'POST',
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to request new link')
-      setRenewedMsg(json.message || 'A new invitation link has been sent to your email.')
+      if (!res.ok) throw new Error(json.error || t('assessment.requestLinkFailed'))
+      setRenewedMsg(json.message || t('assessment.newLinkSent'))
       setRenewedEmail(candidateData?.email || '')
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to request new link')
+      setError(e instanceof Error ? e.message : t('assessment.requestLinkFailed'))
     } finally {
       setRenewing(false)
     }
@@ -92,7 +97,7 @@ export default function CandidateInviteLandingPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          Verifying candidate invitation token...
+          {t('assessment.checkingInvite')}
         </div>
       </div>
     )
@@ -100,65 +105,60 @@ export default function CandidateInviteLandingPage() {
 
   if (error || !candidateData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md w-full p-6 text-center border-destructive/30 space-y-4 shadow-xl">
+      <div className="relative isolate min-h-screen flex items-center justify-center bg-background p-4">
+        <SoftGlow />
+        <Card className="max-w-md w-full rounded-3xl p-6 sm:p-8 text-center border-border/70 space-y-4 shadow-sm dark:shadow-none">
           {renewedMsg ? (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 mx-auto">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
-              <h1 className="text-xl font-bold text-foreground">New Link Requested</h1>
+              <Illustration name="inbox" className="mx-auto w-36" />
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.newLinkRequested')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {renewedMsg}
               </p>
-              <div className="bg-muted/50 border rounded-lg p-4 text-left space-y-2">
-                <p className="text-sm font-medium">What happens next?</p>
+              <div className="bg-muted/40 border border-border rounded-2xl p-4 text-left space-y-2">
+                <p className="text-sm font-medium">{t('assessment.whatNext')}</p>
                 <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
-                  <li>Open your email inbox (<span className="font-mono text-foreground">{renewedEmail}</span>)</li>
-                  <li>Click the new invitation link from the email</li>
-                  <li>Sign in or create your account to start the assessment</li>
+                  <li>{rich('assessment.nextOpenInbox', { email: <span className="font-mono text-foreground">{renewedEmail}</span> })}</li>
+                  <li>{t('assessment.nextClickLink')}</li>
+                  <li>{t('assessment.nextSignIn')}</li>
                 </ol>
               </div>
               <div className="pt-2 flex flex-col gap-2">
-                <a
+                <Button className="w-full gap-2" asChild>
+                  <a
                   href={`https://mail.google.com/mail/u/0/#inbox`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full"
                 >
-                  <Button className="w-full gap-2">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-                    Open Gmail
-                  </Button>
-                </a>
-                <Link href="/auth/login" className="block">
-                  <Button variant="outline" className="w-full">Go to Sign In</Button>
-                </Link>
+                    {t('assessment.openGmail')}
+                  </a>
+                </Button>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/auth/login" className="block">{t('assessment.goToSignIn')}</Link>
+                </Button>
               </div>
             </>
           ) : isUsed ? (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 mx-auto">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
-              <h1 className="text-xl font-bold text-foreground">Assessment Already Completed</h1>
+              <Illustration name="success" className="mx-auto w-36" />
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.alreadyCompleted')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This invitation has already been used to complete the assessment. If you need to retake the assessment, please contact your administrator.
+                {t('assessment.alreadyCompletedBody')}
               </p>
               <div className="pt-2">
-                <Link href="/auth/login" className="block">
-                  <Button className="w-full">Go to Sign In</Button>
-                </Link>
+                <Button className="w-full" asChild>
+                  <Link href="/auth/login" className="block">{t('assessment.goToSignIn')}</Link>
+                </Button>
               </div>
             </>
           ) : isExpired ? (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 mx-auto">
-                <AlertCircle className="h-6 w-6" />
-              </div>
-              <h1 className="text-xl font-bold text-foreground">Invitation Link Expired</h1>
+              <Illustration name="calendar" className="mx-auto w-36" />
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.inviteExpired')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This candidate assessment link has expired. Request a fresh link and check your email to start the assessment.
+                {t('assessment.inviteExpiredBody')}
               </p>
               <div className="pt-2 space-y-2">
                 <Button 
@@ -167,29 +167,27 @@ export default function CandidateInviteLandingPage() {
                   className="w-full font-semibold"
                 >
                   {renewing ? (
-                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Requesting...</>
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> {t('assessment.requesting')}</>
                   ) : (
-                    'Request New Link'
+                    t('assessment.requestNewLink')
                   )}
                 </Button>
-                <Link href="/auth/login" className="block">
-                  <Button variant="outline" className="w-full">Go to Sign In</Button>
-                </Link>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/auth/login" className="block">{t('assessment.goToSignIn')}</Link>
+                </Button>
               </div>
             </>
           ) : (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mx-auto">
-                <AlertCircle className="h-6 w-6" />
-              </div>
-              <h1 className="text-xl font-bold text-foreground">Invitation Link Invalid</h1>
+              <Illustration name="error" className="mx-auto w-36" />
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.inviteNotValid')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {error || 'This candidate assessment link is invalid or has already been used.'}
+                {error || t('assessment.inviteNotValidBody')}
               </p>
               <div className="pt-2">
-                <Link href="/auth/login">
-                  <Button variant="outline" className="w-full">Go to Sign In</Button>
-                </Link>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/auth/login">{t('assessment.goToSignIn')}</Link>
+                </Button>
               </div>
             </>
           )}
@@ -203,43 +201,45 @@ export default function CandidateInviteLandingPage() {
     : [
         {
           id: 'step-1',
-          title: 'Primary Candidate Assessment',
+          title: 'Assessment',
           target_url: candidateData.target_url,
           allowed_languages: candidateData.allowed_languages,
         },
       ]
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4 py-8">
-      <Card className="max-w-2xl w-full p-6 sm:p-8 border-primary/20 space-y-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border pb-4">
+    <div className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-linear-to-br from-background via-background to-primary/5 p-4 py-8 xl:gap-16">
+      <SoftGlow />
+      <Scene name="proctored-test" className="hidden w-full max-w-[400px] shrink-0 xl:block" />
+      <Card className="max-w-2xl w-full rounded-3xl p-6 sm:p-8 border-border/70 space-y-6 shadow-sm dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
               <Code2 className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Candidate Assessment Portal</h1>
-              <p className="text-xs text-muted-foreground">CodeSpectra Automated Proctoring & Evaluation Suite</p>
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.yourAssessment')}</h1>
+              <p className="text-xs text-muted-foreground">{t('assessment.checkDetails')}</p>
             </div>
           </div>
-          <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 font-medium">
-            <ShieldCheck className="h-3.5 w-3.5" /> Token Verified
+          <span className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 font-medium">
+            <ShieldCheck className="h-3.5 w-3.5" /> {t('assessment.inviteVerified')}
           </span>
         </div>
 
-        <div className="rounded-lg border border-border bg-card/60 p-4 space-y-2 text-xs">
+        <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-2 text-sm">
           <div className="flex justify-between py-1 border-b border-border/40">
-            <span className="text-muted-foreground">Candidate Name:</span>
+            <span className="text-muted-foreground">{t('assessment.name')}</span>
             <span className="font-semibold text-foreground">{candidateData.full_name}</span>
           </div>
           <div className="flex justify-between py-1 border-b border-border/40">
-            <span className="text-muted-foreground">Candidate Email:</span>
+            <span className="text-muted-foreground">{t('auth.email')}</span>
             <span className="font-mono text-foreground">{candidateData.email}</span>
           </div>
           {candidateData.allowed_languages && candidateData.allowed_languages.length > 0 && (
             <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Allowed Coding Languages:</span>
-              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 capitalize">
+              <span className="text-muted-foreground">{t('assessment.allowedLanguages')}</span>
+              <span className="font-semibold text-foreground capitalize">
                 {candidateData.allowed_languages.join(', ')}
               </span>
             </div>
@@ -248,8 +248,8 @@ export default function CandidateInviteLandingPage() {
 
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <span>Your Assigned Assessment Pipeline</span>
-            <span className="text-xs font-normal text-muted-foreground">({steps.length} {steps.length === 1 ? 'stage' : 'stages'})</span>
+            <span>{t('assessment.yourStages')}</span>
+            <span className="text-xs font-normal text-muted-foreground">({t('assessment.stagesCount', { count: steps.length })})</span>
           </h2>
 
           <div className="grid gap-3">
@@ -258,7 +258,7 @@ export default function CandidateInviteLandingPage() {
               return (
                 <div
                   key={step.id || idx}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-border bg-card hover:border-primary/40 transition-colors duration-200"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -270,8 +270,8 @@ export default function CandidateInviteLandingPage() {
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground pl-7">
                       <span className="font-mono bg-muted px-2 py-0.5 rounded border border-border">{step.target_url}</span>
                       {langs && langs.length > 0 && (
-                        <span className="text-emerald-600 dark:text-emerald-400 font-mono">
-                          Languages: {langs.join(', ')}
+                        <span className="text-muted-foreground">
+                          {t('assessment.languagesList', { list: langs.join(', ') })}
                         </span>
                       )}
                     </div>
@@ -288,11 +288,11 @@ export default function CandidateInviteLandingPage() {
                               body: JSON.stringify({ email: candidateData.email }),
                             })
                             const json = await res.json()
-                            if (!res.ok) throw new Error(json.error || 'Failed to activate invite')
+                            if (!res.ok) throw new Error(json.error || t('assessment.activateFailed'))
                             const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
                             router.push(url)
                           } catch (e: unknown) {
-                            const msg = e instanceof Error ? e.message : 'Failed to start'
+                            const msg = e instanceof Error ? e.message : t('assessment.startFailed')
                             setError(msg)
                             setStarting(null)
                           }
@@ -302,9 +302,9 @@ export default function CandidateInviteLandingPage() {
                         className="gap-1.5 shrink-0 self-end sm:self-center"
                       >
                         {starting === (step.id || 'start') ? (
-                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Activating...</>
+                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('assessment.activating')}</>
                         ) : (
-                          <><Lock className="h-3.5 w-3.5" /> Start Stage <ArrowRight className="h-3.5 w-3.5" /></>
+                          <><Lock className="h-3.5 w-3.5" /> {t('assessment.startStage')} <ArrowRight className="h-3.5 w-3.5" /></>
                         )}
                       </Button>
                     ) : (
@@ -316,7 +316,7 @@ export default function CandidateInviteLandingPage() {
                         size="sm"
                         className="gap-1.5 shrink-0 self-end sm:self-center bg-primary hover:bg-primary/95 text-primary-foreground font-semibold"
                       >
-                        <User className="h-3.5 w-3.5" /> Sign In to Start <ArrowRight className="h-3.5 w-3.5" />
+                        <User className="h-3.5 w-3.5" /> {t('assessment.signInToStart')} <ArrowRight className="h-3.5 w-3.5" />
                       </Button>
                     )
                   ) : (
@@ -326,9 +326,9 @@ export default function CandidateInviteLandingPage() {
                         router.push(registerUrl)
                       }}
                       size="sm"
-                      className="gap-1.5 shrink-0 self-end sm:self-center bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                      className="gap-1.5 shrink-0 self-end sm:self-center font-semibold"
                     >
-                      <User className="h-3.5 w-3.5" /> Register to Start <ArrowRight className="h-3.5 w-3.5" />
+                      <User className="h-3.5 w-3.5" /> {t('assessment.registerToStart')} <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
@@ -340,11 +340,11 @@ export default function CandidateInviteLandingPage() {
         {starting && (
           <p className="text-[11px] text-center text-muted-foreground pt-2">
             <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
-            Activating secure assessment link — please wait...
+            {t('assessment.opening')}
           </p>
         )}
         <p className="text-[11px] text-center text-muted-foreground pt-2">
-          🔒 This invite link can only be used once. Identity check and anti-cheat session proctoring are automatically active.
+          {t('assessment.inviteFootnote')}
         </p>
       </Card>
     </div>

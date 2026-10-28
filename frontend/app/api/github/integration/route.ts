@@ -10,7 +10,7 @@ import { getMongoDb } from '@/lib/mongodb'
 export async function GET(_request: NextRequest) {
   const user = await getAPIUser()
   if (!user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    return NextResponse.json({ error: 'Not authenticated', code: 'not_authenticated' }, { status: 401 })
   }
 
   try {
@@ -31,7 +31,7 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     console.error('[CodeSpectra] GitHub integration error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get integration' },
+      { error: 'Failed to get integration' },
       { status: 500 },
     )
   }

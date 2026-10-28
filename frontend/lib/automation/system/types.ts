@@ -1,0 +1,33 @@
+import type { AutomationEventDoc } from '../events'
+import type { JobHandler } from '../jobs'
+import type { Cadence } from './rules'
+
+export interface SystemAutomation {
+  id: string
+  title: string
+  description: string
+  group: 'Assessments' | 'Billing' | 'Hiring' | 'Events' | 'Engagement' | 'Operations'
+  /** Audit ids this closes (shown to admins). */
+  refs: string[]
+  /** Periodic sweep. */
+  cadence?: Cadence
+  run?: (now: Date) => Promise<Record<string, unknown> | void>
+  /** Event subscriptions (called by the event dispatcher when the automation is on). */
+  events?: { type: string; handle: (ev: AutomationEventDoc) => Promise<void> }[]
+  /** Persisted job handlers this automation owns. */
+  jobs?: { type: string; handler: JobHandler }[]
+  /** Some automations are essential plumbing — they can be paused but default on. */
+  defaultOn?: boolean
+  /** Always on: the switch is hidden and toggling is refused (event signals other features depend on). */
+  locked?: boolean
+  /**
+   * Event types that only exist while this automation is on. Switching it off
+   * stops workflows that trigger on them (the admin page warns about that).
+   */
+  emits?: string[]
+  /**
+   * Slow sweep (link checks, AI notes): run from the scheduler's heavy content lane, never the
+   * every-minute critical lane, so it can't hold up quiet-hours flush or exam auto-close (AUTO-099).
+   */
+  heavy?: boolean
+}

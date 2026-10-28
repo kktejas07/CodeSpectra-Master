@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data, total, riskCount, blockedCount })
   } catch (e) {
     console.error('[security/fingerprints] Error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }
 
@@ -95,6 +95,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true })
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

@@ -1,129 +1,85 @@
-import { formatDate } from '@/lib/format-datetime'
-import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
-import { candidateInvites, newId, nowIso } from '@/lib/db/admin'
-import { exams } from '@/lib/db/content'
-import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+/**
+ * Bulk candidate invites for one assessment (audits CORE-009 / CORE-010).
+ *
+ * POST { examId, candidates: [{ email, name?, company?, role? }], deadline?, durationMinutes?, message? }
+ *   Superadmin, or a company admin for their own tenant's tests. ≤ 500 rows,
+ *   counted against the plan's monthly invite limit. Stores the invites and
+ *   returns at once; e-mails are sent from a queue (lib/services/bulk-invites.ts).
+ *   → { batch_id, created: [{ id, email, delivery_status }], errors: [{ email, reason }] }
+ *
+ * GET ?examId=…&batch=… → per-invite delivery status of that batch (polled by the page).
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin, requireTenantEntity } from '@/lib/route-auth'
+import { getMongoDb } from '@/lib/mongodb'
+import { limitRequest } from '@/lib/rate-limit'
+import { auditAdmin } from '@/lib/admin-audit'
+import { batchStatus, createBulkInvites, sendQueuedInvites } from '@/lib/services/bulk-invites'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const ID_RE = /^[A-Za-z0-9_-]{1,128}$/
 
-interface BulkCandidate {
-  email: string
-  name?: string
-  company?: string
-  role?: string
-}
-
-interface BulkRequest {
-  examId: string
-  candidates: BulkCandidate[]
-  deadline?: string
-  durationMinutes?: number
-  message?: string
-}
-
-export async function POST(request: Request) {
-  const gate = await requireSuperAdmin()
+export async function POST(request: NextRequest) {
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const limited = await limitRequest(request, 'bulk-invites', gate.user.id, 10, 60_000)
+  if (limited) return limited
 
   try {
-    const body: BulkRequest = await request.json()
-    const { examId, candidates, deadline, durationMinutes, message } = body
+    const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
+    const examId = typeof body?.examId === 'string' ? body.examId : ''
+    if (!ID_RE.test(examId)) return NextResponse.json({ error: 'examId is required' }, { status: 400 })
 
-    if (!examId) {
-      return NextResponse.json({ error: 'examId is required' }, { status: 400 })
-    }
-    if (!candidates?.length) {
-      return NextResponse.json({ error: 'At least one candidate is required' }, { status: 400 })
-    }
+    const db = await getMongoDb()
+    // Company admins only for their own organisation's tests.
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) return NextResponse.json({ error: owned.error === 'Not found' ? 'Assessment not found' : owned.error }, { status: owned.status })
 
-    const examCol = await exams()
-    const exam = await examCol.findOne({ id: examId })
-    if (!exam) {
-      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 })
-    }
-
-    const inviteCol = await candidateInvites()
-    const now = nowIso()
-
-    // Dedupe by email within the batch + check existing invites for this exam
-    const seenEmails = new Set<string>()
-    const created: string[] = []
-    const errors: { email: string; reason: string }[] = []
-
-    for (const c of candidates) {
-      const email = (c.email || '').trim().toLowerCase()
-
-      if (!email || !EMAIL_RE.test(email)) {
-        errors.push({ email: c.email || '(empty)', reason: 'Invalid email format' })
-        continue
-      }
-
-      if (seenEmails.has(email)) {
-        errors.push({ email, reason: 'Duplicate email in CSV' })
-        continue
-      }
-      seenEmails.add(email)
-
-      // Check existing invite for same exam
-      const existing = await inviteCol.findOne({ email, target_url: { $regex: examId } })
-      if (existing) {
-        errors.push({ email, reason: 'Already invited to this assessment' })
-        continue
-      }
-
-      const id = newId()
-      const doc = {
-        id,
-        token: `${examId}-${Date.now()}-${id.slice(0, 8)}`,
-        user_id: '',
-        email,
-        full_name: c.name || email.split('@')[0],
-        target_url: `/assessment/${examId}`,
-        assigned_assessments: [],
-        allowed_languages: [],
-        invited_by: gate.user.id,
-        status: 'pending' as const,
-        expires_at: deadline || new Date(Date.now() + 7 * 86400000).toISOString(),
-        created_at: now,
-        updated_at: now,
-        company: c.company || null,
-        role_title: c.role || null,
-        duration_minutes: durationMinutes || null,
-        custom_message: message || null,
-        bulk_scheduled: true,
-        exam_id: examId,
-      }
-
-      await inviteCol.insertOne(doc)
-      created.push(email)
-
-      // Send email — fire-and-forget per candidate, catch individually
-      try {
-        const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'}/assessment/${examId}?invite=${id}`
-        const tpl = emailTemplates.assessmentInvite({
-          candidateName: c.name || email.split('@')[0],
-          examTitle: exam.title,
-          inviteUrl,
-          expiresIn: deadline ? formatDate(deadline) : '7 days',
-        })
-        await sendEmail(email, tpl)
-      } catch {
-        // Don't fail batch on email error — invite is already saved
-      }
-    }
-
-    return NextResponse.json({
-      created: created.length,
-      failed: errors.length,
-      errors,
+    const res = await createBulkInvites(db, {
+      exam: owned.doc as unknown as { id: string; title?: unknown; tenant_id?: unknown },
+      actor: { id: gate.user.id, role: gate.user.role, tenantId: gate.user.tenantId ?? null },
+      candidates: body?.candidates,
+      deadline: body?.deadline,
+      durationMinutes: body?.durationMinutes,
+      message: body?.message,
     })
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Bulk scheduling failed'
-    console.error('[Bulk] POST error:', e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    if (!res.ok) {
+      return NextResponse.json({ error: res.error, ...(res.code ? { code: res.code, limit: res.limit, remaining: res.remaining } : {}) }, { status: res.status })
+    }
+    if (res.created.length) {
+      await auditAdmin(gate.user, 'admin.assessment.bulk_invite', 'exam', `exam/${examId}`, `${res.created.length} invites, batch ${res.batch_id}`)
+      // Start sending now without holding the response; the scheduler finishes anything left.
+      void sendQueuedInvites(db, { batchId: res.batch_id, limit: 500, budgetMs: 120_000 })
+        .catch((e) => console.error('[bulk-invites] drain failed:', (e as Error)?.message))
+    }
+    return NextResponse.json({
+      batch_id: res.batch_id,
+      created: res.created.length,
+      failed: res.errors.length,
+      invites: res.created,
+      errors: res.errors,
+    })
+  } catch (e) {
+    console.error('[bulk-invites] POST error:', (e as Error)?.message)
+    return NextResponse.json({ error: 'Bulk invite failed' }, { status: 500 })
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const gate = await requireAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const examId = request.nextUrl.searchParams.get('examId') || ''
+  const batch = request.nextUrl.searchParams.get('batch') || ''
+  if (!ID_RE.test(examId) || !ID_RE.test(batch)) return NextResponse.json({ error: 'examId and batch required' }, { status: 400 })
+  try {
+    const db = await getMongoDb()
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
+    return NextResponse.json(await batchStatus(db, examId, batch))
+  } catch (e) {
+    console.error('[bulk-invites] GET error:', (e as Error)?.message)
+    return NextResponse.json({ error: 'Could not load invite status' }, { status: 500 })
   }
 }

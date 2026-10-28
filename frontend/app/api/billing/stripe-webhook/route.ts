@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import {
   syncCheckoutSessionCompleted,
+  syncCheckoutSessionFailed,
   syncSubscriptionFromStripe,
-  syncInvoiceFromStripe,
+  syncInvoicePaid,
+  syncInvoicePaymentFailed,
 } from '@/lib/stripe-webhook-sync'
+import { getStripeSecretKey, getStripeWebhookSecret } from '@/lib/stripe-client'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -12,49 +15,78 @@ export const runtime = 'nodejs'
 /**
  * POST /api/billing/stripe-webhook
  *
- * Receives Stripe webhook events, verifies the signature, and syncs to
- * the billing_orders / billing_payments / billing_subscriptions collections.
+ * Receives Stripe webhook events, verifies the `stripe-signature` header
+ * against STRIPE_WEBHOOK_SECRET on the raw body (stripe.webhooks.constructEvent,
+ * which also rejects stale timestamps), and syncs to the billing_orders /
+ * billing_payments / billing_subscriptions collections. Paid checkouts
+ * activate via activatePaidOrder() — see lib/stripe-webhook-sync.ts.
+ * Recurring plans: invoice.paid extends the period (idempotent per invoice),
+ * invoice.payment_failed starts the grace window, customer.subscription.*
+ * mirrors cancel-at-period-end and the end of the subscription.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  const [stripeSecretKey, webhookSecret] = await Promise.all([getStripeSecretKey(), getStripeWebhookSecret()])
 
   if (!stripeSecretKey || !webhookSecret) {
-    return NextResponse.json(
-      { error: 'Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET.' },
-      { status: 503 },
-    )
+    return NextResponse.json({ error: 'Stripe is not configured.' }, { status: 503 })
   }
 
   const raw = await req.text()
   const signature = req.headers.get('stripe-signature') || ''
+  if (!signature) return NextResponse.json({ error: 'invalid_signature' }, { status: 400 })
 
   let event: Stripe.Event
   try {
     const stripe = new Stripe(stripeSecretKey)
     event = stripe.webhooks.constructEvent(raw, signature, webhookSecret)
   } catch (e) {
-    console.error('[stripe-webhook] signature verification failed:', e)
+    console.error('[stripe-webhook] signature verification failed:', e instanceof Error ? e.message : e)
     return NextResponse.json({ error: 'invalid_signature' }, { status: 400 })
+  }
+
+  // Marketplace checkouts (metadata.mkt_order_id / client_reference_id "mkt_…") never touch plan billing.
+  if (event.type.startsWith('checkout.session.')) {
+    const { marketplaceOrderIdFromSession } = await import('@/lib/marketplace/gateways')
+    const session = event.data.object as Stripe.Checkout.Session
+    const mktOrderId = marketplaceOrderIdFromSession(session)
+    if (mktOrderId) {
+      try {
+        const { handleStripeSessionEvent } = await import('@/lib/marketplace/settle')
+        await handleStripeSessionEvent(event.type, session, mktOrderId)
+        return NextResponse.json({ received: true })
+      } catch (e) {
+        console.error('[stripe-webhook] marketplace processing error:', e instanceof Error ? e.message : e)
+        return NextResponse.json({ error: 'processing_failed' }, { status: 500 })
+      }
+    }
   }
 
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object as Stripe.Checkout.Session
         await syncCheckoutSessionCompleted(session)
+        break
+      }
+      case 'checkout.session.async_payment_failed':
+      case 'checkout.session.expired': {
+        const session = event.data.object as Stripe.Checkout.Session
+        await syncCheckoutSessionFailed(session)
         break
       }
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
-        await syncSubscriptionFromStripe(subscription)
+        await syncSubscriptionFromStripe(subscription, event.type === 'customer.subscription.deleted')
         break
       }
-      case 'invoice.paid':
+      case 'invoice.paid': {
+        await syncInvoicePaid(event.data.object as Stripe.Invoice)
+        break
+      }
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
-        await syncInvoiceFromStripe(invoice)
+        await syncInvoicePaymentFailed(event.data.object as Stripe.Invoice)
         break
       }
       default:
@@ -64,6 +96,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ received: true })
   } catch (e) {
     console.error('[stripe-webhook] processing error:', e)
-    return NextResponse.json({ error: 'processing_failed', detail: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'processing_failed' }, { status: 500 })
   }
 }

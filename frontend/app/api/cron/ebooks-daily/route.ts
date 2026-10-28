@@ -1,34 +1,37 @@
 /**
  * Cron: generate one draft ebook per day from the rotating topic list.
- * POST /api/cron/ebooks-daily  ?secret=CRON_SECRET
+ * POST /api/cron/ebooks-daily  (Authorization: Bearer CRON_SECRET)
  *
  * Original CodeSpectra content only — no scraping copyrighted books.
  * Human publishes from /dashboard/admin/resources.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
+import { withCronWindow } from '@/lib/automation/job-lease'
 import { ebooksCol } from '@/lib/db/ebooks'
 import { generateEbookDraft, topicForDay } from '@/lib/ebooks-generate'
 // topicForDay exported as topicForDay
 import { ensureEbookSeed } from '@/lib/ebooks-seed'
 import { buildEbookCoverPrompt, generateCoverImage } from '@/lib/ai-image'
+import { getEbookSettings } from '@/lib/ebooks-settings'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 180
 
 function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET?.trim()
-  if (!expected) return process.env.NODE_ENV !== 'production'
-  const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret') || ''
-  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  return fromQuery === expected || fromHeader === expected
+  return isCronAuthorized(req)
 }
 
 async function postImpl(req: NextRequest) {
   if (!authorize(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  }
+
+  // AUTO-086: off by default (Admin → Resources → Daily AI draft) — it spends AI budget every day.
+  if (!(await getEbookSettings()).auto_draft_enabled) {
+    return NextResponse.json({ ok: true, skipped: 'disabled' })
   }
 
   await ensureEbookSeed('system')
@@ -71,7 +74,8 @@ async function postImpl(req: NextRequest) {
   return NextResponse.json({ ok: true, usedAi, slug: ebook.slug, topic, status: ebook.status })
 }
 
-export const POST = withCronHeartbeat('ebooks-daily', postImpl)
+// One run per day across replicas and external crons (AUTO-041).
+export const POST = withCronWindow('ebooks-daily', 1440, withCronHeartbeat('ebooks-daily', postImpl))
 
 export async function GET(req: NextRequest) {
   return POST(req)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller, requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { findBusyJob, clearCourseVideos } from '@/lib/courses/process-job'
 import { normalizeTargetMinutes } from '@/lib/courses/lesson-video'
@@ -36,11 +36,11 @@ interface GenerationJob {
 export async function GET(request: NextRequest) {
   const user = await getAPIUser()
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   const courseId = request.nextUrl.searchParams.get('courseId') || ''
-  if (!courseId && user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!courseId && !isSuperAdminCaller(user)) { // SEC-029
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
@@ -62,16 +62,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ jobs: normalized })
   } catch (e) {
     console.error('[jobs] GET error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 // POST - Create a new generation job
 export async function POST(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const { courseId, courseTitle, type, totalItems, force, targetMinutes } = await request.json()
@@ -120,15 +118,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, job })
   } catch (e) {
     console.error('[jobs] POST error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const jobId = request.nextUrl.searchParams.get('jobId')
@@ -156,16 +152,14 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('[jobs] DELETE error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 // PATCH - Update job status/progress
 export async function PATCH(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const { jobId, updates } = await request.json()
@@ -195,6 +189,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('[jobs] PATCH error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

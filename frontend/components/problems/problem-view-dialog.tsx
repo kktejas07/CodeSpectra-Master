@@ -35,7 +35,7 @@ interface ProblemDetail {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h4>
+      <h4 className="text-xs font-semibold text-muted-foreground">{title}</h4>
       {children}
     </div>
   )
@@ -44,7 +44,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function TcBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 flex-1 space-y-1">
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
       <pre className="rounded-md bg-muted/60 px-2 py-1.5 font-mono text-[11px] leading-snug whitespace-pre-wrap wrap-break-word">{value || '(empty)'}</pre>
     </div>
   )
@@ -154,7 +154,7 @@ export function ProblemViewDialog({
               <button
                 type="button"
                 onClick={() => setShowSamples((s) => !s)}
-                className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
               >
                 Sample test cases ({samples.length})
                 {showSamples ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}

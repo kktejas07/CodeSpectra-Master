@@ -12,8 +12,11 @@ import { Code2, Play, Send, CheckCircle, AlertCircle, Loader2, ArrowRight, Spark
 import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from '@/lib/arena-challenges'
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -43,7 +46,16 @@ interface RunResult {
   time_ms: number
 }
 
+interface ArenaPoints {
+  points: number
+  reason: 'awarded' | 'not_accepted' | 'already_earned' | 'daily_cap' | 'unknown_question'
+  earned_today: number
+  daily_cap: number
+}
+
 interface RunResponse {
+  arena_points?: ArenaPoints | null
+  arena_points_error?: string | null
   status: string
   passed_tests: number
   total_tests: number
@@ -52,7 +64,25 @@ interface RunResponse {
   results: RunResult[]
 }
 
+function arenaPointsMessage(p: ArenaPoints): string {
+  const today = `${p.earned_today}/${p.daily_cap} arena points today`
+  switch (p.reason) {
+    case 'awarded':
+      return `+${p.points} points added to your XP · ${today}`
+    case 'already_earned':
+      return 'Solved again — you already earned points for this question.'
+    case 'daily_cap':
+      return `Daily arena limit reached (${today}). Solve it again tomorrow to earn its points.`
+    case 'not_accepted':
+      return 'No points yet — pass every test to earn points for this question.'
+    default:
+      return 'This question doesn\'t award points.'
+  }
+}
+
 function ArenaChallengeInner() {
+  const apiError = useApiError()
+  const { t } = useT()
   const params = useParams()
   const router = useRouter()
   const id = String(params?.id ?? '')
@@ -63,11 +93,13 @@ function ArenaChallengeInner() {
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(baseChallenge ?? null)
   const [source, setSource] = useState<'ai' | 'static' | null>(null)
   const [adaptNotice, setAdaptNotice] = useState<string | null>(null)
+  const [variantId, setVariantId] = useState<string | null>(null)
 
   useEffect(() => {
     setChallenge(baseChallenge ?? null)
     setSource(null)
     setAdaptNotice(null)
+    setVariantId(null)
   }, [baseChallenge])
 
   useEffect(() => {
@@ -87,10 +119,12 @@ function ArenaChallengeInner() {
           body: JSON.stringify({ challengeId: id, userStack: stack }),
           signal: ac.signal,
         })
-        const json = await res.json() as { source?: string; challenge?: ArenaChallenge; notice?: string }
+        const json = await res.json() as { source?: string; challenge?: ArenaChallenge; notice?: string; variant_id?: string }
         if (json.challenge) {
           setChallenge(json.challenge)
           setSource(json.source === 'ai' ? 'ai' : 'static')
+          // Submits are graded on the server's copy of this variant's tests.
+          setVariantId(json.source === 'ai' && json.variant_id ? json.variant_id : null)
         }
         if (json.notice) setAdaptNotice(json.notice)
       } catch {
@@ -151,7 +185,7 @@ function ArenaChallengeInner() {
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || 'Run failed')
+      if (!res.ok) throw new Error(apiError(json, t('practice.runFailed')))
       setResult(json)
     } catch (e: any) {
       setResult({
@@ -185,13 +219,16 @@ function ArenaChallengeInner() {
             expected_output: ex.output,
           })),
           mode: 'submit',
+          challenge_id: id,
+          variant_id: variantId ?? undefined,
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || 'Submit failed')
+      if (!res.ok) throw new Error(apiError(json, t('practice.submitFailed')))
       setResult(json)
       if (json.status === 'accepted' && nextId) {
-        setTimeout(() => router.push(`/dashboard/arena/${nextId}`), 1400)
+        // Leave time to read the points line before moving on.
+        setTimeout(() => router.push(`/dashboard/arena/${nextId}`), 3000)
       }
     } catch (e: any) {
       setResult({
@@ -205,16 +242,16 @@ function ArenaChallengeInner() {
     } finally {
       setSubmitted(false)
     }
-  }, [challenge, language, nextId, router])
+  }, [challenge, language, nextId, router, id, variantId])
 
   if (!challenge) {
     return (
       <div className="space-y-4">
         <Alert>
-          <AlertTitle>Challenge not found</AlertTitle>
+          <AlertTitle>{t('practice.challengeNotFound')}</AlertTitle>
           <AlertDescription>
             <Button asChild variant="link" className="h-auto p-0">
-              <Link href="/dashboard/arena">Back to arena</Link>
+              <Link href="/dashboard/arena">{t('practice.backToArena')}</Link>
             </Button>
           </AlertDescription>
         </Alert>
@@ -230,48 +267,45 @@ function ArenaChallengeInner() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2" data-tour="arena-detail-header">
+      <div data-tour="arena-detail-header">
+        <PageHeader
+          title={challenge.title}
+          icon={<Code2 />}
+          className="mb-3"
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <Code2 className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">{challenge.title}</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className={diffStyles[challenge.difficulty] ?? ''}>{challenge.difficulty?.toUpperCase() || 'EASY'}</Badge>
+          <Badge className={`capitalize ${diffStyles[challenge.difficulty] ?? ''}`}>{challenge.difficulty || t('practice.easy2')}</Badge>
           <Badge variant="secondary">{challenge.category}</Badge>
-          <Badge variant="outline">{challenge.points} pts</Badge>
+          <Badge variant="outline" className="tabular-nums">{t('practice.pointsPts', { points: challenge.points })}</Badge>
           {source === 'ai' ? (
-            <Badge className="gap-1 border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300">
-              <Sparkles className="h-3 w-3" />
-              AI variant
-            </Badge>
+            <Badge className="gap-1 border-primary/40 bg-primary/10 text-primary">
+              <Sparkles className="h-3 w-3" />{t('practice.aiVariant')}</Badge>
           ) : source === 'static' ? (
             <Badge variant="outline" className="gap-1 font-normal">
-              <Database className="h-3 w-3" />
-              Curated seed
-            </Badge>
+              <Database className="h-3 w-3" />{t('practice.curated')}</Badge>
           ) : null}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left: problem statement */}
-        <Card className="space-y-4 border-border/60 p-6 overflow-y-auto max-h-[calc(100vh-14rem)]">
-          <h2 className="font-semibold text-foreground">Problem</h2>
+        <Card className="space-y-4 rounded-3xl border-border/70 p-6 overflow-y-auto max-h-[calc(100vh-14rem)]">
+          <h2 className="text-lg font-semibold text-foreground">{t('practice.problem')}</h2>
           <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
             {challenge.statement.map((p, i) => <p key={i}>{p}</p>)}
           </div>
           <div className="space-y-2">
-            <h3 className="font-semibold text-foreground">Examples</h3>
+            <h3 className="text-base font-semibold text-foreground">{t('practice.examples')}</h3>
             {challenge.examples.map((ex, i) => (
-              <div key={i} className="rounded-md border border-border/60 bg-muted/30 p-3 font-mono text-xs">
-                <p className="text-foreground/80">Input: {ex.input}</p>
-                <p className="text-foreground/80">Output: {ex.output}</p>
+              <div key={i} className="rounded-xl border border-border/60 bg-muted/30 p-3 font-mono text-xs">
+                <p className="text-foreground/80">{t('practice.inputInput', { input: ex.input })}</p>
+                <p className="text-foreground/80">{t('practice.outputOutput', { output: ex.output })}</p>
                 {ex.explanation ? <p className="mt-2 text-muted-foreground">{ex.explanation}</p> : null}
               </div>
             ))}
           </div>
           <div>
-            <h3 className="mb-2 font-semibold text-foreground">Constraints</h3>
+            <h3 className="text-base mb-2 font-semibold text-foreground">{t('practice.constraints')}</h3>
             <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
               {challenge.constraints.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
@@ -283,6 +317,7 @@ function ArenaChallengeInner() {
           {/* Language + buttons */}
           <div className="flex items-center gap-2 flex-wrap" data-tour="arena-detail-actions">
             <select
+              aria-label={t('common.language')}
               value={language}
               onChange={(e) => { setLanguage(e.target.value); setResult(null); setShowResults(false) }}
               className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -293,18 +328,14 @@ function ArenaChallengeInner() {
             </select>
             <div className="flex gap-2 ml-auto">
               <Button onClick={handleRun} disabled={running || submitted} variant="outline" size="sm" className="gap-1.5">
-                {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                Run
-              </Button>
+                {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}{t('practice.run')}</Button>
               <Button onClick={handleSubmit} disabled={running || submitted} size="sm" className="gap-1.5">
-                {submitted ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Submit
-              </Button>
+                {submitted ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{t('common.submit')}</Button>
             </div>
           </div>
 
           {/* Monaco editor */}
-          <div className="h-[400px] rounded-lg border border-border overflow-hidden" data-tour="arena-detail-editor">
+          <div className="h-[400px] rounded-2xl border border-border overflow-hidden" data-tour="arena-detail-editor">
             <Editor
               height="100%"
               language={MONACO_LANG_MAP[language] || 'plaintext'}
@@ -324,12 +355,10 @@ function ArenaChallengeInner() {
 
           {/* Results panel */}
           {showResults && (
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               {!result ? (
                 <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Executing on Piston&hellip;
-                </div>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />{t('practice.executingOnPiston')}</div>
               ) : (
                 <div className="p-4 space-y-3">
                   {/* Status */}
@@ -339,9 +368,9 @@ function ArenaChallengeInner() {
                     'text-amber-600 dark:text-amber-400'
                   }`}>
                     {result.status === 'accepted' ? (
-                      <><CheckCircle className="h-4 w-4" /> All tests passed</>
+                      <><CheckCircle className="h-4 w-4" />{' '}{t('practice.allTestsPassed')}</>
                     ) : result.status === 'error' ? (
-                      <><AlertCircle className="h-4 w-4" /> Error</>
+                      <><AlertCircle className="h-4 w-4" />{' '}{t('practice.error')}</>
                     ) : (
                       <><AlertCircle className="h-4 w-4" /> {result.passed_tests}/{result.total_tests} passed</>
                     )}
@@ -359,22 +388,19 @@ function ArenaChallengeInner() {
                         }`}>
                           <div className="flex items-center gap-1.5 font-medium mb-1">
                             {r.passed
-                              ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                              ? <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                               : <AlertCircle className="h-3.5 w-3.5 text-red-500" />
                             }
-                            <span className="text-foreground">Test case {i + 1}</span>
+                            <span className="text-foreground">{t('practice.testCase')}{' '}{i + 1}</span>
                             <span className="text-muted-foreground ml-auto">{r.time_ms}ms</span>
                           </div>
                           {!r.passed && (
                             <div className="mt-1 space-y-0.5 font-mono text-[11px]">
-                              <p className="text-muted-foreground">
-                                Input: <span className="text-foreground">{r.input || '(empty)'}</span>
+                              <p className="text-muted-foreground">{t('practice.input')}{' '}<span className="text-foreground">{r.input || t('practice.empty')}</span>
                               </p>
-                              <p className="text-muted-foreground">
-                                Expected: <span className="text-foreground">{r.expected || '(empty)'}</span>
+                              <p className="text-muted-foreground">{t('practice.expected')}{' '}<span className="text-foreground">{r.expected || t('practice.empty')}</span>
                               </p>
-                              <p className="text-muted-foreground">
-                                Got: <span className="text-red-400">{r.stdout || '(empty)'}</span>
+                              <p className="text-muted-foreground">{t('practice.got')}{' '}<span className="text-red-400">{r.stdout || t('practice.empty')}</span>
                               </p>
                               {r.stderr && (
                                 <pre className="mt-1 text-red-400 bg-red-500/5 rounded p-1.5 overflow-auto max-h-20">
@@ -384,9 +410,7 @@ function ArenaChallengeInner() {
                             </div>
                           )}
                           {r.passed && r.stdout && (
-                            <p className="text-muted-foreground font-mono">
-                              Output: {r.stdout.slice(0, 120)}{r.stdout.length > 120 ? '...' : ''}
-                            </p>
+                            <p className="text-muted-foreground font-mono">{t('practice.outputValueValue2', { value: r.stdout.slice(0, 120), value2: r.stdout.length > 120 ? '...' : '' })}</p>
                           )}
                         </div>
                       ))}
@@ -395,17 +419,34 @@ function ArenaChallengeInner() {
 
                   {/* Stderr excerpt for compile/runtime errors */}
                   {result.stderr_excerpt && !result.results.some(r => r.stderr) && (
-                    <pre className="text-xs text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">
+                    <pre className="text-xs text-red-700 dark:text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">
                       {result.stderr_excerpt}
                     </pre>
                   )}
 
+                  {/* Arena points for this submit (server decided) */}
+                  {result.arena_points_error ? (
+                    <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+                      {result.arena_points_error}
+                    </p>
+                  ) : result.arena_points ? (
+                    <p
+                      role="status"
+                      className={`flex items-center gap-2 rounded-xl border p-3 text-xs ${
+                        result.arena_points.reason === 'awarded'
+                          ? 'border-primary/30 bg-primary/10 text-foreground'
+                          : 'border-border bg-muted/40 text-muted-foreground'
+                      }`}
+                    >
+                      <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>{arenaPointsMessage(result.arena_points)}</span>
+                    </p>
+                  ) : null}
+
                   {/* Auto-nav notice */}
                   {result.status === 'accepted' && nextId && (
                     <p className="text-xs text-muted-foreground text-center">
-                      <Trophy className="h-3 w-3 inline mr-1" />
-                      Next challenge opening momentarily&hellip;
-                    </p>
+                      <Trophy className="h-3 w-3 inline mr-1" />{t('practice.nextChallengeOpeningMomentarily')}</p>
                   )}
                 </div>
               )}
@@ -414,8 +455,7 @@ function ArenaChallengeInner() {
 
           {nextId && (
             <Button asChild variant="ghost" className="w-full gap-2 text-muted-foreground">
-              <Link href={`/dashboard/arena/${nextId}`}>
-                Skip to next <ArrowRight className="h-4 w-4" />
+              <Link href={`/dashboard/arena/${nextId}`}>{t('practice.skipToNext')}{' '}<ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           )}
@@ -426,6 +466,7 @@ function ArenaChallengeInner() {
 }
 
 export default function ArenaChallengePage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -435,20 +476,20 @@ export default function ArenaChallengePage() {
       const arenaDetailTour: TourStep[] = [
         {
           target: '[data-tour="arena-detail-header"]',
-          title: 'Solve Rated Coding Challenges',
-          description: 'This page gives every user one arena challenge with its difficulty and points.',
+          title: t('practice.solveRatedCodingChallenges'),
+          description: t('practice.thisPageGivesEveryUserOnee20'),
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-detail-actions"]',
-          title: 'Run Then Submit Solution',
-          description: 'Test with Run, then Submit to advance to the next challenge.',
+          title: t('practice.runThenSubmitSolution'),
+          description: t('practice.testWithRunThenSubmitTobf2'),
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-detail-editor"]',
-          title: 'Tip: Match Sample Outputs',
-          description: 'Tip: type your solution here in the selected language and mirror the example inputs and outputs.',
+          title: t('practice.tipMatchSampleOutputs'),
+          description: t('practice.tipTypeYourSolutionHereIneca'),
           position: 'top',
         },
       ]

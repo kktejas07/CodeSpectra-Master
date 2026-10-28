@@ -4,11 +4,19 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { users as getUsersCollection } from '@/lib/db/admin'
 import { setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
+import { accountBlockReason } from '@/lib/auth-account'
+import { auditAdmin } from '@/lib/admin-audit'
+
+function cookieStoreHasImpersonation(store: Awaited<ReturnType<typeof cookies>>): boolean {
+  return !!store.get('codespectra_impersonator')?.value
+}
 
 const SESSION_COOKIE = 'codespectra_session'
 const IMPERSONATOR_COOKIE = 'codespectra_impersonator'
 const IMPERSONATING_COOKIE = 'codespectra_impersonating'
-const MAX_AGE = 60 * 60 * 24 * 7 // 7 days — matches the normal session lifetime
+// SEC-010: an impersonation lasts at most one hour (token + cookies), so a
+// forgotten "view as" can't leave the browser signed in as the user for a week.
+const MAX_AGE = 60 * 60
 
 // The impersonator cookie holds the admin's REAL session token — it must be
 // httpOnly so JS can never read it. The flag cookie is public so the client
@@ -62,12 +70,18 @@ export async function POST(request: NextRequest) {
     const userCol = await getUsersCollection()
     const target = await userCol.findOne({ $or: [{ _id: userId }, { id: userId }] } as any)
     if (!target) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
     }
 
     // Privilege guard: never impersonate a fellow superadmin.
     if (normalizeUserRole(target.role as string | null | undefined) === 'superadmin') {
       return NextResponse.json({ error: 'Cannot impersonate a superadmin' }, { status: 403 })
+    }
+    if (accountBlockReason(target)) {
+      return NextResponse.json({ error: 'This account is deactivated.' }, { status: 409 })
+    }
+    if (cookieStoreHasImpersonation(await cookies())) {
+      return NextResponse.json({ error: 'Stop the current impersonation first.' }, { status: 409 })
     }
 
     const cookieStore = await cookies()
@@ -80,11 +94,16 @@ export async function POST(request: NextRequest) {
     cookieStore.set(IMPERSONATOR_COOKIE, currentSession, impersonatorCookieOptions)
     cookieStore.set(IMPERSONATING_COOKIE, '1', flagCookieOptions)
 
-    await setSessionCookie({
-      uid: target.id || String(target._id),
-      email: target.email || '',
-      role: normalizeUserRole(target.role as string | null | undefined),
-    })
+    await setSessionCookie(
+      {
+        uid: target.id || String(target._id),
+        email: target.email || '',
+        role: normalizeUserRole(target.role as string | null | undefined),
+        imp: gate.user.id,
+      },
+      { maxAgeSec: MAX_AGE },
+    )
+    await auditAdmin(gate.user, 'admin.impersonate.start', 'user', `user/${target.id || String(target._id)}`, `email=${target.email}`, 'critical')
 
     return NextResponse.json({
       ok: true,
@@ -95,7 +114,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to impersonate'
+    const msg = 'Failed to impersonate'
     console.error('[CodeSpectra] admin/impersonate POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

@@ -2,11 +2,19 @@
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from core.auth import require_internal_secret
 from core.database import get_database
 
-router = APIRouter(prefix="/api/item-bank", tags=["Item Bank & Authoring"])
+# SEC-003: this path shadows the protected Next.js route of the same name when
+# /api/* is routed to the backend. Only the Next.js route (which checks the
+# user) may call it, with x-internal-secret.
+router = APIRouter(
+    prefix="/api/item-bank",
+    tags=["Item Bank & Authoring"],
+    dependencies=[Depends(require_internal_secret)],
+)
 
 # Dedicated collection for authored items (sibling convention: docs keyed by
 # "id"). Kept separate from the

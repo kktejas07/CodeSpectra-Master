@@ -1,5 +1,5 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -11,6 +11,9 @@ import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
+import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -20,20 +23,34 @@ interface Interview {
 }
 
 export default function InterviewsPage() {
+  const { formatDateTime } = useLocaleDates()
+  const { td, t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  // Past AI mock interviews (CORE-016): reports are saved on the server.
+  const [practice, setPractice] = useState<Array<{ id: string; role: string; difficulty: string; status: string; started_at: string | null; overall_score: number | null; category: string | null }>>([])
+  useEffect(() => {
+    fetch('/api/interviews/ai-mock', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setPractice(Array.isArray(j?.sessions) ? j.sessions : []))
+      .catch(() => {})
+  }, [])
 
   const load = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
     try {
       const res = await fetch('/api/interviews', { cache: 'no-store' })
-      if (res.ok) {
-        const j = await res.json()
-        setInterviews(j.items as Interview[])
-      }
-    } catch {} finally { setLoading(false) }
+      if (!res.ok) throw new Error(String(res.status))
+      const j = await res.json()
+      setInterviews(Array.isArray(j.items) ? (j.items as Interview[]) : [])
+    } catch {
+      setLoadError(true)
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { void load() }, [load])
@@ -44,20 +61,20 @@ export default function InterviewsPage() {
       const interviewsTour: TourStep[] = [
         {
           target: '[data-tour="interviews-header"]',
-          title: 'Your Interviews',
-          description: 'View all your scheduled and past interviews. Schedule new ones to practice.',
+          title: t('career.yourInterviews'),
+          description: t('career.viewAllYourScheduledAndPast371'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interviews-schedule-btn"]',
-          title: 'Schedule Interview',
-          description: 'Click here to schedule a new AI-powered mock interview.',
+          title: t('career.scheduleAnInterview'),
+          description: t('career.clickHereToScheduleANewa66'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interviews-list"]',
-          title: 'Interview List',
-          description: 'Browse your interviews. Click any card to view details and start the interview.',
+          title: t('career.interviewList'),
+          description: t('career.browseYourInterviewsClickAnyCardbcc'),
           position: 'bottom',
         },
       ]
@@ -67,53 +84,97 @@ export default function InterviewsPage() {
   if (!gate.ready) return null
 
   const statusColor: Record<string, string> = {
-    scheduled: 'bg-blue-500/10 text-blue-500',
-    in_progress: 'bg-green-500/10 text-green-500',
+    scheduled: 'bg-primary/10 text-primary border-primary/20',
+    in_progress: 'bg-green-500/10 text-green-700 dark:text-green-400',
     completed: 'bg-muted text-muted-foreground',
     cancelled: 'bg-destructive/10 text-destructive',
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between" data-tour="interviews-header">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Video className="h-7 w-7 text-primary" /> Interviews
-        </h1>
-        <Link href="/dashboard/interviews/schedule" data-tour="interviews-schedule-btn">
-          <Button><Video className="mr-1 h-4 w-4" /> Schedule Interview</Button>
-        </Link>
+      <div data-tour="interviews-header">
+        <PageHeader
+          illustration="interview"
+          className="mb-0"
+          icon={<Video aria-hidden />}
+          title={t('career.interviews')}
+          description={t('career.yourScheduledAndPastInterviewsPlus6c3')}
+          actions={
+            <Button asChild>
+              <Link href="/dashboard/interviews/schedule" data-tour="interviews-schedule-btn">
+                <Video className="mr-1 h-4 w-4" />{' '}{t('career.scheduleInterview')}</Link>
+            </Button>
+          }
+        />
       </div>
 
-      <Link href="/dashboard/interviews/ai-mock/setup">
-        <Card className="p-5 hover:border-primary/40 transition-colors flex items-center gap-4 cursor-pointer">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Brain className="h-5 w-5 text-primary" />
+      <Link href="/dashboard/interviews/ai-mock/setup" className="block rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+        <Panel interactive className="group flex cursor-pointer items-center gap-4 p-5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 transition-colors group-hover:bg-primary">
+            <Brain className="h-5 w-5 text-primary transition-colors group-hover:text-primary-foreground" aria-hidden />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold">Start AI Mock Interview</h3>
-            <p className="text-xs text-muted-foreground">Practice with AI-generated questions personalized to your resume</p>
+            <h3 className="text-base font-semibold text-foreground">{t('career.startAnAiMockInterview')}</h3>
+            <p className="text-sm text-muted-foreground">{t('career.practiceWithAiGeneratedQuestionsTailored742')}</p>
           </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        </Card>
+          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+        </Panel>
       </Link>
+
+      {practice.length > 0 && (
+        <section aria-labelledby="practice-history" className="space-y-3">
+          <h2 id="practice-history" className="text-lg font-semibold text-foreground">{t('career.yourPracticeInterviews')}</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {practice.slice(0, 10).map((p) => (
+              <Link key={p.id} href={`/dashboard/interviews/ai-mock?session=${encodeURIComponent(p.id)}`} className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                <Panel interactive className="flex items-center justify-between gap-3 rounded-2xl p-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{p.role || t('career.practiceInterview')}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">{p.difficulty}{p.started_at ? ` · ${formatDateTime(p.started_at)}` : ''}</p>
+                  </div>
+                  {p.status === 'completed' && p.overall_score !== null
+                    ? <span className="shrink-0 text-lg font-semibold tabular-nums text-foreground">{Math.round(p.overall_score)}<span className="text-xs text-muted-foreground">/100</span></span>
+                    : <Badge variant="outline">{p.status === 'completed' ? t('career.report') : t('career.notFinished')}</Badge>}
+                </Panel>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">
           <SkeletonList count={4} />
         </div>
+      ) : loadError ? (
+        <EmptyState
+          illustration="error"
+          title={t('career.couldntLoadInterviews')}
+          description={t('career.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
+          onAction={() => void load()}
+        />
       ) : interviews.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          <Bot className="h-10 w-10 mb-3 text-muted-foreground/50" />
-          No interviews yet. Schedule your first AI-powered interview.
-        </Card>
+        <EmptyState illustration="interview"
+          variant="sessions"
+          title={t('career.noInterviewsYet')}
+          description={t('career.scheduleOneAboveOrStartAn053')}
+          actionLabel={t('career.startAnAiMockInterview')}
+          actionHref="/dashboard/interviews/ai-mock/setup"
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2" data-tour="interviews-list">
           {interviews.map((iv) => (
-            <Link key={iv.id} href={`/dashboard/interviews/${iv.id}`}>
-              <Card className="p-5 hover:border-primary/40 transition-colors space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">{iv.title}</h3>
+            // One card, two separate links: the title link stretches over the
+            // card; "View feedback" sits above it (no link inside a link).
+            <Panel key={iv.id} interactive className="relative h-full p-5 space-y-3 focus-within:ring-2 focus-within:ring-ring">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-base font-semibold text-foreground">
+                      <Link href={`/dashboard/interviews/${iv.id}`} className="after:absolute after:inset-0 after:rounded-3xl after:content-[''] focus-visible:outline-none">
+                        {iv.title}
+                      </Link>
+                    </h3>
                     <p className="text-xs text-muted-foreground">{iv.role} · {iv.type}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -121,14 +182,14 @@ export default function InterviewsPage() {
                       const dl = toDifficultyLevel(iv.type)
                       return dl ? (
                         <Badge variant="outline" className={`text-[10px] ${DIFFICULTY_COLORS[dl]}`}>
-                          {DIFFICULTY_LABELS[dl]}
+                          {td(`career.difficultyLabels:${dl}`, DIFFICULTY_LABELS[dl])}
                         </Badge>
                       ) : null
                     })()}
-                    <Badge variant="outline" className={statusColor[iv.status] || ''}>{iv.status}</Badge>
+                    <Badge variant="outline" className={`capitalize ${statusColor[iv.status] || ''}`}>{String(iv.status ?? '').replace('_', ' ')}</Badge>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
                   <Calendar className="h-3 w-3" /> {formatDateTime(iv.scheduled_at)}
                   <Clock className="h-3 w-3 ml-2" /> {iv.duration_minutes} min
                 </div>
@@ -137,23 +198,20 @@ export default function InterviewsPage() {
                     <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
                       <div className="h-full bg-primary rounded-full" style={{ width: `${iv.overall_score}%` }} />
                     </div>
-                    <span className="text-xs font-medium">{Math.round(iv.overall_score)}%</span>
+                    <span className="text-xs font-medium tabular-nums text-foreground">{Math.round(iv.overall_score)}%</span>
                   </div>
                 )}
                 {iv.questions?.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{iv.questions.length} questions answered</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{iv.questions.length} {iv.questions.length === 1 ? t('career.question') : t('career.questions')}</p>
                 )}
                 {iv.status === 'completed' && (
                   <Link
                     href={`/dashboard/interviews/feedback?id=${iv.id}`}
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    View Feedback →
+                    className="relative z-10 inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1 rounded focus-visible:outline-2 focus-visible:outline-primary"
+                  >{t('career.viewFeedback')}{' '}<ArrowRight className="h-3 w-3" aria-hidden />
                   </Link>
                 )}
-              </Card>
-            </Link>
+            </Panel>
           ))}
         </div>
       )}

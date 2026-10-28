@@ -357,6 +357,40 @@ function estimateTestCoverage(code: string): number {
   return Math.min(95, Math.max(0, Math.round(score)))
 }
 
+/**
+ * Second gate after isLikelyCode (audit A-055): punctuation-heavy prose like
+ * "hello world (this is random text) = 100;" used to score 100% quality.
+ * With strings and comments removed, real code (a) rarely has many English
+ * filler words and (b) has at least one code construct — a call `f(…)`,
+ * an assignment `x = …`, member access `a.b`, or a declaration/control keyword.
+ * Pure; exported for tests.
+ */
+const PROSE_WORDS = new Set([
+  'the', 'a', 'an', 'this', 'that', 'these', 'those', 'it', 'its', 'we', 'you', 'they', 'he', 'she', 'our', 'your', 'my',
+  'also', 'please', 'here', 'there', 'very', 'just', 'some', 'more', 'most', 'about', 'which', 'what', 'would', 'could',
+  'should', 'been', 'being', 'was', 'were', 'are', 'have', 'has', 'had', 'than', 'into', 'over', 'because', 'but', 'of',
+  'at', 'such', 'only', 'other', 'any', 'all', 'can', 'will', 'there', 'their', 'them', 'who', 'how', 'why', 'like',
+])
+
+export function codeSanity(code: string): { ok: boolean; reason?: string } {
+  const stripped = code
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|\s)(\/\/|#|--)[^\n]*/g, ' ')
+    .replace(/(["'`])(?:\\.|(?!\1)[^\\\n])*\1/g, '""')
+  const words = stripped.match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) || []
+  if (words.length >= 6) {
+    const prose = words.filter((w) => PROSE_WORDS.has(w.toLowerCase())).length
+    if (prose / words.length >= 0.25) return { ok: false, reason: 'reads like plain English' }
+  }
+  const constructs =
+    (stripped.match(/\b[A-Za-z_]\w*\s*\(/g) || []).length +
+    (stripped.match(/\b[A-Za-z_][\w.\]\[]*\s*(?:[-+*/%]?=|:=)(?!=)\s*[^\s;]/g) || []).length +
+    (stripped.match(/\b[A-Za-z_]\w*\.[A-Za-z_]\w*/g) || []).length +
+    (stripped.match(/\b(function|def|class|struct|interface|import|package|return|const|let|var|fn|func|public|private|SELECT|select|CREATE|create|#include|using|namespace|module|impl|trait)\b/g) || []).length
+  if (words.length >= 3 && constructs === 0) return { ok: false, reason: 'no code constructs found' }
+  return { ok: true }
+}
+
 export function analyzeCodeLocally(code: string, language: string): RawAnalysisResult {
   const startTime = Date.now()
   const lang = detectLanguage(code, language)
@@ -364,7 +398,7 @@ export function analyzeCodeLocally(code: string, language: string): RawAnalysisR
   const suggestions: RawAnalyzerSuggestion[] = []
 
   const plausibility = isLikelyCode(code)
-  const isNotCode = plausibility < 1.2
+  const isNotCode = plausibility < 1.2 || !codeSanity(code).ok
 
   if (isNotCode) {
     return {

@@ -1,0 +1,124 @@
+# CodeSpectra Android (Capacitor shell in mobile/capacitor).
+# Manual only. Builds a debug APK for the chosen flavour always, and a signed
+# release AAB when the signing secrets are present.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   ANDROID_GOOGLE_SERVICES_JSON_B64  base64 of google-services.json (Firebase; FCM push).
+#                                     Must list all three package names:
+#                                     ai.codespectra.app, .staging, .dev
+#   ANDROID_KEYSTORE_B64              base64 of the upload keystore (.jks)
+#   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+#   ANDROID_PLAY_CLOUD_PROJECT_NUMBER Google Cloud project number for Play Integrity (optional)
+# Variables (optional): CS_DEV_URL, CS_STAGING_URL
+name: Android build
+
+on:
+  workflow_dispatch:
+    inputs:
+      flavour:
+        description: Which site the app loads
+        type: choice
+        options: [prod, staging, dev]
+        default: prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}-${{ inputs.flavour }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile/capacitor
+    env:
+      CS_VERSION_CODE: ${{ github.run_number }}
+      CS_DEV_URL: ${{ vars.CS_DEV_URL }}
+      CS_STAGING_URL: ${{ vars.CS_STAGING_URL }}
+      CS_PLAY_CLOUD_PROJECT_NUMBER: ${{ secrets.ANDROID_PLAY_CLOUD_PROJECT_NUMBER }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/capacitor/package-lock.json
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Install (pinned, from lockfile)
+        run: npm ci --no-audit --no-fund
+
+      - name: Unit tests (flavour config script)
+        run: npm test
+
+      - name: Capacitor sync + flavour configs
+        run: npm run sync
+
+      - name: Firebase config (push)
+        env:
+          GS_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -n "$GS_JSON" ]; then
+            echo "$GS_JSON" | base64 -d > android/app/google-services.json
+          else
+            echo "::warning::ANDROID_GOOGLE_SERVICES_JSON_B64 not set — the build has no FCM push."
+          fi
+
+      - name: JVM unit tests
+        working-directory: mobile/capacitor/android
+        run: ./gradlew --no-daemon test${FLAVOUR^}DebugUnitTest
+        env:
+          FLAVOUR: ${{ inputs.flavour }}
+
+      - name: Debug APK
+        working-directory: mobile/capacitor/android
+        run: ./gradlew --no-daemon assemble${FLAVOUR^}Debug
+        env:
+          FLAVOUR: ${{ inputs.flavour }}
+
+      - name: Signing key
+        id: signing
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Signing secrets not set — skipping the release AAB."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Release AAB (signed)
+        if: steps.signing.outputs.present == 'true'
+        working-directory: mobile/capacitor/android
+        env:
+          FLAVOUR: ${{ inputs.flavour }}
+          CS_KEYSTORE_PATH: ${{ runner.temp }}/upload.jks
+          CS_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          CS_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          CS_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon bundle${FLAVOUR^}Release
+
+      - name: Remove key material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks" android/app/google-services.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: codespectra-${{ inputs.flavour }}-${{ github.run_number }}
+          path: |
+            mobile/capacitor/android/app/build/outputs/apk/**/*.apk
+            mobile/capacitor/android/app/build/outputs/bundle/**/*.aab
+            mobile/capacitor/android/app/build/outputs/mapping/**/mapping.txt
+          if-no-files-found: error
+          retention-days: 14

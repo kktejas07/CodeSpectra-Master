@@ -1,14 +1,14 @@
 'use client'
 
 /**
- * Shared dashboard empty state.
- * - Primary: free Lottie Simple License animation (vendored under /public/lottie)
- * - Fallback: Iconoir MIT SVG if Lottie fails
+ * Shared empty state with a brand spot illustration (components/illustrations).
+ * Pass `illustration` to match the subject (e.g. 'certificate', 'jobs');
+ * otherwise the variant picks one.
  * Call only when the list is empty — parent data drives show/hide.
  */
-import { useState } from 'react'
 import Link from 'next/link'
-import { Lottie } from 'lottie-react'
+import { Illustration, type IllustrationName } from '@/components/illustrations/spot'
+import { Scene, type SceneName } from '@/components/illustrations/scenes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -20,31 +20,28 @@ export type EmptyStateVariant =
   | 'sessions'
   | 'courses'
 
-const LOTTIE_SRC: Record<EmptyStateVariant, string> = {
-  default: '/lottie/empty-state.json',
-  bookmarks: '/lottie/empty-state.json',
-  search: '/lottie/empty-search.json',
-  notifications: '/lottie/empty-state.json',
-  sessions: '/lottie/empty-state.json',
-  courses: '/lottie/empty-search.json',
-}
-
-const SVG_FALLBACK: Record<EmptyStateVariant, string> = {
-  default: '/illustrations/empty-page.svg',
-  bookmarks: '/illustrations/bookmark.svg',
-  search: '/illustrations/search-engine.svg',
-  notifications: '/illustrations/mail.svg',
-  sessions: '/illustrations/open-book.svg',
-  courses: '/illustrations/folder.svg',
+const VARIANT_ART: Record<EmptyStateVariant, IllustrationName> = {
+  default: 'inbox',
+  bookmarks: 'bookmarks',
+  search: 'search',
+  notifications: 'notifications',
+  sessions: 'calendar',
+  courses: 'courses',
 }
 
 type EmptyStateProps = {
+  /** Subject-specific spot illustration; defaults from `variant`. */
+  illustration?: IllustrationName
+  /** Larger scene with people — for page-level empty states only (ignored when compact). */
+  scene?: SceneName
   title: string
   description?: string
   actionLabel?: string
   actionHref?: string
   onAction?: () => void
   variant?: EmptyStateVariant
+  /** Smaller padding, art and title — for use inside tables and panels. */
+  compact?: boolean
   className?: string
 }
 
@@ -55,51 +52,36 @@ export function EmptyState({
   actionHref,
   onAction,
   variant = 'default',
+  illustration,
+  scene,
+  compact = false,
   className,
 }: EmptyStateProps) {
-  const [failed, setFailed] = useState(false)
-  const src = LOTTIE_SRC[variant]
-
   return (
     <div
       className={cn(
-        'flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-12 text-center md:py-16',
+        'flex w-full flex-col items-center justify-center text-center',
+        compact
+          ? 'px-4 py-8'
+          : 'rounded-3xl border border-dashed border-border bg-muted/20 px-6 py-12 md:py-16',
         className,
       )}
       role="status"
       aria-live="polite"
     >
-      <div className="relative mb-6 flex h-44 w-44 items-center justify-center md:h-56 md:w-56">
-        {!failed ? (
-          <Lottie
-            key={src}
-            src={src}
-            autoplay
-            loop
-            className="h-full w-full"
-            aria-hidden
-            subscriptions={{
-              error: () => setFailed(true),
-            }}
-          />
-        ) : (
-          // Iconoir MIT SVG — professional line art, theme-colored via CSS
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={SVG_FALLBACK[variant]}
-            alt=""
-            className="h-28 w-28 opacity-70 filter-[invert(0.45)] dark:filter-[invert(0.85)]"
-          />
-        )}
-      </div>
+      {scene && !compact ? (
+        <Scene name={scene} className="mb-4 w-full max-w-[360px]" />
+      ) : (
+        <Illustration name={illustration ?? VARIANT_ART[variant] ?? 'inbox'} className={compact ? 'mb-2 w-28' : 'mb-5 w-48 md:w-56'} />
+      )}
 
-      <h3 className="text-xl font-semibold tracking-tight text-foreground">{title}</h3>
+      <h3 className={cn('font-semibold tracking-tight text-foreground', compact ? 'text-base' : 'text-xl')}>{title}</h3>
       {description ? (
         <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{description}</p>
       ) : null}
 
       {actionLabel ? (
-        <div className="mt-6">
+        <div className={compact ? 'mt-4' : 'mt-6'}>
           {actionHref ? (
             <Button asChild variant="default" className="rounded-full px-6">
               <Link href={actionHref}>{actionLabel}</Link>

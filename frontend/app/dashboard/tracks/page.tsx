@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Code2, Database, FileCode2, GitBranch, Layers, ServerCog, Sparkles, Terminal, TrendingUp, HelpCircle } from 'lucide-react'
+import { ArrowRight, Code2, Database, FileCode2, GitBranch, Layers, ServerCog, Sparkles, Terminal, TrendingUp } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   python: FileCode2,
@@ -33,29 +36,28 @@ interface TrackDef {
 }
 
 export default function TracksPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
   const [tracks, setTracks] = useState<TrackDef[]>([])
-  const [counts, setCounts] = useState<Record<string, number>>({})
+  const [problemTopics, setProblemTopics] = useState<string[][]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     Promise.all([
-      fetch('/api/tracks').then(r => r.json()),
+      fetch('/api/tracks').then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() }),
       fetch('/api/problems', { cache: 'no-store' }).then(r => r.json()),
     ]).then(([tracksJson, problemsJson]) => {
       if (tracksJson.data) setTracks(tracksJson.data)
       const all: { topics?: string[] }[] = problemsJson.data || []
-      const c: Record<string, number> = {}
-      for (const p of all) {
-        for (const t of p.topics || []) {
-          c[t.toLowerCase()] = (c[t.toLowerCase()] || 0) + 1
-        }
-      }
-      setCounts(c)
-    }).catch(() => null).finally(() => setLoading(false))
-  }, [])
+      setProblemTopics(all.map(p => (p.topics || []).map(t => t.toLowerCase())))
+    }).catch(() => setLoadError(true)).finally(() => setLoading(false))
+  }, [reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -63,94 +65,101 @@ export default function TracksPage() {
       const tracksTour: TourStep[] = [
         {
           target: '[data-tour="tracks-header"]',
-          title: 'Tech Stack Tracks',
-          description: 'Curated problem tracks by stack for learners building real-world skills.',
-          position: 'bottom',
-        },
-        {
-          target: '[data-tour="tracks-tooltip"]',
-          title: 'Hover Help Icon',
-          description: 'Hover the help icon to preview the pick-a-stack hint.',
+          title: tr('practice.techStackTracks'),
+          description: tr('practice.curatedProblemTracksByStackForc2a'),
           position: 'bottom',
         },
         {
           target: '[data-tour="tracks-grid"]',
-          title: 'Open Track Practice',
-          description: 'Tip: click any track card to practice its filtered problems list.',
+          title: tr('practice.practiseATrack'),
+          description: tr('practice.tipClickAnyTrackCardTofc0'),
           position: 'bottom',
         },
       ]
       autoPlayPageTour('tracks', tracksTour)}
   }, [gate.ready, startTour, setTourSeen])
 
+  // Problems tagged with any of the track's topics (each problem counted once),
+  // matching what the Practice link filters to.
   function trackProblemCount(track: TrackDef): number {
-    let n = 0
-    for (const topic of track.topics) {
-      n += counts[(topic || '').toLowerCase()] || 0
-    }
-    return n
+    const wanted = new Set(track.topics.map(t => (t || '').toLowerCase()))
+    return problemTopics.filter(ts => ts.some(t => wanted.has(t))).length
   }
 
   if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2" data-tour="tracks-header">
-        <h1 className="text-3xl font-bold">Tech-stack tracks</h1>
-        <TooltipProvider data-tour="tracks-tooltip">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p className="text-xs max-w-62.5">Pick a stack and grind through curated problems.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      <div data-tour="tracks-header">
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            illustration="courses"
+            title={tr('practice.techStackTracks')}
+            description={tr('practice.pickAStackAndWorkThroughbff')}
+            icon={<Layers />}
+            className="mb-0"
+          />
+        </div>
       </div>
 
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : loadError && tracks.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title={tr('practice.couldntLoadTracks')}
+            description={tr('practice.checkYourConnectionAndTryAgain')}
+            actionLabel={tr('common.tryAgain')}
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
       ) : tracks.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <TrendingUp className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No tracks available yet.</p>
-        </Card>
+        <Panel className="p-4">
+          <EmptyState illustration="courses"
+            title={tr('practice.noTracksYet')}
+            description={tr('practice.tracksWillAppearHereSoonUntil128')}
+            actionLabel={tr('practice.goToProblems')}
+            actionHref="/dashboard/problems"
+          />
+        </Panel>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="tracks-grid">
-          {tracks.map((t) => {
+        <div data-tour="tracks-grid">
+        <BentoGrid className="lg:grid-cols-3">
+          {tracks.map((t, i) => {
             const count = trackProblemCount(t)
             const Icon = TRACK_ICONS[t.id] || Code2
             return (
-              <Link key={t.id} href={`/dashboard/problems?topic=${encodeURIComponent(t.topics[0] || '')}`} className="group">
-                <Card className={cn('p-5 h-full transition border-border/60 hover:border-primary/40 hover:bg-card/70', t.tone)}>
+              <Link key={t.id} href={`/dashboard/problems?topics=${encodeURIComponent(t.topics.join(','))}`} className={cn('group rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', i === 0 && 'sm:col-span-2')}>
+                <Panel interactive className="p-5 h-full flex flex-col">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background/60 text-primary">
-                      <Icon className="h-4 w-4" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="font-semibold flex-1">{t.name}</h3>
+                    <h3 className="text-base font-semibold text-foreground flex-1">{t.name}</h3>
                     {t.badge && (
-                      <span className="rounded-full bg-primary/15 text-primary text-[10px] px-2 py-0.5 uppercase tracking-wide">{t.badge}</span>
+                      <span className="rounded-full bg-primary/10 text-primary text-[11px] font-medium px-2 py-0.5">{t.badge}</span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed mb-3">{t.description}</p>
                   <div className="flex flex-wrap gap-1 mb-3">
                     {t.topics.map((tp) => (
-                      <span key={tp} className="rounded border border-border/60 bg-background/40 text-[10px] px-1.5 py-0.5">{tp}</span>
+                      <span key={tp} className="rounded-full border border-border/70 bg-muted/40 text-[11px] text-muted-foreground px-2 py-0.5">{tp}</span>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{count > 0 ? `${count} problems` : 'Catalog growing'}</span>
-                    <span className="inline-flex items-center gap-1 text-primary group-hover:translate-x-0.5 transition">
-                      Practice <ArrowRight className="h-3 w-3" />
+                  <div className="mt-auto flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground tabular-nums">{count > 0 ? tr('practice.countProblems', { count }) : tr('practice.moreProblemsComing')}</span>
+                    <span className="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0">{tr('practice.practice')}{' '}<ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
-                </Card>
+                </Panel>
               </Link>
             )
           })}
+        </BentoGrid>
         </div>
       )}
     </div>

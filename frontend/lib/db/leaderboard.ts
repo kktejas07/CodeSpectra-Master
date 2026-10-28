@@ -48,6 +48,10 @@ export type XpReason =
   | 'challenge_completed'
   | 'xp_redeemed'
   | 'referral_earned'
+  | 'arena_solved'
+  | 'codeathon_result'
+  | 'cohort_completed'
+  | 'community_reputation'
 
 export interface XpEventDoc {
   id: string
@@ -110,23 +114,40 @@ export interface WorkflowDoc {
   id: string
   name: string
   description?: string
-  trigger: 'manual' | 'schedule' | 'webhook'
+  trigger: 'manual' | 'schedule' | 'webhook' | 'event'
   /** Cron expression (5-field standard) when `trigger === 'schedule'`. */
   cron_expression?: string
   is_active: boolean
+  /** v1 graph (still runs; converted to a linear step list). */
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
+  /** v2 step list (lib/automation/steps-catalog.ts). When present it wins over nodes/edges. */
+  steps?: import('@/lib/automation/steps-catalog').StepDef[]
+  version?: 1 | 2
+  /** trigger === 'event': platform event type (lib/automation/event-types.ts) + optional filter. */
+  event_type?: string | null
+  event_filter?: import('@/lib/automation/conditions').Condition | null
+  /** Inbound webhook + outbound signing secret (encrypted at rest). */
+  webhook_secret_enc?: string | null
+  webhook_secret_hint?: string | null
+  /** Sample trigger payload for test runs. */
+  sample_payload?: Record<string, unknown> | null
+  template_id?: string | null
+  /** null / missing = platform (superadmin) workflow. */
   tenant_id?: string | null
   created_by: string
   created_at: string
   updated_at: string
+  updated_by?: string
+  last_run_at?: string | null
+  last_run_status?: string | null
 }
 
 export interface WorkflowRunDoc {
   id: string
   workflow_id: string
   user_id: string
-  status: 'success' | 'failed' | 'partial'
+  status: 'success' | 'failed' | 'partial' | 'running' | 'waiting' | 'cancelled'
   started_at: string
   finished_at: string
   steps: Array<{
@@ -136,25 +157,44 @@ export interface WorkflowRunDoc {
     output?: unknown
     error?: string
     duration_ms: number
+    key?: string
+    type?: string
+    attempt?: number
+    at?: string
+    dry_run?: boolean
   }>
   duration_ms: number
+  /** v2 run state (lib/automation/runs.ts). */
+  tenant_id?: string | null
+  trigger_kind?: 'manual' | 'schedule' | 'webhook' | 'event' | 'test'
+  trigger_payload?: Record<string, unknown> | null
+  event_id?: string | null
+  dry_run?: boolean
+  step_state?: Record<string, import('@/lib/automation/engine').StepState>
+  resume_at?: string | null
+  lease_until?: string | null
+  failed_step_key?: string | null
+  error?: string | null
+  idempotency_key?: string
+  cron_minute_key?: string
+  updated_at?: string
+  stopped?: boolean
 }
 
 export async function getXpRewards(): Promise<Record<string, number>> {
   try {
-    const { getMongoDb } = await import('@/lib/mongodb')
-    const db = await getMongoDb()
-    const doc = await db.collection('platform_settings').findOne({ key: 'gamification' })
-    const saved = doc?.value as any
+    // Flat admin keys + legacy nested keys, one shape (lib/gamification-config.ts, A-026).
+    const { getGamificationConfig } = await import('@/lib/gamification-config')
+    const x = (await getGamificationConfig()).xp_rewards
     return {
-      easy: saved?.xp_rewards?.easy ?? DIFFICULTY_XP.easy,
-      medium: saved?.xp_rewards?.medium ?? DIFFICULTY_XP.medium,
-      hard: saved?.xp_rewards?.hard ?? DIFFICULTY_XP.hard,
-      first_blood: saved?.xp_rewards?.first_blood ?? FIRST_BLOOD_BONUS,
-      exam_pass: saved?.xp_rewards?.exam_pass ?? EXAM_PASS_XP,
-      cert_pass: saved?.xp_rewards?.cert_pass ?? CERT_PASS_XP,
-      codeathon: saved?.xp_rewards?.codeathon ?? CODEATHON_ATTEND_XP,
-      hackathon: saved?.xp_rewards?.hackathon ?? 100,
+      easy: x.easy,
+      medium: x.medium,
+      hard: x.hard,
+      first_blood: x.first_blood,
+      exam_pass: x.exam_pass,
+      cert_pass: x.cert_pass,
+      codeathon: x.codeathon,
+      hackathon: x.hackathon,
     }
   } catch {
     return {
@@ -238,8 +278,16 @@ export async function awardXp(args: {
     created_at: nowIso(),
   }
   await col.insertOne(doc)
+  // CORE-006: a referred user's first graded activity completes their referral (pays the referrer).
+  if (GRADED_REASONS.has(args.reason)) {
+    void import('@/lib/referral-service')
+      .then(async (m) => m.completeReferralIfEligible(await db(), args.userId))
+      .catch((e) => console.error('[referral] completion check failed:', (e as Error)?.message))
+  }
   return doc.id
 }
+
+const GRADED_REASONS = new Set<XpReason>(['submission_accepted', 'first_blood', 'exam_passed', 'certification_passed', 'challenge_completed', 'arena_solved', 'codeathon_result', 'hackathon_score'])
 
 /**
  * Compute a user's total XP from `xp_events` aggregation.

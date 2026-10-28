@@ -1,9 +1,9 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Video } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
@@ -11,6 +11,8 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/app/page-kit'
+import { useT } from '@/lib/i18n/client'
 
 type Session = {
   id: string
@@ -23,19 +25,25 @@ type Session = {
 }
 
 export default function MySessionsPage() {
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/user/my-sessions', { credentials: 'include' })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) => setSessions(d.sessions || []))
-      .catch(() => setSessions([]))
+      .catch(() => { setSessions([]); setLoadError(true) })
       .finally(() => setLoading(false))
-  }, [gate.ready])
+  }, [gate.ready, reloadKey])
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
@@ -43,20 +51,20 @@ export default function MySessionsPage() {
       const sessionsTour: TourStep[] = [
         {
           target: '[data-tour="sessions-header"]',
-          title: 'Sessions linked to you',
-          description: 'This page lists interview and mock sessions linked to your account.',
+          title: t('dash.sessionsLinkedToYou'),
+          description: t('dash.thisPageListsInterviewAndMockfa1'),
           position: 'bottom',
         },
         {
           target: '[data-tour="sessions-action"]',
-          title: 'Browse interview sessions',
-          description: 'Follow this button to the interviews page to schedule or browse sessions.',
+          title: t('dash.browseInterviewSessions'),
+          description: t('dash.followThisButtonToTheInterviews454'),
           position: 'bottom',
         },
         {
           target: '[data-tour="sessions-list"]',
-          title: 'Review sessions, open details',
-          description: 'Review each session status here and click a card to open it; if empty, try interview prep next.',
+          title: t('dash.reviewSessionsOpenDetails'),
+          description: t('dash.reviewEachSessionStatusHereAnd70b'),
           position: 'top',
         },
       ]
@@ -74,24 +82,35 @@ export default function MySessionsPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3" data-tour="sessions-header">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Sessions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Interview and mock sessions linked to your account.
-          </p>
-        </div>
-        <Button asChild size="sm" data-tour="sessions-action">
-          <Link href="/dashboard/interviews">Schedule / browse</Link>
-        </Button>
+      <div data-tour="sessions-header">
+        <PageHeader
+          illustration="calendar"
+          className="mb-0"
+          icon={<Video aria-hidden />}
+          title={t('dash.mySessions')}
+          description={t('dash.interviewAndMockSessionsLinkedToeb5')}
+          actions={
+            <Button asChild size="sm" data-tour="sessions-action">
+              <Link href="/dashboard/interviews">{t('dash.scheduleBrowse')}</Link>
+            </Button>
+          }
+        />
       </div>
       <div data-tour="sessions-list">
-      {sessions.length === 0 ? (
+      {loadError ? (
+        <EmptyState
+          illustration="error"
+          title={t('dash.couldntLoadYourSessions')}
+          description={t('dash.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
+      ) : sessions.length === 0 ? (
         <EmptyState
           variant="sessions"
-          title="No sessions yet"
-          description="When you schedule or join an interview session, it will appear here."
-          actionLabel="Try interview prep"
+          title={t('dash.noSessionsYet')}
+          description={t('dash.whenYouScheduleOrJoinAn284')}
+          actionLabel={t('dash.tryInterviewPrep')}
           actionHref="/dashboard/interview-prep"
         />
       ) : (
@@ -99,9 +118,9 @@ export default function MySessionsPage() {
           {sessions.map((s) => (
             <li key={s.id}>
               <Link href={s.href}>
-                <Card className="flex items-center justify-between gap-3 p-3 hover:bg-muted/40">
+                <Card className="flex items-center justify-between gap-3 rounded-2xl border-border/70 p-3 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/40">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{s.title}</p>
+                    <p className="truncate font-medium text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
                       {[s.type, s.role].filter(Boolean).join(' · ')}
                       {s.scheduledAt ? ` · ${formatDateTime(s.scheduledAt)}` : ''}

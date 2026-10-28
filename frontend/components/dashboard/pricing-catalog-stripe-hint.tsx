@@ -36,7 +36,7 @@ export function PricingCatalogStripeHint() {
       <p className="font-medium text-foreground">Catalog amounts (reference only)</p>
       <p className="mt-1 text-xs text-muted-foreground">
         Shown amounts come from{' '}
-        <Link href="/dashboard/admin/pricing" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link href="/dashboard/admin/plans" className="font-medium text-primary underline-offset-4 hover:underline">
           Pricing management
         </Link>
         . Stripe Checkout still uses the <code className="rounded bg-muted px-1 text-xs">price_…</code> IDs below —

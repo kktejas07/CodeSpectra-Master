@@ -1,0 +1,30 @@
+{
+  "name": "codespectra-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CodeSpectra Android + iOS app: Capacitor shell around the live web app (FCM/APNs push, biometric unlock, proctored lockdown, Play Integrity / App Attest).",
+  "scripts": {
+    "sync": "cap sync android && node scripts/flavor-configs.mjs",
+    "flavors": "node scripts/flavor-configs.mjs",
+    "test": "node --test scripts/*.test.mjs",
+    "build:debug": "npm run sync && cd android && ./gradlew assembleProdDebug",
+    "build:release": "npm run sync && cd android && ./gradlew bundleProdRelease",
+    "sync:ios": "cap sync ios",
+    "open:ios": "cap open ios"
+  },
+  "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "10.0.0",
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.4",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/push-notifications": "8.1.3",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

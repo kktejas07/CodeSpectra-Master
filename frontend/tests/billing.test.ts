@@ -39,7 +39,7 @@ describe('PaymentService', () => {
     const { PaymentService } = await import('@/lib/payment-service')
     const ps = new PaymentService()
     await expect(ps.createCheckout('user1', 'test@test.com', 'nonexistent_plan'))
-      .rejects.toThrow('Unknown plan')
+      .rejects.toThrow('That plan is not available.')
   })
 
   it('selects Razorpay for India', async () => {

@@ -16,7 +16,8 @@
 | [04-OWASP-Checklist.md](./04-OWASP-Checklist.md) | OWASP Top 10 (2021) compliance — per-category assessment of controls, vulnerabilities found, and remediation recommendations. |
 | [05-Device-Fingerprinting.md](./05-Device-Fingerprinting.md) | Device fingerprinting — FingerprintJS v5 integration, multi-account risk detection, IP blocklist, impossible-travel detection, and the admin Security dashboard. |
 | [06-Lockdown-Agent.md](./06-Lockdown-Agent.md) | Native lockdown agent (design proposal) — true USB port auditing that the browser cannot provide, with Tauri + rusb architecture and implementation plan. |
+| [07-Security-Inventories.md](./07-Security-Inventories.md) | Security inventories — API route auth (634 routes, 78 public with their guards), file-upload checks, webhook signature verification and idempotency, admin audit-log coverage. |
 
 ## Document Count
 
-**6 documents** in this section.
+**7 documents** in this section.

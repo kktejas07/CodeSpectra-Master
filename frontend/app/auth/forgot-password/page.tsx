@@ -10,13 +10,15 @@ import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
   ArrowLeft,
-  CheckCircle2,
   Code2,
   Loader2,
   Mail,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { SoftGlow } from "@/components/visuals";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { Illustration } from "@/components/illustrations/spot";
+import { useT } from "@/lib/i18n/client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -26,6 +28,7 @@ export default function ForgotPasswordPage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const { sendPasswordReset } = useAuth();
+  const { t } = useT();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,7 +39,7 @@ export default function ForgotPasswordPage() {
       await sendPasswordReset(email.trim().toLowerCase(), turnstileToken || undefined);
       setSent(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to send reset email";
+      const msg = err instanceof Error ? err.message : t("auth.resetSendFailed");
       setError(msg);
       setTurnstileResetKey((k) => k + 1);
     } finally {
@@ -45,7 +48,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+    <div className="relative isolate min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+      <SoftGlow />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-8">
@@ -54,39 +58,37 @@ export default function ForgotPasswordPage() {
             </div>
             <span className="font-semibold text-lg tracking-tight">CodeSpectra</span>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Reset your password</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("auth.resetYourPassword")}</h1>
           <p className="text-muted-foreground mt-2">
-            {sent
-              ? "Check your email for the reset link"
-              : "Enter your email and we&apos;ll send you a reset link"}
+            {sent ? t("auth.checkEmailForReset") : t("auth.enterEmailForReset")}
           </p>
         </div>
 
         <div className="bg-card border border-border/40 rounded-xl p-6">
           {sent ? (
             <div className="text-center space-y-4">
-              <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
+              <Illustration name="inbox" className="mx-auto w-40" />
               <p className="text-sm text-muted-foreground">
-                If an account exists with that email, you&apos;ll receive a password reset link shortly.
+                {t("auth.resetSentBody")}
               </p>
               <Button variant="outline" asChild className="mt-4">
                 <Link href="/auth/login">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to sign in
+                  {t("auth.backToSignIn")}
                 </Link>
               </Button>
             </div>
           ) : (
             <form onSubmit={onSubmit} className="space-y-4">
               {error && (
-                <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-sm rounded-lg p-3">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
+                <div role="alert" className="flex items-center gap-2 bg-destructive/10 text-destructive text-sm rounded-lg p-3">
+                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden />
                   <span>{error}</span>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("auth.email")}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -108,7 +110,7 @@ export default function ForgotPasswordPage() {
                 ) : (
                   <Mail className="w-4 h-4" />
                 )}
-                {loading ? "Sending..." : "Send reset link"}
+                {loading ? t("auth.sending") : t("auth.sendResetLink")}
               </Button>
               <TurnstileWidget
                 onVerify={(token) => setTurnstileToken(token)}
@@ -124,7 +126,7 @@ export default function ForgotPasswordPage() {
             className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
           >
             <ArrowLeft className="w-3 h-3" />
-            Back to sign in
+            {t("auth.backToSignIn")}
           </Link>
         </p>
       </div>

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Sparkles, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Sparkles, AlertTriangle, RotateCcw, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -11,25 +11,75 @@ import { Progress } from '@/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { MOCK_TESTS } from '@/lib/mock-tests'
+import { Illustration } from '@/components/illustrations/spot'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
+
+const TEST_DURATION_SEC = 15 * 60
+
+/**
+ * Per-browser resume state for one attempt (start time, answers, position).
+ * The attempt itself and its start time live on the server; this only keeps a
+ * reload from losing the candidate's place. Storage can be unavailable.
+ */
+type LocalAttemptState = { startedAt?: number; started?: boolean; answers?: Record<number, number>; index?: number }
+const localKey = (sessionId: string) => `codespectra_mock_attempt_${sessionId}`
+function readLocal(sessionId: string): LocalAttemptState {
+  try {
+    const raw = window.localStorage.getItem(localKey(sessionId))
+    const v = raw ? JSON.parse(raw) : null
+    return v && typeof v === 'object' ? (v as LocalAttemptState) : {}
+  } catch { return {} }
+}
+function writeLocal(sessionId: string, patch: LocalAttemptState) {
+  try {
+    window.localStorage.setItem(localKey(sessionId), JSON.stringify({ ...readLocal(sessionId), ...patch }))
+  } catch { /* storage unavailable */ }
+}
+function clearLocal(sessionId: string) {
+  try { window.localStorage.removeItem(localKey(sessionId)) } catch { /* storage unavailable */ }
+}
 
 interface Question {
   id: string
   question: string
   options: string[]
-  correctIndex: number
-  explanation: string
+}
+
+interface GradedResult {
+  score: number
+  total: number
+  percentage: number
+  review: Array<{ correctIndex: number; explanation: string }>
 }
 
 export default function TakeMockTestPage() {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const searchParams = useSearchParams()
   const difficulty = searchParams?.get('difficulty') || 'basic'
   
-  // Parse company/role from id, e.g. "tcs-software-engineer"
+  // Company and role come from query params (set by the list page). A slug
+  // like "goldman-sachs-sde" can't be split reliably, so the only fallback is
+  // the sample catalogue by exact id.
   const paramId = params?.id || ''
-  const [company, role] = paramId.split('-', 2).concat(paramId.split('-').slice(2).join(' ')).map(s => s || '')
+  const sample = MOCK_TESTS.find((t) => t.id === paramId)
+  const company = (searchParams?.get('company') || sample?.company || '').trim()
+  const role = (searchParams?.get('role') || sample?.role || '').trim()
 
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,52 +89,171 @@ export default function TakeMockTestPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [finished, setFinished] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(15 * 60) // 15 mins default
+  const [timeLeft, setTimeLeft] = useState(TEST_DURATION_SEC)
+  /** Epoch ms when this attempt's timer started (from the stored attempt). */
+  const [startedAtMs, setStartedAtMs] = useState<number | null>(null)
+  const [resumed, setResumed] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [confirmNewOpen, setConfirmNewOpen] = useState(false)
+  const [startingNew, setStartingNew] = useState(false)
+  const [newTestError, setNewTestError] = useState<string | null>(null)
+  const [result, setResult] = useState<GradedResult | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  // Each generate call spends an AI credit — never fire it twice for one mount.
+  const requestedRef = useRef(false)
+
+  /** Load the server's attempt into the page (fresh or resumed). */
+  const applyAttempt = useCallback((data: {
+    session_id?: string; questions?: Question[]; created_at?: string; resumed?: boolean
+    progress?: { answers?: Record<string, number>; index?: number; started_at?: number | null } | null
+  }) => {
+    const sid = typeof data.session_id === 'string' ? data.session_id : null
+    const isResumed = data.resumed === true
+    const browser = sid ? readLocal(sid) : {}
+    // Another device (or cleared storage): fall back to the server's autosave.
+    const server = isResumed && data.progress && typeof data.progress === 'object' ? data.progress : null
+    const local: LocalAttemptState = browser.answers || !server
+      ? browser
+      : {
+          started: true,
+          startedAt: typeof server.started_at === 'number' ? server.started_at : browser.startedAt,
+          answers: server.answers && typeof server.answers === 'object' ? (server.answers as Record<number, number>) : {},
+          index: typeof server.index === 'number' ? server.index : 0,
+        }
+    // Resumed and already under way (or no local record, e.g. another
+    // device): the timer runs from when the attempt started — this browser's
+    // record if it has one, else the stored attempt time. A fresh attempt, or
+    // one still on the intro screen, starts its clock when Start is pressed.
+    const underWay = isResumed && local.started !== false
+    const serverStart = data.created_at ? Date.parse(data.created_at) : NaN
+    const start = underWay
+      ? (typeof local.startedAt === 'number' ? local.startedAt : Number.isFinite(serverStart) ? serverStart : Date.now())
+      : Date.now()
+    if (sid) writeLocal(sid, underWay ? { startedAt: start, started: true } : { started: false })
+    const elapsed = underWay ? Math.min(TEST_DURATION_SEC, Math.max(0, Math.floor((Date.now() - start) / 1000))) : 0
+    const qs = Array.isArray(data.questions) ? data.questions : []
+    setQuestions(qs)
+    setSessionId(sid)
+    setResumed(underWay)
+    setStartedAtMs(start)
+    setTimeLeft(TEST_DURATION_SEC - elapsed)
+    setAnswers(underWay && local.answers && typeof local.answers === 'object' ? local.answers : {})
+    setCurrentIndex(underWay && typeof local.index === 'number' ? Math.min(Math.max(0, local.index), Math.max(0, qs.length - 1)) : 0)
+    setResult(null)
+    setSubmitError(null)
+    // A resumed attempt whose time is up goes straight to submission.
+    setFinished(underWay && elapsed >= TEST_DURATION_SEC)
+    setStarted(underWay)
+  }, [])
+
+  const requestAttempt = useCallback(async (newAttempt: boolean) => {
+    const res = await csrfFetch('/api/mock-tests/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company,
+        role,
+        difficulty,
+        count: 15,
+        ...(newAttempt ? { new_attempt: true } : {}),
+      }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(apiError(data, tr('practice.failedToGenerateTest')))
+    return data
+  }, [company, role, difficulty])
 
   const fetchQuestions = useCallback(async () => {
+    if (requestedRef.current) return
+    if (!company || !role) {
+      setError(tr('practice.thisTestIsMissingACompany5a9'))
+      setLoading(false)
+      return
+    }
+    requestedRef.current = true
     try {
       setLoading(true)
-      const res = await csrfFetch('/api/mock-tests/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          company: company.toUpperCase(),
-          role: role.replace(/-/g, ' '),
-          difficulty,
-          count: 15
-        })
-      })
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null)
-        throw new Error(errorData?.error || 'Failed to generate test')
-      }
-      const data = await res.json()
-      setQuestions(data.questions || [])
+      // Reload / second tab returns the in-progress attempt (no credit spent).
+      applyAttempt(await requestAttempt(false))
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      setError(err.message || tr('practice.anErrorOccurred'))
     } finally {
       setLoading(false)
     }
-  }, [company, role, difficulty])
+  }, [company, role, applyAttempt, requestAttempt])
+
+  /** "Start a new test": abandons the current attempt and spends one AI credit. */
+  const startNewTest = useCallback(async () => {
+    if (startingNew) return
+    setStartingNew(true)
+    setNewTestError(null)
+    const oldSession = sessionId
+    try {
+      const data = await requestAttempt(true)
+      if (oldSession) clearLocal(oldSession)
+      setError(null)
+      applyAttempt(data)
+      setConfirmNewOpen(false)
+    } catch (err) {
+      setNewTestError(err instanceof Error ? err.message : tr('practice.couldNotStartANewTest'))
+    } finally {
+      setStartingNew(false)
+    }
+  }, [startingNew, sessionId, requestAttempt, applyAttempt])
 
   useEffect(() => {
     fetchQuestions()
   }, [fetchQuestions])
 
+  // Deadline-based countdown from the attempt's start time, so a reload or a
+  // throttled background tab doesn't add time.
   useEffect(() => {
-    if (!started || finished) return
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          setFinished(true)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    if (!started || finished || startedAtMs === null) return
+    const tick = () => {
+      const left = TEST_DURATION_SEC - Math.floor((Date.now() - startedAtMs) / 1000)
+      if (left <= 0) {
+        setTimeLeft(0)
+        setFinished(true)
+        return false
+      }
+      setTimeLeft(left)
+      return true
+    }
+    if (!tick()) return
+    const timer = setInterval(() => { if (!tick()) clearInterval(timer) }, 1000)
     return () => clearInterval(timer)
-  }, [started, finished])
+  }, [started, finished, startedAtMs])
+
+  // Keep this browser's place in the attempt across reloads.
+  useEffect(() => {
+    if (!sessionId || result) return
+    writeLocal(sessionId, { started, answers, index: currentIndex })
+  }, [sessionId, started, answers, currentIndex, result])
+
+  // Autosave progress on the server (debounced) so another device can resume.
+  useEffect(() => {
+    if (!sessionId || !started || result || finished) return
+    const t = setTimeout(() => {
+      csrfFetch('/api/mock-tests/attempts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, answers, index: currentIndex, started_at: startedAtMs }),
+      }).catch(() => { /* best effort; the browser copy still holds the place */ })
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [sessionId, started, answers, currentIndex, startedAtMs, result, finished])
+
+  const beginTest = () => {
+    // The clock starts when the candidate presses Start on a fresh attempt.
+    if (!resumed) {
+      const now = Date.now()
+      setStartedAtMs(now)
+      setTimeLeft(TEST_DURATION_SEC)
+      if (sessionId) writeLocal(sessionId, { startedAt: now, started: true })
+    }
+    setStarted(true)
+  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -100,13 +269,64 @@ export default function TakeMockTestPage() {
     }
   }
 
-  const calculateScore = () => {
-    let score = 0
-    questions.forEach((q, i) => {
-      if (answers[i] === q.correctIndex) score++
-    })
-    return score
-  }
+  // Grade on the server (answer key never reaches the client before submit)
+  // and save the attempt to the user's history.
+  const submitAttempt = useCallback(async () => {
+    if (!sessionId || submitting) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await csrfFetch('/api/mock-tests/attempts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          answers,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(apiError(data, tr('practice.couldNotSaveYourAnswers')))
+      setResult(data as GradedResult)
+      clearLocal(sessionId)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : tr('practice.couldNotSaveYourAnswers'))
+    } finally {
+      setSubmitting(false)
+    }
+  }, [sessionId, answers, submitting])
+
+  useEffect(() => {
+    if (finished && !result && !submitting && !submitError) void submitAttempt()
+  }, [finished, result, submitting, submitError, submitAttempt])
+
+  const newTestDialog = (
+    <AlertDialog open={confirmNewOpen} onOpenChange={(open) => { if (!startingNew) { setConfirmNewOpen(open); if (!open) setNewTestError(null) } }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{tr('practice.startANewTest')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {finished && result
+              ? tr('practice.youGetAFreshSetOfbdc')
+              : tr('practice.yourCurrentAttemptWillBeDroppeda1c')}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {newTestError && <p role="alert" className="text-sm text-destructive">{newTestError}</p>}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={startingNew}>{tr('common.cancel')}</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={startingNew}
+            onClick={(e) => { e.preventDefault(); void startNewTest() }}
+          >
+            {startingNew && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{tr('practice.startANewTest2')}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+
+  const newTestButton = (variant: 'outline' | 'default' | 'ghost' = 'outline') => (
+    <Button variant={variant} onClick={() => setConfirmNewOpen(true)} disabled={startingNew}>
+      <RotateCcw className="mr-2 h-4 w-4" />{' '}{tr('practice.startANewTest2')}</Button>
+  )
 
   if (!gate.ready || loading) {
     return (
@@ -114,7 +334,7 @@ export default function TakeMockTestPage() {
         <div className="w-full max-w-md space-y-4">
           <div className="space-y-2">
             <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
-            <div className="h-4 w-80 bg-muted/40 rounded animate-pulse" />
+            <div className="h-4 w-80 max-w-full bg-muted/40 rounded animate-pulse" />
           </div>
           <SkeletonCard />
         </div>
@@ -125,106 +345,117 @@ export default function TakeMockTestPage() {
   if (error || questions.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-4">
-        <AlertTriangle className="h-12 w-12 text-destructive" />
-        <h2 className="text-xl font-bold">Failed to load test</h2>
-        <p className="text-muted-foreground">{error || 'No questions received.'}</p>
-        <Button onClick={() => router.back()}>Go Back</Button>
+        <Illustration name="error" className="w-40" />
+        <h1 className="text-xl font-bold">{tr('practice.failedToLoadTest')}</h1>
+        <p className="text-muted-foreground">{error || tr('practice.noQuestionsReceived')}</p>
+        <Button onClick={() => router.back()}>{tr('practice.goBack')}</Button>
       </div>
     )
   }
 
   if (!started) {
     return (
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to config
-        </Button>
-        <Card>
+      <div className="flex-1 space-y-6">
+        <h1 className="sr-only">{tr('practice.companyMockTest', { company })}</h1>
+        <Button variant="ghost" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-2" />{' '}{tr('practice.backToConfig')}</Button>
+        <Card className="rounded-3xl border-border/70">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Sparkles className="h-6 w-6 text-primary" />
-              Guidelines for {company.toUpperCase()} Mock Test
-            </CardTitle>
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Sparkles className="h-5 w-5" /></span>{tr('practice.beforeYouStartCompanyMockTest', { company })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-muted-foreground">
             <ul className="list-disc pl-6 space-y-2">
-              <li>This test contains <strong>{questions.length} multiple-choice questions</strong>.</li>
-              <li>You have <strong>{Math.floor(timeLeft / 60)} minutes</strong> to complete it.</li>
-              <li>Once you submit an answer or skip, you cannot go back.</li>
-              <li>The test will automatically submit when the timer runs out.</li>
+              <li>{tr('practice.thisTestContains')}{' '}<strong>{tr('practice.countMultipleChoiceQuestions', { count: questions.length })}</strong>.</li>
+              <li>{tr('practice.youHave')}{' '}<strong>{tr('practice.valueMinutes', { value: Math.floor(TEST_DURATION_SEC / 60) })}</strong>{' '}{tr('practice.toCompleteItTheTimerStarts8ff')}</li>
+              <li>{tr('practice.onceYouSubmitAnAnswerOracd')}</li>
+              <li>{tr('practice.theTestWillAutomaticallySubmitWhen379')}</li>
             </ul>
           </CardContent>
           <CardFooter>
-            <Button size="lg" className="w-full" onClick={() => setStarted(true)}>
-              Start Test Now
-            </Button>
+            <Button size="lg" className="w-full" onClick={beginTest}>{tr('practice.startTest')}</Button>
           </CardFooter>
         </Card>
+        {newTestDialog}
       </div>
     )
   }
 
-  if (finished) {
-    const score = calculateScore()
-    const percentage = Math.round((score / questions.length) * 100)
-    
+  if (finished && !result) {
     return (
-      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
-        <Card className="text-center p-8">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-4">
+        {submitError ? (
+          <>
+            <AlertTriangle className="h-12 w-12 text-destructive" />
+            <h1 className="text-xl font-bold">{tr('practice.couldntSaveYourAnswers')}</h1>
+            <p className="text-muted-foreground">{submitError}</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button onClick={() => { setSubmitError(null) }}>{tr('common.tryAgain')}</Button>
+              {newTestButton('outline')}
+            </div>
+            {newTestDialog}
+          </>
+        ) : (
+          <p className="text-muted-foreground">{tr('practice.savingYourAnswers')}</p>
+        )}
+      </div>
+    )
+  }
+
+  if (finished && result) {
+    const { score, percentage } = result
+
+    return (
+      <div className="flex-1 space-y-6">
+        <h1 className="sr-only">{tr('practice.companyMockTestResults', { company })}</h1>
+        <Card className="rounded-3xl border-border/70 text-center p-8">
           <div className="mb-6 flex justify-center">
             {percentage >= 70 ? (
-              <div className="h-24 w-24 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="h-12 w-12 text-green-500" />
-              </div>
+              <Illustration name="success" className="w-40" />
             ) : (
-              <div className="h-24 w-24 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                <AlertCircle className="h-12 w-12 text-yellow-500" />
-              </div>
+              <Illustration name="mock-test" className="w-40" />
             )}
           </div>
-          <h2 className="text-3xl font-bold mb-2">Test Completed</h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            You scored {score} out of {questions.length} ({percentage}%)
-          </p>
+          <h2 className="text-3xl font-bold mb-2">{tr('practice.testComplete')}</h2>
+          <p className="text-xl text-muted-foreground tabular-nums mb-8">{tr('practice.youScoredScoreOutOfCountf69', { score, count: questions.length, percentage })}</p>
           <div className="flex gap-4 justify-center">
-            <Button variant="outline" onClick={() => router.push('/dashboard/mock-tests')}>
-              Back to Tests
-            </Button>
-            <Button onClick={() => window.location.reload()}>
-              Retake Test
-            </Button>
+            <Button variant="outline" onClick={() => router.push('/dashboard/mock-tests')}>{tr('practice.backToTestsAndHistory')}</Button>
+            {newTestButton('default')}
           </div>
         </Card>
+        {newTestDialog}
 
         <div className="space-y-6">
-          <h3 className="text-2xl font-bold">Review Answers</h3>
+          <h3 className="text-xl font-semibold">{tr('practice.reviewYourAnswers')}</h3>
           {questions.map((q, i) => {
-            const isCorrect = answers[i] === q.correctIndex
+            const correctIndex = result.review[i]?.correctIndex
+            const explanation = result.review[i]?.explanation
+            const isCorrect = answers[i] === correctIndex
             const skipped = answers[i] === undefined
             return (
-              <Card key={i} className={skipped ? 'border-muted' : isCorrect ? 'border-green-500/50' : 'border-destructive/50'}>
+              <Card key={i} className={`rounded-3xl ${skipped ? 'border-border/70' : isCorrect ? 'border-green-500/50' : 'border-destructive/50'}`}>
                 <CardHeader>
                   <CardTitle className="text-lg flex justify-between gap-4">
                     <span>{i + 1}. {q.question}</span>
                     {skipped ? (
-                      <span className="text-sm font-normal text-muted-foreground">Skipped</span>
+                      <span className="text-sm font-normal text-muted-foreground">{tr('practice.skipped')}</span>
                     ) : isCorrect ? (
-                      <span className="text-sm font-normal text-green-500 flex items-center"><CheckCircle2 className="w-4 h-4 mr-1"/> Correct</span>
+                      <span className="text-sm font-normal text-green-600 dark:text-green-400 flex items-center shrink-0"><CheckCircle2 className="w-4 h-4 mr-1"/>{' '}{tr('practice.correct')}</span>
                     ) : (
-                      <span className="text-sm font-normal text-destructive flex items-center"><AlertCircle className="w-4 h-4 mr-1"/> Incorrect</span>
+                      <span className="text-sm font-normal text-destructive flex items-center shrink-0"><AlertCircle className="w-4 h-4 mr-1"/>{' '}{tr('practice.incorrect')}</span>
                     )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     {q.options.map((opt, optIdx) => (
-                      <div key={optIdx} className={`p-3 rounded-md border ${optIdx === q.correctIndex ? 'bg-green-500/10 border-green-500/30' : answers[i] === optIdx ? 'bg-destructive/10 border-destructive/30' : ''}`}>
+                      <div key={optIdx} className={`p-3 rounded-xl border ${optIdx === correctIndex ? 'bg-green-500/10 border-green-500/30' : answers[i] === optIdx ? 'bg-destructive/10 border-destructive/30' : ''}`}>
                         {opt}
                       </div>
                     ))}
                   </div>
-                  <div className="bg-muted/50 p-4 rounded-md text-sm">
-                    <strong>Explanation:</strong> {q.explanation}
+                  <div className="bg-muted/50 p-4 rounded-xl text-sm">
+                    <strong>{tr('practice.explanation')}</strong> {explanation}
                   </div>
                 </CardContent>
               </Card>
@@ -239,27 +470,34 @@ export default function TakeMockTestPage() {
   const hasAnsweredCurrent = answers[currentIndex] !== undefined
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-8 pt-6 w-full h-full">
+    <div className="flex-1 flex flex-col w-full h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-xl font-bold">{company.toUpperCase()} - {role.replace(/-/g, ' ')}</h2>
-          <p className="text-sm text-muted-foreground">Question {currentIndex + 1} of {questions.length}</p>
+          <h1 className="text-xl font-bold">{company} · {role}</h1>
+          <p className="text-sm text-muted-foreground tabular-nums">{tr('practice.question')}{' '}{currentIndex + 1}{' '}{tr('practice.ofCount', { count: questions.length })}</p>
         </div>
-        <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono text-lg">
-          <Clock className="h-5 w-5" />
-          <span className={timeLeft < 60 ? 'text-destructive font-bold' : ''}>
-            {formatTime(timeLeft)}
-          </span>
+        <div className="flex items-center gap-3">
+          {newTestButton('ghost')}
+          <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono tabular-nums text-lg" aria-label={tr('practice.timeLeft')}>
+            <Clock className="h-5 w-5" />
+            <span className={timeLeft < 60 ? 'text-destructive font-bold' : ''}>
+              {formatTime(timeLeft)}
+            </span>
+          </div>
         </div>
       </div>
+      {newTestDialog}
+      {resumed && (
+        <p className="-mt-6 mb-6 text-sm text-muted-foreground">{tr('practice.pickedUpWhereYouLeftOffeb7')}</p>
+      )}
 
       <Progress value={((currentIndex + 1) / questions.length) * 100} className="mb-8 h-2" />
 
       {/* Main Content */}
       <div className="flex-1 grid md:grid-cols-2 gap-8">
         {/* Left Pane - Question */}
-        <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col">
+        <div className="bg-card border border-border/70 rounded-3xl p-6 flex flex-col">
           <h3 className="text-lg font-medium leading-relaxed mb-4">
             {currentQ.question}
           </h3>
@@ -285,11 +523,9 @@ export default function TakeMockTestPage() {
           </RadioGroup>
 
           <div className="flex justify-between items-center mt-8 pt-6 border-t">
-            <Button variant="ghost" onClick={handleNext} className="text-muted-foreground">
-              Skip Question
-            </Button>
+            <Button variant="ghost" onClick={handleNext} className="text-muted-foreground">{tr('practice.skipQuestion')}</Button>
             <Button onClick={handleNext} disabled={!hasAnsweredCurrent} size="lg">
-              {currentIndex === questions.length - 1 ? 'Submit Test' : 'Submit & Next'}
+              {currentIndex === questions.length - 1 ? tr('practice.submitTest') : tr('practice.submitAndNext')}
             </Button>
           </div>
         </div>

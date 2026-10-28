@@ -1,6 +1,19 @@
-import { formatDate } from '@/lib/format-datetime'
 // ponytail: Brand update from purple-indigo to green (#22c55e) to match icon.svg
+import { formatDate } from '@/lib/format-datetime'
 import { getCurrencySymbol } from '@/lib/currency'
+import { DEFAULT_LOCALE, LOCALE_META, toLocale, type Locale } from '@/lib/i18n/config'
+import { fillOutbound, outboundTemplate, type OutboundParams } from '@/lib/i18n/outbound'
+
+/**
+ * Transactional email templates, in the recipient's language.
+ *
+ *   const tpl = emailTemplatesFor(await localeForEmail(to)).passwordReset(url)
+ *
+ * `emailTemplates` / `hackathonEmailTemplates` are the English set (same
+ * output as before). Text lives in lib/i18n/messages/<locale>/email.json:
+ * `**bold**` and `[link](url)` are the only markup; values are inserted as
+ * given (callers HTML-escape user text, as before).
+ */
 
 const BRAND = {
   green: '#16a34a',
@@ -30,9 +43,8 @@ function getIconUrl() {
   return `${getBaseUrl()}/icon.svg`
 }
 
-const baseStyles = {
-  wrapper: `
-<div style="background:#f3f4f6;padding:40px 16px;font-family:${FONTS.sans}">
+const wrapper = (locale: Locale) => `
+<div lang="${locale}" style="background:#f3f4f6;padding:40px 16px;font-family:${FONTS.sans}">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid ${BRAND.border};box-shadow:0 1px 3px rgba(0,0,0,0.06)">
     <!-- Header -->
     <tr>
@@ -50,7 +62,9 @@ const baseStyles = {
       </td>
     </tr>
     <!-- Body -->
-    <tr><td style="padding:32px 32px 28px;color:${BRAND.text};font-size:15px;line-height:1.7">`,
+    <tr><td style="padding:32px 32px 28px;color:${BRAND.text};font-size:15px;line-height:1.7">`
+
+const baseStyles = {
   footer: `
       </td></tr>
       <!-- Footer -->
@@ -74,11 +88,6 @@ const baseStyles = {
     </td></tr></table>`,
   card: (content: string) =>
     `<div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:8px;padding:16px;margin:16px 0">${content}</div>`,
-  divider: () => `<div style="border-top:1px solid ${BRAND.border};margin:20px 0"></div>`,
-  badge: (text: string, color: string, bg: string) =>
-    `<span style="display:inline-block;background:${bg};color:${color};font-size:11px;font-weight:600;padding:2px 8px;border-radius:100px;text-transform:uppercase;letter-spacing:0.5px">${text}</span>`,
-  mono: (text: string) =>
-    `<code style="font-family:${FONTS.mono};font-size:13px;background:${BRAND.surface};padding:2px 6px;border-radius:4px;border:1px solid ${BRAND.border};color:${BRAND.text}">${text}</code>`,
   codeBlock: (text: string) =>
     `<pre style="font-family:${FONTS.mono};font-size:12px;background:#1a1a1a;color:#e5e7eb;padding:16px;border-radius:8px;overflow-x:auto;line-height:1.5;margin:16px 0">${text}</pre>`,
 }
@@ -89,592 +98,550 @@ const statRow = (label: string, value: string, mono = false) =>
 const alertBox = (content: string, bg: string, border: string) =>
   `<div style="background:${bg};border-left:3px solid ${border.split(' ')[0]};padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0">${content}</div>`
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const emailTemplates: { [key: string]: (...args: any[]) => { subject: string; html: string } } = {
-  welcomeEmail: (name: string) => {
-    const base = getBaseUrl()
-    return {
-      subject: `Welcome to CodeSpectra, ${name}!`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Welcome to CodeSpectra, ${name}!</h1>
-        <p style="margin:12px 0 20px;color:${BRAND.muted};font-size:14px">Your account is ready. Here are some things you can do to get started:</p>
+const table = (rows: string) => `
+          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
+            ${rows}
+          </table>
+        `
+
+const medalFor = (rank: number) => (rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`)
+
+type Rich = (key: string, params?: OutboundParams, linkStyle?: string) => string
+
+/** Translator pair for one locale: `t` plain text, `r` with **bold** / [link](url). */
+function textFor(locale: Locale): { t: (key: string, params?: OutboundParams) => string; r: Rich } {
+  const tpl = (key: string) => outboundTemplate('email', locale, key) ?? key
+  return {
+    t: (key, params) => fillOutbound(tpl(key), params),
+    r: (key, params, linkStyle = `color:${BRAND.green};font-weight:600`) =>
+      fillOutbound(
+        tpl(key)
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, `<a href="$2" style="${linkStyle}">$1</a>`),
+        params,
+      ),
+  }
+}
+
+function makeEmailTemplates(locale: Locale) {
+  const { t, r } = textFor(locale)
+  const W = wrapper(locale)
+  const F = baseStyles.footer
+  const h1 = (text: string, color = BRAND.text) => `<h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${color}">${text}</h1>`
+  const lead = (html: string, margin = '12px 0 16px') => `<p style="margin:${margin};color:${BRAND.muted};font-size:14px">${html}</p>`
+  const note = (html: string, margin = '8px 0 0') => `<p style="margin:${margin};font-size:13px;color:${BRAND.muted}">${html}</p>`
+  const money = (amount: number, currency: string) => `${getCurrencySymbol(currency)}${(amount / 100).toFixed(2)}`
+  // English keeps en-GB (as before); Hindi / Telugu use their own month names.
+  const longDate = (ms: number) => formatDate(ms, undefined, { month: 'long', day: 'numeric', year: 'numeric' }, locale === 'en' ? undefined : LOCALE_META[locale].intl)
+
+  return {
+    /** AUTO-080: the reader's own week (no platform-wide numbers). Unsubscribe link added by deliverOrDefer ('engagement'). */
+    weeklyDigestEmail: (p: { name: string; solved: number; streak: number; events: Array<{ title: string; url: string; deadline: string | null }> }) => {
+      const base = getBaseUrl()
+      const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      const stat = (value: number, label: string) => `<p style="margin:8px 0;font-size:14px;color:${BRAND.text}"><strong>${value}</strong> ${label}</p>`
+      const events = p.events.map((e) => `<li style="margin:6px 0;font-size:14px"><a href="${esc(e.url)}" style="color:${BRAND.green};font-weight:600">${esc(e.title)}</a>${e.deadline ? ` <span style="color:${BRAND.muted};font-size:12px">· ${esc(t('weeklyDigest.applyBy', { date: longDate(Date.parse(e.deadline)) }))}</span>` : ''}</li>`).join('')
+      return {
+        subject: t('weeklyDigest.subject'),
+        html: `${W}
+        ${h1(t('weeklyDigest.heading'))}
+        ${lead(esc(t('weeklyDigest.intro', { name: p.name })))}
+        <div style="background:${BRAND.surface};border:1px solid ${BRAND.border};border-radius:8px;padding:12px 16px;margin:0 0 16px">
+          ${stat(p.solved, esc(t('weeklyDigest.solved')))}
+          ${stat(p.streak, esc(t('weeklyDigest.streak')))}
+          ${p.solved === 0 ? note(esc(t('weeklyDigest.nudge')), '8px 0 0') : ''}
+        </div>
+        ${events ? `<p style="margin:0 0 4px;font-weight:600;font-size:14px;color:${BRAND.text}">${esc(t('weeklyDigest.eventsHeading'))}</p><ul style="padding-left:18px;margin:0 0 16px">${events}</ul>` : ''}
+        ${baseStyles.button(`${base}/dashboard`, t('button.dashboard'))}
+        ${note(r('weeklyDigest.prefs', { url: `${base}/dashboard/notifications/preferences` }), '16px 0 0')}
+      ${F}`,
+      }
+    },
+    welcomeEmail: (name: string) => {
+      const base = getBaseUrl()
+      const steps = ([1, 2, 3, 4] as const).map((i) => [t(`welcome.step${i}Title`), t(`welcome.step${i}Desc`)])
+      return {
+        subject: t('welcome.subject', { name }),
+        html: `${W}
+        ${h1(t('welcome.heading', { name }))}
+        ${lead(t('welcome.intro'), '12px 0 20px')}
         <div style="display:grid;gap:10px;margin:0 0 20px">
-          ${[
-            ['Connect your GitHub repository', 'Link your code for automated scanning and review'],
-            ['Explore the Arena', 'Practice coding challenges and interview problems'],
-            ['Join a hackathon', 'Compete solo or with your team in timed events'],
-            ['Set up your profile', 'Add your skills and experience to get noticed'],
-          ].map(([title, desc]) => `
+          ${steps.map(([title, desc]) => `
             <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:${BRAND.surface};border-radius:8px;border:1px solid ${BRAND.border}">
               <div style="width:6px;height:6px;background:${BRAND.green};border-radius:50%;margin-top:6px;flex-shrink:0"></div>
               <div><strong style="font-size:14px;color:${BRAND.text}">${title}</strong><br/><span style="font-size:13px;color:${BRAND.muted}">${desc}</span></div>
             </div>`).join('')}
         </div>
-        ${baseStyles.button(`${base}/dashboard`, 'Go to Dashboard')}
-      ${baseStyles.footer}`,
-    }
-  },
+        ${baseStyles.button(`${base}/dashboard`, t('button.dashboard'))}
+      ${F}`,
+      }
+    },
 
-  loginNotification: (name: string, deviceInfo: string, location: string, time: string) => {
-    const base = getBaseUrl()
-    return {
-      subject: `New sign-in detected — CodeSpectra`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">New sign-in detected</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${name}</strong>, we noticed a new sign-in to your account.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Device', deviceInfo)}
-            ${statRow('Location', location)}
-            ${statRow('Time', time, true)}
-          </table>
-        `)}
-        ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">If this wasn't you, <a href="${base}/dashboard/settings/security" style="color:${BRAND.green};font-weight:600">secure your account</a> immediately.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
-        ${baseStyles.button(`${base}/dashboard/settings/security`, 'Review Account Security', 'outline')}
-      ${baseStyles.footer}`,
-    }
-  },
+    loginNotification: (name: string, deviceInfo: string, location: string, time: string) => {
+      const base = getBaseUrl()
+      return {
+        subject: t('login.subject'),
+        html: `${W}
+        ${h1(t('login.heading'))}
+        ${lead(r('login.intro', { name }))}
+        ${baseStyles.card(table(`${statRow(t('label.device'), deviceInfo)}
+            ${statRow(t('label.location'), location)}
+            ${statRow(t('label.time'), time, true)}`))}
+        ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">${r('login.notYou', { url: `${base}/dashboard/settings` })}</p>`, BRAND.amberBg, `${BRAND.amber}`)}
+        ${baseStyles.button(`${base}/dashboard/settings`, t('login.button'), 'outline')}
+      ${F}`,
+      }
+    },
 
-  jobApplicationConfirmation: (jobTitle: string, companyName: string, applicantName: string) => {
-    const base = getBaseUrl()
-    return {
-      subject: `Application received — ${jobTitle}`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Application submitted!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${applicantName}</strong>, your application has been received.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Position', jobTitle)}
-            ${statRow('Company', companyName)}
-            ${statRow('Status', 'Under Review')}
-          </table>
-        `)}
-        <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${BRAND.text}">What happens next?</p>
+    jobApplicationConfirmation: (jobTitle: string, companyName: string, applicantName: string) => {
+      const base = getBaseUrl()
+      return {
+        subject: t('job.subject', { jobTitle }),
+        html: `${W}
+        ${h1(t('job.heading'))}
+        ${lead(r('job.intro', { name: applicantName }))}
+        ${baseStyles.card(table(`${statRow(t('label.position'), jobTitle)}
+            ${statRow(t('label.company'), companyName)}
+            ${statRow(t('label.status'), t('value.underReview'))}`))}
+        <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${BRAND.text}">${t('job.next')}</p>
         <div style="display:flex;gap:8px;margin:0 0 20px;flex-wrap:wrap">
-          ${['Skills verification', 'Resume review (3–5 days)', 'Interview invite'].map((step, i) => `
+          ${[t('job.step1'), t('job.step2'), t('job.step3')].map((step, i) => `
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:${BRAND.muted}">
               <span style="background:${BRAND.green};color:#fff;width:18px;height:18px;border-radius:50%;text-align:center;line-height:18px;font-size:10px;font-weight:700;flex-shrink:0">${i + 1}</span>
               ${step}
             </div>`).join('')}
         </div>
-        ${baseStyles.button(`${base}/dashboard/applications`, 'Track Application')}
-      ${baseStyles.footer}`,
-    }
-  },
+        ${baseStyles.button(`${base}/dashboard/jobs`, t('job.button'))}
+      ${F}`,
+      }
+    },
 
-  examStartedNotification: (examTitle: string, candidateName: string) => {
-    const base = getBaseUrl()
-    return {
-      subject: `Exam started: ${examTitle}`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Exam in progress</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${candidateName}</strong>, you've begun <strong>${examTitle}</strong>. Keep these in mind:</p>
+    examStartedNotification: (examTitle: string, candidateName: string) => {
+      const base = getBaseUrl()
+      return {
+        subject: t('examStarted.subject', { examTitle }),
+        html: `${W}
+        ${h1(t('examStarted.heading'))}
+        ${lead(r('examStarted.intro', { name: candidateName, examTitle }))}
         ${baseStyles.card(`
           <ul style="margin:0;padding-left:18px;color:${BRAND.text};font-size:14px;line-height:1.9">
-            <li>Watch the timer — auto-submit is enforced when time expires</li>
-            <li>Read each question carefully before answering</li>
-            <li>Use the built-in IDE for coding questions</li>
-            <li>Don't navigate away — tab switches are logged</li>
+            ${[1, 2, 3, 4].map((i) => `<li>${t(`examStarted.tip${i}`)}</li>`).join('\n            ')}
           </ul>
         `)}
-        <p style="margin:0 0 20px;font-size:14px;color:${BRAND.green};font-weight:500">Good luck! 🍀</p>
-        ${baseStyles.button(`${base}/dashboard/assessments`, 'Return to Assessment', 'outline')}
-      ${baseStyles.footer}`,
-    }
-  },
+        <p style="margin:0 0 20px;font-size:14px;color:${BRAND.green};font-weight:500">${t('examStarted.goodLuck')}</p>
+        ${baseStyles.button(`${base}/dashboard/assessments`, t('examStarted.button'), 'outline')}
+      ${F}`,
+      }
+    },
 
-  subscriptionConfirmation: (planName: string, amount: number, currency = 'INR') => {
-    const base = getBaseUrl()
-    const symbol = getCurrencySymbol(currency || 'USD')
-    const nextBilling = formatDate(Date.now() + 30 * 86400000, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
-    return {
-      subject: `Welcome to ${planName} — subscription active`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Subscription confirmed!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Thank you for upgrading to <strong>${planName}</strong>. Your subscription is now active.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Plan', planName)}
-            ${statRow('Amount', `${symbol}${(amount / 100).toFixed(2)} ${currency}`)}
-            ${statRow('Next billing', nextBilling)}
-            ${statRow('Status', 'Active')}
-          </table>
-        `)}
-        <p style="margin:0 0 4px;font-size:13px;color:${BRAND.muted}">You can manage or cancel your subscription anytime from your billing settings.</p>
-        ${baseStyles.button(`${base}/dashboard/billing`, 'Manage Subscription')}
-      ${baseStyles.footer}`,
-    }
-  },
+    subscriptionConfirmation: (planName: string, amount: number, currency = 'INR') => {
+      const base = getBaseUrl()
+      const cur = currency || 'USD'
+      return {
+        subject: t('subscription.subject', { plan: planName }),
+        html: `${W}
+        ${h1(t('subscription.heading'))}
+        ${lead(r('subscription.intro', { plan: planName }))}
+        ${baseStyles.card(table(`${statRow(t('label.plan'), planName)}
+            ${statRow(t('label.amount'), `${money(amount, cur)} ${currency}`)}
+            ${statRow(t('label.nextBilling'), longDate(Date.now() + 30 * 86400000))}
+            ${statRow(t('label.status'), t('value.active'))}`))}
+        <p style="margin:0 0 4px;font-size:13px;color:${BRAND.muted}">${t('subscription.manageNote')}</p>
+        ${baseStyles.button(`${base}/dashboard/billing`, t('subscription.button'))}
+      ${F}`,
+      }
+    },
 
-  invoiceNotification: (invoiceId: string, amount: number, planName: string, currency = 'INR') => {
-    const base = getBaseUrl()
-    const symbol = getCurrencySymbol(currency || 'USD')
-    return {
-      subject: `Invoice #${invoiceId} — ${planName}`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Invoice available</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your latest invoice for <strong>${planName}</strong> is ready.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Invoice', `#${invoiceId}`, true)}
-            ${statRow('Amount', `${symbol}${(amount / 100).toFixed(2)} ${currency}`)}
-            ${statRow('Plan', planName)}
-            ${statRow('Status', 'Paid')}
-          </table>
-        `)}
-        ${baseStyles.button(`${base}/dashboard/billing`, 'Download Invoice')}
-      ${baseStyles.footer}`,
-    }
-  },
+    invoiceNotification: (invoiceId: string, amount: number, planName: string, currency = 'INR') => {
+      const base = getBaseUrl()
+      return {
+        subject: t('invoice.subject', { invoiceId, plan: planName }),
+        html: `${W}
+        ${h1(t('invoice.heading'))}
+        ${lead(r('invoice.intro', { plan: planName }))}
+        ${baseStyles.card(table(`${statRow(t('label.invoice'), `#${invoiceId}`, true)}
+            ${statRow(t('label.amount'), `${money(amount, currency || 'USD')} ${currency}`)}
+            ${statRow(t('label.plan'), planName)}
+            ${statRow(t('label.status'), t('value.paid'))}`))}
+        ${baseStyles.button(`${base}/dashboard/billing`, t('invoice.button'))}
+      ${F}`,
+      }
+    },
 
-  phonePePaymentSuccess: (planName: string, amount: number, transactionId: string, currency?: string) => {
-    const base = getBaseUrl()
-    const symbol = getCurrencySymbol(currency || 'INR')
-    return {
-      subject: `Payment successful — ${planName}`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Payment successful!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your payment of <strong>${symbol}${(amount / 100).toFixed(2)}</strong> for <strong>${planName}</strong> has been processed.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Transaction ID', transactionId, true)}
-            ${statRow('Method', 'PhonePe UPI')}
-            ${statRow('Amount', `${symbol}${(amount / 100).toFixed(2)}`)}
-            ${statRow('Status', 'Success')}
-          </table>
-        `)}
-        ${baseStyles.button(`${base}/dashboard/billing`, 'View Subscription')}
-      ${baseStyles.footer}`,
-    }
-  },
+    phonePePaymentSuccess: (planName: string, amount: number, transactionId: string, currency?: string) => {
+      const base = getBaseUrl()
+      const amt = money(amount, currency || 'INR')
+      return {
+        subject: t('paySuccess.subject', { plan: planName }),
+        html: `${W}
+        ${h1(t('paySuccess.heading'))}
+        ${lead(r('paySuccess.intro', { amount: amt, plan: planName }))}
+        ${baseStyles.card(table(`${statRow(t('label.transactionId'), transactionId, true)}
+            ${statRow(t('label.method'), 'PhonePe UPI')}
+            ${statRow(t('label.amount'), amt)}
+            ${statRow(t('label.status'), t('value.success'))}`))}
+        ${baseStyles.button(`${base}/dashboard/billing`, t('paySuccess.button'))}
+      ${F}`,
+      }
+    },
 
-  phonePePaymentFailed: (planName: string, amount: number, reason?: string, currency?: string) => {
-    const base = getBaseUrl()
-    const symbol = getCurrencySymbol(currency || 'INR')
-    return {
-      subject: `Payment failed — ${planName}`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.red}">Payment failed</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your payment of <strong>${symbol}${(amount / 100).toFixed(2)}</strong> for <strong>${planName}</strong> could not be processed.</p>
-        ${reason ? alertBox(`<p style="margin:0;font-size:14px;color:${BRAND.red}"><strong>Reason:</strong> ${reason}</p>`, BRAND.redBg, `${BRAND.red}`) : ''}
-        <p style="margin:16px 0;font-size:14px;color:${BRAND.muted}">Please try again or use a different payment method.</p>
-        ${baseStyles.button(`${base}/dashboard/billing`, 'Try Again')}
-      ${baseStyles.footer}`,
-    }
-  },
+    phonePePaymentFailed: (planName: string, amount: number, reason?: string, currency?: string) => {
+      const base = getBaseUrl()
+      const amt = money(amount, currency || 'INR')
+      return {
+        subject: t('payFailed.subject', { plan: planName }),
+        html: `${W}
+        ${h1(t('payFailed.heading'), BRAND.red)}
+        ${lead(r('payFailed.intro', { amount: amt, plan: planName }))}
+        ${reason ? alertBox(`<p style="margin:0;font-size:14px;color:${BRAND.red}">${r('payFailed.reason', { reason })}</p>`, BRAND.redBg, `${BRAND.red}`) : ''}
+        <p style="margin:16px 0;font-size:14px;color:${BRAND.muted}">${t('payFailed.retryNote')}</p>
+        ${baseStyles.button(`${base}/dashboard/billing`, t('payFailed.button'))}
+      ${F}`,
+      }
+    },
 
-  passwordReset: (resetUrl: string) => ({
-    subject: 'Reset your CodeSpectra password',
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Reset your password</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>
-      ${baseStyles.button(resetUrl, 'Reset Password')}
-      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.muted}">If you didn't request this, you can safely ignore this email. Your account won't be affected.</p>`, BRAND.greenBg, `${BRAND.green}`)}
-    ${baseStyles.footer}`,
-  }),
+    passwordReset: (resetUrl: string) => ({
+      subject: t('reset.subject'),
+      html: `${W}
+      ${h1(t('reset.heading'))}
+      ${lead(r('reset.intro'))}
+      ${baseStyles.button(resetUrl, t('reset.button'))}
+      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.muted}">${t('reset.ignore')}</p>`, BRAND.greenBg, `${BRAND.green}`)}
+    ${F}`,
+    }),
 
-  emailVerification: (verifyUrl: string) => ({
-    subject: 'Verify your CodeSpectra email',
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Verify your email address</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Click the button below to confirm your email and activate your CodeSpectra account.</p>
-      ${baseStyles.button(verifyUrl, 'Verify Email')}
-      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">If you didn't create a CodeSpectra account, ignore this email.</p>
-    ${baseStyles.footer}`,
-  }),
+    emailVerification: (verifyUrl: string) => ({
+      subject: t('verify.subject'),
+      html: `${W}
+      ${h1(t('verify.heading'))}
+      ${lead(t('verify.intro'))}
+      ${baseStyles.button(verifyUrl, t('verify.button'))}
+      ${note(t('verify.ignore'))}
+    ${F}`,
+    }),
 
-  teamInvite: (teamName: string, invitedByName: string, acceptUrl: string) => ({
-    subject: `You're invited to join ${teamName} on CodeSpectra`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Team invitation</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px"><strong>${invitedByName}</strong> invited you to join <strong>${teamName}</strong> on CodeSpectra.</p>
-      ${baseStyles.button(acceptUrl, 'Accept Invitation')}
-      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">This invite link will expire in 7 days.</p>
-    ${baseStyles.footer}`,
-  }),
+    teamInvite: (teamName: string, invitedByName: string, acceptUrl: string) => ({
+      subject: t('teamInvite.subject', { team: teamName }),
+      html: `${W}
+      ${h1(t('teamInvite.heading'))}
+      ${lead(r('teamInvite.intro', { inviter: invitedByName, team: teamName }))}
+      ${baseStyles.button(acceptUrl, t('button.acceptInvitation'))}
+      ${note(t('invite.expires7'))}
+    ${F}`,
+    }),
 
-  orgInvite: (params: { orgName: string; invitedByName: string; acceptUrl: string }) => ({
-    subject: `You're invited to join ${params.orgName} on CodeSpectra`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Organization invitation</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px"><strong>${params.invitedByName}</strong> invited you to join <strong>${params.orgName}</strong> on CodeSpectra.</p>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Once you accept, you'll be a member of <strong>${params.orgName}</strong> and get access to their team's assessments, exams and codeathons.</p>
-      ${baseStyles.button(params.acceptUrl, 'Accept Invitation')}
-      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">This invite link will expire in 7 days.</p>
-    ${baseStyles.footer}`,
-  }),
+    orgInvite: (params: { orgName: string; invitedByName: string; acceptUrl: string }) => ({
+      subject: t('orgInvite.subject', { org: params.orgName }),
+      html: `${W}
+      ${h1(t('orgInvite.heading'))}
+      ${lead(r('orgInvite.intro', { inviter: params.invitedByName, org: params.orgName }))}
+      ${lead(r('orgInvite.body', { org: params.orgName }))}
+      ${baseStyles.button(params.acceptUrl, t('button.acceptInvitation'))}
+      ${note(t('invite.expires7'))}
+    ${F}`,
+    }),
 
-  twoFactorBackup: (backupCodes: string) => ({
-    subject: '2FA backup codes — CodeSpectra',
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Two-factor authentication enabled</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your backup codes are below. <strong>Store them somewhere safe</strong> — each code can only be used once.</p>
+    /** ATS hiring-team invite (lib/ats/access.ts). All params must be HTML-escaped by the caller. */
+    atsTeamInvite: (params: { orgName: string; invitedByName: string; roleLabel: string; clientName?: string | null; acceptUrl: string; expiresDays: number }) => ({
+      subject: t('atsInvite.subject', { org: params.orgName }),
+      html: `${W}
+      ${h1(t('atsInvite.heading'))}
+      ${lead(r(params.clientName ? 'atsInvite.introClient' : 'atsInvite.intro', { inviter: params.invitedByName, org: params.orgName, role: params.roleLabel, client: params.clientName }))}
+      ${lead(t('atsInvite.body'))}
+      ${baseStyles.button(params.acceptUrl, t('atsInvite.button'))}
+      ${note(t('atsInvite.expires', { days: params.expiresDays }))}
+    ${F}`,
+    }),
+
+    /**
+     * SEO-033: short account / security / invite notices (`<key>.subject`,
+     * `.heading`, `.body`, optional `.button` and `.note` in email.json).
+     * `params` go into the HTML and must be escaped by the caller;
+     * `subjectParams` (default `params`) are plain text for the subject.
+     */
+    notice: (args: { key: string; params?: OutboundParams; subjectParams?: OutboundParams; code?: string; buttonUrl?: string }) => {
+      const k = args.key
+      const has = (part: string) => outboundTemplate('email', locale, `${k}.${part}`) !== undefined
+      return {
+        subject: t(`${k}.subject`, args.subjectParams ?? args.params).replace(/[\r\n]+/g, ' ').slice(0, 200),
+        html: `${W}
+      ${h1(t(`${k}.heading`, args.params))}
+      ${lead(r(`${k}.body`, args.params))}
+      ${args.code ? `<p style="font-size:28px;font-weight:700;letter-spacing:6px;font-family:${FONTS.mono};margin:0 0 16px">${args.code}</p>` : ''}
+      ${args.buttonUrl && has('button') ? baseStyles.button(args.buttonUrl, t(`${k}.button`, args.params)) : ''}
+      ${has('note') ? note(r(`${k}.note`, args.params)) : ''}
+    ${F}`,
+      }
+    },
+
+    twoFactorBackup: (backupCodes: string) => ({
+      subject: t('backup.subject'),
+      html: `${W}
+      ${h1(t('backup.heading'))}
+      ${lead(r('backup.intro'))}
       ${baseStyles.codeBlock(backupCodes)}
-      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">If you lose access to your authenticator app, use a backup code to sign in. Then set up 2FA again for full security.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
-    ${baseStyles.footer}`,
-  }),
+      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">${t('backup.note')}</p>`, BRAND.amberBg, `${BRAND.amber}`)}
+    ${F}`,
+    }),
 
-  assessmentInvite: (params: {
-    candidateName: string
-    examTitle: string
-    inviteUrl: string
-    expiresIn: string
-  }) => ({
-    subject: `You're invited to complete "${params.examTitle}" — CodeSpectra Assessment`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Assessment Invitation</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.candidateName}</strong>,</p>
-      <p style="margin:0 0 16px;color:${BRAND.muted};font-size:14px">You have been invited to complete a technical assessment on CodeSpectra.</p>
-      ${baseStyles.card(`
-        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-          ${statRow('Assessment', params.examTitle)}
-          ${statRow('Invite expires', params.expiresIn)}
-          ${statRow('Status', 'Pending')}
-        </table>
-      `)}
-      <p style="margin:16px 0 4px;font-size:14px;color:${BRAND.text};font-weight:500">What to expect:</p>
+    assessmentInvite: (params: { candidateName: string; examTitle: string; inviteUrl: string; expiresIn: string }) => ({
+      subject: t('assessInvite.subject', { examTitle: params.examTitle }),
+      html: `${W}
+      ${h1(t('assessInvite.heading'))}
+      ${lead(r('assess.hi', { name: params.candidateName }))}
+      ${lead(t('assessInvite.intro'), '0 0 16px')}
+      ${baseStyles.card(table(`${statRow(t('label.assessment'), params.examTitle)}
+          ${statRow(t('label.inviteExpires'), params.expiresIn)}
+          ${statRow(t('label.status'), t('value.pending'))}`))}
+      <p style="margin:16px 0 4px;font-size:14px;color:${BRAND.text};font-weight:500">${t('assessInvite.expect')}</p>
       <ul style="margin:4px 0 20px;padding-left:18px;color:${BRAND.muted};font-size:14px;line-height:1.8">
-        <li>Timed assessment with auto-submit when time expires</li>
-        <li>Mix of question types (MCQ, coding, descriptive, and more)</li>
-        <li>Proctoring is active — tab switches are logged</li>
-        <li>Results are reviewed by the technical team</li>
+        ${[1, 2, 3, 4].map((i) => `<li>${t(`assessInvite.tip${i}`)}</li>`).join('\n        ')}
       </ul>
-      ${baseStyles.button(params.inviteUrl, 'Start Your Assessment')}
-      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}"><strong>One-time use:</strong> This invite link can only be used once. Do not share it with anyone. It expires on ${params.expiresIn}.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
-      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">If you were not expecting this invitation, you can safely ignore this email.</p>
-    ${baseStyles.footer}`,
-  }),
+      ${baseStyles.button(params.inviteUrl, t('assessInvite.button'))}
+      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">${r('assessInvite.oneTime', { expires: params.expiresIn })}</p>`, BRAND.amberBg, `${BRAND.amber}`)}
+      ${note(t('footer.ignore'))}
+    ${F}`,
+    }),
 
-  assessmentScoreReleased: (params: {
-    candidateName: string
-    examTitle: string
-    score: number
-    maxScore: number
-    resultsUrl: string
-  }) => ({
-    subject: `Your results are ready: "${params.examTitle}" — CodeSpectra Assessment`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Assessment Results Ready</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.candidateName}</strong>,</p>
-      <p style="margin:0 0 16px;color:${BRAND.muted};font-size:14px">Your assessment results for <strong>${params.examTitle}</strong> have been released by the evaluator.</p>
-      ${baseStyles.card(`
-        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-          ${statRow('Assessment', params.examTitle)}
-          ${statRow('Your Score', `${params.score} / ${params.maxScore}`)}
-          ${statRow('Percentage', `${Math.round((params.score / (params.maxScore || 1)) * 100)}%`)}
-        </table>
-      `)}
-      ${baseStyles.button(params.resultsUrl, 'View Feedback & Details')}
-      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">Log in to your candidate dashboard to view detailed feedback for each question.</p>
-    ${baseStyles.footer}`,
-  }),
+    assessmentScoreReleased: (params: { candidateName: string; examTitle: string; score: number; maxScore: number; resultsUrl: string }) => ({
+      subject: t('assessResults.subject', { examTitle: params.examTitle }),
+      html: `${W}
+      ${h1(t('assessResults.heading'))}
+      ${lead(r('assess.hi', { name: params.candidateName }))}
+      ${lead(r('assessResults.intro', { examTitle: params.examTitle }), '0 0 16px')}
+      ${baseStyles.card(table(`${statRow(t('label.assessment'), params.examTitle)}
+          ${statRow(t('label.yourScore'), `${params.score} / ${params.maxScore}`)}
+          ${statRow(t('label.percentage'), `${Math.round((params.score / (params.maxScore || 1)) * 100)}%`)}`))}
+      ${baseStyles.button(params.resultsUrl, t('assessResults.button'))}
+      ${note(t('assessResults.note'))}
+    ${F}`,
+    }),
 
-  assessmentReminder: (params: {
-    candidateName: string
-    examTitle: string
-    inviteUrl: string
-    expiresIn: string
-  }) => ({
-    subject: `Reminder: "${params.examTitle}" assessment awaits — CodeSpectra`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Assessment Reminder</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.candidateName}</strong>,</p>
-      <p style="margin:0 0 16px;color:${BRAND.muted};font-size:14px">This is a friendly reminder that you have a pending assessment <strong>${params.examTitle}</strong> on CodeSpectra.</p>
-      ${baseStyles.card(`
-        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-          ${statRow('Assessment', params.examTitle)}
-          ${statRow('Invite expires', params.expiresIn)}
-          ${statRow('Status', 'Pending')}
-        </table>
-      `)}
-      <p style="margin:16px 0 4px;font-size:14px;color:${BRAND.text};font-weight:500">Quick tips:</p>
+    assessmentReminder: (params: { candidateName: string; examTitle: string; inviteUrl: string; expiresIn: string }) => ({
+      subject: t('assessReminder.subject', { examTitle: params.examTitle }),
+      html: `${W}
+      ${h1(t('assessReminder.heading'))}
+      ${lead(r('assess.hi', { name: params.candidateName }))}
+      ${lead(r('assessReminder.intro', { examTitle: params.examTitle }), '0 0 16px')}
+      ${baseStyles.card(table(`${statRow(t('label.assessment'), params.examTitle)}
+          ${statRow(t('label.inviteExpires'), params.expiresIn)}
+          ${statRow(t('label.status'), t('value.pending'))}`))}
+      <p style="margin:16px 0 4px;font-size:14px;color:${BRAND.text};font-weight:500">${t('assessReminder.tips')}</p>
       <ul style="margin:4px 0 20px;padding-left:18px;color:${BRAND.muted};font-size:14px;line-height:1.8">
-        <li>Timed assessment — make sure you have uninterrupted time</li>
-        <li>Stable internet connection recommended</li>
-        <li>Camera access required for proctoring</li>
+        ${[1, 2, 3].map((i) => `<li>${t(`assessReminder.tip${i}`)}</li>`).join('\n        ')}
       </ul>
-      ${baseStyles.button(params.inviteUrl, 'Continue Your Assessment')}
-      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">This invite link expires on ${params.expiresIn}. Complete your assessment before then.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
-    ${baseStyles.footer}`,
-  }),
+      ${baseStyles.button(params.inviteUrl, t('assessReminder.button'))}
+      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">${t('assessReminder.expires', { expires: params.expiresIn })}</p>`, BRAND.amberBg, `${BRAND.amber}`)}
+    ${F}`,
+    }),
 
-  levelUp: (params: { name: string; newLevel: number; totalXp: number; certUrl: string }) => {
-    const base = getBaseUrl()
-    return {
-      subject: `Level up! You're now Level ${params.newLevel} 🎉`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Congratulations, ${params.name}!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">You just reached <strong>Level ${params.newLevel}</strong> with a total of <strong>${params.totalXp} XP</strong>. Keep learning, practicing and competing to climb even higher.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Level', `Level ${params.newLevel}`)}
-            ${statRow('Total XP', `${params.totalXp} XP`)}
-            ${statRow('Certificate', 'Issued ✓')}
-          </table>
-        `)}
-        ${baseStyles.button(`${base}${params.certUrl}`, 'View Your Level-Up Certificate')}
-        <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">Your certificate is verified on the public verify page — share it anywhere.</p>
-      ${baseStyles.footer}`,
-    }
-  },
+    levelUp: (params: { name: string; newLevel: number; totalXp: number; certUrl: string }) => {
+      const base = getBaseUrl()
+      return {
+        subject: t('levelUp.subject', { level: params.newLevel }),
+        html: `${W}
+        ${h1(t('levelUp.heading', { name: params.name }))}
+        ${lead(r('levelUp.intro', { level: params.newLevel, xp: params.totalXp }))}
+        ${baseStyles.card(table(`${statRow(t('label.level'), t('value.levelN', { level: params.newLevel }))}
+            ${statRow(t('label.totalXp'), `${params.totalXp} XP`)}
+            ${statRow(t('label.certificate'), t('value.issued'))}`))}
+        ${baseStyles.button(`${base}${params.certUrl}`, t('levelUp.button'))}
+        ${note(t('levelUp.note'))}
+      ${F}`,
+      }
+    },
 
-  certificateEarned: (params: { name: string; title: string; certUrl: string }) => {
-    const base = getBaseUrl()
-    return {
-      subject: `Your ${params.title} certificate is ready 🎓`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Certificate issued, ${params.name}!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">You've been issued the <strong>${params.title}</strong> certificate. It's verifiable, downloadable and ready to share.</p>
-        ${baseStyles.button(`${base}${params.certUrl}`, 'View Certificate')}
-      ${baseStyles.footer}`,
-    }
-  },
+    certificateEarned: (params: { name: string; title: string; certUrl: string }) => {
+      const base = getBaseUrl()
+      return {
+        subject: t('cert.subject', { title: params.title }),
+        html: `${W}
+        ${h1(t('cert.heading', { name: params.name }))}
+        ${lead(r('cert.intro', { title: params.title }))}
+        ${baseStyles.button(`${base}${params.certUrl}`, t('cert.button'))}
+      ${F}`,
+      }
+    },
 
-  newsletter: (params: { subject: string; body: string }) => {
-    const base = getBaseUrl()
-    return {
-      subject: params.subject,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">${params.subject}</h1>
+    newsletter: (params: { subject: string; body: string }) => {
+      const base = getBaseUrl()
+      return {
+        subject: params.subject,
+        html: `${W}
+        ${h1(params.subject)}
         <div style="margin:12px 0 16px;font-size:15px;line-height:1.7;color:${BRAND.text}">${params.body}</div>
-        ${baseStyles.button(`${base}/dashboard`, 'Go to Dashboard')}
+        ${baseStyles.button(`${base}/dashboard`, t('button.dashboard'))}
         <p style="margin:8px 0 0;font-size:12px;color:${BRAND.muted}">
-          You're receiving this because you subscribed to CodeSpectra updates.
-          <a href="${base}/api/newsletter/unsubscribe?email=__EMAIL__" style="color:${BRAND.green};text-decoration:underline">Unsubscribe</a>.
+          ${t('newsletter.why')}
+          <a href="${base}/api/newsletter/unsubscribe?email=__EMAIL__" style="color:${BRAND.green};text-decoration:underline">${t('newsletter.unsubscribe')}</a>.
         </p>
-      ${baseStyles.footer}`,
-    }
-  },
+      ${F}`,
+      }
+    },
 
-  orgAccountProvisioned: (params: { name: string; email: string; password: string; orgName: string; role: string }) => {
-    const base = getBaseUrl()
-    return {
-      subject: `Your ${params.orgName} account is ready — CodeSpectra`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Welcome to CodeSpectra, ${params.name}!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">An account has been created for you on <strong>${params.orgName}</strong>.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Organization', params.orgName)}
-            ${statRow('Role', params.role)}
-            ${statRow('Email', params.email)}
-            ${statRow('Password', params.password)}
-          </table>
-        `)}
-        ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">Please sign in and change your password immediately. Do not share these credentials.</p>`, BRAND.amberBg, BRAND.amber)}
-        ${baseStyles.button(`${base}/login`, 'Sign In Now')}
-      ${baseStyles.footer}`,
-    }
-  },
+    orgAccountProvisioned: (params: { name: string; email: string; password: string; orgName: string; role: string }) => {
+      const base = getBaseUrl()
+      return {
+        subject: t('account.subject', { org: params.orgName }),
+        html: `${W}
+        ${h1(t('account.heading', { name: params.name }))}
+        ${lead(r('account.intro', { org: params.orgName }))}
+        ${baseStyles.card(table(`${statRow(t('label.organization'), params.orgName)}
+            ${statRow(t('label.role'), params.role)}
+            ${statRow(t('label.email'), params.email)}
+            ${statRow(t('label.password'), params.password)}`))}
+        ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">${t('account.changePassword')}</p>`, BRAND.amberBg, BRAND.amber)}
+        ${baseStyles.button(`${base}/login`, t('account.signInNow'))}
+      ${F}`,
+      }
+    },
 
-  accountCredentials: (params: { name: string; email: string; role: string; orgName: string }) => {
-    const base = getBaseUrl()
-    return {
-      subject: `Your ${params.orgName} account is ready — CodeSpectra`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Welcome to CodeSpectra, ${params.name}!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">An account has been created for you on <strong>${params.orgName}</strong>.</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Name', params.name)}
-            ${statRow('Email', params.email)}
-            ${statRow('Role', params.role)}
-            ${statRow('Organization', params.orgName)}
-          </table>
-        `)}
-        <p style="margin:16px 0;font-size:14px;color:${BRAND.text};font-weight:500">How to sign in</p>
+    accountCredentials: (params: { name: string; email: string; role: string; orgName: string }) => {
+      const base = getBaseUrl()
+      return {
+        subject: t('account.subject', { org: params.orgName }),
+        html: `${W}
+        ${h1(t('account.heading', { name: params.name }))}
+        ${lead(r('account.intro', { org: params.orgName }))}
+        ${baseStyles.card(table(`${statRow(t('label.name'), params.name)}
+            ${statRow(t('label.email'), params.email)}
+            ${statRow(t('label.role'), params.role)}
+            ${statRow(t('label.organization'), params.orgName)}`))}
+        <p style="margin:16px 0;font-size:14px;color:${BRAND.text};font-weight:500">${t('account.howTo')}</p>
         <ol style="margin:0 0 16px;padding-left:18px;color:${BRAND.muted};font-size:14px;line-height:1.9">
-          <li>Go to <a href="${base}/login" style="color:${BRAND.green};font-weight:500;text-decoration:none">${base}/login</a></li>
-          <li>Enter your email address and the password provided by your admin</li>
-          <li>We recommend changing your password after your first sign-in</li>
+          <li>${r('account.step1', { url: `${base}/login` }, `color:${BRAND.green};font-weight:500;text-decoration:none`)}</li>
+          <li>${t('account.step2')}</li>
+          <li>${t('account.step3')}</li>
         </ol>
-        ${baseStyles.button(`${base}/login`, 'Sign In')}
-      ${baseStyles.footer}`,
-    }
-  },
+        ${baseStyles.button(`${base}/login`, t('account.signIn'))}
+      ${F}`,
+      }
+    },
+  }
 }
 
-export const hackathonEmailTemplates = {
-  teamInvite: (params: {
-    eventName: string
-    teamName: string
-    invitedByName: string
-    inviteUrl: string
-    expiresIn: string
-  }) => ({
-    subject: `Join ${params.teamName} for ${params.eventName} — Team Invite`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">You're invited to join a hackathon team!</h1>
-      <p style="margin:12px 0 8px;color:${BRAND.muted};font-size:14px"><strong>${params.invitedByName}</strong> invited you to join <strong>${params.teamName}</strong> for the upcoming event:</p>
+function makeHackathonEmailTemplates(locale: Locale) {
+  const { t, r } = textFor(locale)
+  const W = wrapper(locale)
+  const F = baseStyles.footer
+  const h1 = (text: string, color = BRAND.text) => `<h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${color}">${text}</h1>`
+  const lead = (html: string, margin = '12px 0 16px') => `<p style="margin:${margin};color:${BRAND.muted};font-size:14px">${html}</p>`
+  const note = (html: string, margin = '8px 0 0') => `<p style="margin:${margin};font-size:13px;color:${BRAND.muted}">${html}</p>`
+
+  return {
+    teamInvite: (params: { eventName: string; teamName: string; invitedByName: string; inviteUrl: string; expiresIn: string }) => ({
+      subject: t('hack.invite.subject', { team: params.teamName, event: params.eventName }),
+      html: `${W}
+      ${h1(t('hack.invite.heading'))}
+      ${lead(r('hack.invite.intro', { inviter: params.invitedByName, team: params.teamName }), '12px 0 8px')}
       <div style="background:${BRAND.greenBg};border:1px solid ${BRAND.greenBorder};border-radius:8px;padding:14px 16px;margin:16px 0">
         <div style="font-size:15px;font-weight:700;color:${BRAND.text}">${params.eventName}</div>
-        <div style="font-size:13px;color:${BRAND.muted};margin-top:4px">Team: ${params.teamName}</div>
+        <div style="font-size:13px;color:${BRAND.muted};margin-top:4px">${t('hack.invite.team', { team: params.teamName })}</div>
       </div>
-      ${baseStyles.button(params.inviteUrl, 'Join Team')}
-      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">This invite expires in ${params.expiresIn}.</p>
-    ${baseStyles.footer}`,
-  }),
+      ${baseStyles.button(params.inviteUrl, t('hack.invite.button'))}
+      ${note(t('hack.invite.expires', { expires: params.expiresIn }))}
+    ${F}`,
+    }),
 
-  eventStarting: (params: {
-    eventName: string
-    teamName: string
-    startsAt: string
-    duration: string
-    workspaceUrl: string
-  }) => ({
-    subject: `${params.eventName} starts in ${params.startsAt}!`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Event starting soon!</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi, your team <strong>${params.teamName}</strong> is registered for <strong>${params.eventName}</strong>.</p>
-      ${baseStyles.card(`
-        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-          ${statRow('Starts at', params.startsAt)}
-          ${statRow('Duration', params.duration)}
-          ${statRow('Team', params.teamName)}
-        </table>
-      `)}
-      ${baseStyles.button(params.workspaceUrl, 'Enter Workspace')}
-      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">Make sure all team members are ready. Good luck! 🚀</p>
-    ${baseStyles.footer}`,
-  }),
+    eventStarting: (params: { eventName: string; teamName: string; startsAt: string; duration: string; workspaceUrl: string }) => ({
+      subject: t('hack.starting.subject', { event: params.eventName, startsAt: params.startsAt }),
+      html: `${W}
+      ${h1(t('hack.starting.heading'))}
+      ${lead(r('hack.starting.intro', { team: params.teamName, event: params.eventName }))}
+      ${baseStyles.card(table(`${statRow(t('label.startsAt'), params.startsAt)}
+          ${statRow(t('label.duration'), params.duration)}
+          ${statRow(t('label.team'), params.teamName)}`))}
+      ${baseStyles.button(params.workspaceUrl, t('hack.starting.button'))}
+      ${note(t('hack.starting.note'))}
+    ${F}`,
+    }),
 
-  endingSoon: (params: {
-    eventName: string
-    teamName: string
-    endsAt: string
-    xp: number
-    problemsSolved: number
-    workspaceUrl: string
-  }) => ({
-    subject: `${params.eventName} ending in ${params.endsAt} — submit now!`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.amber}">⏰ Event ending soon!</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.teamName}</strong>, <strong>${params.eventName}</strong> ends in <strong>${params.endsAt}</strong>. Submit all your solutions now!</p>
-      ${baseStyles.card(`
-        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-          ${statRow('Current XP', `${params.xp}`)}
-          ${statRow('Problems solved', `${params.problemsSolved}`)}
-          ${statRow('Time remaining', params.endsAt)}
-        </table>
-      `)}
-      ${baseStyles.button(params.workspaceUrl, 'Submit Now')}
-    ${baseStyles.footer}`,
-  }),
+    endingSoon: (params: { eventName: string; teamName: string; endsAt: string; xp: number; problemsSolved: number; workspaceUrl: string }) => ({
+      subject: t('hack.ending.subject', { event: params.eventName, endsAt: params.endsAt }),
+      html: `${W}
+      ${h1(t('hack.ending.heading'), BRAND.amber)}
+      ${lead(r('hack.ending.intro', { team: params.teamName, event: params.eventName, endsAt: params.endsAt }))}
+      ${baseStyles.card(table(`${statRow(t('label.currentXp'), `${params.xp}`)}
+          ${statRow(t('label.problemsSolved'), `${params.problemsSolved}`)}
+          ${statRow(t('label.timeRemaining'), params.endsAt)}`))}
+      ${baseStyles.button(params.workspaceUrl, t('hack.ending.button'))}
+    ${F}`,
+    }),
 
-  judgeAssignment: (params: {
-    eventName: string
-    judgeName: string
-    teamCount: number
-    problemCount: number
-    reviewUrl: string
-  }) => ({
-    subject: `You've been assigned as a judge — ${params.eventName}`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Judge assignment</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.judgeName}</strong>, you've been assigned as a judge for <strong>${params.eventName}</strong>.</p>
-      ${baseStyles.card(`
-        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-          ${statRow('Event', params.eventName)}
-          ${statRow('Teams', `${params.teamCount}`)}
-          ${statRow('Problems to review', `${params.problemCount}`)}
-        </table>
-      `)}
-      <p style="margin:0 0 16px;font-size:13px;color:${BRAND.muted}">As a judge, you'll review team submissions, provide scores and feedback. The leaderboard is hidden until results are released.</p>
-      ${baseStyles.button(params.reviewUrl, 'Start Reviewing')}
-    ${baseStyles.footer}`,
-  }),
+    judgeAssignment: (params: { eventName: string; judgeName: string; teamCount: number; problemCount: number; reviewUrl: string }) => ({
+      subject: t('hack.judge.subject', { event: params.eventName }),
+      html: `${W}
+      ${h1(t('hack.judge.heading'))}
+      ${lead(r('hack.judge.intro', { name: params.judgeName, event: params.eventName }))}
+      ${baseStyles.card(table(`${statRow(t('label.event'), params.eventName)}
+          ${statRow(t('label.teams'), `${params.teamCount}`)}
+          ${statRow(t('label.problemsToReview'), `${params.problemCount}`)}`))}
+      ${note(t('hack.judge.body'), '0 0 16px')}
+      ${baseStyles.button(params.reviewUrl, t('hack.judge.button'))}
+    ${F}`,
+    }),
 
-  teamJoinConfirmation: (params: {
-    eventName: string
-    teamName: string
-    memberName: string
-    workspaceUrl: string
-  }) => ({
-    subject: `You're in! Joined ${params.teamName} for ${params.eventName}`,
-    html: `${baseStyles.wrapper}
-      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">You've joined ${params.teamName}!</h1>
-      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.memberName}</strong>, you're now a member of <strong>${params.teamName}</strong> for <strong>${params.eventName}</strong>.</p>
-      ${baseStyles.card(`
-        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-          ${statRow('Event', params.eventName)}
-          ${statRow('Team', params.teamName)}
-          ${statRow('Your role', 'Member')}
-        </table>
-      `)}
-      ${baseStyles.button(params.workspaceUrl, 'Go to Workspace')}
-    ${baseStyles.footer}`,
-  }),
+    teamJoinConfirmation: (params: { eventName: string; teamName: string; memberName: string; workspaceUrl: string }) => ({
+      subject: t('hack.joined.subject', { team: params.teamName, event: params.eventName }),
+      html: `${W}
+      ${h1(t('hack.joined.heading', { team: params.teamName }))}
+      ${lead(r('hack.joined.intro', { name: params.memberName, team: params.teamName, event: params.eventName }))}
+      ${baseStyles.card(table(`${statRow(t('label.event'), params.eventName)}
+          ${statRow(t('label.team'), params.teamName)}
+          ${statRow(t('label.yourRole'), t('value.member'))}`))}
+      ${baseStyles.button(params.workspaceUrl, t('hack.joined.button'))}
+    ${F}`,
+    }),
 
-  resultsReleased: (params: {
-    eventName: string
-    teamName: string
-    rank: number
-    totalTeams: number
-    score: number
-    resultsUrl: string
-  }) => {
-    const medal = params.rank === 1 ? '🥇' : params.rank === 2 ? '🥈' : params.rank === 3 ? '🥉' : `#${params.rank}`
-    return {
-      subject: `Results are out! ${params.eventName} — Your team ranked ${medal}`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Results are here!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">The results for <strong>${params.eventName}</strong> are now available. Here's how your team did:</p>
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Team', params.teamName)}
-            ${statRow('Rank', `${medal} of ${params.totalTeams}`)}
-            ${statRow('Final score', `${params.score} XP`)}
-          </table>
-        `)}
-        ${baseStyles.button(params.resultsUrl, 'View Full Results & Certificate')}
-        <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">Download your certificate and share your achievement on LinkedIn.</p>
-      ${baseStyles.footer}`,
-    }
-  },
+    resultsReleased: (params: { eventName: string; teamName: string; rank: number; totalTeams: number; score: number; resultsUrl: string }) => {
+      const medal = medalFor(params.rank)
+      return {
+        subject: t('hack.results.subject', { event: params.eventName, medal }),
+        html: `${W}
+        ${h1(t('hack.results.heading'))}
+        ${lead(r('hack.results.intro', { event: params.eventName }))}
+        ${baseStyles.card(table(`${statRow(t('label.team'), params.teamName)}
+            ${statRow(t('label.rank'), t('value.rankOf', { medal, total: params.totalTeams }))}
+            ${statRow(t('label.finalScore'), `${params.score} XP`)}`))}
+        ${baseStyles.button(params.resultsUrl, t('hack.results.button'))}
+        ${note(t('hack.results.note'))}
+      ${F}`,
+      }
+    },
 
-  detailedResults: (params: {
-    eventName: string
-    teamName: string
-    rank: number
-    totalTeams: number
-    totalXp: number
-    problems: Array<{
-      title: string
-      points: number
-      earned: number
-      submittedAt: string
-      timeSpent: string
-      attempts: number
-    }>
-    resultsUrl: string
-    certificateUrl: string
-  }) => {
-    const medal = params.rank === 1 ? '🥇' : params.rank === 2 ? '🥈' : params.rank === 3 ? '🥉' : `#${params.rank}`
-    return {
-      subject: `${params.eventName} — Detailed team report for ${params.teamName}`,
-      html: `${baseStyles.wrapper}
-        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Detailed Results — ${params.eventName}</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.teamName}</strong>, here's your complete performance breakdown.</p>
+    detailedResults: (params: {
+      eventName: string
+      teamName: string
+      rank: number
+      totalTeams: number
+      totalXp: number
+      problems: Array<{ title: string; points: number; earned: number; submittedAt: string; timeSpent: string; attempts: number }>
+      resultsUrl: string
+      certificateUrl: string
+    }) => {
+      const medal = medalFor(params.rank)
+      const th = (label: string, align: 'left' | 'right') => `<th style="text-align:${align};padding:8px 12px;border-bottom:1px solid ${BRAND.border};color:${BRAND.muted};font-weight:500">${label}</th>`
+      return {
+        subject: t('hack.detailed.subject', { event: params.eventName, team: params.teamName }),
+        html: `${W}
+        ${h1(t('hack.detailed.heading', { event: params.eventName }))}
+        ${lead(r('hack.detailed.intro', { team: params.teamName }))}
 
-        ${baseStyles.card(`
-          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
-            ${statRow('Final rank', `${medal} of ${params.totalTeams}`)}
-            ${statRow('Total score', `${params.totalXp} XP`)}
-          </table>
-        `)}
+        ${baseStyles.card(table(`${statRow(t('label.finalRank'), t('value.rankOf', { medal, total: params.totalTeams }))}
+            ${statRow(t('label.totalScore'), `${params.totalXp} XP`)}`))}
 
-        <p style="margin:20px 0 10px;font-size:14px;font-weight:600;color:${BRAND.text}">Problem Breakdown</p>
+        <p style="margin:20px 0 10px;font-size:14px;font-weight:600;color:${BRAND.text}">${t('hack.detailed.breakdown')}</p>
         <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;border-collapse:collapse">
           <thead>
             <tr style="background:${BRAND.surface}">
-              <th style="text-align:left;padding:8px 12px;border-bottom:1px solid ${BRAND.border};color:${BRAND.muted};font-weight:500">Problem</th>
-              <th style="text-align:right;padding:8px 12px;border-bottom:1px solid ${BRAND.border};color:${BRAND.muted};font-weight:500">Score</th>
-              <th style="text-align:right;padding:8px 12px;border-bottom:1px solid ${BRAND.border};color:${BRAND.muted};font-weight:500">Time</th>
-              <th style="text-align:right;padding:8px 12px;border-bottom:1px solid ${BRAND.border};color:${BRAND.muted};font-weight:500">Attempts</th>
+              ${th(t('label.problem'), 'left')}
+              ${th(t('label.score'), 'right')}
+              ${th(t('label.time'), 'right')}
+              ${th(t('label.attempts'), 'right')}
             </tr>
           </thead>
           <tbody>
-            ${params.problems.map(p => `
+            ${params.problems.map((p) => `
               <tr>
                 <td style="padding:8px 12px;border-bottom:1px solid ${BRAND.border};color:${BRAND.text}">${p.title}</td>
                 <td style="text-align:right;padding:8px 12px;border-bottom:1px solid ${BRAND.border};font-weight:600;color:${p.earned >= p.points ? BRAND.green : BRAND.amber}">${p.earned}/${p.points}</td>
@@ -685,10 +652,41 @@ export const hackathonEmailTemplates = {
         </table>
 
         <div style="display:flex;gap:10px;margin-top:20px">
-          ${baseStyles.button(params.resultsUrl, 'View Full Report').replace('margin:24px 0', 'margin:0')}
+          ${baseStyles.button(params.resultsUrl, t('hack.detailed.button')).replace('margin:24px 0', 'margin:0')}
         </div>
-      ${baseStyles.footer}`,
-    }
-  },
+      ${F}`,
+      }
+    },
+  }
 }
 
+/** "21 October 2026" in the recipient's language (English as before: en-GB). */
+export function emailLongDate(value: string | number | Date, locale: Locale | string | null | undefined): string {
+  const l = toLocale(locale) ?? DEFAULT_LOCALE
+  return formatDate(value, undefined, { month: 'long', day: 'numeric', year: 'numeric' }, l === 'en' ? undefined : LOCALE_META[l].intl)
+}
+
+export type EmailTemplateSet = ReturnType<typeof makeEmailTemplates>
+export type HackathonEmailTemplateSet = ReturnType<typeof makeHackathonEmailTemplates>
+
+const cache = new Map<string, unknown>()
+
+/** Templates in `locale` (unknown → English). */
+export function emailTemplatesFor(locale: Locale | string | null | undefined): EmailTemplateSet {
+  const l = toLocale(locale) ?? DEFAULT_LOCALE
+  const k = `e:${l}`
+  if (!cache.has(k)) cache.set(k, makeEmailTemplates(l))
+  return cache.get(k) as EmailTemplateSet
+}
+
+export function hackathonEmailTemplatesFor(locale: Locale | string | null | undefined): HackathonEmailTemplateSet {
+  const l = toLocale(locale) ?? DEFAULT_LOCALE
+  const k = `h:${l}`
+  if (!cache.has(k)) cache.set(k, makeHackathonEmailTemplates(l))
+  return cache.get(k) as HackathonEmailTemplateSet
+}
+
+/** English templates (kept for existing callers and the admin preview). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const emailTemplates: EmailTemplateSet & { [key: string]: (...args: any[]) => { subject: string; html: string } } = emailTemplatesFor('en') as never
+export const hackathonEmailTemplates: HackathonEmailTemplateSet = hackathonEmailTemplatesFor('en')

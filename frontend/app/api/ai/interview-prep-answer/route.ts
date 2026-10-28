@@ -94,12 +94,12 @@ function validateAnswer(data: Record<string, unknown> | null): {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
   try {
     body = (await req.json()) as Req
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   if (!body.question || !body.category) {

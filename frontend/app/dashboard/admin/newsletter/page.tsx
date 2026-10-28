@@ -2,7 +2,7 @@
 import { formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState, useRef } from 'react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +20,8 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { compressHtmlImages } from '@/lib/image-compress'
 import EmailPreviewFrame from '@/components/newsletter/email-preview-frame'
 import { SkeletonList, SkeletonStats } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Campaign {
   id: string
@@ -57,21 +59,21 @@ interface CampaignStats {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  draft: { label: 'Draft', color: 'bg-gray-500/15 text-gray-600', icon: <XCircle className="h-3 w-3" /> },
-  scheduled: { label: 'Scheduled', color: 'bg-blue-500/15 text-blue-600', icon: <Clock className="h-3 w-3" /> },
-  sending: { label: 'Sending', color: 'bg-amber-500/15 text-amber-600', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
-  completed: { label: 'Completed', color: 'bg-green-500/15 text-green-600', icon: <CheckCircle className="h-3 w-3" /> },
-  failed: { label: 'Failed', color: 'bg-red-500/15 text-red-600', icon: <AlertCircle className="h-3 w-3" /> },
-  cancelled: { label: 'Cancelled', color: 'bg-gray-500/15 text-gray-600', icon: <XCircle className="h-3 w-3" /> },
+  draft: { label: 'Draft', color: 'bg-muted text-muted-foreground', icon: <XCircle className="h-3 w-3" /> },
+  scheduled: { label: 'Scheduled', color: 'bg-primary/10 text-primary', icon: <Clock className="h-3 w-3" /> },
+  sending: { label: 'Sending', color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
+  completed: { label: 'Completed', color: 'bg-green-500/15 text-green-700 dark:text-green-300', icon: <CheckCircle className="h-3 w-3" /> },
+  failed: { label: 'Failed', color: 'bg-red-500/15 text-red-700 dark:text-red-300', icon: <AlertCircle className="h-3 w-3" /> },
+  cancelled: { label: 'Cancelled', color: 'bg-muted text-muted-foreground', icon: <XCircle className="h-3 w-3" /> },
 }
 
 // Content templates
 const TEMPLATES = [
   { id: 'blank', label: 'Blank', body: '' },
-  { id: 'update', label: 'Product Update', body: '<h2>What\'s New</h2><p>We\'ve been working hard to bring you new features and improvements.</p><h3>Key Highlights</h3><ul><li>Feature 1 - Description</li><li>Feature 2 - Description</li><li>Feature 3 - Description</li></ul><p>Try these features today and let us know what you think!</p>' },
-  { id: 'event', label: 'Event Announcement', body: '<h2>You\'re Invited!</h2><p>Join us for an exciting event that you won\'t want to miss.</p><p><strong>Date:</strong> [Date]<br><strong>Time:</strong> [Time]<br><strong>Location:</strong> [Location/Virtual]</p><p>Register now to secure your spot!</p>' },
-  { id: 'digest', label: 'Weekly Digest', body: '<h2>This Week\'s Highlights</h2><p>Here\'s what happened this week on CodeSpectra:</p><h3>🏆 Top Performers</h3><p>Congratulations to our top contributors this week!</p><h3>📊 Platform Stats</h3><ul><li>New users: [Number]</li><li>Challenges completed: [Number]</li><li>Certificates earned: [Number]</li></ul><h3>📅 Upcoming Events</h3><p>Stay tuned for next week\'s activities!</p>' },
-  { id: 'feature', label: 'Feature Launch', body: '<h2>Introducing [Feature Name]</h2><p>We\'re excited to announce a powerful new feature that will transform your experience.</p><h3>What it does</h3><p>[Describe the feature and its benefits]</p><h3>How to use it</h3><ol><li>Step 1</li><li>Step 2</li><li>Step 3</li></ol><p>Start using [Feature Name] today!</p>' },
+  { id: 'update', label: 'Product update', body: '<h2>What\'s new</h2><p>We\'ve been working hard to bring you new features and improvements.</p><h3>Key highlights</h3><ul><li>Feature 1 - description</li><li>Feature 2 - description</li><li>Feature 3 - description</li></ul><p>Try these features today and let us know what you think!</p>' },
+  { id: 'event', label: 'Event announcement', body: '<h2>You\'re invited!</h2><p>Join us for an exciting event that you won\'t want to miss.</p><p><strong>Date:</strong> [Date]<br><strong>Time:</strong> [Time]<br><strong>Location:</strong> [Location/Virtual]</p><p>Register now to secure your spot!</p>' },
+  { id: 'digest', label: 'Weekly digest', body: '<h2>This week\'s highlights</h2><p>Here\'s what happened this week on CodeSpectra:</p><h3>🏆 Top performers</h3><p>Congratulations to our top contributors this week!</p><h3>📊 Platform stats</h3><ul><li>New users: [Number]</li><li>Challenges completed: [Number]</li><li>Certificates earned: [Number]</li></ul><h3>📅 Upcoming events</h3><p>Stay tuned for next week\'s activities!</p>' },
+  { id: 'feature', label: 'Feature launch', body: '<h2>Introducing [Feature name]</h2><p>We\'re excited to announce a powerful new feature that will transform your experience.</p><h3>What it does</h3><p>[Describe the feature and its benefits]</p><h3>How to use it</h3><ol><li>Step 1</li><li>Step 2</li><li>Step 3</li></ol><p>Start using [Feature Name] today!</p>' },
 ]
 
 /** Convert a stored timestamp to the local `<input type="datetime-local">` value. */
@@ -83,6 +85,7 @@ function toLocalInput(value: string): string {
 }
 
 export default function NewsletterPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const heroFileRef = useRef<HTMLInputElement>(null)
@@ -130,18 +133,22 @@ export default function NewsletterPage() {
   // Polling for sending campaigns
   const pollRef = useRef<NodeJS.Timeout | null>(null)
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
     try {
       const [campaignsRes, countRes] = await Promise.all([
         fetch('/api/newsletter/admin/campaigns', { cache: 'no-store' }),
         fetch('/api/newsletter/admin/recipient-count', { cache: 'no-store' }),
       ])
+      if (!campaignsRes.ok) throw new Error(`Failed to load campaigns (${campaignsRes.status})`)
       const campaignsData = await campaignsRes.json()
-      const countData = await countRes.json()
+      const countData = await countRes.json().catch(() => ({}))
+      setLoadError(false)
       setCampaigns(campaignsData.campaigns || [])
       setStats(campaignsData.stats || { totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0, totalWhatsAppSent: 0 })
       setRecipientCount(countData.count || 0)
-    } catch { /* ignore */ }
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }, [])
 
@@ -337,7 +344,7 @@ export default function NewsletterPage() {
 
   if (!gate.ready) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <SkeletonStats />
         <SkeletonList count={2} />
       </div>
@@ -345,44 +352,44 @@ export default function NewsletterPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center"><Megaphone className="h-5 w-5 text-primary" /></div>
-          <div>
-            <h1 className="text-2xl font-bold">Newsletter</h1>
-            <p className="text-sm text-muted-foreground">Create and manage newsletter campaigns</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant={activeTab === 'compose' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('compose')}><Send className="h-4 w-4 mr-1" /> Compose</Button>
-          <Button variant={activeTab === 'campaigns' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('campaigns')}><BarChart3 className="h-4 w-4 mr-1" /> Campaigns</Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        illustration="inbox"
+        icon={<Megaphone />}
+        title={ta('nlAdm.newsletter')}
+        description={ta('nlAdm.writeACampaignPreviewItSend')}
+        actions={
+          <>
+            <Button variant={activeTab === 'compose' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('compose')}><Send className="h-4 w-4 mr-1" /> {ta('nlAdm.compose')}</Button>
+            <Button variant={activeTab === 'campaigns' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('campaigns')}><BarChart3 className="h-4 w-4 mr-1" /> {ta('nlAdm.campaigns')}</Button>
+          </>
+        }
+        className="mb-0"
+      />
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Card className="p-3 text-center"><p className="text-xl font-bold text-primary">{recipientCount}</p><p className="text-[10px] text-muted-foreground">Subscribers</p></Card>
-        <Card className="p-3 text-center"><p className="text-xl font-bold">{stats.totalCampaigns}</p><p className="text-[10px] text-muted-foreground">Campaigns</p></Card>
-        <Card className="p-3 text-center"><p className="text-xl font-bold text-green-600">{stats.totalEmailsSent.toLocaleString()}</p><p className="text-[10px] text-muted-foreground">Emails Sent</p></Card>
-        <Card className="p-3 text-center"><p className="text-xl font-bold text-red-500">{stats.totalEmailsFailed}</p><p className="text-[10px] text-muted-foreground">Failed</p></Card>
-        <Card className="p-3 text-center"><p className="text-xl font-bold text-blue-600">{stats.totalPushSent + stats.totalInAppSent}</p><p className="text-[10px] text-muted-foreground">Push+In-App</p></Card>
-        <Card className="p-3 text-center"><p className="text-xl font-bold text-green-600">{stats.totalWhatsAppSent || 0}</p><p className="text-[10px] text-muted-foreground">WhatsApp</p></Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
+        <StatCard label={ta('nlAdm.subscribers')} value={recipientCount} icon={<UsersIcon />} />
+        <StatCard label={ta('nlAdm.campaigns')} value={stats.totalCampaigns} icon={<Megaphone />} />
+        <StatCard label={ta('nlAdm.emailsSent')} value={stats.totalEmailsSent.toLocaleString()} icon={<Mail />} />
+        <StatCard label={ta('nlAdm.failed')} value={<span className={stats.totalEmailsFailed > 0 ? 'text-red-600 dark:text-red-400' : undefined}>{stats.totalEmailsFailed}</span>} icon={<AlertCircle />} />
+        <StatCard label={ta('nlAdm.pushAndInApp')} value={stats.totalPushSent + stats.totalInAppSent} icon={<ExternalLink />} />
+        <StatCard label="WhatsApp" value={stats.totalWhatsAppSent || 0} icon={<MessageCircle />} />
       </div>
 
       {activeTab === 'compose' ? (
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
           <div className="xl:col-span-3 space-y-6">
             {/* Compose */}
-            <Card className="p-6">
+            <Panel>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold flex items-center gap-2">
-                  <Send className="h-4 w-4" /> Compose Newsletter
-                  {editingId && <Badge variant="default"><PencilLine className="h-3 w-3 mr-1" />Editing draft</Badge>}
+                  <Send className="h-4 w-4 text-primary" /> {ta('nlAdm.composeNewsletter')}
+                  {editingId && <Badge variant="default"><PencilLine className="h-3 w-3 mr-1" />{ta('nlAdm.editingDraft')}</Badge>}
                 </h2>
                 <select
-                  className="text-xs border border-border/60 rounded-md px-2 py-1 bg-background"
+                  aria-label={ta('nlAdm.startFromATemplate')}
+                  className="text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onChange={e => {
                     const tpl = TEMPLATES.find(t => t.id === e.target.value)
                     if (tpl) setBody(tpl.body)
@@ -394,75 +401,75 @@ export default function NewsletterPage() {
               </div>
               <div className="space-y-4">
                 <div>
-                  <Label>Subject *</Label>
-                  <Input value={subject} onChange={e => setSubject(e.target.value)} className="mt-1.5" placeholder="What's new on CodeSpectra" maxLength={120} />
+                  <Label>{ta('nlAdm.subject')}</Label>
+                  <Input aria-label={ta('nlAdm.subject2')} value={subject} onChange={e => setSubject(e.target.value)} className="mt-1.5" placeholder={ta('nlAdm.whatSNewOnCodespectra')} maxLength={120} />
                 </div>
 
                 {/* Hero Image Upload */}
                 <div>
-                  <Label>Hero Image <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Label>{ta('nlAdm.heroImage')} <span className="text-muted-foreground text-xs">{ta('nlAdm.optional')}</span></Label>
                   <input ref={heroFileRef} type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
                   {heroImagePreview ? (
                     <div className="relative mt-1.5 rounded-lg overflow-hidden border">
-                      <img src={heroImagePreview} alt="Hero" className="w-full h-40 object-cover" />
-                      <Button size="sm" variant="destructive" className="absolute top-2 right-2 h-7 w-7 p-0" onClick={removeHeroImage}><X className="h-4 w-4" /></Button>
+                      <img src={heroImagePreview} alt={ta('nlAdm.hero')} className="w-full h-40 object-cover" />
+                      <Button size="sm" variant="destructive" className="absolute top-2 right-2 h-7 w-7 p-0" onClick={removeHeroImage} aria-label={ta('nlAdm.removeHeroImage')}><X className="h-4 w-4" /></Button>
                     </div>
                   ) : (
                     <button
                       type="button"
                       onClick={() => heroFileRef.current?.click()}
                       disabled={uploadingImage}
-                      className="mt-1.5 w-full border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                      className="mt-1.5 w-full border-2 border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
                     >
-                      {uploadingImage ? <Loader2 className="h-6 w-6 animate-spin mb-2" /> : <Upload className="h-6 w-6 mb-2" />}
-                      <p className="text-sm">{uploadingImage ? 'Uploading...' : 'Click to upload hero image'}</p>
-                      <p className="text-xs mt-1">JPEG, PNG, GIF, WebP — Max 5MB</p>
+                      {uploadingImage ? <Loader2 className="h-6 w-6 animate-spin mb-2 mx-auto" /> : <Upload className="h-6 w-6 mb-2 mx-auto" />}
+                      <p className="text-sm">{uploadingImage ? 'Uploading...' : 'Click to upload a hero image'}</p>
+                      <p className="text-xs mt-1">{ta('nlAdm.jpegPngGifOrWebpUp')}</p>
                     </button>
                   )}
                 </div>
 
                 <div>
-                  <Label>Intro Text <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input value={intro} onChange={e => setIntro(e.target.value)} className="mt-1.5" placeholder="A brief introduction..." />
+                  <Label>{ta('nlAdm.introText')} <span className="text-muted-foreground text-xs">{ta('nlAdm.optional')}</span></Label>
+                  <Input aria-label={ta('nlAdm.introTextOptional')} value={intro} onChange={e => setIntro(e.target.value)} className="mt-1.5" placeholder={ta('nlAdm.aBriefIntroduction')} />
                 </div>
 
                 {/* Rich Text Body */}
                 <div>
-                  <Label>Body Content</Label>
+                  <Label>{ta('nlAdm.body')}</Label>
                   <div className="mt-1.5">
-                    <RichTextEditor value={body} onChange={setBody} placeholder="Write your newsletter content here..." minHeight={250} />
+                    <RichTextEditor value={body} onChange={setBody} placeholder={ta('nlAdm.writeYourNewsletterContentHere')} minHeight={250} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>CTA Button Text</Label><Input value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder="Read More" /></div>
-                  <div><Label>CTA Button URL</Label><Input value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} className="mt-1.5" placeholder="https://example.com" /></div>
+                  <div><Label>{ta('nlAdm.buttonText')}</Label><Input aria-label={ta('nlAdm.buttonText')} value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder={ta('nlAdm.readMore')} /></div>
+                  <div><Label>{ta('nlAdm.buttonLink')}</Label><Input aria-label={ta('nlAdm.buttonLink')} value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} className="mt-1.5" placeholder="https://example.com" /></div>
                 </div>
               </div>
-            </Card>
+            </Panel>
 
             {/* Channels */}
-            <Card className="p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><Mail className="h-4 w-4" /> Delivery Channels</h2>
+            <Panel>
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> {ta('nlAdm.deliveryChannels')}</h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Email</span><Badge variant="outline" className="text-[10px]">{recipientCount} recipients</Badge></div><Switch checked={sendEmail} onCheckedChange={setSendEmail} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Push Notification</span></div><Switch checked={sendPush} onCheckedChange={setSendPush} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">In-App Notification</span></div><Switch checked={sendInApp} onCheckedChange={setSendInApp} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span><Badge variant="outline" className="text-[10px]">OpenWA</Badge></div><Switch checked={sendWhatsapp} onCheckedChange={setSendWhatsapp} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('nlAdm.email')}</span><Badge variant="outline" className="text-[10px]">{ta('nlAdm.recipients', { recipientCount: recipientCount })}</Badge></div><Switch aria-label={ta('nlAdm.email')} checked={sendEmail} onCheckedChange={setSendEmail} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('nlAdm.pushNotification')}</span></div><Switch aria-label={ta('nlAdm.pushNotification')} checked={sendPush} onCheckedChange={setSendPush} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">{ta('nlAdm.inAppNotification')}</span></div><Switch aria-label={ta('nlAdm.inAppNotification')} checked={sendInApp} onCheckedChange={setSendInApp} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span><Badge variant="outline" className="text-[10px]">OpenWA</Badge></div><Switch aria-label="WhatsApp" checked={sendWhatsapp} onCheckedChange={setSendWhatsapp} /></div>
               </div>
-            </Card>
+            </Panel>
 
             {/* Schedule */}
-            <Card className="p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><Calendar className="h-4 w-4" /> Schedule</h2>
-              <Label>Schedule for later <span className="text-muted-foreground text-xs">(leave empty to send now)</span></Label>
-              <Input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="mt-1.5" />
-            </Card>
+            <Panel>
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> {ta('nlAdm.schedule')}</h2>
+              <Label>{ta('nlAdm.scheduleForLater')} <span className="text-muted-foreground text-xs">{ta('nlAdm.leaveEmptyToSendNow')}</span></Label>
+              <Input aria-label={ta('nlAdm.scheduleForLaterLeaveEmptyTo')} type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="mt-1.5" />
+            </Panel>
 
             {/* Actions */}
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => handleSend(true)} disabled={savingDraft || !subject.trim()}>{savingDraft && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Save Draft</Button>
-              <Button onClick={() => handleSend(false)} disabled={sending || !subject.trim() || recipientCount === 0} className="bg-green-600 hover:bg-green-700 text-white gap-2">
+              <Button variant="outline" onClick={() => handleSend(true)} disabled={savingDraft || !subject.trim()}>{savingDraft && <Loader2 className="h-4 w-4 animate-spin mr-1" />}{ta('nlAdm.saveDraft')}</Button>
+              <Button onClick={() => handleSend(false)} disabled={sending || !subject.trim() || recipientCount === 0} className="gap-2">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 {scheduleAt ? 'Schedule' : `Send to ${recipientCount}`}
               </Button>
@@ -471,54 +478,56 @@ export default function NewsletterPage() {
 
           {/* Preview & Test */}
           <div className="xl:col-span-2 space-y-6">
-            <Card className="p-6">
+            <Panel>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold flex items-center gap-2"><Eye className="h-4 w-4" /> Preview</h2>
+                <h2 className="font-semibold flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /> {ta('nlAdm.preview')}</h2>
                 {previewSizeKb !== null && (
-                  <Badge className={previewSizeKb > 95 ? 'bg-red-500/15 text-red-500 border-0' : previewSizeKb > 75 ? 'bg-amber-500/15 text-amber-500 border-0' : 'bg-green-500/15 text-green-500 border-0'}>
-                    {previewSizeKb}KB HTML {previewSizeKb > 95 ? '(Gmail clips near 102KB)' : ''}
+                  <Badge className={previewSizeKb > 95 ? 'bg-red-500/15 text-red-700 dark:text-red-300 border-0' : previewSizeKb > 75 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-0' : 'bg-green-500/15 text-green-700 dark:text-green-300 border-0'}>
+                    <span className="tabular-nums">{previewSizeKb} KB</span> HTML {previewSizeKb > 95 ? '(Gmail clips near 102KB)' : ''}
                   </Badge>
                 )}
               </div>
               <Button variant="outline" onClick={handlePreview} disabled={previewLoading} className="w-full mb-4 gap-2">
-                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Generate Preview
+                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} {ta('nlAdm.generatePreview')}
               </Button>
               {previewHtml ? (
-                <div className="border rounded-lg overflow-hidden"><EmailPreviewFrame html={previewHtml} /></div>
+                <div className="border border-border rounded-2xl overflow-hidden"><EmailPreviewFrame html={previewHtml} /></div>
               ) : (
-                <div className="border border-dashed rounded-lg p-8 text-center text-muted-foreground text-sm">Click "Generate Preview" to see your newsletter</div>
+                <div className="border border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">{ta('nlAdm.selectGeneratePreviewToSeeHow')}</div>
               )}
-            </Card>
+            </Panel>
 
-            <Card className="p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><Send className="h-4 w-4" /> Test Send</h2>
+            <Panel>
+              <h2 className="font-semibold mb-4 flex items-center gap-2"><Send className="h-4 w-4 text-primary" /> {ta('nlAdm.testSend')}</h2>
               <div className="space-y-3">
-                <div><Label className="text-xs text-muted-foreground">Email</Label><Input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="mt-1" /></div>
+                <div><Label className="text-xs text-muted-foreground">{ta('nlAdm.email')}</Label><Input aria-label={ta('nlAdm.email')} type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="mt-1" /></div>
                 <Button variant="outline" onClick={handleTestSend} disabled={testSending || !testEmail.trim()} className="w-full gap-2">
-                  {testSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send Test Email
+                  {testSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {ta('nlAdm.sendTestEmail')}
                 </Button>
-                <div className="border-t pt-3"><Label className="text-xs text-muted-foreground">WhatsApp</Label><Input type="tel" value={testWhatsappPhone} onChange={e => setTestWhatsappPhone(e.target.value)} placeholder="+919876543210" className="mt-1" /></div>
+                <div className="border-t pt-3"><Label className="text-xs text-muted-foreground">WhatsApp</Label><Input aria-label="WhatsApp" type="tel" value={testWhatsappPhone} onChange={e => setTestWhatsappPhone(e.target.value)} placeholder="+919876543210" className="mt-1" /></div>
                 <Button variant="outline" onClick={handleTestWhatsapp} disabled={testWhatsappSending || !testWhatsappPhone.trim()} className="w-full gap-2">
-                  {testWhatsappSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} Send Test WhatsApp
+                  {testWhatsappSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} {ta('nlAdm.sendTestWhatsapp')}
                 </Button>
               </div>
-            </Card>
+            </Panel>
           </div>
         </div>
       ) : (
         /* Campaign History */
-        <Card className="p-6">
-          <h2 className="font-semibold mb-4 flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Campaign History</h2>
+        <Panel>
+          <h2 className="font-semibold mb-4 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> {ta('nlAdm.campaignHistory')}</h2>
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin" /></div>
+          ) : loadError && campaigns.length === 0 ? (
+            <EmptyState illustration="error" title={ta('nlAdm.couldnTLoadCampaigns')} description={ta('nlAdm.checkYourConnectionAndTryAgain')} actionLabel={ta('nlAdm.tryAgain')} onAction={() => void load()} className="border-0 bg-transparent py-6 md:py-8" />
           ) : campaigns.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground"><Megaphone className="h-8 w-8 mb-3 opacity-50" /><p>No campaigns yet.</p></div>
+            <EmptyState variant="notifications" title={ta('nlAdm.noCampaignsYet')} description={ta('nlAdm.switchToComposeToWriteAnd')} className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {campaigns.map(c => {
                 const s = STATUS_CONFIG[c.status] || STATUS_CONFIG.draft
                 return (
-                  <div key={c.id} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+                  <div key={c.id} className="border border-border rounded-2xl p-4 hover:bg-muted/30 transition-colors">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -527,13 +536,13 @@ export default function NewsletterPage() {
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span>{formatDate(c.created_at)}</span>
-                          <span>{c.recipients_count} recipients</span>
+                          <span className="tabular-nums">{ta('nlAdm.recipients2', { recipients_count: c.recipients_count })}</span>
                         </div>
-                        <div className="flex items-center gap-4 mt-2 text-xs">
-                          {c.channels.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /><span className="text-green-600">{c.email_ok}</span>{c.email_fail > 0 && <span className="text-red-500">/{c.email_fail}</span>}</span>}
-                          {c.channels.push && <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" /><span className="text-blue-600">{c.push_ok}</span></span>}
-                          {c.channels.in_app && <span className="flex items-center gap-1"><Megaphone className="h-3 w-3" /><span className="text-purple-600">{c.in_app_ok}</span></span>}
-                          {c.channels.whatsapp && <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /><span className="text-green-600">{c.whatsapp_ok}</span></span>}
+                        <div className="flex items-center gap-4 mt-2 text-xs tabular-nums">
+                          {c.channels.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /><span className="text-green-700 dark:text-green-400">{c.email_ok}</span>{c.email_fail > 0 && <span className="text-red-600 dark:text-red-400">/{c.email_fail}</span>}</span>}
+                          {c.channels.push && <span className="flex items-center gap-1"><ExternalLink className="h-3 w-3" /><span className="text-foreground">{c.push_ok}</span></span>}
+                          {c.channels.in_app && <span className="flex items-center gap-1"><Megaphone className="h-3 w-3" /><span className="text-foreground">{c.in_app_ok}</span></span>}
+                          {c.channels.whatsapp && <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /><span className="text-foreground">{c.whatsapp_ok}</span></span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -541,17 +550,18 @@ export default function NewsletterPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            title="Publish to Newsroom"
+                            title={ta('nlAdm.publishToNewsroom')}
+                            aria-label={ta('nlAdm.publishToNewsroom')}
                             onClick={() => void publishToBlog(c.id)}
-                            className="text-teal-600 hover:bg-teal-500/10"
+                            className="text-primary hover:bg-primary/10"
                           >
                             <Newspaper className="h-3.5 w-3.5" />
                           </Button>
                         )}
                         {(c.status === 'draft' || c.status === 'scheduled') && (
-                          <Button size="sm" variant="ghost" title="Resume editing" onClick={() => resumeDraft(c)} className="text-primary hover:bg-primary/10"><PencilLine className="h-3.5 w-3.5" /></Button>
+                          <Button size="sm" variant="ghost" title={ta('nlAdm.resumeEditing')} aria-label={ta('nlAdm.resumeEditing')} onClick={() => resumeDraft(c)} className="text-primary hover:bg-primary/10"><PencilLine className="h-3.5 w-3.5" /></Button>
                         )}
-                        {c.status !== 'sending' && <Button size="sm" variant="ghost" onClick={() => handleDeleteCampaign(c.id)} className="text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></Button>}
+                        {c.status !== 'sending' && <Button size="sm" variant="ghost" onClick={() => handleDeleteCampaign(c.id)} aria-label={ta('nlAdm.deleteCampaign')} className="text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></Button>}
                       </div>
                     </div>
                   </div>
@@ -559,7 +569,7 @@ export default function NewsletterPage() {
               })}
             </div>
           )}
-        </Card>
+        </Panel>
       )}
     </div>
   )

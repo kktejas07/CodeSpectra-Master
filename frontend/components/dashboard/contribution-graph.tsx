@@ -5,7 +5,9 @@ import { useMemo, useState, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TrendingUp, Info } from 'lucide-react'
-import { EmptyActivityIllustration } from '@/components/dashboard/dashboard-vectors'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Illustration } from '@/components/illustrations/spot'
+import type { SceneName } from '@/components/illustrations/scenes'
 
 interface DayData {
   date: string
@@ -26,14 +28,18 @@ interface ContributionGraphProps {
   totalContributions?: number
   totalActiveDays?: number
   weeks?: number
+  /** Small inline empty state for use inside small cards. */
+  compactEmpty?: boolean
+  /** Scene for the full-size empty state (page-level use, e.g. the dashboard). */
+  emptyScene?: SceneName
 }
 
 const LEVEL_COLORS = [
   'bg-muted/30', // Level 0
-  'bg-[#9be9a8]', // Level 1
-  'bg-[#40c463]', // Level 2
-  'bg-[#30a14e]', // Level 3
-  'bg-[#216e39]', // Level 4
+  'bg-[#c5d4ff] dark:bg-[#213781]', // Level 1
+  'bg-[#7090fb] dark:bg-[#2448c9]', // Level 2
+  'bg-[#2f5be7] dark:bg-[#4a6ef3]', // Level 3
+  'bg-[#213ca3] dark:bg-[#9fb6ff]', // Level 4
 ]
 
 function formatDate(dateStr: string): string {
@@ -52,6 +58,8 @@ export function ContributionGraph({
   totalContributions = 0,
   totalActiveDays = 0,
   weeks: inputWeeks = 52,
+  compactEmpty = false,
+  emptyScene,
 }: ContributionGraphProps) {
   const [tooltip, setTooltip] = useState<{ date: string; level: number; x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -128,22 +136,39 @@ export function ContributionGraph({
     setTooltip(null)
   }, [])
 
-  // Calculate streak info (mocking actual streak calculation for UI demo)
-  const currentStreak = totalActiveDays > 0 ? Math.floor(Math.random() * 5) + 1 : 0;
-  const maxStreak = Math.max(currentStreak, Math.floor(totalActiveDays / 4) + 1);
+  // Streaks from the real per-day levels (days are in date order, up to today).
+  const { currentStreak, maxStreak } = useMemo(() => {
+    const days = months.flatMap((m) => m.days as Array<{ level: number }>)
+    let max = 0
+    let run = 0
+    for (const d of days) {
+      run = d.level > 0 ? run + 1 : 0
+      if (run > max) max = run
+    }
+    // Current streak: count back from today; a quiet today doesn't break yesterday's streak.
+    let cur = 0
+    let i = days.length - 1
+    if (i >= 0 && days[i].level === 0) i--
+    for (; i >= 0 && days[i].level > 0; i--) cur++
+    return { currentStreak: cur, maxStreak: max }
+  }, [months])
 
   return (
     <div className="w-full">
-      {!hasData ? (
-        <div className="py-6 text-center border rounded-xl bg-card border-border/60">
-          <EmptyActivityIllustration />
-          <p className="text-sm font-medium text-slate-300 mt-2">
-            No activity recorded yet
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Run a code scan or solve your first challenge to generate telemetry
-          </p>
+      {!hasData && compactEmpty ? (
+        <div className="flex flex-col items-center py-2 text-center" role="status">
+          <Illustration name="calendar" className="mb-1 w-28" />
+          <p className="text-sm font-semibold text-foreground">No activity yet</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Solve a problem to start filling this in.</p>
         </div>
+      ) : !hasData ? (
+        <EmptyState illustration="analytics"
+          scene={emptyScene}
+          variant="sessions"
+          title="No activity yet"
+          description="Solve a problem or run a scan, and your activity will show up here."
+          className="py-8 md:py-10"
+        />
       ) : (
         <div className="w-full relative" ref={containerRef}>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-x-4 gap-y-6">
@@ -196,12 +221,12 @@ export function ContributionGraph({
             
             <div className="flex items-center gap-4 text-xs">
               <div className="flex flex-col">
-                <span className="text-muted-foreground">Current Streak</span>
-                <span className="font-bold text-foreground text-sm">{currentStreak} Days</span>
+                <span className="text-muted-foreground">Current streak</span>
+                <span className="font-bold text-foreground text-sm">{pluralize(currentStreak, 'day')}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-muted-foreground">Max Streak</span>
-                <span className="font-bold text-foreground text-sm">{maxStreak} Days</span>
+                <span className="text-muted-foreground">Longest streak</span>
+                <span className="font-bold text-foreground text-sm">{pluralize(maxStreak, 'day')}</span>
               </div>
             </div>
           </div>

@@ -122,7 +122,10 @@ const SYSTEM_PROMPT = 'You are a meticulous technical assessment question writer
 async function loadSecrets() {
   const client = new MongoClient(MONGO_URI_ASSERTED, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
-  const secrets = (await client.db(MONGO_DB).collection('platform_settings').findOne({ key: 'secrets' }))?.value || {}
+  const stored = (await client.db(MONGO_DB).collection('platform_settings').findOne({ key: 'secrets' }))?.value || {}
+  // Secrets are encrypted at rest (lib/secrets-crypto.ts); needs SECRETS_ENCRYPTION_KEY in env.
+  const { decryptSecretsRecord } = await import('../lib/secrets-crypto')
+  const secrets = decryptSecretsRecord(stored as Record<string, unknown>, []).plain as Record<string, string>
   // Env vars override stored secrets (a script run should not need a Mongo write).
   openrouterKey = process.env.OPENROUTER_API_KEY || secrets.openrouter_api_key || secrets.openai_api_key || ''
   groqKey = process.env.GROQ_API_KEY || secrets.groq_api_key || ''

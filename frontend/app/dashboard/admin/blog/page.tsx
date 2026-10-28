@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,14 +18,21 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Loader2, Newspaper, Plus, Trash2, Eye, Sparkles, ImageIcon, Globe } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useConfirm } from '@/lib/confirm-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { FileText, CheckCircle2 } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type Post = {
   id: string
   slug: string
+  /** Public URL from /api/blog (/learn/<slug> or /news/<slug>). */
+  public_path?: string
   title: string
   excerpt: string
   body: string
@@ -39,8 +45,10 @@ type Post = {
 }
 
 export default function AdminBlogPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const confirmDialog = useConfirm()
   const [items, setItems] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -59,7 +67,7 @@ export default function AdminBlogPage() {
   /** Generate cover art — for an existing post (slug) or the create form (no slug). */
   const genCover = async (slug?: string) => {
     if (!slug && !title.trim()) {
-      addToast({ type: 'error', title: 'Add a title first' })
+      addToast({ type: 'error', title: tx('blog.addATitleFirst') })
       return
     }
     setAiSlug(slug || '__form')
@@ -74,11 +82,11 @@ export default function AdminBlogPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Generation failed')
       if (slug) {
-        addToast({ type: 'success', title: 'Cover art updated' })
+        addToast({ type: 'success', title: tx('blog.coverArtUpdated') })
         await load()
       } else {
         setCoverImage(data.cover_image || '')
-        addToast({ type: 'success', title: 'Cover generated' })
+        addToast({ type: 'success', title: tx('blog.coverGenerated') })
       }
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
@@ -89,7 +97,7 @@ export default function AdminBlogPage() {
 
   const genBody = async () => {
     if (!title.trim()) {
-      addToast({ type: 'error', title: 'Add a title first' })
+      addToast({ type: 'error', title: tx('blog.addATitleFirst') })
       return
     }
     setAiSlug('__body')
@@ -102,7 +110,7 @@ export default function AdminBlogPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Generation failed')
       setBody(data.html || '')
-      addToast({ type: 'success', title: 'Draft generated' })
+      addToast({ type: 'success', title: tx('blog.draftGenerated') })
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
     } finally {
@@ -110,14 +118,19 @@ export default function AdminBlogPage() {
     }
   }
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/blog?status=all&limit=100', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Failed to load posts (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
+      setLoadError(false)
     } catch {
-      addToast({ type: 'error', title: 'Failed to load posts' })
+      setLoadError(true)
+      addToast({ type: 'error', title: tx('blog.failedToLoadPosts') })
     } finally {
       setLoading(false)
     }
@@ -131,7 +144,7 @@ export default function AdminBlogPage() {
 
   const savePost = async (publish: boolean) => {
     if (!title.trim()) {
-      addToast({ type: 'error', title: 'Title required' })
+      addToast({ type: 'error', title: tx('blog.titleRequired') })
       return
     }
     setSaving(true)
@@ -183,31 +196,32 @@ export default function AdminBlogPage() {
   }
 
   const remove = async (slug: string) => {
-    if (!confirm('Delete this post?')) return
+    if (!(await confirmDialog({ title: 'Delete this post?', description: 'The post is removed from the blog. This cannot be undone.', confirmText: 'Delete', destructive: true }))) return
     const res = await csrfFetch(`/api/blog/${encodeURIComponent(slug)}`, { method: 'DELETE' })
     if (!res.ok) {
-      addToast({ type: 'error', title: 'Delete failed' })
+      addToast({ type: 'error', title: tx('blog.deleteFailed') })
       return
     }
-    addToast({ type: 'success', title: 'Deleted' })
+    addToast({ type: 'success', title: tx('blog.deleted') })
     await load()
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Newspaper className="h-6 w-6 text-teal-600" /> Newsroom
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Public articles at{' '}
-            <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
-              /blog
+      <PageHeader
+        illustration="inbox"
+        title={tx('blog.newsroom')}
+        description={
+          <>
+            Posts shown in{' '}
+            <Link href="/learn?source=team" className="font-medium text-primary hover:underline" target="_blank">
+              {tx('blog.learnUnderFromTheTeam')}
             </Link>
-            . Prefer publishing newsletters here when they should live forever.
-          </p>
-        </div>
+            . Publish newsletters here too when they should stay readable for good.
+          </>
+        }
+        icon={<Newspaper />}
+        actions={
         <Button onClick={() => {
           setEditingSlug(null)
           setTitle('')
@@ -218,19 +232,27 @@ export default function AdminBlogPage() {
         }}>
           <Plus className="mr-1 h-4 w-4" /> New post
         </Button>
-      </div>
+        }
+      />
+
+      {!loading && items.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard label={tx('blog.published')} value={items.filter((p) => p.status === 'published').length} icon={<CheckCircle2 />} />
+          <StatCard label={tx('blog.drafts')} value={items.filter((p) => p.status !== 'published').length} icon={<FileText />} />
+        </div>
+      )}
 
       {showForm && (
-        <Card className="space-y-4 p-5">
+        <Panel className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+              <Label htmlFor="post-title">{tx('common.title')}</Label>
+              <Input id="post-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tx('blog.articleTitle')} />
             </div>
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label>{tx('blog.category')}</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as BlogCategoryId)}>
-                <SelectTrigger>
+                <SelectTrigger aria-label={tx('blog.category')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,20 +265,21 @@ export default function AdminBlogPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Author</Label>
-              <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+              <Label htmlFor="post-author">{tx('blog.author')}</Label>
+              <Input id="post-author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Excerpt</Label>
-              <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
+              <Label htmlFor="post-excerpt">{tx('blog.excerpt')}</Label>
+              <Textarea id="post-excerpt" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Cover image</Label>
+              <Label htmlFor="post-cover">{tx('blog.coverImage')}</Label>
               <div className="flex gap-2">
                 <Input
+                  id="post-cover"
                   value={coverImage}
                   onChange={(e) => setCoverImage(e.target.value)}
-                  placeholder="https://… (or generate AI art from the title)"
+                  placeholder={tx('blog.httpsOrGenerateAiArt')}
                 />
                 <Button
                   type="button"
@@ -267,9 +290,9 @@ export default function AdminBlogPage() {
                   {aiSlug === '__form' ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-4 w-4 text-teal-500" />
+                    <Sparkles className="mr-1 h-4 w-4 text-primary" />
                   )}
-                  Generate
+                  {tx('blog.generate')}
                 </Button>
               </div>
               {coverImage ? (
@@ -277,25 +300,25 @@ export default function AdminBlogPage() {
                 <img
                   src={coverImage}
                   alt="Cover preview"
-                  className="mt-1 h-32 w-full rounded-md border object-cover"
+                  className="mt-1 h-32 w-full rounded-xl border border-border object-cover"
                 />
               ) : null}
             </div>
-            <div className="space-y-1.5 sm:col-span-2 mt-4 pt-4 border-t">
+            <div className="space-y-1.5 sm:col-span-2 mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <Label className="text-base flex items-center gap-2">
-                    <Globe className="h-4 w-4" /> Live Web Research
+                    <Globe className="h-4 w-4" aria-hidden /> Live web research
                   </Label>
-                  <p className="text-sm text-muted-foreground">Search the web for the latest breaking news on this topic before writing.</p>
+                  <p className="text-sm text-muted-foreground">{tx('blog.searchTheWebForThe')}</p>
                 </div>
-                <Switch checked={doResearch} onCheckedChange={setDoResearch} />
+                <Switch checked={doResearch} onCheckedChange={setDoResearch} aria-label={tx('blog.liveWebResearch')} />
               </div>
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
               <div className="flex items-center justify-between">
-                <Label>Body</Label>
+                <Label>{tx('blog.body')}</Label>
                 <Button
                   type="button"
                   variant="secondary"
@@ -306,15 +329,15 @@ export default function AdminBlogPage() {
                   {aiSlug === '__body' ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                    <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                   )}
-                  {aiSlug === '__body' && doResearch ? 'Researching & Drafting...' : 'AI Draft'}
+                  {aiSlug === '__body' && doResearch ? 'Researching and drafting…' : 'AI draft'}
                 </Button>
               </div>
               <RichTextEditor
                 value={body}
                 onChange={setBody}
-                placeholder="Write your article here..."
+                placeholder={tx('blog.writeYourArticleHere')}
                 minHeight={300}
               />
             </div>
@@ -322,10 +345,10 @@ export default function AdminBlogPage() {
           <div className="flex flex-wrap gap-2">
             <Button disabled={saving} onClick={() => void savePost(true)}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              {editingSlug ? 'Update & Publish' : 'Publish'}
+              {editingSlug ? 'Update and publish' : 'Publish'}
             </Button>
             <Button variant="outline" disabled={saving} onClick={() => void savePost(false)}>
-              Save draft
+              {tx('blog.saveDraft')}
             </Button>
             <Button variant="ghost" onClick={() => {
               setShowForm(false)
@@ -335,72 +358,74 @@ export default function AdminBlogPage() {
               setBody('')
               setCoverImage('')
             }}>
-              Cancel
+              {tx('common.cancel')}
             </Button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {loading ? (
         <SkeletonList count={3} />
+      ) : loadError && items.length === 0 ? (
+        <EmptyState illustration="error" title={tx('blog.couldnTLoadPosts')} description={tx('common.checkConnection')} actionLabel={tx('common.tryAgain')} onAction={() => void load()} />
       ) : items.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">No posts yet.</Card>
+        <EmptyState illustration="inbox" title={tx('blog.noPostsYet')} description={tx('blog.useNewPostToWrite')} />
       ) : (
         <div className="space-y-2">
           {items.map((p) => (
-            <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
+            <Panel key={p.id} className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-center">
               <div className="flex flex-1 min-w-0 items-start sm:items-center gap-4">
                 {p.cover_image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={p.cover_image}
                     alt=""
-                    className="h-14 w-24 shrink-0 rounded-md border object-cover"
+                    className="h-14 w-24 shrink-0 rounded-lg border border-border object-cover"
                   />
                 ) : (
-                  <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-md border bg-muted/40">
+                  <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40">
                     <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate font-medium">{p.title}</p>
+                    <p className="truncate font-medium text-foreground">{p.title}</p>
                     <Badge variant="secondary">{p.category}</Badge>
-                    <Badge variant={p.status === 'published' ? 'default' : 'outline'}>{p.status}</Badge>
+                    <Badge variant={p.status === 'published' ? 'default' : 'outline'} className="capitalize">{p.status}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground truncate">
-                    /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
+                    {p.public_path || `/learn/${p.slug}`} · {p.read_minutes} min · {p.author_name}
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={aiSlug === p.slug}
                   onClick={() => void genCover(p.slug)}
-                  title="Generate AI cover art from the article"
+                  title={tx('blog.generateAiCoverArtFrom')}
                 >
                   {aiSlug === p.slug ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                    <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                   )}
-                  AI cover
+                  {tx('blog.aiCover')}
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/blog/${p.slug}`} target="_blank">
+                  <Link href={p.public_path || `/learn/${encodeURIComponent(p.slug)}`} target="_blank">
                     <Eye className="mr-1 h-3.5 w-3.5" /> View
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => editPost(p)}>
-                  Edit
+                  {tx('common.edit')}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)}>
+                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)} aria-label={`Delete ${p.title}`} title={tx('common.delete')}>
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}

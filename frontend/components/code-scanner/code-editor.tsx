@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Loader } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface CodeEditorProps {
   value: string
@@ -41,6 +42,7 @@ export function CodeEditor({
   liveAnalysis = true,
   diagnostics = [],
 }: CodeEditorProps) {
+  const { t } = useT()
   const editorContainer = useRef<HTMLDivElement>(null)
   const editorInstance = useRef<any>(null)
   const monacoRef = useRef<any>(null)
@@ -202,9 +204,7 @@ export function CodeEditor({
     <div className="space-y-2">
       {analysisRunning && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground px-3 py-2 bg-secondary/50 rounded">
-          <Loader className="w-3 h-3 animate-spin" />
-          Analyzing code in real-time...
-        </div>
+          <Loader className="w-3 h-3 animate-spin" />{t('practice.analyzingCodeInRealTime')}</div>
       )}
 
       <div

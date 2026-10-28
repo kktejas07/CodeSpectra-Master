@@ -1,164 +1,157 @@
 /**
- * CodeSpectra Analytics — Client-side SDK.
+ * CodeSpectra first-party analytics — browser SDK (tiny, no third party).
  *
- * Usage:
- *   import { csAnalytics } from '@/lib/analytics'
- *   csAnalytics.track('challenge_completed', { challenge_id: '123' })
- *   csAnalytics.identify('user_123')
+ *   import { track } from '@/lib/analytics'
+ *   track('practice_run', { language: 'python' })
  *
- * Auto-captures:
- *   - Page views (via Next.js router events)
- *   - Session duration
- *   - Referrer, UTM, device, browser, OS
+ * Page views and Web Vitals are sent by <AnalyticsRoot/> (mounted once in the
+ * root layout). Events are batched (5 s / 10 events / page hide) to
+ * POST /api/analytics/collect.
  *
- * Queue-based: batches events every 5s or 10 events, whichever comes first.
+ * Consent (lib/analytics/consent.ts):
+ *  - no analytics consent → 'anon' mode: nothing is stored on the device; the
+ *    server counts visits with a daily-rotating salted hash;
+ *  - analytics consent → 'full' mode: random first-party id (localStorage) +
+ *    30-minute session id (sessionStorage); withdrawing consent deletes both.
+ * Private pages (token links, test taking, payment steps) send page counts only.
  */
+import { currentConsent, type EffectiveConsent } from './consent'
+import { isPrivatePath } from './privacy'
 
-type EventProperties = Record<string, unknown>
+type Props = Record<string, string | number | boolean | null>
+type Ev =
+  | { t: 'pv'; path: string; ref?: string; utm?: Record<string, string>; ts: string }
+  | { t: 'ev'; name: string; path: string; props?: Props; ts: string }
+  | { t: 'wv'; name: string; value: number; rating?: string; id?: string; nav?: string; path: string; ts: string }
 
-interface QueuedEvent {
-  event: string
-  properties?: EventProperties
-  timestamp: string
-  url: string
-  path: string
+const ENDPOINT = '/api/analytics/collect'
+const AID_KEY = 'cs_aid'
+const SID_KEY = 'cs_sid'
+const SESSION_IDLE_MS = 30 * 60_000
+
+let queue: Ev[] = []
+let timer: ReturnType<typeof setTimeout> | null = null
+let consent: EffectiveConsent | null = null
+let firstPage = true
+const tagListeners = new Set<(name: string, props?: Props) => void>()
+
+const isBrowser = () => typeof window !== 'undefined'
+const nowIso = () => new Date().toISOString()
+const path = () => (isBrowser() ? window.location.pathname : '/')
+
+function randomId(): string {
+  const a = new Uint8Array(16)
+  crypto.getRandomValues(a)
+  return Array.from(a, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 24)
 }
 
-class CodeSpectraAnalytics {
-  private queue: QueuedEvent[] = []
-  private flushTimer: ReturnType<typeof setInterval> | null = null
-  private sessionId: string
-  private anonymousId: string
-  private userId: string | null = null
-  private initialized = false
-  private enabled = true
+function store(kind: 'local' | 'session'): Storage | null {
+  try { return kind === 'local' ? window.localStorage : window.sessionStorage } catch { return null }
+}
 
-  constructor() {
-    this.sessionId = this.getOrCreate('cs_session_id')
-    this.anonymousId = this.getOrCreate('cs_anonymous_id')
+function ids(): { aid?: string; sid?: string } {
+  if (!consent || consent.mode !== 'full') return {}
+  const ls = store('local')
+  const ss = store('session')
+  let aid = ls?.getItem(AID_KEY) || ''
+  if (!/^[A-Za-z0-9_-]{8,64}$/.test(aid)) { aid = randomId(); ls?.setItem(AID_KEY, aid) }
+  let sid = ''
+  try {
+    const raw = JSON.parse(ss?.getItem(SID_KEY) || 'null') as { id: string; at: number } | null
+    if (raw && Date.now() - raw.at < SESSION_IDLE_MS && /^[A-Za-z0-9_-]{8,64}$/.test(raw.id)) sid = raw.id
+  } catch { /* ignore */ }
+  if (!sid) sid = randomId()
+  ss?.setItem(SID_KEY, JSON.stringify({ id: sid, at: Date.now() }))
+  return { aid, sid }
+}
+
+/** Apply a consent change: forget the device ids when analytics is withdrawn. */
+export function setConsent(c: EffectiveConsent): void {
+  const before = consent?.mode
+  consent = c
+  if (c.mode === 'anon' && before !== 'anon') {
+    store('local')?.removeItem(AID_KEY)
+    store('session')?.removeItem(SID_KEY)
   }
+}
 
-  private getOrCreate(key: string): string {
-    if (typeof window === 'undefined') return ''
-    const existing = localStorage.getItem(key)
-    if (existing) return existing
-    const val = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
-    localStorage.setItem(key, val)
-    return val
-  }
+function schedule() {
+  if (queue.length >= 10) { void flush(); return }
+  if (!timer) timer = setTimeout(() => { timer = null; void flush() }, 5000)
+}
 
-  private getDevice() {
-    if (typeof window === 'undefined') return {}
-    const ua = navigator.userAgent
-    let device = 'desktop'
-    if (/Mobi|Android|iPhone|iPad/i.test(ua)) device = 'mobile'
-    else if (/Tablet|iPad/i.test(ua)) device = 'tablet'
+function payload(events: Ev[]): string {
+  const c = consent ?? currentConsent()
+  return JSON.stringify({ v: 1, mode: c.mode, ...ids(), events })
+}
 
-    let browser = 'Unknown'
-    if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome'
-    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari'
-    else if (ua.includes('Firefox')) browser = 'Firefox'
-    else if (ua.includes('Edg')) browser = 'Edge'
-
-    let os = 'Unknown'
-    if (ua.includes('Mac')) os = 'macOS'
-    else if (ua.includes('Windows')) os = 'Windows'
-    else if (ua.includes('Linux')) os = 'Linux'
-    else if (ua.includes('Android')) os = 'Android'
-    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
-
-    return { device_type: device, browser, os, screen_width: window.screen.width, screen_height: window.screen.height }
-  }
-
-  private getUtm() {
-    if (typeof window === 'undefined') return {}
-    const p = new URLSearchParams(window.location.search)
-    return {
-      utm_source: p.get('utm_source') || undefined,
-      utm_medium: p.get('utm_medium') || undefined,
-      utm_campaign: p.get('utm_campaign') || undefined,
-    }
-  }
-
-  init() {
-    if (this.initialized || typeof window === 'undefined') return
-    this.initialized = true
-
-    // Auto-track page views via Next.js router
-    this.trackPageView(window.location.pathname)
-
-    // Flush timer
-    this.flushTimer = setInterval(() => this.flush(), 5000)
-
-    // Flush on page unload
-    window.addEventListener('beforeunload', () => this.flush())
-
-    // Track visibility changes for session duration
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.flush()
-    })
-  }
-
-  identify(userId: string) {
-    this.userId = userId
-  }
-
-  track(event: string, properties?: EventProperties) {
-    if (!this.enabled) return
-    this.queue.push({
-      event,
-      properties,
-      timestamp: new Date().toISOString(),
-      url: typeof window !== 'undefined' ? window.location.href : '',
-      path: typeof window !== 'undefined' ? window.location.pathname : '',
-    })
-    if (this.queue.length >= 10) this.flush()
-  }
-
-  trackPageView(path?: string) {
-    const p = path || (typeof window !== 'undefined' ? window.location.pathname : '')
-    this.track('page_view', { path: p })
-  }
-
-  async flush() {
-    if (this.queue.length === 0) return
-    const events = this.queue.splice(0, this.queue.length)
-    const device = this.getDevice()
-    const utm = this.getUtm()
-
-    const payload = {
-      session_id: this.sessionId,
-      anonymous_id: this.anonymousId,
-      user_id: this.userId,
-      events: events.map(e => ({
-        event: e.event,
-        properties: e.properties,
-        timestamp: e.timestamp,
-        url: e.url,
-        path: e.path,
-        ...device,
-        ...utm,
-        referrer: typeof document !== 'undefined' ? document.referrer : undefined,
-      })),
-    }
-
+/** Send everything queued. `beacon` on page hide (survives unload). */
+export async function flush(beacon = false): Promise<void> {
+  if (!isBrowser() || !queue.length) return
+  if (timer) { clearTimeout(timer); timer = null }
+  while (queue.length) {
+    const body = payload(queue.splice(0, 30))
     try {
-      await fetch('/api/analytics/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      })
-    } catch {
-      // Silent — analytics should never break the app
-    }
-  }
-
-  destroy() {
-    this.flush()
-    if (this.flushTimer) clearInterval(this.flushTimer)
+      if (beacon && navigator.sendBeacon?.(ENDPOINT, new Blob([body], { type: 'application/json' }))) continue
+      await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: body.length < 60_000, credentials: 'same-origin' })
+    } catch { /* analytics must never break the app */ }
   }
 }
 
-// Singleton
-export const csAnalytics = new CodeSpectraAnalytics()
+function utmFromUrl(): Record<string, string> | undefined {
+  try {
+    const p = new URLSearchParams(window.location.search)
+    const out: Record<string, string> = {}
+    for (const k of ['source', 'medium', 'campaign', 'term', 'content']) {
+      const v = p.get(`utm_${k}`)
+      if (v) out[k] = v.slice(0, 200)
+    }
+    return Object.keys(out).length ? out : undefined
+  } catch { return undefined }
+}
+
+export function trackPageView(p: string = path()): void {
+  if (!isBrowser()) return
+  if (isPrivatePath(p)) { queue.push({ t: 'pv', path: p, ts: nowIso() }); schedule(); return }
+  const ev: Ev = { t: 'pv', path: p, ts: nowIso() }
+  if (firstPage) {
+    if (document.referrer) ev.ref = document.referrer.slice(0, 2000)
+    const utm = utmFromUrl()
+    if (utm) ev.utm = utm
+  }
+  firstPage = false
+  queue.push(ev)
+  schedule()
+}
+
+/** Custom product event. Names: lower_snake_case. Props: ≤ 20 primitives, no personal data. */
+export function track(name: string, props?: Props): void {
+  if (!isBrowser()) return
+  const p = path()
+  if (isPrivatePath(p) || !/^[a-z][a-z0-9_.:-]{0,63}$/.test(name)) return
+  queue.push({ t: 'ev', name, path: p, ...(props ? { props } : {}), ts: nowIso() })
+  schedule()
+  for (const l of tagListeners) { try { l(name, props) } catch { /* tag errors stay in the tag */ } }
+}
+
+export function trackVital(m: { name: string; value: number; rating?: string; id?: string; navigationType?: string }, p: string = path()): void {
+  if (!isBrowser() || isPrivatePath(p)) return
+  if (!['LCP', 'INP', 'CLS', 'TTFB', 'FCP'].includes(m.name) || !Number.isFinite(m.value)) return
+  queue.push({ t: 'wv', name: m.name, value: Math.max(0, m.value), ...(m.rating ? { rating: m.rating } : {}), ...(m.id ? { id: m.id.slice(0, 120) } : {}), ...(m.navigationType ? { nav: m.navigationType.slice(0, 30) } : {}), path: p, ts: nowIso() })
+  schedule()
+}
+
+/** Third-party tag loader subscribes here to mirror custom events (only after consent). */
+export function onTrack(fn: (name: string, props?: Props) => void): () => void {
+  tagListeners.add(fn)
+  return () => tagListeners.delete(fn)
+}
+
+/** Backwards-compatible facade for older imports. */
+export const csAnalytics = {
+  init: () => undefined,
+  track: (event: string, properties?: Props) => track(event, properties),
+  trackPageView: (p?: string) => trackPageView(p),
+  identify: () => undefined,
+  flush: () => flush(),
+}

@@ -10,6 +10,7 @@
  * 5) Source attribution — Footer with linked sources
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml, sourcesListHtml } from '@/lib/safe-html'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
 import { performWebSearch } from '@/lib/ai/web-search'
@@ -110,6 +111,7 @@ FULL PAGE TEXTS:
 ${corpus || '(no page text — use title only, mark low confidence facts sparingly)'}`
 
   const res = await backendComplete({
+    cache: false, // AGT-022: a generator must never replay a cached batch
     systemMessage,
     userMessage,
     modelRole: 'reasoning',
@@ -208,6 +210,7 @@ ${args.researchContext ? `\nADDITIONAL WEB RESEARCH:\n${args.researchContext}\n`
 Write the blog post.`
 
   const res = await backendComplete({
+    cache: false, // AGT-022: a generator must never replay a cached batch
     systemMessage,
     userMessage,
     modelRole: 'reasoning',
@@ -239,6 +242,7 @@ Cut clichés. Prefer concrete verbs. Keep HTML structure.
 Return JSON: {"title":"...","excerpt":"...","body":"..."}`
 
   const res = await backendComplete({
+    cache: false, // AGT-022: a generator must never replay a cached batch
     systemMessage,
     userMessage: `Title: ${args.title}\nExcerpt: ${args.excerpt}\n\nBody HTML:\n${args.body}`,
     modelRole: 'fast',
@@ -260,16 +264,9 @@ Return JSON: {"title":"...","excerpt":"...","body":"..."}`
 function ensureSourcesFooter(body: string, sourceUrls: string[]): string {
   if (/<h2[^>]*>\s*Sources\s*<\/h2>/i.test(body)) return body
   if (!sourceUrls.length) return body
-  const lis = sourceUrls
-    .map((u) => {
-      let label = u
-      try {
-        label = new URL(u).hostname.replace(/^www\./, '')
-      } catch {}
-      return `<li><a href="${u}" rel="noopener noreferrer" target="_blank">${label}</a></li>`
-    })
-    .join('')
-  return `${body}\n<h2>Sources</h2>\n<ul>${lis}</ul>`
+  // Validated http(s) hrefs, escaped labels (E13).
+  const list = sourcesListHtml(sourceUrls)
+  return sanitizeArticleHtml(list ? `${body}\n${list}` : body)
 }
 
 export async function POST(req: NextRequest) {
@@ -336,7 +333,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('[blog/ai-write] Pipeline error:', e)
     return NextResponse.json(
-      { error: `Content generation failed: ${e instanceof Error ? e.message : 'Unknown error'}` },
+      { error: 'Content generation failed. Try again.' },
       { status: 502 }
     )
   }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { LogIn, ShieldX } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 /**
  * Full-width banner shown while a superadmin is impersonating another user.
@@ -13,6 +14,9 @@ import { LogIn, ShieldX } from 'lucide-react'
 export function ImpersonationBanner() {
   const [active, setActive] = useState(false)
   const [exiting, setExiting] = useState(false)
+  const [exitError, setExitError] = useState<string | null>(null)
+  // Rendered in the dashboard shell (not the admin console), so it uses the bundled `nav` catalog.
+  const { t } = useT()
 
   useEffect(() => {
     let cancelled = false
@@ -25,6 +29,7 @@ export function ImpersonationBanner() {
 
   const exitImpersonation = async () => {
     setExiting(true)
+    setExitError(null)
     try {
       const res = await csrfFetch('/api/admin/impersonate/stop', {
         method: 'POST',
@@ -36,8 +41,12 @@ export function ImpersonationBanner() {
         // triple-fired duplicate TTFB/navigation records and could re-trigger the
         // banner's impersonation check mid-loop).
         window.location.href = '/dashboard/admin/organizations'
+        return
       }
+      setExitError(t('nav.exitImpersonationFailed'))
+      setExiting(false)
     } catch {
+      setExitError(t('nav.exitImpersonationOffline'))
       setExiting(false)
     }
   }
@@ -45,10 +54,10 @@ export function ImpersonationBanner() {
   if (!active) return null
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-center gap-3 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
+    <div role="status" className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
       <LogIn className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">
-        You are viewing the app as this user (impersonation). Actions count as their account.
+        {t('nav.impersonating')}
       </span>
       <Button
         size="sm"
@@ -57,8 +66,9 @@ export function ImpersonationBanner() {
         onClick={() => void exitImpersonation()}
         disabled={exiting}
       >
-        <ShieldX className="h-3 w-3" /> Exit impersonation
+        <ShieldX className="h-3 w-3" aria-hidden /> {exiting ? t('nav.exitingImpersonation') : t('nav.exitImpersonation')}
       </Button>
+      {exitError && <span role="alert" className="shrink-0 font-medium text-destructive">{exitError}</span>}
     </div>
   )
 }

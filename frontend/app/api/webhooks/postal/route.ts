@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'node:crypto'
+import { verifyPostalWebhook } from '@/lib/postal-webhook-verify'
 import { getMongoDb } from '@/lib/mongodb'
 import { getServerSecretsFromCache, warmServerSecretsCache } from '@/lib/server-secrets-cache'
 
@@ -17,20 +17,6 @@ const STATUS_MAP: Record<string, string> = {
 export async function POST(request: NextRequest) {
   await warmServerSecretsCache()
   const secrets = getServerSecretsFromCache()
-  const expectedSecret = secrets.postal_webhook_secret?.trim()
-  if (!expectedSecret) {
-    // Fail-closed in production: an unverified webhook must not mutate delivery state.
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
-    }
-  } else {
-    const receivedSecret = request.headers.get('x-postal-webhook-secret') || request.headers.get('x-postal-secret') || ''
-    const a = Buffer.from(receivedSecret)
-    const b = Buffer.from(expectedSecret)
-    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-      return NextResponse.json({ error: 'Invalid webhook secret' }, { status: 401 })
-    }
-  }
 
   let rawBody: string
   try {
@@ -39,11 +25,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Cannot read body' }, { status: 400 })
   }
 
+  // RSA signature (X-Postal-Signature[-256]) with the server's public key, or
+  // the shared secret as header / ?secret= (lib/postal-webhook-verify.ts).
+  const verdict = verifyPostalWebhook({
+    rawBody,
+    headers: request.headers,
+    querySecret: request.nextUrl.searchParams.get('secret'),
+    publicKey: secrets.postal_webhook_public_key || process.env.POSTAL_WEBHOOK_PUBLIC_KEY,
+    sharedSecret: secrets.postal_webhook_secret || process.env.POSTAL_WEBHOOK_SECRET,
+    production: process.env.NODE_ENV === 'production',
+  })
+  if (!verdict.ok) {
+    return verdict.reason === 'not_configured'
+      ? NextResponse.json({ error: 'Webhook verification not configured' }, { status: 500 })
+      : NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 })
+  }
+
   let payload: Record<string, unknown>
   try {
     payload = JSON.parse(rawBody)
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const message = payload.message as Record<string, unknown> | undefined
@@ -93,6 +95,23 @@ export async function POST(request: NextRequest) {
       )
     } catch {
       // email_logs update is best-effort
+    }
+
+    // Opt-in subscriptions (lib/subscriptions): stop mailing addresses that bounce.
+    if (deliveryStatus === 'bounced' || deliveryStatus === 'failed') {
+      try {
+        const { handleEmailBounce } = await import('@/lib/subscriptions')
+        await handleEmailBounce(postalMessageId, deliveryStatus)
+      } catch {
+        // best-effort
+      }
+      // A-038: hard bounces / complaints go on the platform suppression list (sendEmail skips them).
+      try {
+        const { recordDeliveryProblem } = await import('@/lib/automation/outbox')
+        await recordDeliveryProblem(postalMessageId, deliveryStatus, errorMsg)
+      } catch {
+        // best-effort
+      }
     }
 
     return NextResponse.json({ ok: true, matched: true, status: deliveryStatus })

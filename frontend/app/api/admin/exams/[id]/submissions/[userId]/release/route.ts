@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
-
-import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { notifyResultsReleased } from '@/lib/exam-release-notify'
+import { deliverExamCertificate, issueExamCertificate } from '@/lib/db/certifications'
+import { examPassPercent } from '@/lib/exam-access'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function PATCH(
   _request: Request,
@@ -38,11 +39,19 @@ export async function PATCH(
       }, { status: 400 })
     }
 
+    // Integrity hold (set_integrity_hold): stays unreleased like the bulk release does,
+    // until the hold is released from the integrity review (AGT-038).
+    if (submission.integrity_hold === true) {
+      return NextResponse.json({
+        error: 'This score is on an integrity hold. Release the hold from the integrity review first, then release the score.',
+        code: 'integrity_hold',
+      }, { status: 409 })
+    }
+
     const exam = await db.collection('exams').findOne({ id: examId })
     const examTitle = exam?.title || 'Technical Assessment'
     // Pass/fail uses the exam's remembered cutoff (bulk release stores it).
-    const storedCutoff = Number((exam as Record<string, any>)?.passing_score)
-    const cutoff = Number.isFinite(storedCutoff) && storedCutoff >= 0 ? Math.min(100, Math.round(storedCutoff)) : 40
+    const cutoff = examPassPercent((exam || {}) as Record<string, unknown>)
     const maxScore = Number(submission.max_score)
     const pct =
       Number.isFinite(Number(submission.score)) && Number.isFinite(maxScore) && maxScore > 0
@@ -51,43 +60,36 @@ export async function PATCH(
     const isPass = pct !== null && pct >= cutoff
 
     const result = await db.collection('exam_submissions').updateOne(
-      { exam_id: examId, user_id: userId },
+      { exam_id: examId, user_id: userId, integrity_hold: { $ne: true } },
       { $set: { released_at: nowIso(), score_released: true, passed: isPass, cutoff } },
     )
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Submission not found or on an integrity hold' }, { status: 409 })
     }
 
-    // Determine candidate name
-    let candidateName = submission.email ? submission.email.split('@')[0] : 'Candidate'
-    const userDoc = await db.collection('user').findOne({ $or: [{ _id: userId as any }, { id: userId }] })
-    if (userDoc) {
-      candidateName = userDoc.fullName || userDoc.name || candidateName
-    } else {
-      const invite = await db.collection('candidate_invites').findOne({ user_id: userId })
-      if (invite?.full_name) candidateName = invite.full_name
+    // Verifiable certificate when the released score meets the pass mark (idempotent per exam + user).
+    let certificateUrl: string | null = null
+    if (exam) {
+      try {
+        const cert = await issueExamCertificate(db, exam as Record<string, unknown>, { ...submission, score_released: true, released_at: nowIso() }, cutoff)
+        if (cert) {
+          certificateUrl = `/cert/verify/${cert.token}`
+          // Once, on first issue: in-app for account holders, email for invite-only candidates.
+          await deliverExamCertificate(exam as Record<string, unknown>, userId, cert)
+        }
+      } catch (e) {
+        console.error('[CodeSpectra] release certificate issue failed:', e)
+      }
     }
 
-    // Send email notification
-    if (submission.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      const resultsUrl = `${appUrl}/dashboard/assessments`
-      const template = emailTemplates.assessmentScoreReleased({
-        candidateName,
-        examTitle,
-        score: Math.round(submission.score || 0),
-        maxScore: Math.round(submission.max_score || 100),
-        resultsUrl,
-      })
-      await sendEmail(submission.email, template).catch(err => {
-        console.error('[CodeSpectra] Failed to send release email:', err)
-      })
-    }
+    // Same channels as the bulk release (in-app + WhatsApp + email).
+    await notifyResultsReleased(db, { ...(exam || {}), id: examId, title: examTitle } as Record<string, unknown>, submission as Record<string, unknown>)
 
-    return NextResponse.json({ success: true, released_at: nowIso() })
+    await auditAdmin(gate.user, 'admin.submission.release', 'exam_submission', `exam/${examId}/user/${userId}`)
+    return NextResponse.json({ success: true, released_at: nowIso(), certificate_url: certificateUrl })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to release score'
+    const msg = 'Failed to release score'
     console.error('[CodeSpectra] release score PATCH:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

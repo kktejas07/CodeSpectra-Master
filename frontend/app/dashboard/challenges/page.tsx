@@ -10,6 +10,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Challenge {
   id: string
@@ -25,10 +29,13 @@ interface Challenge {
 }
 
 export default function ChallengesPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
 
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
   const { startTour, setTourSeen } = useTour()
@@ -38,14 +45,14 @@ export default function ChallengesPage() {
       const challengesTour: TourStep[] = [
         {
           target: '[data-tour="challenges-header"]',
-          title: 'Interview Challenge Practice Hub',
-          description: 'Practice coding, system design, and behavioral challenges to prepare for technical interviews.',
+          title: tr('practice.interviewChallengePracticeHub'),
+          description: tr('practice.practiceCodingSystemDesignAndBehavioral414'),
           position: 'bottom',
         },
         {
           target: '[data-tour="challenges-content"]',
-          title: 'Filter Cards Track Progress',
-          description: 'Pro tip: filter by type and level, watch Completed counts, then Start or Retry unlocked cards.',
+          title: tr('practice.filterCardsTrackProgress'),
+          description: tr('practice.proTipFilterByTypeAndf30'),
           position: 'bottom',
         },
       ]
@@ -53,12 +60,14 @@ export default function ChallengesPage() {
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/challenges')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => { if (json.data) setChallenges(json.data) })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   const filteredChallenges = challenges.filter((c) => {
     if (selectedType && c.type !== selectedType) return false
@@ -73,20 +82,17 @@ export default function ChallengesPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="space-y-8" data-tour="challenges-content">
+    <div className="space-y-6" data-tour="challenges-content">
       <div data-tour="challenges-header">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Practice coding, system design, and behavioral interviews</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            illustration="coding"
+            title={tr('practice.challenges')}
+            description={tr('practice.practiseCodingSystemDesignAndBehavioural4eb')}
+            icon={<Trophy />}
+            className="mb-0"
+          />
         </div>
       </div>
 
@@ -96,77 +102,85 @@ export default function ChallengesPage() {
           <SkeletonStats />
           <SkeletonList count={6} />
         </div>
+      ) : loadError && challenges.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title={tr('practice.couldntLoadChallenges')}
+            description={tr('practice.checkYourConnectionAndTryAgain')}
+            actionLabel={tr('common.tryAgain')}
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
       ) : challenges.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <Trophy className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No challenges available yet.</p>
-        </Card>
+        <Panel className="p-4">
+          <EmptyState illustration="coding"
+            title={tr('practice.noChallengesYet')}
+            description={tr('practice.newInterviewChallengesWillAppearHered0b')}
+            actionLabel={tr('practice.goToProblems')}
+            actionHref="/dashboard/problems"
+          />
+        </Panel>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="border-border/60 p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{completedCount}/{challenges.length}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
-            </Card>
-            <Card className="border-border/60 p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{challenges.filter(c => !c.locked).length}</p>
-              <p className="text-xs text-muted-foreground">Available</p>
-            </Card>
-            <Card className="border-border/60 p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{challenges.filter(c => c.locked).length}</p>
-              <p className="text-xs text-muted-foreground">Locked</p>
-            </Card>
+            <StatCard label={tr('practice.completed')} value={`${completedCount}/${challenges.length}`} icon={<CheckCircle />} />
+            <StatCard label={tr('practice.available')} value={challenges.filter(c => !c.locked).length} icon={<Zap />} />
+            <StatCard label={tr('practice.locked')} value={challenges.filter(c => c.locked).length} icon={<Lock />} />
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant={!selectedType ? 'default' : 'outline'} size="sm" onClick={() => setSelectedType(null)}>All</Button>
+            <Button variant={!selectedType ? 'default' : 'outline'} size="sm" onClick={() => setSelectedType(null)}>{tr('practice.all')}</Button>
             {types.map(t => (
               <Button key={t} variant={selectedType === t ? 'default' : 'outline'} size="sm" onClick={() => setSelectedType(t)}>{t}</Button>
             ))}
-            <span className="mx-2 border-l border-border" />
-            <Button variant={!selectedDifficulty ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(null)}>All levels</Button>
+            <span aria-hidden className="mx-2 border-l border-border" />
+            <Button variant={!selectedDifficulty ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(null)}>{tr('practice.allLevels')}</Button>
             {difficulties.map(d => (
               <Button key={d} variant={selectedDifficulty === d ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(d)}>{d}</Button>
             ))}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <BentoGrid className="lg:grid-cols-3">
             {filteredChallenges.map((c) => (
-              <Card key={c.id} className={`border-border/60 p-5 transition-colors ${c.locked ? 'opacity-60' : 'hover:border-primary/40'}`}>
+              <Panel key={c.id} interactive={!c.locked} className={`flex flex-col p-5 ${c.locked ? 'opacity-60' : ''}`}>
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Code className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium text-muted-foreground capitalize">{c.type.replace('-', ' ')}</span>
                   </div>
                   {c.completed ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" aria-label={tr('practice.completed')} />
                   ) : c.locked ? (
-                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <Lock className="h-4 w-4 text-muted-foreground" aria-label={tr('practice.locked')} />
                   ) : null}
                 </div>
-                <h3 className="mb-1 font-semibold text-foreground">{c.title}</h3>
+                <h3 className="text-base mb-1 font-semibold text-foreground">{c.title}</h3>
                 <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">{c.description}</p>
                 <div className="mb-3 flex flex-wrap gap-2 text-xs">
                   <Badge variant={c.difficulty === 'Hard' ? 'destructive' : c.difficulty === 'Medium' ? 'default' : 'secondary'} className="text-[10px]">
                     {c.difficulty}
                   </Badge>
-                  <span className="text-muted-foreground">{c.duration} min</span>
-                  <span className="text-muted-foreground">{c.successRate}% success</span>
+                  <span className="text-muted-foreground tabular-nums">{c.duration} min</span>
+                  <span className="text-muted-foreground tabular-nums">{tr('practice.successrateSuccess', { successRate: c.successRate })}</span>
                 </div>
-                {c.prerequisites?.length && (
-                  <p className="mb-3 text-[10px] text-muted-foreground">
-                    Requires: {c.prerequisites.join(', ')}
-                  </p>
+                {!!c.prerequisites?.length && (
+                  <p className="mb-3 text-[11px] text-muted-foreground">{tr('practice.requiresValue', { value: c.prerequisites.join(', ') })}</p>
                 )}
-                <Link href={c.locked ? '#' : `/dashboard/challenges/${c.id}`}>
-                  <Button variant="outline" size="sm" className="w-full gap-2" disabled={c.locked}>
-                    {c.completed ? 'Retry' : c.locked ? 'Locked' : 'Start'}
-                    <ArrowRight className="h-3.5 w-3.5" />
+                {c.locked ? (
+                  <Button variant="outline" size="sm" className="mt-auto w-full gap-2" disabled>{tr('practice.locked')}<ArrowRight className="h-3.5 w-3.5" />
                   </Button>
-                </Link>
-              </Card>
+                ) : (
+                  <Button variant="outline" size="sm" className="mt-auto w-full gap-2" asChild>
+                    <Link href={`/dashboard/challenges/${c.id}`}>
+                      {c.completed ? tr('common.retry') : tr('practice.start')}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                )}
+              </Panel>
             ))}
-          </div>
+          </BentoGrid>
         </>
       )}
     </div>

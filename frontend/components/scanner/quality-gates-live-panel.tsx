@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Copy, Loader, Plus, Shield, Pencil, Trash2 } from 'lucide-react'
 import { COMPLIANCE_GATE_PRESETS, type ComplianceGatePreset } from '@/lib/compliance-templates'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 type GateDTO = {
   id: string
@@ -44,9 +46,11 @@ function makeEmptyForm() {
 }
 
 export function QualityGatesLivePanel() {
+  const { t } = useT()
   const confirmDialog = useConfirm()
   const [gates, setGates] = useState<GateDTO[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
@@ -60,18 +64,21 @@ export function QualityGatesLivePanel() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setLoadFailed(false)
     try {
       const res = await fetch('/api/quality-gates', { credentials: 'include' })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        setError(typeof json.error === 'string' ? json.error : 'Could not load gates')
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        setError(typeof json?.error === 'string' ? json.error : t('tools.couldNotLoadGates'))
         setGates([])
+        setLoadFailed(true)
         return
       }
       setGates(Array.isArray(json.gates) ? json.gates : [])
     } catch {
-      setError('Could not load gates')
+      setError(t('tools.couldNotLoadGates'))
       setGates([])
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -130,7 +137,7 @@ export function QualityGatesLivePanel() {
   const saveGate = async () => {
     const name = form.gate_name.trim()
     if (!name) {
-      setError('Gate name is required')
+      setError(t('tools.gateNameIsRequired'))
       return
     }
     setSaving(true)
@@ -162,7 +169,7 @@ export function QualityGatesLivePanel() {
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(typeof json.error === 'string' ? json.error : 'Save failed')
+        setError(typeof json.error === 'string' ? json.error : t('tools.saveFailed'))
         return
       }
       setForm(makeEmptyForm())
@@ -170,7 +177,7 @@ export function QualityGatesLivePanel() {
       setEditingId(null)
       await load()
     } catch {
-      setError('Save failed')
+      setError(t('tools.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -182,7 +189,7 @@ export function QualityGatesLivePanel() {
       const res = await fetch('/api/quality-gates/export', { credentials: 'include' })
       const json = await res.json()
       if (!res.ok || !json.gates) {
-        setError(typeof json.error === 'string' ? json.error : 'Export failed')
+        setError(typeof json.error === 'string' ? json.error : t('tools.exportFailed'))
         return
       }
       const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' })
@@ -193,7 +200,7 @@ export function QualityGatesLivePanel() {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      setError('Export failed')
+      setError(t('tools.exportFailed'))
     }
   }
 
@@ -207,7 +214,7 @@ export function QualityGatesLivePanel() {
       const text = await file.text()
       const parsed = JSON.parse(text) as { gates?: unknown }
       if (!Array.isArray(parsed.gates)) {
-        setError('Invalid file: expected { gates: [...] }')
+        setError(t('tools.invalidFileExpectedGates'))
         return
       }
       const res = await csrfFetch('/api/quality-gates/import', {
@@ -218,12 +225,12 @@ export function QualityGatesLivePanel() {
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(typeof json.error === 'string' ? json.error : 'Import failed')
+        setError(typeof json.error === 'string' ? json.error : t('tools.importFailed'))
         return
       }
       await load()
     } catch {
-      setError('Import failed — check JSON')
+      setError(t('tools.importFailedCheckJson'))
     } finally {
       setImportBusy(false)
     }
@@ -241,19 +248,19 @@ export function QualityGatesLivePanel() {
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(typeof json.error === 'string' ? json.error : 'Duplicate failed')
+        setError(typeof json.error === 'string' ? json.error : t('tools.duplicateFailed'))
         return
       }
       await load()
     } catch {
-      setError('Duplicate failed')
+      setError(t('tools.duplicateFailed'))
     } finally {
       setDuplicatingId(null)
     }
   }
 
   const deleteGate = async (id: string) => {
-    if (!await confirmDialog({ title: 'Confirmation', description: 'Delete this quality gate?' })) return
+    if (!await confirmDialog({ title: t('tools.confirmation'), description: t('tools.deleteThisQualityGate') })) return
     setDeletingId(id)
     setError(null)
     try {
@@ -263,7 +270,7 @@ export function QualityGatesLivePanel() {
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setError(typeof json.error === 'string' ? json.error : 'Delete failed')
+        setError(typeof json.error === 'string' ? json.error : t('tools.deleteFailed'))
         return
       }
       if (editingId === id) {
@@ -273,7 +280,7 @@ export function QualityGatesLivePanel() {
       }
       await load()
     } catch {
-      setError('Delete failed')
+      setError(t('tools.deleteFailed'))
     } finally {
       setDeletingId(null)
     }
@@ -282,20 +289,17 @@ export function QualityGatesLivePanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="mb-2 text-3xl font-bold">Quality gates</h1>
-        <p className="text-foreground/60">
-          Gates are stored per account and used with <code className="rounded bg-muted px-1 text-sm">POST /api/check-quality-gate</code>.
+        <h2 className="sr-only">{t('tools.qualityGates')}</h2>
+        <p className="text-sm text-muted-foreground">{t('tools.gatesAreStoredPerAccountAndbca')}{' '}<code className="rounded bg-muted px-1 text-sm">POST /api/check-quality-gate</code>.
         </p>
       </div>
 
-      <Card className="border border-border bg-card/40 p-4">
+      <Card className="p-4">
         <div className="mb-3 flex items-center gap-2">
           <Shield className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold text-foreground">Compliance presets</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t('tools.compliancePresets')}</h2>
         </div>
-        <p className="mb-3 text-xs text-foreground/60">
-          Applies suggested thresholds and <code className="rounded bg-muted px-0.5">standards</code> to the form below — adjust and save.
-        </p>
+        <p className="mb-3 text-xs text-muted-foreground">{t('tools.appliesSuggestedThresholdsAnd')}{' '}<code className="rounded bg-muted px-0.5">standards</code>{' '}{t('tools.toTheFormBelowAdjustAnd8e9')}</p>
         <div className="flex flex-wrap gap-2">
           {COMPLIANCE_GATE_PRESETS.map((p) => (
             <Button key={p.id} type="button" size="sm" variant="secondary" onClick={() => applyPreset(p)}>
@@ -306,9 +310,7 @@ export function QualityGatesLivePanel() {
       </Card>
 
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => void exportGatesJson()}>
-          Export JSON
-        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => void exportGatesJson()}>{t('tools.exportJson')}</Button>
         <input ref={importInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(ev) => void onImportFile(ev)} />
         <Button
           type="button"
@@ -317,59 +319,59 @@ export function QualityGatesLivePanel() {
           disabled={importBusy}
           onClick={() => importInputRef.current?.click()}
         >
-          {importBusy ? 'Importing…' : 'Import JSON'}
+          {importBusy ? t('tools.importing') : t('tools.importJson')}
         </Button>
         <Button type="button" variant="default" className="gap-2" onClick={() => (showForm ? setShowForm(false) : openNew())}>
           <Plus className="h-4 w-4" />
-          {showForm ? 'Close form' : 'New gate'}
+          {showForm ? t('tools.closeForm') : t('tools.newGate')}
         </Button>
       </div>
 
       {showForm && (
-        <Card className="space-y-4 border-2 border-primary/40 bg-primary/5 p-6">
-          <h2 className="text-lg font-semibold">{editingId ? 'Edit gate' : 'Create gate'}</h2>
+        <Card className="rounded-3xl space-y-4 border-2 border-primary/40 bg-primary/5 p-6">
+          <h2 className="text-lg font-semibold">{editingId ? t('tools.editGate') : t('tools.createGate')}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-1 text-sm md:col-span-2">
-              <span className="text-foreground/80">Name</span>
+              <span className="text-foreground/80">{t('tools.name')}</span>
               <input
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
                 value={form.gate_name}
                 onChange={(e) => setForm((f) => ({ ...f, gate_name: e.target.value }))}
-                placeholder="e.g. Main branch gate"
+                placeholder={t('tools.eGMainBranchGate')}
               />
             </label>
             <label className="space-y-1 text-sm md:col-span-2">
-              <span className="text-foreground/80">Description</span>
+              <span className="text-foreground/80">{t('tools.description')}</span>
               <input
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
             </label>
-            <NumberField label="Min quality score" v={form.min_quality_score} on={(n) => setForm((f) => ({ ...f, min_quality_score: n }))} />
-            <NumberField label="Max bugs" v={form.max_bugs_count} on={(n) => setForm((f) => ({ ...f, max_bugs_count: n }))} />
+            <NumberField label={t('tools.minQualityScore')} v={form.min_quality_score} on={(n) => setForm((f) => ({ ...f, min_quality_score: n }))} />
+            <NumberField label={t('tools.maxBugs')} v={form.max_bugs_count} on={(n) => setForm((f) => ({ ...f, max_bugs_count: n }))} />
             <NumberField
-              label="Max vulnerabilities"
+              label={t('tools.maxVulnerabilities')}
               v={form.max_vulnerabilities_count}
               on={(n) => setForm((f) => ({ ...f, max_vulnerabilities_count: n }))}
             />
             <NumberField
-              label="Max code smells"
+              label={t('tools.maxCodeSmells')}
               v={form.max_code_smells_count}
               on={(n) => setForm((f) => ({ ...f, max_code_smells_count: n }))}
             />
             <NumberField
-              label="Min test coverage %"
+              label={t('tools.minTestCoverage')}
               v={form.min_test_coverage_percent}
               on={(n) => setForm((f) => ({ ...f, min_test_coverage_percent: n }))}
             />
             <NumberField
-              label="Max security hotspots"
+              label={t('tools.maxSecurityHotspots')}
               v={form.max_security_hotspots_count}
               on={(n) => setForm((f) => ({ ...f, max_security_hotspots_count: n }))}
             />
             <NumberField
-              label="Max duplication %"
+              label={t('tools.maxDuplication')}
               v={form.max_duplicated_code_percentage}
               on={(n) => setForm((f) => ({ ...f, max_duplicated_code_percentage: n }))}
             />
@@ -378,17 +380,13 @@ export function QualityGatesLivePanel() {
                 type="checkbox"
                 checked={form.enforce_on_push}
                 onChange={(e) => setForm((f) => ({ ...f, enforce_on_push: e.target.checked }))}
-              />
-              Enforce on push (metadata for CI / webhook worker)
-            </label>
+              />{t('tools.enforceOnPushMetadataForCif28')}</label>
             <label className="flex items-center gap-2 text-sm md:col-span-2">
               <input
                 type="checkbox"
                 checked={form.is_active}
                 onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-              />
-              Gate active
-            </label>
+              />{t('tools.gateActive')}</label>
           </div>
           {form.standards.length > 0 && (
             <div className="flex flex-wrap gap-1">
@@ -403,27 +401,32 @@ export function QualityGatesLivePanel() {
           <Button type="button" disabled={saving} onClick={() => void saveGate()}>
             {saving ? (
               <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Saving…
-              </>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />{t('common.saving')}</>
             ) : editingId ? (
-              'Update gate'
+              t('tools.updateGate')
             ) : (
-              'Save gate'
+              t('tools.saveGate')
             )}
           </Button>
         </Card>
       )}
 
-      <Card className="border border-border p-6">
-        <h2 className="mb-4 text-lg font-semibold">Your gates</h2>
+      <Card className="rounded-3xl p-6">
+        <h2 className="mb-4 text-lg font-semibold">{t('tools.yourGates')}</h2>
         {loading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader className="h-4 w-4 animate-spin" />
-            Loading…
-          </p>
+            <Loader className="h-4 w-4 animate-spin" />{t('common.loading')}</p>
+        ) : loadFailed ? (
+          <EmptyState
+            compact
+            illustration="error"
+            title={t('tools.couldntLoadYourGates')}
+            description={t('tools.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
+            onAction={() => void load()}
+          />
         ) : gates.length === 0 ? (
-          <p className="text-sm text-foreground/60">No gates yet — create one or apply a preset.</p>
+          <p className="text-sm text-muted-foreground">{t('tools.noGatesYetCreateOneOr4c0')}</p>
         ) : (
           <ul className="space-y-3">
             {gates.map((g) => (
@@ -433,16 +436,14 @@ export function QualityGatesLivePanel() {
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex flex-wrap gap-1">
                       {g.is_active ? (
-                        <Badge>Active</Badge>
+                        <Badge>{t('tools.active')}</Badge>
                       ) : (
-                        <Badge variant="outline">Inactive</Badge>
+                        <Badge variant="outline">{t('tools.inactive')}</Badge>
                       )}
-                      {g.enforce_on_push ? <Badge variant="secondary">On push</Badge> : null}
+                      {g.enforce_on_push ? <Badge variant="secondary">{t('tools.onPush')}</Badge> : null}
                     </div>
                     <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={() => startEdit(g)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                      Edit
-                    </Button>
+                      <Pencil className="h-3.5 w-3.5" />{t('tools.edit')}</Button>
                     <Button
                       type="button"
                       size="sm"
@@ -455,9 +456,7 @@ export function QualityGatesLivePanel() {
                         <Loader className="h-3.5 w-3.5 animate-spin" />
                       ) : (
                         <Copy className="h-3.5 w-3.5" />
-                      )}
-                      Duplicate
-                    </Button>
+                      )}{t('tools.duplicate')}</Button>
                     <Button
                       type="button"
                       size="sm"
@@ -470,16 +469,11 @@ export function QualityGatesLivePanel() {
                         <Loader className="h-3.5 w-3.5 animate-spin" />
                       ) : (
                         <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                      Delete
-                    </Button>
+                      )}{t('common.delete')}</Button>
                   </div>
                 </div>
                 {g.description ? <p className="mt-2 text-foreground/70">{g.description}</p> : null}
-                <p className="mt-2 text-xs text-foreground/50">
-                  Quality ≥ {g.min_quality_score} · bugs ≤ {g.max_bugs_count} · vulns ≤ {g.max_vulnerabilities_count} ·
-                  smells ≤ {g.max_code_smells_count}
-                </p>
+                <p className="mt-2 text-xs text-muted-foreground">{t('tools.qualityMinQualityScoreBugsMaxd33', { min_quality_score: g.min_quality_score, max_bugs_count: g.max_bugs_count, max_vulnerabilities_count: g.max_vulnerabilities_count, max_code_smells_count: g.max_code_smells_count })}</p>
                 {g.standards?.length ? (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {g.standards.map((s) => (

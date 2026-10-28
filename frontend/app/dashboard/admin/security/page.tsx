@@ -12,18 +12,21 @@ import { Input } from '@/components/ui/input'
 import { DataTable, type BulkAction } from '@/components/ui/data-table'
 import { unmaskedAuditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   Shield, Users, LogIn, Ban, Globe, Monitor, Smartphone, Tablet,
   AlertTriangle, CheckCircle, XCircle, Clock, MapPin, Activity,
   RefreshCw, ChevronDown, ChevronUp, Loader2, Fingerprint, ShieldOff,
-  ShieldAlert, ShieldCheck, Plus, Trash2, Blocks, Download, ScrollText, ArrowRight,
+  ShieldAlert, ShieldCheck, Plus, Blocks, Download, ScrollText, ArrowRight,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard as KitStatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface SecuritySetting {
   _id?: string
@@ -115,19 +118,9 @@ interface DashboardData {
   blockedIps?: BlockedIp[]
 }
 
-function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: string | number; sub?: string; icon: React.ComponentType<any>; color: string }) {
-  return (
-    <Card className="p-5 border-border/60 flex items-start gap-4">
-      <div className={`rounded-lg p-2.5 ${color}`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold tabular-nums">{value}</p>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        {sub && <p className="text-xs text-muted-foreground/70 mt-0.5">{sub}</p>}
-      </div>
-    </Card>
-  )
+// `color` is kept for call-site compatibility; tiles now use the shared brand style.
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: React.ComponentType<any>; color: string }) {
+  return <KitStatCard label={label} value={value} hint={sub} icon={<Icon />} />
 }
 
 /** Weekly host-scan status banner linking to the full scans report page. */
@@ -150,9 +143,9 @@ function ScanBanner() {
   const bad = (summary?.critical || 0) > 0 || (summary?.infected || 0) > 0
   return (
     <Link href="/dashboard/admin/security/scans" className="block">
-      <Card className="flex flex-wrap items-center gap-3 border-border/60 p-4 transition-colors hover:bg-muted/40">
-        <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${bad ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-          {bad ? <ShieldAlert className="h-4 w-4 text-red-500" /> : <ShieldCheck className="h-4 w-4 text-emerald-500" />}
+      <Card className="flex flex-wrap items-center gap-3 rounded-2xl border-border/70 p-4 transition-colors hover:bg-muted/40">
+        <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${bad ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+          {bad ? <ShieldAlert className="h-4 w-4 text-red-500" /> : <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">
@@ -189,12 +182,15 @@ function SessionRow({ session }: { session: UserSession }) {
   return (
     <>
       <tr
-        className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors"
+        className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary"
+        tabIndex={0}
+        aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded) } }}
       >
         <td className="py-3 px-4">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isRecent ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+            <div className={`w-2 h-2 rounded-full ${isRecent ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
             <DeviceIcon device={session.device} />
             <span className="text-sm font-medium">{session.browser}</span>
           </div>
@@ -210,13 +206,13 @@ function SessionRow({ session }: { session: UserSession }) {
       {expanded && (
         <tr className="bg-muted/20">
           <td colSpan={6} className="py-3 px-8">
-            <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
-              <div><span className="font-medium text-foreground">Session ID</span><p className="font-mono mt-0.5">{session.id}</p></div>
-              <div><span className="font-medium text-foreground">User Agent</span><p className="truncate mt-0.5">{session.user_agent}</p></div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 text-xs text-muted-foreground">
+              <div><span className="font-medium text-foreground">Session ID</span><p className="font-mono mt-0.5 break-all">{session.id}</p></div>
+              <div><span className="font-medium text-foreground">User agent</span><p className="truncate mt-0.5">{session.user_agent}</p></div>
               <div><span className="font-medium text-foreground">ISP</span><p className="mt-0.5">{session.isp || '—'}</p></div>
               <div><span className="font-medium text-foreground">Signed in</span><p className="mt-0.5">{formatDateTime(session.created_at)}</p></div>
               <div><span className="font-medium text-foreground">Last seen</span><p className="mt-0.5">{lastSeen.toLocaleString()}</p></div>
-              <div><span className="font-medium text-foreground">User ID</span><p className="font-mono mt-0.5">{session.user_id}</p></div>
+              <div><span className="font-medium text-foreground">User ID</span><p className="font-mono mt-0.5 break-all">{session.user_id}</p></div>
             </div>
           </td>
         </tr>
@@ -227,6 +223,15 @@ function SessionRow({ session }: { session: UserSession }) {
 
 export default function Security() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
+  /** Success / error toast for a security mutation (reads the API error message). */
+  const report = useCallback(async (res: Response, ok: string, fail: string) => {
+    if (res.ok) { addToast({ type: 'success', title: ok }); return true }
+    const j = (await res.json().catch(() => ({}))) as { error?: string }
+    addToast({ type: 'error', title: fail, message: j.error || `HTTP ${res.status}` })
+    return false
+  }, [addToast])
+  const offline = useCallback((fail: string) => addToast({ type: 'error', title: fail, message: 'Check your connection and try again.' }), [addToast])
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
@@ -241,11 +246,12 @@ export default function Security() {
       const params = new URLSearchParams({ limit: '1000' })
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`)
       const json = await res.json()
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
       if (json.data) setAuditLogs(json.data)
       if (json.stats) setAuditStats(json.stats)
-    } catch { /* ignore */ }
+    } catch { offline("Couldn't load audit logs") }
     setAuditLoading(false)
-  }, [])
+  }, [offline])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -269,9 +275,10 @@ export default function Security() {
           geoStats: [],
         })
       }
-    } catch {}
+      if (!dashRes.ok && !setRes.ok) addToast({ type: 'error', title: "Couldn't load security data", message: dashJson.error || `HTTP ${dashRes.status}` })
+    } catch { offline("Couldn't load security data") }
     setLoading(false)
-  }, [])
+  }, [addToast, offline])
 
   useEffect(() => { load(); fetchAuditLogs() }, [load, fetchAuditLogs])
 
@@ -279,20 +286,20 @@ export default function Security() {
     setToggling(name)
     const newStatus = currentStatus === 'enabled' ? 'disabled' : 'enabled'
     try {
-      const res = await fetch('/api/admin/security', {
+      const res = await csrfFetch('/api/admin/security', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, status: newStatus }),
       })
-      if (res.ok) {
+      if (await report(res, newStatus === 'enabled' ? 'Setting turned on' : 'Setting turned off', "Couldn't change the setting")) {
         setData(prev => prev ? {
           ...prev,
           settings: prev.settings.map(s => s.name === name ? { ...s, status: newStatus } : s),
         } : prev)
       }
-    } catch {}
+    } catch { offline("Couldn't change the setting") }
     setToggling(null)
-  }, [])
+  }, [report, offline])
 
   const [newBlockIp, setNewBlockIp] = useState('')
   const [newBlockReason, setNewBlockReason] = useState('')
@@ -308,14 +315,14 @@ export default function Security() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, reason: newBlockReason || 'Manual block by admin' }),
       })
-      if (res.ok) {
+      if (await report(res, `Blocked ${ip}`, "Couldn't block the IP")) {
         setNewBlockIp('')
         setNewBlockReason('')
         load()
       }
-    } catch {}
+    } catch { offline("Couldn't block the IP") }
     setMutating(null)
-  }, [newBlockIp, newBlockReason, load])
+  }, [newBlockIp, newBlockReason, load, report, offline])
 
   const unblockIp = useCallback(async (ip: string) => {
     setMutating(ip)
@@ -323,10 +330,10 @@ export default function Security() {
       const res = await csrfFetch(`/api/admin/security/blocked-ips?ip=${encodeURIComponent(ip)}`, {
         method: 'DELETE',
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, `Unblocked ${ip}`, "Couldn't unblock the IP")) load()
+    } catch { offline("Couldn't unblock the IP") }
     setMutating(null)
-  }, [load])
+  }, [load, report, offline])
 
   const toggleFingerprintBlock = useCallback(async (visitorId: string, blocked: boolean, reason?: string) => {
     setMutating(visitorId)
@@ -340,10 +347,10 @@ export default function Security() {
           reason: reason || 'Blocked from Security dashboard',
         }),
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, blocked ? 'Device unblocked' : 'Device blocked', "Couldn't update the device")) load()
+    } catch { offline("Couldn't update the device") }
     setMutating(null)
-  }, [load])
+  }, [load, report, offline])
 
   const [whitelistDraft, setWhitelistDraft] = useState('')
   const [concurrentLimitDraft, setConcurrentLimitDraft] = useState('')
@@ -358,33 +365,29 @@ export default function Security() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: setting.name, status: setting.status, allowed_ips: ips }),
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, 'Allowed IPs saved', "Couldn't save the allowed IPs")) load()
+    } catch { offline("Couldn't save the allowed IPs") }
     setMutating(null)
-  }, [whitelistDraft, load])
+  }, [whitelistDraft, load, report, offline])
 
   const saveConcurrentLimit = useCallback(async (setting: SecuritySetting | undefined) => {
     if (!setting) return
-    setMutating('concurrent')
     const n = parseInt(concurrentLimitDraft, 10)
-    if (Number.isNaN(n) || n < 1) return
+    if (Number.isNaN(n) || n < 1) {
+      addToast({ type: 'error', title: 'Enter a whole number of 1 or more' })
+      return
+    }
+    setMutating('concurrent')
     try {
       const res = await csrfFetch('/api/admin/security', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: setting.name, status: setting.status, limit: n }),
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, 'Session limit saved', "Couldn't save the session limit")) load()
+    } catch { offline("Couldn't save the session limit") }
     setMutating(null)
-  }, [concurrentLimitDraft, load])
-
-  const handleAuditDelete = useCallback(async (ids: string[]) => {
-    for (const id of ids) {
-      await csrfFetch(`/api/admin/audit-logs/${id}`, { method: 'DELETE', credentials: 'include' })
-    }
-    setAuditLogs(prev => prev.filter(l => !ids.includes(l.id)))
-  }, [])
+  }, [concurrentLimitDraft, load, report, offline, addToast])
 
   const handleAuditExport = useCallback((ids: string[]) => {
     const selected = auditLogs.filter(l => ids.includes(l.id))
@@ -399,12 +402,13 @@ export default function Security() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = 'audit-logs.csv'; a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }, [auditLogs])
 
   const auditBulkActions: BulkAction[] = [
-    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditDelete },
-    { label: 'Export Selected', icon: <Download className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditExport, clearSelection: false },
+    // No delete: audit logs are append-only (there is no DELETE route, and
+    // the old action only hid rows in the UI).
+    { label: 'Export selected', icon: <Download className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditExport, clearSelection: false },
   ]
 
   // ── Chart data ─────────────────────────────────────────────────────────
@@ -489,16 +493,19 @@ export default function Security() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Security & Audit</h1>
-          <p className="text-sm text-muted-foreground mt-1">Real-time monitoring: sessions, devices, audit logs, blocked IPs, and security events</p>
-        </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        illustration="security"
+        className="mb-0"
+        title="Security and audit"
+        description="Live view of sessions, devices, audit logs, blocked IPs and security events."
+        icon={<ShieldCheck />}
+        actions={
+          <Button variant="outline" size="sm" className="gap-2" onClick={load} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {loading && !data ? (
         <div className="space-y-6">
@@ -508,20 +515,22 @@ export default function Security() {
         </div>
       ) : (
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="mb-4">
+          <div className="-mx-1 mb-4 overflow-x-auto px-1 pb-1">
+          <TabsList className="w-max">
             <TabsTrigger value="overview" className="gap-1.5"><Activity className="h-4 w-4" />Overview</TabsTrigger>
-            <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" />Audit Logs</TabsTrigger>
-            <TabsTrigger value="fingerprints" className="gap-1.5"><Fingerprint className="h-4 w-4" />Device Fingerprints</TabsTrigger>
+            <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" />Audit logs</TabsTrigger>
+            <TabsTrigger value="fingerprints" className="gap-1.5"><Fingerprint className="h-4 w-4" />Device fingerprints</TabsTrigger>
             <TabsTrigger value="blocked" className="gap-1.5"><Ban className="h-4 w-4" />Blocked IPs</TabsTrigger>
-            <TabsTrigger value="events" className="gap-1.5"><ShieldAlert className="h-4 w-4" />Security Events</TabsTrigger>
+            <TabsTrigger value="events" className="gap-1.5"><ShieldAlert className="h-4 w-4" />Security events</TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="overview" className="space-y-6">
           <ScanBanner />
           {/* ── Charts ──────────────────────────────────────────────── */}
           <div className="grid gap-6 lg:grid-cols-3">
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Login Timeline (24h)</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Logins, last 24 hours</h3>
               {loginTimelineData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={loginTimelineData}>
@@ -529,17 +538,17 @@ export default function Security() {
                     <XAxis dataKey="hour" tick={{ fontSize: 10 }} interval={3} />
                     <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                     <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-                    <Area type="monotone" dataKey="success" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} name="Success" />
+                    <Area type="monotone" dataKey="success" stackId="1" stroke="#16a34a" fill="#16a34a" fillOpacity={0.3} name="Success" />
                     <Area type="monotone" dataKey="failed" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} name="Failed" />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Sessions by Country (Top 10)</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Sessions by country (top 10)</h3>
               {geoData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={geoData}>
@@ -551,12 +560,12 @@ export default function Security() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Threat Trend (7d)</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Threats, last 7 days</h3>
               {threatTrendData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={threatTrendData}>
@@ -569,59 +578,59 @@ export default function Security() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Active Now"
+              label="Active now"
               value={stats?.activeNow ?? 0}
               sub={stats ? `${stats.uniqueUsersToday} unique today` : undefined}
               icon={Activity}
-              color="bg-emerald-600"
+              color="bg-green-600"
             />
             <StatCard
-              label="Logins Today"
+              label="Logins today"
               value={stats ? `${stats.successCount}` : '0'}
               sub={stats ? `${stats.totalToday} total sessions` : undefined}
               icon={LogIn}
               color="bg-blue-600"
             />
             <StatCard
-              label="Failed Attempts"
+              label="Failed attempts"
               value={stats?.failedCount ?? 0}
               sub="Today"
               icon={Ban}
               color="bg-red-600"
             />
             <StatCard
-              label="Active Sessions"
+              label="Active sessions"
               value={data?.activeSessions?.length ?? 0}
               sub="Last 24h"
               icon={Users}
-              color="bg-violet-600"
+              color="bg-primary"
             />
           </div>
 
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Monitor className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Active Sessions</h3>
+                <h3 className="font-semibold">Active sessions</h3>
               </div>
               <Badge variant="outline" className="text-xs">{data?.activeSessions?.length ?? 0} sessions</Badge>
             </div>
             {data?.activeSessions && data.activeSessions.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[640px]">
                   <thead>
-                    <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider">
-                      <th className="text-left py-3 px-4 font-medium">Device / Browser</th>
+                    <tr className="border-b border-border/40 text-muted-foreground text-xs">
+                      <th className="text-left py-3 px-4 font-medium">Device / browser</th>
                       <th className="text-left py-3 px-4 font-medium">OS</th>
                       <th className="text-left py-3 px-4 font-medium">User</th>
-                      <th className="text-left py-3 px-4 font-medium">IP Address</th>
+                      <th className="text-left py-3 px-4 font-medium">IP address</th>
                       <th className="text-left py-3 px-4 font-medium">Location</th>
                       <th className="py-3 px-4" />
                     </tr>
@@ -632,25 +641,22 @@ export default function Security() {
                 </table>
               </div>
             ) : (
-              <div className="py-12 text-center text-muted-foreground">
-                <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                <p className="text-sm">No active sessions. Sessions appear after users log in.</p>
-              </div>
+              <EmptyState illustration="security" title="No active sessions" description="Sessions appear after users log in." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <Activity className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Login Activity</h3>
+                <h3 className="font-semibold">Login activity</h3>
               </div>
               {data?.loginEvents && data.loginEvents.length > 0 ? (
                 <div className="divide-y divide-border/40 max-h-[400px] overflow-y-auto">
                   {data.loginEvents.map(e => (
                     <div key={e.id} className="px-6 py-3 flex items-start gap-3">
                       {e.outcome === 'success' ? (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                       ) : (
                         <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
                       )}
@@ -671,17 +677,14 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <LogIn className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No login events today</p>
-                </div>
+                <EmptyState illustration="security" title="No login events today" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <h3 className="font-semibold">Security Alerts</h3>
+                <h3 className="font-semibold">Security alerts</h3>
               </div>
               {data?.recentAlerts && data.recentAlerts.length > 0 ? (
                 <div className="divide-y divide-border/40 max-h-[400px] overflow-y-auto">
@@ -709,18 +712,15 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No security alerts in the past 7 days</p>
-                </div>
+                <EmptyState illustration="security" title="No security alerts in the past 7 days" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </div>
 
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Security Settings</h3>
+              <h3 className="font-semibold">Security settings</h3>
             </div>
             {data?.settings && data.settings.length > 0 ? (
               <div className="grid gap-0 divide-y divide-border/40 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
@@ -739,23 +739,20 @@ export default function Security() {
                 ))}
               </div>
             ) : (
-              <div className="py-12 text-center text-muted-foreground">
-                <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                <p className="text-sm">No security settings configured. Run the seed script to populate defaults.</p>
-              </div>
+              <EmptyState illustration="settings" title="No security settings configured" description="Run the seed script to populate defaults." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
 
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
               <Globe className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Policy Configuration</h3>
+              <h3 className="font-semibold">Policy settings</h3>
             </div>
             <div className="divide-y divide-border/40">
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">IP Whitelist</p>
+                    <p className="text-sm font-medium">IP whitelist</p>
                     <p className="text-xs text-muted-foreground mt-0.5">When enabled, only these IPs / CIDR ranges may sign in. One per line or comma-separated.</p>
                   </div>
                   {(() => {
@@ -785,7 +782,7 @@ export default function Security() {
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">{cur.length} saved entries</p>
                         <Button size="sm" variant="outline" disabled={mutating === 'whitelist'} onClick={() => saveWhitelist(s)}>
-                          Save Whitelist
+                          Save whitelist
                         </Button>
                       </div>
                     </div>
@@ -796,7 +793,7 @@ export default function Security() {
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">Concurrent Session Limit</p>
+                    <p className="text-sm font-medium">Concurrent session limit</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Max active sessions per user. Oldest sessions are pruned when exceeded. 0 = unlimited.</p>
                   </div>
                   {(() => {
@@ -825,7 +822,7 @@ export default function Security() {
                         onChange={e => setConcurrentLimitDraft(e.target.value)}
                       />
                       <Button size="sm" variant="outline" disabled={mutating === 'concurrent'} onClick={() => saveConcurrentLimit(s)}>
-                        Save Limit
+                        Save limit
                       </Button>
                     </div>
                   )
@@ -838,17 +835,17 @@ export default function Security() {
           {/* ── Audit Logs ──────────────────────────────────────────────────── */}
           <TabsContent value="audit" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Events</p>
-                <p className="mt-1 text-2xl font-bold">{auditStats.total}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Total events</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{auditStats.total}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
-                <p className="mt-1 text-2xl font-bold text-red-500">{auditStats.critical}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Critical</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{auditStats.critical}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Denied / Failed</p>
-                <p className="mt-1 text-2xl font-bold text-amber-500">{auditStats.denied}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Denied / failed</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{auditStats.denied}</p>
               </Card>
             </div>
             <DataTable
@@ -877,7 +874,7 @@ export default function Security() {
               ]}
               bulkActions={auditBulkActions}
               loading={auditLoading}
-              emptyMessage="No audit events found."
+              emptyState={{ illustration: 'security' }} emptyMessage="No audit events found."
               pageSize={50}
             />
           </TabsContent>
@@ -885,37 +882,37 @@ export default function Security() {
           {/* ── Device Fingerprints ───────────────────────────────────────── */}
           <TabsContent value="fingerprints" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tracked Devices</p>
-                <p className="mt-1 text-2xl font-bold">{fingerprintStats.total}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Tracked devices</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{fingerprintStats.total}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Multi-Account Risk</p>
-                <p className="mt-1 text-2xl font-bold text-amber-500">{fingerprintStats.risk}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Multi-account risk</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fingerprintStats.risk}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Blocked Devices</p>
-                <p className="mt-1 text-2xl font-bold text-red-500">{fingerprintStats.blocked}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Blocked devices</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{fingerprintStats.blocked}</p>
               </Card>
             </div>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Fingerprint className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold">Device Fingerprints</h3>
+                  <h3 className="font-semibold">Device fingerprints</h3>
                 </div>
                 <Badge variant="outline" className="text-xs">FingerprintJS v5</Badge>
               </div>
               {data?.fingerprints && data.fingerprints.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[640px]">
                     <thead>
-                      <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider">
+                      <tr className="border-b border-border/40 text-muted-foreground text-xs">
                         <th className="text-left py-3 px-4 font-medium">Fingerprint</th>
                         <th className="text-left py-3 px-4 font-medium">Accounts</th>
                         <th className="text-left py-3 px-4 font-medium">Seen</th>
-                        <th className="text-left py-3 px-4 font-medium">Last Seen</th>
+                        <th className="text-left py-3 px-4 font-medium">Last seen</th>
                         <th className="text-left py-3 px-4 font-medium">Risk</th>
                         <th className="py-3 px-4" />
                       </tr>
@@ -945,9 +942,9 @@ export default function Security() {
                             {fp.is_blocked ? (
                               <Badge variant="destructive" className="text-[10px]">Blocked</Badge>
                             ) : fp.risk ? (
-                              <Badge variant="secondary" className="text-[10px] text-amber-600">Multi-account</Badge>
+                              <Badge variant="secondary" className="text-[10px] text-amber-700 dark:text-amber-400">Multi-account</Badge>
                             ) : (
-                              <Badge variant="outline" className="text-[10px] text-emerald-600">Clean</Badge>
+                              <Badge variant="outline" className="text-[10px] text-green-700 dark:text-green-400">Clean</Badge>
                             )}
                           </td>
                           <td className="py-3 px-4 text-right">
@@ -967,20 +964,17 @@ export default function Security() {
                   </table>
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Fingerprint className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No fingerprints yet. They appear as users sign in from this platform.</p>
-                </div>
+                <EmptyState illustration="security" title="No fingerprints yet" description="They appear as users sign in from this platform." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>
 
           {/* ── Blocked IPs ───────────────────────────────────────────────── */}
           <TabsContent value="blocked" className="space-y-4">
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <Ban className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Block an IP Address</h3>
+                <h3 className="font-semibold">Block an IP address</h3>
               </div>
               <div className="p-6 flex flex-col gap-3 sm:flex-row">
                 <Input
@@ -1002,7 +996,7 @@ export default function Security() {
               </div>
             </Card>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Blocks className="h-5 w-5 text-primary" />
@@ -1012,12 +1006,12 @@ export default function Security() {
               </div>
               {data?.blockedIps && data.blockedIps.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[640px]">
                     <thead>
-                      <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider">
+                      <tr className="border-b border-border/40 text-muted-foreground text-xs">
                         <th className="text-left py-3 px-4 font-medium">IP</th>
                         <th className="text-left py-3 px-4 font-medium">Reason</th>
-                        <th className="text-left py-3 px-4 font-medium">Blocked By</th>
+                        <th className="text-left py-3 px-4 font-medium">Blocked by</th>
                         <th className="text-left py-3 px-4 font-medium">Date</th>
                         <th className="py-3 px-4" />
                       </tr>
@@ -1047,10 +1041,7 @@ export default function Security() {
                   </table>
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No blocked IPs. IPs are auto-blocked after brute-force attempts or added manually above.</p>
-                </div>
+                <EmptyState illustration="security" title="No blocked IPs" description="IPs are auto-blocked after brute-force attempts or added manually above." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>
@@ -1058,28 +1049,28 @@ export default function Security() {
           {/* ── Security Events ──────────────────────────────────────────── */}
           <TabsContent value="events" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
-                <p className="mt-1 text-2xl font-bold text-red-500">
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Critical</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">
                   {data?.securityEvents?.filter(e => e.severity === 'critical').length ?? 0}
                 </p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Warning</p>
-                <p className="mt-1 text-2xl font-bold text-amber-500">
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Warning</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
                   {data?.securityEvents?.filter(e => e.severity === 'warning').length ?? 0}
                 </p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Last 20 Events</p>
-                <p className="mt-1 text-2xl font-bold">{data?.securityEvents?.length ?? 0}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Last 20 events</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{data?.securityEvents?.length ?? 0}</p>
               </Card>
             </div>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Security Events</h3>
+                <h3 className="font-semibold">Security events</h3>
               </div>
               {data?.securityEvents && data.securityEvents.length > 0 ? (
                 <div className="divide-y divide-border/40 max-h-[480px] overflow-y-auto">
@@ -1090,7 +1081,7 @@ export default function Security() {
                       ) : e.severity === 'warning' ? (
                         <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                       ) : (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm">
@@ -1111,10 +1102,7 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <ShieldAlert className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No security events yet.</p>
-                </div>
+                <EmptyState illustration="security" title="No security events yet" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>

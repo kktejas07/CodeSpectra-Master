@@ -1,21 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { verifyPaymentSignature } from '@/lib/razorpay-server'
+// SEO-055: machine reasons are codes now; `error` is readable English (hi / te via the code).
+import { apiErrorFor } from '@/lib/api-errors'
+import { verifyPaymentSignature, verifySubscriptionPaymentSignature, getRazorpay } from '@/lib/razorpay-server'
 import {
-  BILLING_PLANS,
   billingOrders,
   billingPayments,
   billingSubscriptions,
   newId,
   nowIso,
 } from '@/lib/db/billing'
+import { activatePaidOrder, ensureBillingIndexes } from '@/lib/billing-plans'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 
 interface VerifyReq {
+  /** Subscription checkout (lib/billing/razorpay-subscriptions.ts) sends this instead of an order id. */
+  razorpay_subscription_id?: string
   razorpay_order_id: string
   razorpay_payment_id: string
   razorpay_signature: string
+  /** Optional: the plan the client thinks it bought; must match the order. */
+  plan_id?: string
 }
 
 /**
@@ -25,16 +32,23 @@ interface VerifyReq {
  *   - marks the order as `paid`
  *   - inserts a `billing_payments` row
  *   - (for subscription plans) creates/extends a `billing_subscriptions` row
+ *
+ * Idempotent: the order is claimed atomically (`status != 'paid'` → `paid`), so a
+ * replayed handler payload (or a webhook that got there first) returns success
+ * without extending the subscription again.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: VerifyReq
   try {
-    body = (await req.json()) as VerifyReq
+    body = sanitizeMongoInput(await req.json()) as VerifyReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
+  }
+  if (typeof body.razorpay_subscription_id === 'string' && body.razorpay_subscription_id) {
+    return verifySubscription(user.id, body)
   }
   if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })
@@ -46,22 +60,70 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     signature: body.razorpay_signature,
   })
   if (!ok) {
-    return NextResponse.json({ error: 'signature_mismatch' }, { status: 400 })
+    return NextResponse.json(apiErrorFor('signature_mismatch'), { status: 400 })
   }
 
+  await ensureBillingIndexes()
   const ordersCol = await billingOrders()
   const order = await ordersCol.findOne({
     razorpay_order_id: body.razorpay_order_id,
     user_id: user.id,
   })
   if (!order) {
-    return NextResponse.json({ error: 'order_not_found' }, { status: 404 })
+    return NextResponse.json(apiErrorFor('order_not_found'), { status: 404 })
   }
 
-  await ordersCol.updateOne(
-    { id: order.id },
+  if (body.plan_id && body.plan_id !== order.plan_id) {
+    return NextResponse.json(apiErrorFor('plan_mismatch'), { status: 400 })
+  }
+
+  const alreadyProcessed = async () => {
+    const subs = await billingSubscriptions()
+    const active = await subs.findOne({ user_id: user.id, status: 'active' })
+    return NextResponse.json({
+      ok: true,
+      already_processed: true,
+      order_id: order.id,
+      plan_id: order.plan_id,
+      subscription: active ? { id: active.id, ends_at: active.ends_at } : null,
+    })
+  }
+  if (order.status === 'paid') return alreadyProcessed()
+  if (order.status === 'refunded') return NextResponse.json(apiErrorFor('order_refunded'), { status: 409 })
+
+  // Confirm with Razorpay that this payment belongs to this order and covers
+  // the amount we charged (the signature alone doesn't prove the amount).
+  try {
+    const rp = await getRazorpay()
+    const pay = await rp.payments.fetch(body.razorpay_payment_id)
+    if (
+      pay.order_id !== body.razorpay_order_id ||
+      Number(pay.amount) !== order.amount_paise ||
+      String(pay.currency).toUpperCase() !== String(order.currency).toUpperCase() ||
+      !['captured', 'authorized'].includes(String(pay.status))
+    ) {
+      return NextResponse.json(apiErrorFor('payment_mismatch'), { status: 400 })
+    }
+    // Manual-capture accounts: an authorized payment is not money yet (it is
+    // auto-refunded if never captured), so capture it before activating (D34).
+    if (String(pay.status) === 'authorized') {
+      const captured = await rp.payments.capture(body.razorpay_payment_id, order.amount_paise, order.currency)
+      if (String(captured?.status) !== 'captured') {
+        return NextResponse.json({ error: 'Payment is not captured yet. Try again shortly.' }, { status: 502 })
+      }
+    }
+  } catch (e) {
+    console.error('[billing/verify] payment fetch failed:', e)
+    return NextResponse.json({ error: 'Could not confirm payment with the gateway. Try again shortly.' }, { status: 502 })
+  }
+
+  // Atomic claim: only one caller (verify replay, concurrent verify, or webhook)
+  // gets to apply the order's effects.
+  const claim = await ordersCol.updateOne(
+    { id: order.id, status: { $in: ['created', 'attempted', 'failed'] } },
     { $set: { status: 'paid', updated_at: nowIso() } },
   )
+  if (claim.modifiedCount === 0) return alreadyProcessed()
 
   const paymentsCol = await billingPayments()
   const paymentDoc = {
@@ -74,67 +136,60 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     amount_paise: order.amount_paise,
     created_at: nowIso(),
   }
-  await paymentsCol.insertOne(paymentDoc)
-
-  // If this plan is a subscription, create/extend a subscription record.
-  const plan = BILLING_PLANS[order.plan_id]
-  let subscription: { id: string; ends_at: string } | null = null
-  if (plan?.kind === 'subscription' && plan.duration_days) {
-    const subs = await billingSubscriptions()
-    const existing = await subs.findOne({ user_id: user.id, status: 'active' })
-    const now = new Date()
-    const baseExpiry =
-      existing && new Date(existing.ends_at) > now
-        ? new Date(existing.ends_at)
-        : now
-    const ends_at = new Date(
-      baseExpiry.getTime() + plan.duration_days * 24 * 60 * 60 * 1000,
-    ).toISOString()
-
-    if (existing) {
-      await subs.updateOne(
-        { id: existing.id },
-        { $set: { ends_at, last_payment_id: paymentDoc.id, plan_id: plan.id } },
-      )
-      subscription = { id: existing.id, ends_at }
-    } else {
-      const sId = newId()
-      await subs.insertOne({
-        id: sId,
-        user_id: user.id,
-        plan_id: plan.id,
-        status: 'active',
-        started_at: nowIso(),
-        ends_at,
-        last_payment_id: paymentDoc.id,
-        created_at: nowIso(),
-      })
-      subscription = { id: sId, ends_at }
-    }
-
-    // If the order used a trial coupon, mark the subscription
-    if (order.coupon_id) {
-      const { billingCoupons, recordCouponRedemption } = await import('@/lib/db/billing')
-      const couponsCol = await billingCoupons()
-      const coupon = await couponsCol.findOne({ id: order.coupon_id })
-      if (coupon?.discount_type === 'trial' && coupon?.trial_duration_days) {
-        const trialEnds = new Date(Date.now() + coupon.trial_duration_days * 86400000).toISOString()
-        await subs.updateOne(
-          { id: subscription.id },
-          { $set: { trial_ends_at: trialEnds } }
-        )
-        subscription = { ...subscription, trial_ends_at: trialEnds } as any
-      }
-      // Track redemption
-      await recordCouponRedemption(order.coupon_id, user.id, order.id, order.plan_id).catch(() => {})
-    }
+  // Upsert on the gateway payment id so a webhook-inserted row isn't duplicated.
+  try {
+    await paymentsCol.updateOne(
+      { razorpay_payment_id: body.razorpay_payment_id },
+      { $setOnInsert: paymentDoc },
+      { upsert: true },
+    )
+  } catch (e) {
+    // Concurrent upsert lost the race against the unique index: row exists.
+    if ((e as { code?: number })?.code !== 11000) throw e
   }
+
+  // The webhook may have inserted the row first: use the stored row's id (D35).
+  const storedPayment = await paymentsCol.findOne({ razorpay_payment_id: body.razorpay_payment_id }, { projection: { id: 1 } })
+  const paymentRowId = storedPayment?.id ?? paymentDoc.id
+
+  // Activate exactly the plan snapshotted on the order (static or admin-created).
+  const { subscription } = await activatePaidOrder({ ...order, status: 'paid' }, paymentRowId)
 
   return NextResponse.json({
     ok: true,
     order_id: order.id,
-    payment_id: paymentDoc.id,
+    payment_id: paymentRowId,
     plan_id: order.plan_id,
     subscription,
   })
+}
+
+/** Razorpay subscription checkout: signature over payment_id|subscription_id, then the same claim-once activation. */
+async function verifySubscription(userId: string, body: VerifyReq): Promise<NextResponse> {
+  const subscriptionId = String(body.razorpay_subscription_id || '')
+  const paymentId = String(body.razorpay_payment_id || '')
+  const signature = String(body.razorpay_signature || '')
+  if (!/^sub_[A-Za-z0-9]{6,40}$/.test(subscriptionId) || !/^pay_[A-Za-z0-9]{6,40}$/.test(paymentId) || !signature) {
+    return NextResponse.json({ error: 'Missing required fields', code: 'missing_fields' }, { status: 400 })
+  }
+  if (!(await verifySubscriptionPaymentSignature({ subscription_id: subscriptionId, payment_id: paymentId, signature }))) {
+    return NextResponse.json(apiErrorFor('signature_mismatch'), { status: 400 })
+  }
+  try {
+    const { confirmFirstSubscriptionPayment } = await import('@/lib/billing/razorpay-subscriptions')
+    const r = await confirmFirstSubscriptionPayment(userId, subscriptionId, paymentId)
+    if (!r.ok) return NextResponse.json(apiErrorFor(r.code), { status: r.code === 'order_not_found' ? 404 : 400 })
+    if (body.plan_id && body.plan_id !== r.order.plan_id) return NextResponse.json(apiErrorFor('plan_mismatch'), { status: 400 })
+    const active = await (await billingSubscriptions()).findOne({ user_id: userId, status: 'active' }, { sort: { ends_at: -1 } })
+    return NextResponse.json({
+      ok: true,
+      already_processed: !r.activated,
+      order_id: r.order.id,
+      plan_id: r.order.plan_id,
+      subscription: active ? { id: active.id, ends_at: active.ends_at } : null,
+    })
+  } catch (e) {
+    console.error('[billing/verify] subscription confirm failed:', (e as Error)?.message)
+    return NextResponse.json({ error: 'Could not confirm payment with the gateway. Try again shortly.' }, { status: 502 })
+  }
 }

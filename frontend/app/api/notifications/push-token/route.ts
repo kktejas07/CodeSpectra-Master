@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { randomUUID } from 'node:crypto'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
   const token = body.token
   if (!validToken(token)) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid token', code: 'auth_invalid_token' }, { status: 400 })
   }
   // Native clients (FCM/APNs device tokens) report their own platform; the
   // web push client predates the field, so it stays 'web'.
@@ -72,9 +73,9 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   const userId = gate.user.id
-  const body = await req.json().catch(() => ({})) as { token?: string }
+  const body = sanitizeMongoInput(await req.json().catch(() => ({}))) as { token?: string }
   if (!validToken(body.token)) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid token', code: 'auth_invalid_token' }, { status: 400 })
   }
 
   try {

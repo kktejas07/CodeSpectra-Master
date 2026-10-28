@@ -1,28 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { notifySuperAdmins } from '@/lib/notifications'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function GET(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const db = await getMongoDb()
     const courses = await db.collection('courses').find({}).sort({ created_at: -1 }).toArray()
     return NextResponse.json({ data: courses })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[admin/courses]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
+  const user = gate.user
 
   try {
     const body = await request.json()
@@ -48,17 +48,22 @@ export async function POST(request: NextRequest) {
     }
 
     await db.collection('courses').insertOne(newCourse)
+    knowledgeOnLibraryChange('course', newCourse.id)
     
     // Send notification
     await notifySuperAdmins({
       type: 'content.course_generated',
       title: 'Course Generated',
       message: `A new course "${newCourse.title}" has been successfully generated.`,
-      link: `/courses/${newCourse.id}`
+      title_i18n: { key: 'admin.courseGenerated.title' },
+      message_i18n: { key: 'admin.courseGenerated.message', params: { title: String(newCourse.title) } },
+      link: `/dashboard/admin/courses/${newCourse.id}`
     })
 
+    await auditAdmin(user, 'admin.course.create', 'course', `course/${newCourse.id}`)
     return NextResponse.json({ data: newCourse })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[admin/courses]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

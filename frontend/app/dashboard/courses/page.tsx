@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -19,31 +21,34 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/difficulty-levels'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const PAGE_SIZE = 10
 
-const CATEGORIES = [
-  { id: 'all', label: 'All Courses', icon: <Monitor className="h-4 w-4" /> },
+const CATEGORIES = (t: Translator) => ([
+  { id: 'all', label: t('learning.allCourses'), icon: <Monitor className="h-4 w-4" /> },
   { id: 'CPP', label: 'C++', icon: <Braces className="h-4 w-4" /> },
   { id: 'C', label: 'C', icon: <Terminal className="h-4 w-4" /> },
-  { id: 'Coding', label: 'Coding', icon: <Code className="h-4 w-4" /> },
+  { id: 'Coding', label: t('learning.coding'), icon: <Code className="h-4 w-4" /> },
   { id: 'Python', label: 'Python', icon: <FlaskConical className="h-4 w-4" /> },
   { id: 'Java', label: 'Java', icon: <Cpu className="h-4 w-4" /> },
   { id: 'JavaScript', label: 'JavaScript', icon: <Braces className="h-4 w-4" /> },
-  { id: 'Full Stack Web dev', label: 'Full Stack Web', icon: <Layers className="h-4 w-4" /> },
+  { id: 'Full Stack Web dev', label: t('learning.fullStackWeb'), icon: <Layers className="h-4 w-4" /> },
   { id: 'React', label: 'React', icon: <Globe className="h-4 w-4" /> },
   { id: 'Node.js', label: 'Node.js', icon: <Server className="h-4 w-4" /> },
-  { id: 'Software Tools', label: 'Software Tools', icon: <Settings className="h-4 w-4" /> },
-  { id: 'DevOps', label: 'DevOps', icon: <GitBranch className="h-4 w-4" /> },
-  { id: 'Docker', label: 'Docker / K8s', icon: <Cloud className="h-4 w-4" /> },
-  { id: 'General Aptitude', label: 'Aptitude', icon: <Lightbulb className="h-4 w-4" /> },
-  { id: 'SQL', label: 'SQL / Databases', icon: <Database className="h-4 w-4" /> },
-  { id: 'Management', label: 'Management', icon: <Briefcase className="h-4 w-4" /> },
-  { id: 'AI', label: 'AI / ML', icon: <BarChart2 className="h-4 w-4" /> },
-  { id: 'System Design', label: 'System Design', icon: <Network className="h-4 w-4" /> },
-  { id: 'Mobile', label: 'Mobile Dev', icon: <Smartphone className="h-4 w-4" /> },
-  { id: 'Security', label: 'Security', icon: <Shield className="h-4 w-4" /> },
-]
+  { id: 'Software Tools', label: t('learning.softwareTools'), icon: <Settings className="h-4 w-4" /> },
+  { id: 'DevOps', label: t('learning.devops'), icon: <GitBranch className="h-4 w-4" /> },
+  { id: 'Docker', label: t('learning.dockerK8s'), icon: <Cloud className="h-4 w-4" /> },
+  { id: 'General Aptitude', label: t('learning.aptitude'), icon: <Lightbulb className="h-4 w-4" /> },
+  { id: 'SQL', label: t('learning.sqlDatabases'), icon: <Database className="h-4 w-4" /> },
+  { id: 'Management', label: t('learning.management'), icon: <Briefcase className="h-4 w-4" /> },
+  { id: 'AI', label: t('learning.aiMl'), icon: <BarChart2 className="h-4 w-4" /> },
+  { id: 'System Design', label: t('learning.systemDesign'), icon: <Network className="h-4 w-4" /> },
+  { id: 'Mobile', label: t('learning.mobileDev'), icon: <Smartphone className="h-4 w-4" /> },
+  { id: 'Security', label: t('learning.security'), icon: <Shield className="h-4 w-4" /> },
+])
 
 const CATEGORY_IMAGES: Record<string, string> = {
   'CPP': '/courses/cpp.jpg',
@@ -67,7 +72,7 @@ const DEFAULT_IMAGE = '/courses/web.jpg'
 
 // Skeleton loaders for better UX
 const CourseSkeleton = () => (
-  <Card className="overflow-hidden border-border/60 animate-pulse">
+  <Card className="overflow-hidden rounded-3xl border-border/70 animate-pulse">
     <div className="relative h-44 w-full overflow-hidden shrink-0 bg-muted">
       <div className="w-full h-full bg-muted/60 animate-pulse" />
     </div>
@@ -96,6 +101,8 @@ const CourseSkeleton = () => (
 )
 
 function LearningPageInner() {
+  const apiError = useApiError()
+  const { td, t: tr } = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const category = searchParams.get('category') || 'all'
@@ -106,13 +113,16 @@ function LearningPageInner() {
 
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [savedCourses, setSavedCourses] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState(searchQuery)
 
   useEffect(() => {
     setLoading(true)
+    setLoadError(false)
     fetch('/api/courses', { credentials: 'include' })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(j => {
         if (!j.data) return
         // Belt-and-suspenders: collapse same-title cards if API ever returns both seed + generated
@@ -130,9 +140,9 @@ function LearningPageInner() {
         }
         setCourses([...best.values()])
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // Initialize tour on first visit (outer LearningPage already gates on auth).
   // autoPlayPageTour registers steps on every mount (so Guide can replay)
@@ -141,26 +151,26 @@ function LearningPageInner() {
       const coursesTour: TourStep[] = [
         {
           target: '[data-tour="courses-header"]',
-          title: 'Explore Course Catalog',
-          description: 'Course library where learners browse courses and open the wishlist.',
+          title: tr('learning.exploreCourseCatalog'),
+          description: tr('learning.courseLibraryWhereLearnersBrowseCourses173'),
           position: 'bottom',
         },
         {
           target: '[data-tour="courses-search"]',
-          title: 'Search Courses Quickly',
-          description: 'Type a title, topic, or tag to narrow the catalog instantly.',
+          title: tr('learning.searchCoursesQuickly'),
+          description: tr('learning.typeATitleTopicOrTag06b'),
           position: 'bottom',
         },
         {
           target: '[data-tour="categories"]',
-          title: 'Filter by Category',
-          description: 'Tap a category pill to show only matching courses.',
+          title: tr('learning.filterByCategory'),
+          description: tr('learning.tapACategoryPillToShowe7f'),
           position: 'bottom',
         },
         {
           target: '[data-tour="course-card"]',
-          title: 'Tip Open Course Cards',
-          description: 'Tip: click a card to open details, or tap the heart to save it.',
+          title: tr('learning.tipOpenCourseCards'),
+          description: tr('learning.tipClickACardToOpendbe'),
           position: 'bottom',
         },
       ]
@@ -184,7 +194,7 @@ function LearningPageInner() {
         body: JSON.stringify({ courseId: id }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Wishlist failed')
+      if (!res.ok) throw new Error(apiError(data, tr('learning.wishlistFailed')))
       setSavedCourses(prev => {
         const next = new Set(prev)
         if (data.saved) next.add(id)
@@ -278,100 +288,123 @@ function LearningPageInner() {
   }, [loading, pageParam, totalPages])
 
   return (
-    <div className="space-y-8 w-full pb-12 px-2 sm:px-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2" data-tour="courses-header">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
-          <h1 className="text-3xl font-bold">
-            <span className="text-foreground">Explore </span>
-            <span className="text-blue-500">Courses</span>
-          </h1>
-          <Link href="/dashboard/courses/wishlist" className="text-sm font-medium text-muted-foreground hover:text-red-500 inline-flex items-center gap-1.5 mb-1">
-            <Heart className="h-4 w-4" /> Wishlist
-          </Link>
+    <div className="space-y-6 w-full pb-12">
+      <div data-tour="courses-header">
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            illustration="courses"
+            title={tr('learning.exploreCourses')}
+            description={tr('learning.shortStructuredCoursesOnTheSkillsaf9')}
+            icon={<BookOpen />}
+            className="mb-4"
+            actions={
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link href="/dashboard/courses/wishlist"><Heart className="h-4 w-4" />{' '}{tr('learning.wishlist')}</Link>
+              </Button>
+            }
+          />
         </div>
         <div className="relative w-full" data-tour="courses-search">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            className="pl-9 bg-background/50 border-muted rounded-full"
-            placeholder="Search Courses"
+            className="pl-9 h-11 bg-card rounded-full"
+            aria-label={tr('learning.searchCourses')}
+            placeholder={tr('learning.searchCourses')}
             value={search}
             onChange={e => handleSearch(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-2" data-tour="categories">
-        {CATEGORIES.map((cat) => (
+      <div className="flex flex-wrap gap-2" data-tour="categories">
+        {CATEGORIES(tr).map((cat) => (
           <button
             key={cat.id}
             onClick={() => setCategory(cat.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-semibold transition-all duration-200 ${
+            aria-pressed={category === cat.id}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
               category === cat.id
-                ? 'border-blue-500 bg-blue-500 text-white shadow-blue-500/25 ring-2 ring-blue-500/20 ring-offset-1 ring-offset-background'
-                : 'border-border/50 bg-card text-muted-foreground hover:border-blue-400/40 hover:text-foreground hover:bg-muted/40'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border/70 bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
             }`}
           >
-            <span className={category === cat.id ? 'text-white' : 'text-muted-foreground'}>{cat.icon}</span>
+            <span className={category === cat.id ? 'text-primary-foreground' : 'text-muted-foreground'}>{cat.icon}</span>
             {cat.label}
           </button>
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setLevel('all')}
+          aria-pressed={levelFilter === 'all'}
           className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 ${
             levelFilter === 'all'
               ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              : 'border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
           }`}
-        >
-          All Levels
-        </button>
+        >{tr('learning.allLevels')}</button>
         {DIFFICULTY_LEVELS.map((lv) => (
           <button
             key={lv}
             onClick={() => setLevel(lv)}
+            aria-pressed={levelFilter === lv}
             className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 ${
               levelFilter === lv
                 ? `border-current ${DIFFICULTY_COLORS[lv]}`
-                : 'border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                : 'border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >
-            {DIFFICULTY_LABELS[lv]}
+            {td(`learning.difficultyLabels:${lv}`, DIFFICULTY_LABELS[lv])}
           </button>
         ))}
       </div>
 
       {loading && (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 lg:gap-5">
           {Array.from({ length: 10 }).map((_, i) => (
             <CourseSkeleton key={i} />
           ))}
         </div>
       )}
 
-      {!loading && filteredCourses.length === 0 && (
-        <EmptyState
-          variant="search"
-          title="No courses found"
-          description="Try a different category or search term. Clear filters to see the full catalog again."
-          actionLabel="View all courses"
-          onAction={() => setCategory('all')}
-        />
+      {!loading && loadError && courses.length === 0 && (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title={tr('learning.couldntLoadCourses')}
+            description={tr('learning.checkYourConnectionAndTryAgain')}
+            actionLabel={tr('common.tryAgain')}
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
+      )}
+
+      {!loading && !(loadError && courses.length === 0) && filteredCourses.length === 0 && (
+        <Panel className="p-4">
+          <EmptyState
+            variant="search"
+            scene="learning"
+            title={tr('learning.noCoursesFound')}
+            description={tr('learning.tryADifferentCategoryOrSearchcde')}
+            actionLabel={tr('learning.viewAllCourses')}
+            onAction={() => setCategory('all')}
+          />
+        </Panel>
       )}
 
       {!loading && filteredCourses.length > 0 && (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <BentoGrid className="lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {pagedCourses.map((course, i) => (
-              <Link href={`/dashboard/courses/${course.id}`} key={course.id || i} className="block group">
-                <Card className="overflow-hidden border-border/60 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 bg-card h-full flex flex-col" data-tour="course-card">
+              <Link href={`/dashboard/courses/${course.id}`} key={course.id || i} className="block group rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                <Card className="overflow-hidden rounded-3xl border-border/70 bg-card h-full flex flex-col transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0" data-tour="course-card">
                   <div className="relative h-44 w-full overflow-hidden shrink-0 bg-muted">
                     <img
                       src={course.image || CATEGORY_IMAGES[course.category || course.tags?.[0]] || DEFAULT_IMAGE}
                       alt={course.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
                       onError={e => { (e.target as HTMLImageElement).src = CATEGORY_IMAGES[course.category || course.tags?.[0]] || DEFAULT_IMAGE }}
                     />
                     {course.level && (
@@ -385,16 +418,16 @@ function LearningPageInner() {
 
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex items-center justify-between mb-3">
-                      <Badge variant="secondary" className="text-[10px] font-medium text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 uppercase truncate max-w-30">
-                        {course.category || course.tags?.[0] || 'General'}
+                      <Badge variant="secondary" className="text-[11px] font-medium capitalize text-primary bg-primary/10 hover:bg-primary/15 truncate max-w-30">
+                        {course.category || course.tags?.[0] || tr('learning.general')}
                       </Badge>
-                      <div className="flex items-center gap-1 text-xs font-medium text-amber-500 shrink-0">
+                      <div className="flex items-center gap-1 text-xs font-medium tabular-nums text-amber-600 dark:text-amber-400 shrink-0">
                         <Star className="h-3.5 w-3.5 fill-amber-500" />
                         {course.rating || '—'}
                       </div>
                     </div>
 
-                    <h3 className="font-bold text-base mb-2 text-foreground group-hover:text-blue-500 transition-colors line-clamp-1">
+                    <h3 className="font-bold text-base mb-2 text-foreground group-hover:text-primary transition-colors line-clamp-1">
                       {course.title}
                     </h3>
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-4 flex-1">
@@ -405,14 +438,14 @@ function LearningPageInner() {
                       <div>
                         <div className="flex items-center gap-1.5 text-xs font-medium text-foreground mb-1">
                           <Play className="h-3.5 w-3.5 text-muted-foreground" />
-                          {course.sessions != null ? `${course.sessions} Sessions` : '—'}
+                          {course.sessions != null ? tr('learning.sessionsSessions', { sessions: course.sessions }) : '—'}
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <Users className="h-3.5 w-3.5" />
                           {course.enrolled != null
                             ? course.enrolled > 0
-                              ? `${course.enrolled.toLocaleString()} Enrolled`
-                              : 'Be the first to enroll'
+                              ? tr('learning.nEnrolled', { n: course.enrolled })
+                              : tr('learning.beTheFirstToEnroll')
                             : '—'}
                         </div>
                       </div>
@@ -421,6 +454,8 @@ function LearningPageInner() {
                         <TooltipTrigger asChild>
                           <button
                             onClick={(e) => toggleSave(e, course.id)}
+                            aria-label={savedCourses.has(course.id) ? tr('learning.removeFromWishlist') : tr('learning.addToWishlist')}
+                            aria-pressed={savedCourses.has(course.id)}
                             className={`h-8 w-8 rounded-full border flex items-center justify-center transition-colors ${
                               savedCourses.has(course.id)
                                 ? 'border-red-500 bg-red-500/10 text-red-500'
@@ -431,7 +466,7 @@ function LearningPageInner() {
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{savedCourses.has(course.id) ? 'Remove from wishlist' : 'Add to wishlist'}</p>
+                          <p>{savedCourses.has(course.id) ? tr('learning.removeFromWishlist') : tr('learning.addToWishlist')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -439,13 +474,11 @@ function LearningPageInner() {
                 </Card>
               </Link>
             ))}
-          </div>
+          </BentoGrid>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between gap-3 pt-2">
-              <p className="text-xs text-muted-foreground">
-                Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filteredCourses.length)} of {filteredCourses.length}
-              </p>
+              <p className="text-xs text-muted-foreground tabular-nums">{tr('learning.showing')}{' '}{(safePage - 1) * PAGE_SIZE + 1}{tr('learning.valueOfCount', { value: Math.min(safePage * PAGE_SIZE, filteredCourses.length), count: filteredCourses.length })}</p>
               <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
@@ -454,8 +487,7 @@ function LearningPageInner() {
                   disabled={safePage <= 1}
                   onClick={() => setPage(safePage - 1)}
                 >
-                  <ChevronLeft className="h-3 w-3 mr-1" />Prev
-                </Button>
+                  <ChevronLeft className="h-3 w-3 mr-1" />{tr('learning.prev')}</Button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
                   .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
@@ -484,8 +516,7 @@ function LearningPageInner() {
                   className="h-8 text-xs"
                   disabled={safePage >= totalPages}
                   onClick={() => setPage(safePage + 1)}
-                >
-                  Next<ChevronRight className="h-3 w-3 ml-1" />
+                >{tr('common.next')}<ChevronRight className="h-3 w-3 ml-1" />
                 </Button>
               </div>
             </div>
@@ -497,12 +528,13 @@ function LearningPageInner() {
 }
 
 export default function LearningPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   if (!gate.ready) return (
     <div className="w-full min-h-[60vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <p className="text-sm text-muted-foreground">Loading courses…</p>
+        <p className="text-sm text-muted-foreground">{t('learning.loadingCourses')}</p>
       </div>
     </div>
   )

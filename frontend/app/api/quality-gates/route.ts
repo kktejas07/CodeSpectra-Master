@@ -19,8 +19,9 @@ export async function GET() {
     const gates = data.map((r) => rowToQualityGateDTO(r as unknown as Record<string, unknown>))
     return NextResponse.json({ success: true, gates })
   } catch (error) {
+    console.error('[quality-gates]', error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed' },
+      { success: false, error: 'Failed', code: 'failed' },
       { status: 500 },
     )
   }
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const col = await qualityGates()

@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * Legacy entry point. The working GitHub connect flow (stored, verified OAuth
+ * state + a real callback) lives at /api/github/oauth/start.
+ */
 export async function GET(req: NextRequest) {
-  const clientId = process.env.GITHUB_CLIENT_ID
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/github/callback`
-  const scope = 'repo,user,workflow'
-  
-  const authUrl = new URL('https://github.com/login/oauth/authorize')
-  authUrl.searchParams.set('client_id', clientId || '')
-  authUrl.searchParams.set('redirect_uri', redirectUri)
-  authUrl.searchParams.set('scope', scope)
-  authUrl.searchParams.set('state', Math.random().toString(36).substring(7))
-
-  return NextResponse.redirect(authUrl)
+  return NextResponse.redirect(new URL('/api/github/oauth/start', req.url))
 }

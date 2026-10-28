@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { X, BookOpenText, Sparkles, Lightbulb, Play } from 'lucide-react'
 import { GUIDE_CONTENT } from '@/components/tour/guide-content'
 import { replayPageTour, hasRegisteredTour } from '@/lib/tour-driver'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 interface GuideDrawerProps {
   open: boolean
@@ -21,25 +23,23 @@ interface GuideDrawerProps {
  * plus a button to replay the spotlight tour when the page has one.
  */
 export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: GuideDrawerProps) {
+  const { t } = useT()
   const closeRef = useRef<HTMLButtonElement>(null)
   const content = tourId ? GUIDE_CONTENT[tourId] : undefined
   const canTour = !!tourId && hasRegisteredTour(tourId)
 
-  // Esc closes; lock body scroll while open.
+  // Esc closes, Tab stays inside, focus returns to the opener on close.
+  const panelRef = useFocusTrap<HTMLElement>(open, onClose)
+  // Lock body scroll while open; start on the close button.
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     closeRef.current?.focus()
     return () => {
-      window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
@@ -53,11 +53,12 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
         aria-hidden
       />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`${title} guide`}
+        aria-label={t('dash.titleGuide', { title })}
         className={cn(
-          'fixed right-0 top-0 z-[1002] flex h-full w-[380px] max-w-[92vw] flex-col',
+          'fixed right-0 top-0 z-[1002] flex h-full w-full max-w-[92vw] flex-col sm:w-[380px]',
           'border-l border-border bg-card shadow-2xl',
           'motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-300',
         )}
@@ -69,9 +70,7 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
               <BookOpenText className="h-4.5 w-4.5 text-primary" />
             </span>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Explanation &amp; Tips
-              </p>
+              <p className="text-sm font-medium text-muted-foreground">{t('dash.explanationTips')}</p>
               <h2 className="text-lg font-bold leading-tight text-foreground">{title}</h2>
             </div>
           </div>
@@ -79,10 +78,10 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
             ref={closeRef}
             type="button"
             onClick={onClose}
-            aria-label="Close guide"
+            aria-label={t('dash.closeGuide')}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X aria-hidden className="h-4 w-4" />
           </button>
         </div>
 
@@ -91,17 +90,14 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
           {content ? (
             <>
               <section>
-                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  What is this page
-                </h3>
+                <h3 className="mb-1.5 text-sm font-medium text-muted-foreground">{t('dash.whatThisPageIsFor')}</h3>
                 <p className="text-sm leading-relaxed text-foreground">{content.about}</p>
               </section>
 
               {content.features.length > 0 && (
                 <section>
-                  <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <Sparkles className="h-3.5 w-3.5" /> Features on this page
-                  </h3>
+                  <h3 className="mb-2.5 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                    <Sparkles className="h-3.5 w-3.5" />{' '}{t('dash.featuresOnThisPage')}</h3>
                   <ul className="space-y-3">
                     {content.features.map((f) => (
                       <li key={f.title} className="rounded-lg border border-border/50 bg-muted/20 p-3">
@@ -117,9 +113,8 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
 
               {content.tips.length > 0 && (
                 <section>
-                  <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <Lightbulb className="h-3.5 w-3.5" /> Tips
-                  </h3>
+                  <h3 className="mb-2.5 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                    <Lightbulb className="h-3.5 w-3.5" />{' '}{t('dash.tips')}</h3>
                   <ul className="space-y-2">
                     {content.tips.map((tip, i) => (
                       <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
@@ -133,10 +128,7 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
             </>
           ) : (
             <section>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                No written guide exists for this page yet. Use the sidebar to explore,
-                or run the interactive tour when one is available.
-              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{t('dash.noWrittenGuideExistsForThisc60')}</p>
             </section>
           )}
         </div>
@@ -153,17 +145,13 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
               }}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <Play className="h-4 w-4" />
-              Take the guided tour
-            </button>
+              <Play className="h-4 w-4" />{t('dash.takeTheGuidedTour')}</button>
           ) : (
             <button
               type="button"
               onClick={onClose}
               className="w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              Got it
-            </button>
+            >{t('dash.gotIt')}</button>
           )}
         </div>
       </aside>

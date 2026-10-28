@@ -18,6 +18,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 interface BadgesShowcaseProps {
   userBadges?: string[]
@@ -32,22 +33,22 @@ const AVAILABLE_BADGES: Array<{
   accent: string
   stars: number
 }> = [
-  { id: 'problem-solving', name: 'Problem Solving', icon: Brain, accent: 'text-sky-500', stars: 4 },
-  { id: 'cpp', name: 'C++', icon: Cpu, accent: 'text-indigo-500', stars: 4 },
-  { id: 'c', name: 'C', icon: FileCode2, accent: 'text-slate-500', stars: 4 },
-  { id: 'python', name: 'Python', icon: Layers, accent: 'text-emerald-500', stars: 4 },
-  { id: 'java', name: 'Java', icon: Coffee, accent: 'text-orange-600', stars: 4 },
-  { id: 'ruby', name: 'Ruby', icon: Gem, accent: 'text-rose-500', stars: 4 },
-  { id: 'sql', name: 'SQL', icon: Database, accent: 'text-cyan-600', stars: 4 },
-  { id: 'days-30', name: '30 Days of Code', icon: CalendarRange, accent: 'text-violet-500', stars: 4 },
-  { id: 'days-js-10', name: '10 Days of JS', icon: Timer, accent: 'text-amber-500', stars: 4 },
-  { id: 'statistics', name: '10 Days of Statistics', icon: BarChart3, accent: 'text-blue-500', stars: 4 },
-  { id: 'react', name: 'React', icon: Atom, accent: 'text-sky-400', stars: 4 },
+  { id: 'problem-solving', name: 'Problem Solving', icon: Brain, accent: 'text-primary', stars: 4 },
+  { id: 'cpp', name: 'C++', icon: Cpu, accent: 'text-primary', stars: 4 },
+  { id: 'c', name: 'C', icon: FileCode2, accent: 'text-primary', stars: 4 },
+  { id: 'python', name: 'Python', icon: Layers, accent: 'text-primary', stars: 4 },
+  { id: 'java', name: 'Java', icon: Coffee, accent: 'text-primary', stars: 4 },
+  { id: 'ruby', name: 'Ruby', icon: Gem, accent: 'text-primary', stars: 4 },
+  { id: 'sql', name: 'SQL', icon: Database, accent: 'text-primary', stars: 4 },
+  { id: 'days-30', name: '30 Days of Code', icon: CalendarRange, accent: 'text-primary', stars: 4 },
+  { id: 'days-js-10', name: '10 Days of JS', icon: Timer, accent: 'text-primary', stars: 4 },
+  { id: 'statistics', name: '10 Days of Statistics', icon: BarChart3, accent: 'text-primary', stars: 4 },
+  { id: 'react', name: 'React', icon: Atom, accent: 'text-primary', stars: 4 },
 ]
 
 function BadgeGlyph({ icon: Icon, accent }: { icon: LucideIcon; accent?: string }) {
   return (
-    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-border/60 bg-muted/40">
+    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
       <Icon className={cn('h-7 w-7 text-muted-foreground', accent)} strokeWidth={1.75} aria-hidden />
     </div>
   )
@@ -58,14 +59,12 @@ export function BadgesShowcase({
   earnedCount = 0,
   totalCount = AVAILABLE_BADGES.length,
 }: BadgesShowcaseProps) {
+  const { t } = useT()
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Your badges</h2>
-        <p className="text-muted-foreground mt-2">
-          Earn badges by solving challenges and completing practice paths. You&apos;ve earned {earnedCount} of{' '}
-          {totalCount} badges.
-        </p>
+        <h2 className="text-2xl font-bold text-foreground">{t('dash.yourBadges')}</h2>
+        <p className="text-muted-foreground mt-2">{t('dash.earnBadgesBySolvingChallengesAnda06', { earnedCount, totalCount })}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -76,10 +75,10 @@ export function BadgesShowcase({
             <Card
               key={badge.id}
               className={cn(
-                'relative flex flex-col items-center p-6 text-center transition-all',
+                'relative flex flex-col items-center rounded-3xl p-6 text-center transition-colors',
                 isEarned
                   ? 'border-primary/35 bg-linear-to-b from-primary/8 via-card to-card shadow-sm'
-                  : 'border-border/60 bg-card/80 opacity-55'
+                  : 'border-border/70 bg-card opacity-60'
               )}
             >
               <BadgeGlyph icon={Icon} accent={isEarned ? badge.accent : undefined} />
@@ -96,21 +95,16 @@ export function BadgesShowcase({
                 ))}
               </div>
               {isEarned && (
-                <Badge className="mt-4 border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                  Earned
-                </Badge>
+                <Badge className="mt-4 border border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300">{t('dash.earned')}</Badge>
               )}
             </Card>
           )
         })}
       </div>
 
-      <Card className="border-border/60 bg-muted/20 p-6">
-        <h3 className="font-semibold text-foreground mb-2">How do I earn badges?</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          You earn badges by solving challenges on practice tracks. Contest submissions may count once challenges are
-          mirrored to practice. Skill-track editorials may not count toward progress — see each track&apos;s rules.
-        </p>
+      <Card className="rounded-3xl border-border/70 bg-muted/30 p-6">
+        <h3 className="font-semibold text-foreground mb-2">{t('dash.howDoIEarnBadges')}</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">{t('dash.solveProblemsAndChallengesOnThe8c4')}</p>
       </Card>
     </div>
   )

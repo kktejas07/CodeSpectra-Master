@@ -6,10 +6,15 @@ import { safeRedirect } from "@/lib/safe-redirect";
 import Link from "next/link";
 import { FaceCamera } from "@/components/auth/face-camera";
 import { Button } from "@/components/ui/button";
-import { Shield, AlertCircle, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { csrfFetch } from "@/lib/csrf-fetch";
+import { SoftGlow } from "@/components/visuals";
+import { Scene } from "@/components/illustrations/scenes";
+import { useT } from "@/lib/i18n/client";
 
 function EnrollFaceInner() {
   const router = useRouter();
@@ -19,32 +24,43 @@ function EnrollFaceInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraKey, setCameraKey] = useState(0);
+  // Replacing an existing face scan needs a re-auth (password or authenticator code).
+  const [reauth, setReauth] = useState<{ password: boolean; totp: boolean } | null>(null);
+  const [reauthSecret, setReauthSecret] = useState("");
+  const [pendingDescriptor, setPendingDescriptor] = useState<number[] | null>(null);
   const { user } = useAuth();
+  const { t } = useT();
 
   const isMandatory = user?.createdAt 
     ? new Date().getTime() - new Date(user.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000 
     : false;
 
-  const handleCapture = useCallback(async (descriptor: Float32Array | null, imageBase64: string) => {
+  const submit = useCallback(async (descriptor: number[], secret?: string) => {
     setLoading(true);
     setError(null);
-    if (!descriptor) {
-      setError("Face detection failed — please retry.");
-      setLoading(false);
-      return;
-    }
     try {
+      const extra: Record<string, string> = {};
+      if (secret) {
+        if (/^\d{6}$/.test(secret) && reauth?.totp) extra.code = secret;
+        else extra.password = secret;
+      }
       const res = await csrfFetch("/api/auth/face-enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          descriptor: Array.from(descriptor)
-        })
+        body: JSON.stringify({ descriptor, ...extra }),
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({} as { error?: string }))
-        throw new Error(data.error || `Failed to save biometric template (${res.status}).`)
+        const data = await res.json().catch(() => ({} as { error?: string; reauthRequired?: boolean; methods?: { password: boolean; totp: boolean } }));
+        if (data.reauthRequired) {
+          setPendingDescriptor(descriptor);
+          setReauth(data.methods || { password: false, totp: false });
+          setReauthSecret("");
+          setError(data.error || t("auth.confirmToReplaceFace"));
+          setLoading(false);
+          return;
+        }
+        throw new Error(data.error || t("auth.faceSaveFailed", { status: res.status }));
       }
 
       router.push(redirectTo);
@@ -52,9 +68,19 @@ function EnrollFaceInner() {
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+      setPendingDescriptor(null);
+      setReauth(null);
       setCameraKey((k) => k + 1);
     }
-  }, [router, redirectTo]);
+  }, [router, redirectTo, reauth, t]);
+
+  const handleCapture = useCallback(async (descriptor: Float32Array | null) => {
+    if (!descriptor) {
+      setError(t("auth.faceNotDetected"));
+      return;
+    }
+    await submit(Array.from(descriptor));
+  }, [submit, t]);
 
   const handleError = useCallback((err: Error) => setError(err.message), []);
 
@@ -63,25 +89,23 @@ function EnrollFaceInner() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-6 bg-background relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center p-6 bg-background relative isolate overflow-hidden">
       {/* Background decoration */}
       <div aria-hidden className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <SoftGlow />
 
-      <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-2xl rounded-2xl p-8 space-y-8">
+      <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-sm dark:shadow-none rounded-3xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Shield className="h-6 w-6" />
-          </div>
+          <Scene name="proctored-test" className="w-full max-w-[200px] sm:max-w-[280px]" />
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Secure Your Account</h2>
+            <h1 className="text-2xl font-bold tracking-tight">{t("auth.secureYourAccount")}</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Enroll your face for passwordless login and secure identity verification during assessments.
+              {t("auth.enrollFaceIntro")}
             </p>
             {isMandatory && (
               <div className="mt-4 flex items-center gap-2 bg-yellow-500/10 text-yellow-600 text-sm rounded-lg p-3">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>The 7-day grace period has expired. Face enrollment is now mandatory to continue.</span>
+                <span>{t("auth.faceGraceExpired")}</span>
               </div>
             )}
           </div>
@@ -94,7 +118,30 @@ function EnrollFaceInner() {
           </div>
         )}
 
-        <div className="py-4">
+        {reauth && pendingDescriptor && (reauth.password || reauth.totp) && (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => { e.preventDefault(); if (reauthSecret) void submit(pendingDescriptor, reauthSecret); }}
+          >
+            <Label htmlFor="reauth-secret">
+              {reauth.password && reauth.totp ? t("auth.passwordOrCode") : reauth.password ? t("auth.password") : t("auth.authenticatorCode")}
+            </Label>
+            <Input
+              id="reauth-secret"
+              type={reauth.password ? "password" : "text"}
+              inputMode={reauth.password ? undefined : "numeric"}
+              autoComplete={reauth.password ? "current-password" : "one-time-code"}
+              value={reauthSecret}
+              onChange={(e) => setReauthSecret(e.target.value)}
+              autoFocus
+            />
+            <Button type="submit" className="w-full" disabled={loading || !reauthSecret}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.confirmAndSave")}
+            </Button>
+          </form>
+        )}
+
+        <div className={reauth && pendingDescriptor ? "hidden" : "py-4"}>
           <FaceCamera
             key={cameraKey}
             mode="enroll"
@@ -105,7 +152,7 @@ function EnrollFaceInner() {
 
         <div className="space-y-4 pt-4 border-t border-border">
           <p className="text-xs text-center text-muted-foreground">
-            Your biometric data is encrypted and securely stored. We do not store raw images or video.
+            {t("auth.biometricNotice")}
           </p>
           <div className="flex flex-col gap-2">
             {!isMandatory && (
@@ -115,7 +162,7 @@ function EnrollFaceInner() {
                 disabled={loading}
                 className="text-muted-foreground"
               >
-                Skip for now
+                {t("auth.skipForNow")}
               </Button>
             )}
           </div>

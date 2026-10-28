@@ -1,87 +1,32 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { newId, nowIso } from '@/lib/db/admin'
-import { awardXpWithLevelUp } from '@/lib/xp-service'
-import { notify } from '@/lib/notifications'
+import { limitRequest } from '@/lib/rate-limit'
+import { recordReferralRedemption } from '@/lib/referral-service'
 
-const DEFAULT_REFERRAL_XP = 500
-
-async function getReferralXp(): Promise<number> {
-  try {
-    const db = await getMongoDb()
-    const doc = await db.collection('platform_settings').findOne({ key: 'gamification' })
-    const saved = doc?.value as any
-    return saved?.referral_xp ?? DEFAULT_REFERRAL_XP
-  } catch {
-    return DEFAULT_REFERRAL_XP
-  }
-}
-
+/**
+ * POST /api/referral/apply { code }
+ *
+ * Records a pending redemption for the signed-in new account (one per
+ * referred user, within REFERRAL_WINDOW_DAYS of sign-up). The referrer's XP
+ * is paid later, once this account has a verified e-mail and a first graded
+ * activity, and never for two accounts on the same device (CORE-006) —
+ * lib/referral-service.ts.
+ */
 export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
+  const limited = await limitRequest(request, 'referral-apply', gate.user.id, 5, 10 * 60_000)
+  if (limited) return limited
+
   try {
-    const { code } = await request.json()
-    if (!code || typeof code !== 'string') {
-      return NextResponse.json({ error: 'Referral code is required' }, { status: 400 })
-    }
-
-    const db = await getMongoDb()
-    const col = db.collection('referrals')
-    const userId = gate.user.id
-
-    const alreadyReferred = await col.findOne({ referred_id: userId })
-    if (alreadyReferred) {
-      return NextResponse.json({ error: 'You have already been referred' }, { status: 400 })
-    }
-
-    const codeDoc = await col.findOne({ referral_code: code.toUpperCase() })
-    if (!codeDoc) {
-      return NextResponse.json({ error: 'Invalid referral code' }, { status: 400 })
-    }
-
-    if (codeDoc.referrer_id === userId) {
-      return NextResponse.json({ error: 'You cannot refer yourself' }, { status: 400 })
-    }
-
-    const userCol = db.collection('user')
-    const referrer = await userCol.findOne({ id: codeDoc.referrer_id })
-
-    await col.updateOne(
-      { _id: codeDoc._id },
-      {
-        $set: {
-          referred_id: userId,
-          referred_email: gate.user.email,
-          status: 'completed',
-          completed_at: nowIso(),
-        },
-      }
-    )
-
-    const xpAmount = await getReferralXp()
-    const xpResult = await awardXpWithLevelUp({
-      userId: codeDoc.referrer_id,
-      amount: xpAmount,
-      reason: 'admin_grant',
-      metadata: { type: 'referral', referred_user_id: userId, referral_code: code.toUpperCase() },
-    })
-
-    await notify({
-      user_id: codeDoc.referrer_id,
-      type: 'xp.awarded',
-      title: `You earned ${xpAmount} XP for a referral!`,
-      message: `${gate.user.email} signed up using your referral code.`,
-      link: '/dashboard/referrals',
-      icon: 'user-plus',
-      metadata: { xp: String(xpAmount), referred_user: gate.user.email },
-    })
-
-    return NextResponse.json({ success: true, xp_awarded: xpAmount })
+    const body = (await request.json().catch(() => ({}))) as { code?: unknown }
+    const r = await recordReferralRedemption(await getMongoDb(), { id: gate.user.id, email: gate.user.email }, body?.code)
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+    return NextResponse.json({ success: true, status: r.status })
   } catch (e) {
-    console.error('[referral/apply] error:', e)
+    console.error('[referral/apply] error:', (e as Error)?.message)
     return NextResponse.json({ error: 'Failed to apply referral' }, { status: 500 })
   }
 }

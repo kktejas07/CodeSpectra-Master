@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { publicCourse } from '@/app/api/user/courses/_lib/course-rules'
 
 export async function GET(
   request: NextRequest,
@@ -13,7 +14,7 @@ export async function GET(
   try {
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id })
-    if (!course) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     // Real enrolled count from course_enrollments
     const enrolled = await db.collection('course_enrollments').countDocuments({ courseId: id })
@@ -22,9 +23,11 @@ export async function GET(
       userId: gate.user.id,
     })) > 0
 
-    return NextResponse.json({ data: { ...course, _id: undefined, enrolled, userEnrolled } })
+    // Quiz answer keys stay on the server; quizzes are graded by /api/user/courses/[id]/quiz-submit.
+    return NextResponse.json({ data: { ...publicCourse(course), enrolled, userEnrolled } })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -39,7 +42,7 @@ export async function POST(
   try {
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id })
-    if (!course) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     await db.collection('course_enrollments').updateOne(
       { courseId: id, userId: gate.user.id },
@@ -51,7 +54,8 @@ export async function POST(
     const enrolled = await db.collection('course_enrollments').countDocuments({ courseId: id })
     return NextResponse.json({ ok: true, enrolled })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -69,6 +73,7 @@ export async function DELETE(
     const enrolled = await db.collection('course_enrollments').countDocuments({ courseId: id })
     return NextResponse.json({ ok: true, enrolled })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

@@ -64,12 +64,13 @@ export async function GET() {
   try {
     await ensureSeeded()
     const db = await getMongoDb()
+    // role-scope: narrows a tenant admin to their own org (never a grant)
     const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
       ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
       : {}
     const data = await db.collection('challenges').find(filter).toArray()
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function POST(request: NextRequest) {
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
     await db.collection('challenges').insertOne(doc)
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[challenges]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

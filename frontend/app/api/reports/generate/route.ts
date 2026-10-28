@@ -54,19 +54,29 @@ export async function POST(req: NextRequest) {
         (i: any) => i.type === 'code_smell',
       ).length
 
+      const totalScans = await db.collection('scan_comments').countDocuments({ user_id: userId })
+      // Nothing scanned yet: say so instead of inventing a report.
+      if (totalScans === 0 && issues.length === 0 && suggestedFixes === 0) {
+        if (format === 'csv') {
+          return NextResponse.json({ error: 'No scans yet' }, { status: 404 })
+        }
+        return NextResponse.json({ success: true, data: null, generatedAt: new Date().toISOString() })
+      }
+
       reportData = {
         generatedAt: new Date().toISOString(),
         userId,
-        quality: recentScans[0]?.quality_score || 75,
+        quality: typeof recentScans[0]?.quality_score === 'number' ? recentScans[0].quality_score : null,
         bugs,
         vulnerabilities,
         codeSmells,
-        testCoverage: Math.floor(Math.random() * 30) + 65,
-        complexity: Math.floor(Math.random() * 30) + 20,
-        repository: recentScans[0]?.repository || 'manual',
-        branch: recentScans[0]?.branch || 'main',
+        // Coverage and complexity aren't measured by the scanner yet.
+        testCoverage: null,
+        complexity: null,
+        repository: recentScans[0]?.repository || null,
+        branch: recentScans[0]?.branch || null,
         author: (await db.collection('user').findOne({ id: userId }))?.name || 'Unknown',
-        totalScans: await db.collection('scan_comments').countDocuments({ user_id: userId }),
+        totalScans,
         appliedFixes,
         pendingFixes: suggestedFixes - appliedFixes,
         issues: issues.slice(0, 20),
@@ -76,12 +86,12 @@ export async function POST(req: NextRequest) {
     if (format === 'csv') {
       const lines = [
         'Metric,Value',
-        `Quality Score,${reportData.quality}`,
+        `Quality Score,${reportData.quality ?? 'Not measured'}`,
         `Bugs,${reportData.bugs || 0}`,
         `Vulnerabilities,${reportData.vulnerabilities || 0}`,
         `Code Smells,${reportData.codeSmells || 0}`,
-        `Test Coverage,${reportData.testCoverage || 0}%`,
-        `Complexity,${reportData.complexity || 0}`,
+        `Test Coverage,${reportData.testCoverage != null ? `${reportData.testCoverage}%` : 'Not measured'}`,
+        `Complexity,${reportData.complexity ?? 'Not measured'}`,
         `Applied Fixes,${reportData.appliedFixes || 0}`,
       ]
       const csv = lines.join('\n')

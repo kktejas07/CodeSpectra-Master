@@ -11,6 +11,8 @@ import { resolveModel } from '@/lib/ai/get-user-model'
 import { getMongoDb } from '@/lib/mongodb'
 import { codeScans } from '@/lib/db/scans'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 
@@ -31,22 +33,22 @@ interface ChatPostBody {
 export async function POST(req: NextRequest): Promise<Response> {
   const user = await getAPIUser()
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }
 
   let body: ChatPostBody
   try {
-    body = (await req.json()) as ChatPostBody
+    body = sanitizeMongoInput(await req.json()) as ChatPostBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const message = (body.message || '').trim()
   if (!message) {
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   } else {
     const existing = await sessionsCol.findOne({ id: sessionId, user_id: user.id })
     if (!existing) {
-      return NextResponse.json({ error: 'session not found' }, { status: 404 })
+      return NextResponse.json({ error: 'session not found', code: 'session_not_found' }, { status: 404 })
     }
   }
 
@@ -81,6 +83,10 @@ export async function POST(req: NextRequest): Promise<Response> {
     .sort({ created_at: 1 })
     .limit(20)
     .toArray()
+
+  // One credit per message, taken before any work; refunded if the LLM fails.
+  const charge = await chargeAiFeature(user.id, 'chat')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
 
   // Persist user turn.
   await msgsCol.insertOne({
@@ -113,7 +119,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'chat_model')
 
   // Stream from backend, simultaneously buffering to persist the assistant turn.
-  const upstream = await backendChatStream({
+  let upstream: Response
+  try {
+  upstream = await backendChatStream({
     sessionId,
     systemMessage,
     history: history.map((m) => ({ role: m.role, content: m.content })),
@@ -123,8 +131,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     modelOverride: modelOverride || undefined,
     endpointOverride: endpointOverride || undefined,
   })
+  } catch (err) {
+    console.error('[ai/chat] upstream error:', err)
+    await charge.refund()
+    return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 })
+  }
 
   if (!upstream.ok || !upstream.body) {
+    await charge.refund()
     return NextResponse.json(
       { error: `LLM upstream ${upstream.status}` },
       { status: 502 },
@@ -166,9 +180,10 @@ export async function POST(req: NextRequest): Promise<Response> {
         }
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       } catch (e) {
+        console.error('[ai/chat] stream error:', e)
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ error: e instanceof Error ? e.message : 'stream error' })}\n\n`,
+            `data: ${JSON.stringify({ error: 'stream error' })}\n\n`,
           ),
         )
       } finally {
@@ -190,6 +205,19 @@ export async function POST(req: NextRequest): Promise<Response> {
         }
         // Persist usage tracking (fire-and-forget).
         if (usage) {
+          // Priced platform record (lib/ai/usage-record): counts only, no text.
+          const u = usage as Record<string, unknown>
+          void import('@/lib/ai/cost-tracking').then(({ logAiUsage }) => logAiUsage({
+            userId: user.id,
+            feature: 'chat',
+            provider: String(u.provider || providerOverride || 'unknown'),
+            model: String(u.model || modelOverride || 'unknown'),
+            promptTokens: Number(u.input_tokens) || Math.ceil((Number(u.input_chars) || 0) / 4),
+            completionTokens: Number(u.output_tokens) || Math.ceil((Number(u.output_chars) || 0) / 4),
+            tokensEstimated: u.estimated !== false,
+            latencyMs: 0,
+            ok: true,
+          }), () => undefined)
           getMongoDb().then(db =>
             db.collection('ai_usage_logs').insertOne({
               id: newId(),
@@ -245,7 +273,7 @@ async function buildRagContext(userId: string): Promise<string> {
 /** GET /api/ai/chat?session_id=... — fetch chat history. */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const sessionId = req.nextUrl.searchParams.get('session_id') || ''
   const sessionsCol = await aiChatSessions()
@@ -253,7 +281,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   if (sessionId) {
     const session = await sessionsCol.findOne({ id: sessionId, user_id: user.id })
-    if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+    if (!session) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
     const msgs = await msgsCol
       .find({ session_id: sessionId })
       .sort({ created_at: 1 })

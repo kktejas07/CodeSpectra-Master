@@ -12,14 +12,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireAuth } from '@/lib/route-auth'
+import { nativeBadgeVariant } from '@/lib/auth-account'
 import {
   idCardTokens,
   hackathonTeams,
   hackathons,
-  xpToLevel,
   type IdCardRoleVariant,
 } from '@/lib/db/qr-events'
 import { getUserXp } from '@/lib/db/leaderboard'
+import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 
 export const runtime = 'nodejs'
 
@@ -55,17 +57,20 @@ export async function GET(
   const idRow = await idCol.findOne({ token })
   if (idRow) {
     if (idRow.revoked_at) {
-      return NextResponse.json({ error: 'revoked', kind: 'user' }, { status: 410 })
+      return NextResponse.json({ error: 'revoked', code: 'qr_revoked', kind: 'user' }, { status: 410 })
     }
     const db = await getMongoDb()
     const u = ObjectId.isValid(idRow.user_id)
       ? ((await db.collection('user').findOne({ _id: new ObjectId(idRow.user_id) })) as UserDoc | null)
       : ((await db.collection('user').findOne({ _id: idRow.user_id as never })) as UserDoc | null)
-    if (!u) return NextResponse.json({ error: 'user not found', kind: 'user' }, { status: 404 })
+    if (!u) return NextResponse.json({ error: 'user not found', code: 'user_not_found', kind: 'user' }, { status: 404 })
 
     const xp = await getUserXp(idRow.user_id)
-    const level = xpToLevel(xp)
-    const theme = ROLE_THEME[idRow.role_variant]
+    const level = xpToLevel(xp, (await getGamificationConfig()).levels)
+    // Show the holder's CURRENT role at most: a badge minted while they were
+    // an admin (or forged via ?variant=) never outranks their account today.
+    const variant: IdCardRoleVariant = idRow.role_variant === nativeBadgeVariant(u.role ?? null) ? idRow.role_variant : 'user'
+    const theme = ROLE_THEME[variant]
     const solvedAgg = await db
       .collection('submissions')
       .aggregate([
@@ -80,7 +85,7 @@ export async function GET(
 
     return NextResponse.json({
       kind: 'user',
-      role_variant: idRow.role_variant,
+      role_variant: variant,
       theme,
       dashboard_url: theme.dashboard,
       user: {

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(request: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   try {
     const db = await getMongoDb()

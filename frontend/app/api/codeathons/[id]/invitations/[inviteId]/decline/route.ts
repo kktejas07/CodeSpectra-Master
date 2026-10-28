@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; inviteId: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: codeathonId, inviteId } = await params
 
@@ -24,7 +24,7 @@ export async function POST(
       status: 'pending',
     })
     if (!invite) {
-      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Invitation not found', code: 'invite_not_found' }, { status: 404 })
     }
 
     await db.collection('codeathon_invitations').updateOne(

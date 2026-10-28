@@ -34,6 +34,18 @@ export interface SignalDraftDoc {
   cover_image?: string
   status: SignalDraftStatus
   blog_slug?: string
+  /** News topic (lib/signals/feeds NEWS_TOPICS). */
+  topic?: string
+  /** Feed was trusted when this was ingested. */
+  trusted?: boolean
+  /** Published by the ingest run without an admin (trusted feed). */
+  auto_published?: boolean
+  /** Written by the AI pipeline (false = plain fallback). */
+  ai_rewritten?: boolean
+  /** Prompt-guard reasons found in the source text (forces review). */
+  flags?: string[]
+  /** AGT-031: news fact verifier result (unsupported numbers / names / claims force review). */
+  fact_check?: { ok: boolean; numbers: string[]; names: string[]; claims: string[]; checked_at: string }
   created_at: string
   updated_at: string
 }

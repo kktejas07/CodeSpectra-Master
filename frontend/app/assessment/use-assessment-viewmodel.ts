@@ -34,55 +34,55 @@ export interface FaqItem {
 export const ECOSYSTEM: EcosystemItem[] = [
   {
     icon: ShieldCheck,
-    title: 'Tab Switch Monitoring',
+    title: 'Tab-switch monitoring',
     desc: 'Tracks focus loss instantly. If a candidate switches tabs or windows to search for answers, the system flags the violation and alerts the admin.',
     testid: 'feat-tab-switch',
   },
   {
     icon: Smartphone,
-    title: 'Mobile Phone Detection',
+    title: 'Phone detection',
     desc: "AI vision continuously monitors the video feed. If a phone is detected in the candidate's hand or on the desk, the session is flagged as suspicious.",
     testid: 'feat-mobile',
   },
   {
     icon: Eye,
-    title: 'Object Detection',
+    title: 'Object detection',
     desc: 'Identifies unauthorized items such as books, external monitors, or smartwatches to ensure candidates rely solely on their own knowledge.',
     testid: 'feat-object',
   },
   {
     icon: Users,
-    title: 'Human Presence AI',
+    title: 'Human presence check',
     desc: 'Ensures the registered candidate is the one taking the test. Flags incidents if the face disappears or if multiple people are detected in the frame.',
     testid: 'feat-presence',
   },
   {
     icon: Code2,
-    title: 'Multi-Language IDE',
+    title: 'Multi-language IDE',
     desc: 'A powerful in-browser code editor supporting 40+ languages (Python, Java, C++, JS, Go, Rust…) with intelligent syntax highlighting and compilation.',
     testid: 'feat-ide',
   },
   {
     icon: Video,
-    title: 'Session Playback',
+    title: 'Session playback',
     desc: 'Full video recording of every assessment session. Recruiters can review the timeline to verify flagged behaviors manually at any time.',
     testid: 'feat-playback',
   },
   {
     icon: Sparkles,
-    title: 'Instant AI Grading',
+    title: 'Instant AI grading',
     desc: "Don't wait for manual reviews. Our AI evaluates code quality, efficiency, and edge cases instantly, giving you a score in seconds.",
     testid: 'feat-grading',
   },
   {
     icon: BarChart3,
-    title: 'Deep Skill Analytics',
+    title: 'Skill analytics',
     desc: "Go beyond pass/fail. Get detailed reports on a candidate's problem-solving speed, code maintainability, and logical accuracy.",
     testid: 'feat-analytics',
   },
   {
     icon: Library,
-    title: 'Smart Question Library',
+    title: 'Question library',
     desc: 'Access thousands of pre-vetted coding challenges or use AI to generate unique questions tailored to your specific job description.',
     testid: 'feat-library',
   },
@@ -91,7 +91,7 @@ export const ECOSYSTEM: EcosystemItem[] = [
 export const STEPS: StepItem[] = [
   {
     n: 1,
-    title: 'Sign Up & Start',
+    title: 'Sign up and start',
     desc: 'Create your organization account in seconds to access the dashboard and build your talent pipeline instantly.',
   },
   {
@@ -101,12 +101,12 @@ export const STEPS: StepItem[] = [
   },
   {
     n: 3,
-    title: 'Set Controls',
+    title: 'Set controls',
     desc: 'Define time limits, strict deadlines, and proctoring rules to ensure test integrity and fairness.',
   },
   {
     n: 4,
-    title: 'Invite Candidates',
+    title: 'Invite candidates',
     desc: 'Send secure access links directly to candidates via email. No account creation required for them.',
   },
 ]

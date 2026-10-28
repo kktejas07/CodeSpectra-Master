@@ -1,5 +1,5 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,10 +10,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Loader2, ArrowLeft, Video, Bot, Clock, Calendar, CheckCircle, Send, SkipForward, BarChart3, Code2, Phone } from 'lucide-react'
 import { SkeletonCard, SkeletonStats, SkeletonText, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { CollabEditor } from '@/components/interviews/collab-editor'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -30,6 +34,9 @@ interface Interview {
 }
 
 export default function InterviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -40,6 +47,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const [error, setError] = useState<string | null>(null)
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const addToast = useToast()
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -55,44 +63,44 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       const interviewTour: TourStep[] = [
         {
           target: '[data-tour="back-to-interviews"]',
-          title: 'Interview Dashboard',
-          description: 'Return to your list of scheduled interviews.',
+          title: t('career.interviewDashboard'),
+          description: t('career.returnToYourListOfScheduled7ef'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-details"]',
-          title: 'Interview Details',
-          description: 'View the scheduled interview information including title, role, and type.',
+          title: t('career.interviewDetails'),
+          description: t('career.viewTheScheduledInterviewInformationIncld55'),
           position: 'bottom',
         },
         {
           target: '[data-tour="status-controls"]',
-          title: 'Interview Controls',
-          description: 'Start or end interviews using these control buttons.',
+          title: t('career.interviewControls'),
+          description: t('career.startOrEndInterviewsUsingThesefde'),
           position: 'bottom',
         },
         {
           target: '[data-tour="current-question"]',
-          title: 'Current Question',
-          description: 'The active question you need to answer during the interview.',
+          title: t('career.currentQuestion'),
+          description: t('career.theActiveQuestionYouNeedTod4f'),
           position: 'bottom',
         },
         {
           target: '[data-tour="answered-questions"]',
-          title: 'Answered Questions',
-          description: 'Review all your previous answers and feedback.',
+          title: t('career.answeredQuestions'),
+          description: t('career.reviewAllYourPreviousAnswersAnd696'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-feedback"]',
-          title: 'AI Feedback',
-          description: 'View performance feedback and suggestions from the AI interviewer.',
+          title: t('career.aiFeedback'),
+          description: t('career.viewPerformanceFeedbackAndSuggestionsFro2dc'),
           position: 'bottom',
         },
         {
           target: '[data-tour="collaborative-editor"]',
-          title: 'Collaborative Editor',
-          description: 'Real-time collaborative code editor for writing solutions during the interview.',
+          title: t('career.collaborativeEditor'),
+          description: t('career.realTimeCollaborativeCodeEditorFor41c'),
           position: 'bottom',
         }
       ]
@@ -102,7 +110,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/interviews/${id}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error('Interview not found')
+      if (!res.ok) throw new Error(t('career.interviewNotFound'))
       setInterview(await res.json() as Interview)
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     finally { setLoading(false) }
@@ -123,14 +131,21 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
     if (!currentAnswer.trim()) return
     setSubmitting(true)
     try {
-      await csrfFetch(`/api/interviews/${id}/questions`, {
+      const res = await csrfFetch(`/api/interviews/${id}/questions`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question_id: questionId, answer: currentAnswer, time_spent_seconds: 30 }),
       })
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(apiError(j, t('career.yourAnswerWasntSaved')))
+      }
       setCurrentAnswer('')
+      addToast({ type: 'success', title: t('career.answerSaved') })
       await load()
-    } catch {} finally { setSubmitting(false) }
+    } catch (e) {
+      addToast({ type: 'error', title: t('career.couldntSaveYourAnswer'), message: e instanceof Error ? e.message : t('career.pleaseTryAgain') })
+    } finally { setSubmitting(false) }
   }
 
   if (!gate.ready) return null
@@ -153,7 +168,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       <SkeletonCard />
     </div>
   )
-  if (!interview) return <div className="p-10 text-center text-destructive">{error || 'Not found'}</div>
+  if (!interview) return <div className="p-10 text-center text-sm text-destructive">{error || t('career.notFound')}</div>
 
   const unanswered = interview.questions.filter((q) => !q.answer && !q.skipped)
   const answered = interview.questions.filter((q) => q.answer)
@@ -162,52 +177,48 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="space-y-6">
       <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" data-tour="back-to-interviews">
-        <ArrowLeft className="h-3 w-3" /> All interviews
-      </Link>
+        <ArrowLeft className="h-3 w-3" />{' '}{t('career.allInterviews')}</Link>
 
-      <div className="flex items-start justify-between">
-        <div data-tour="interview-details">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Video className="h-6 w-6 text-primary" /> {interview.title}
-          </h1>
-          <p className="text-sm text-muted-foreground">{interview.role} · {interview.type}</p>
-        </div>
-        <div className="flex items-center gap-2" data-tour="status-controls">
-          <Badge variant={interview.status === 'in_progress' ? 'default' : 'secondary'}>{interview.status}</Badge>
-          {interview.status === 'scheduled' && (
-            <Button size="sm" onClick={() => updateStatus('in_progress')}>
-              <Video className="h-3.5 w-3.5 mr-1" /> Start Interview
-            </Button>
-          )}
-          {interview.status === 'in_progress' && (
-            <Button size="sm" variant="outline" onClick={() => updateStatus('completed')}>
-              <CheckCircle className="h-3.5 w-3.5 mr-1" /> End Interview
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        className="mb-0"
+        icon={<Video aria-hidden />}
+        title={<span data-tour="interview-details">{interview.title}</span>}
+        description={<>{interview.role} · {interview.type}</>}
+        actions={
+          <div className="flex items-center gap-2" data-tour="status-controls">
+            <Badge variant={interview.status === 'in_progress' ? 'default' : 'secondary'} className="capitalize">{String(interview.status ?? '').replace('_', ' ')}</Badge>
+            {interview.status === 'scheduled' && (
+              <Button size="sm" onClick={() => updateStatus('in_progress')}>
+                <Video className="h-3.5 w-3.5 mr-1" />{' '}{t('career.startInterview')}</Button>
+            )}
+            {interview.status === 'in_progress' && (
+              <Button size="sm" variant="outline" onClick={() => updateStatus('completed')}>
+                <CheckCircle className="h-3.5 w-3.5 mr-1" />{' '}{t('career.endInterview')}</Button>
+            )}
+          </div>
+        }
+      />
 
       {userId && (interview.interviewer_id === userId || interview.candidate_id === userId) && (
         <Link
           href={`/dashboard/interviews/${id}/live`}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 w-fit"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary w-fit"
         >
-          <Phone className="h-4 w-4" /> Join Live Room
-        </Link>
+          <Phone className="h-4 w-4" />{' '}{t('career.joinLiveRoom')}</Link>
       )}
 
-      <div className="flex gap-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums text-muted-foreground">
         <Calendar className="h-3 w-3" /> {formatDateTime(interview.scheduled_at)}
         <Clock className="h-3 w-3 ml-2" /> {interview.duration_minutes} min
         <BarChart3 className="h-3 w-3 ml-2" /> {answered.length}/{interview.questions.length} answered
       </div>
 
       {interview.overall_score !== undefined && (
-        <Card className="p-4 border-primary/20 bg-primary/5">
+        <Card className="rounded-3xl p-5 border-primary/20 bg-primary/5">
           <div className="flex items-center gap-4">
-            <div className="text-3xl font-bold text-primary">{Math.round(interview.overall_score)}%</div>
+            <div className="text-3xl font-bold tabular-nums text-primary">{Math.round(interview.overall_score)}%</div>
             <div>
-              <p className="text-sm font-medium">Overall Score</p>
+              <p className="text-sm font-medium text-foreground">{t('career.overallScore')}</p>
               <div className="h-2 w-48 rounded-full bg-muted overflow-hidden mt-1">
                 <div className="h-full bg-primary rounded-full" style={{ width: `${interview.overall_score}%` }} />
               </div>
@@ -218,23 +229,22 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Current question */}
       {currentQ && interview.status === 'in_progress' && (
-        <Card className="p-6 space-y-4 border-primary/30" data-tour="current-question">
+        <Card className="rounded-3xl p-6 space-y-4 border-primary/30" data-tour="current-question">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Bot className="h-4 w-4 text-primary" />
             <Badge variant="outline">{currentQ.category}</Badge>
             <Badge variant="outline">{currentQ.difficulty}</Badge>
           </div>
-          <p className="text-lg">{currentQ.question}</p>
+          <p className="text-lg text-foreground">{currentQ.question}</p>
           <Textarea
             rows={5} value={currentAnswer}
             onChange={(e) => setCurrentAnswer(e.target.value)}
-            placeholder="Type your answer..."
+            placeholder={t('career.typeYourAnswer')}
+            aria-label={t('career.yourAnswer')}
           />
           <div className="flex gap-2">
             <Button onClick={() => submitAnswer(currentQ.id)} disabled={submitting || !currentAnswer.trim()}>
-              {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
-              Submit Answer
-            </Button>
+              {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}{t('career.submitAnswer')}</Button>
             <Button variant="ghost" onClick={async () => {
               await csrfFetch(`/api/interviews/${id}/questions`, {
                 method: 'PATCH',
@@ -243,8 +253,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
               })
               await load()
             }}>
-              <SkipForward className="mr-1 h-4 w-4" /> Skip
-            </Button>
+              <SkipForward className="mr-1 h-4 w-4" />{' '}{t('career.skip')}</Button>
           </div>
         </Card>
       )}
@@ -252,12 +261,12 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       {/* Answered questions */}
       {answered.length > 0 && (
         <div className="space-y-3" data-tour="answered-questions">
-          <h2 className="text-sm font-semibold">Answered Questions ({answered.length})</h2>
+          <h2 className="text-base font-semibold text-foreground">{t('career.answeredQuestions')}{' '}<span className="tabular-nums text-muted-foreground">({answered.length})</span></h2>
           {answered.map((q) => (
-            <Card key={q.id} className="p-4 space-y-2">
+            <Card key={q.id} className="rounded-2xl border-border/70 p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm font-medium">{q.question}</span>
+                <CheckCircle className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" aria-hidden />
+                <span className="text-sm font-medium text-foreground">{q.question}</span>
                 <Badge variant="outline" className="ml-auto">{q.category}</Badge>
               </div>
               <p className="text-sm text-muted-foreground ml-6">{q.answer}</p>
@@ -269,12 +278,12 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       {/* Feedback */}
       {interview.feedback && interview.feedback.length > 0 && (
         <div className="space-y-3" data-tour="ai-feedback">
-          <h2 className="text-sm font-semibold">AI Feedback</h2>
+          <h2 className="text-base font-semibold text-foreground">{t('career.aiFeedback2')}</h2>
           {interview.feedback.map((f, i) => (
-            <Card key={i} className="p-4 space-y-2">
+            <Card key={i} className="rounded-2xl border-border/70 p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{f.dimension}</span>
-                <span className="text-sm font-bold">{f.score}/100</span>
+                <span className="text-sm font-medium text-foreground">{f.dimension}</span>
+                <span className="text-sm font-bold tabular-nums text-foreground">{f.score}/100</span>
               </div>
               <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                 <div className="h-full bg-primary rounded-full" style={{ width: `${f.score}%` }} />
@@ -291,17 +300,16 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       {interview.status === 'completed' && interview.questions.length === 0 && (
-        <Card className="p-6 text-center">
-          <p className="text-sm text-muted-foreground">No questions were recorded for this interview.</p>
+        <Card className="rounded-3xl p-6 text-center">
+          <p className="text-sm text-muted-foreground">{t('career.noQuestionsWereRecordedForThis1dd')}</p>
         </Card>
       )}
 
       {/* Collaborative Editor */}
       {(interview.status === 'in_progress' || interview.status === 'scheduled') && (
         <div className="space-y-3" data-tour="collaborative-editor">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Code2 className="h-4 w-4 text-primary" /> Collaborative Editor
-          </h2>
+          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+            <Code2 className="h-4 w-4 text-primary" aria-hidden />{' '}{t('career.collaborativeEditor')}</h2>
           <CollabEditor
             sessionId={interview.id}
             initialLanguage="javascript"

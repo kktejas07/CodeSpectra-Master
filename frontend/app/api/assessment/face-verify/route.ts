@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { getAPIUser } from '@/lib/route-auth'
 import { getUserById } from '@/lib/db/admin'
+import { openFaceTemplate, sealFaceTemplate } from '@/lib/identity-media'
 import { writeAuditLog } from '@/lib/db/misc'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
@@ -23,7 +24,7 @@ function cosineSimilarity(A: number[], B: number[]) {
 export async function POST(request: Request) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const { descriptor, examId } = await request.json()
 
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     const dbUser = await getUserById(user.id) as Record<string, unknown> | null
 
     if (!dbUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 401 })
     }
 
     // Strict enforcement: if the user hasn't enrolled yet, they cannot take the exam.
@@ -46,11 +47,11 @@ export async function POST(request: Request) {
       try {
         await db.collection('user').updateOne(
           { _id: dbUser._id } as any,
-          { $set: { facial_biometric_template: descriptor, biometric_enrolled_at: new Date() } }
+          { $set: { facial_biometric_template: await sealFaceTemplate(descriptor), biometric_enrolled_at: new Date() } }
         )
       } catch (enrollErr) {
         console.error('[AssessmentFaceVerify] auto-enroll failed:', enrollErr)
-        return NextResponse.json({ error: 'Could not enroll face biometrics. Please enroll from Profile Settings.' }, { status: 500 })
+        return NextResponse.json({ error: 'Could not enroll face biometrics. Please enroll from Profile Settings.', code: 'face_enroll_failed' }, { status: 500 })
       }
       const rawIp = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
       await writeAuditLog({
@@ -68,7 +69,11 @@ export async function POST(request: Request) {
     }
 
     // Compare face embeddings
-    const similarityScore = cosineSimilarity(descriptor, dbUser.facial_biometric_template as number[]);
+    const template = await openFaceTemplate(dbUser.facial_biometric_template)
+    if (!template) {
+      return NextResponse.json({ error: 'Your saved face scan could not be read. Re-enroll your face from your profile, then try again.', code: 'face_template_unreadable' }, { status: 409 })
+    }
+    const similarityScore = cosineSimilarity(descriptor, template);
     
     // Threshold > 0.85 indicates a very strong match for 128d embeddings (face-api.js)
     if (similarityScore < 0.85) {
@@ -84,13 +89,13 @@ export async function POST(request: Request) {
         user_id: user.id, 
         detail: `Pre-assessment biometric verification failed. Score: ${similarityScore.toFixed(3)}` 
       })
-      return NextResponse.json({ error: 'Face does not match the enrolled template. Verification failed.' }, { status: 403 })
+      return NextResponse.json({ error: 'Face does not match the enrolled template. Verification failed.', code: 'face_mismatch' }, { status: 403 })
     }
 
     return NextResponse.json({ ok: true, matched: true, score: similarityScore })
 
   } catch (error) {
     console.error('[AssessmentFaceVerify] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

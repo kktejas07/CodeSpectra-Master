@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -15,10 +14,14 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, EyeOff, LogIn, ShieldAlert, RefreshCw, UserRound, Mail } from 'lucide-react'
+import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, EyeOff, LogIn, ShieldAlert, RefreshCw, UserRound, Mail, CheckCircle2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard, Panel, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Tenant {
   id: string
@@ -41,6 +44,7 @@ interface TenantMember {
 }
 
 export default function TenantsPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const confirm = useConfirm()
@@ -86,14 +90,17 @@ export default function TenantsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchTenants = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/tenants', { credentials: 'include' })
       const json = await res.json()
-      if (res.ok) setTenants(json.data || [])
-      else addToast({ type: 'error', title: 'Failed', message: json.error })
+      if (res.ok) { setTenants(json.data || []); setLoadError(false) }
+      else { setLoadError(true); addToast({ type: 'error', title: 'Failed', message: json.error }) }
     } catch {
+      setLoadError(true)
       addToast({ type: 'error', title: 'Error', message: 'Failed to load organizations' })
     } finally {
       setLoading(false)
@@ -414,66 +421,91 @@ export default function TenantsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="flex items-center gap-1.5 text-3xl font-bold text-foreground">
-              Organizations
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          illustration="team"
+          className="mb-0"
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              {ta('orgAdm.organizations')}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs max-w-62.5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
+                    <p className="text-xs max-w-62.5">{ta('orgAdm.enterpriseTenantsViewMembersImpersonateA')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            </h1>
-            <p className="text-sm text-muted-foreground">Tenants scoped to Organization admins</p>
-          </div>
-        </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> New organization
-        </Button>
+            </span>
+          }
+          description={ta('orgAdm.companyAndCollegeAccountsEachOne')}
+          icon={<Building2 />}
+          actions={
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> {ta('orgAdm.newOrganization')}
+            </Button>
+          }
+        />
       </div>
+
+      {!loading && tenants.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label={ta('orgAdm.organizations')} value={tenants.length} icon={<Building2 />} />
+          <StatCard label={ta('orgAdm.active')} value={tenants.filter(t => t.is_active).length} icon={<CheckCircle2 />} />
+          <StatCard label={ta('orgAdm.members')} value={tenants.reduce((n, t) => n + (t.member_count || 0), 0)} icon={<Users />} />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-50">
-          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder={ta('orgAdm.searchOrganizations')} value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 text-sm" aria-label={ta('orgAdm.searchOrganizations2')} />
         </div>
-        <p className="text-xs text-muted-foreground">{filtered.length} organization{filtered.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm tabular-nums text-muted-foreground">{filtered.length} {ta('orgAdm.organization')}{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : loadError && tenants.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title={ta('orgAdm.couldnTLoadOrganizations')}
+          description={ta('orgAdm.checkYourConnectionAndTryAgain')}
+          actionLabel={ta('orgAdm.tryAgain')}
+          onAction={() => void fetchTenants()}
+        />
       ) : filtered.length === 0 ? (
-        <Card className="border-border/60 p-12 text-center">
-          <Building2 className="h-12 w-12 text-muted-foreground/30" />
-          <p className="mt-3 text-muted-foreground">No organizations yet. Create your first tenant to assign Organization admins.</p>
-          <Button className="mt-4 gap-2" size="sm" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" /> New organization</Button>
-        </Card>
+        search ? (
+          <EmptyState variant="search" title={ta('orgAdm.noOrganizationsMatchYourSearch')} description={ta('orgAdm.tryADifferentNameOrSlug')} />
+        ) : (
+          <EmptyState
+            illustration="team"
+            title={ta('orgAdm.noOrganizationsYet')}
+            description={ta('orgAdm.createOneThenAddItsOrganization')}
+            actionLabel={ta('orgAdm.newOrganization')}
+            onAction={() => setCreateOpen(true)}
+          />
+        )
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <BentoGrid className="lg:grid-cols-3">
           {filtered.map(t => (
-            <Card key={t.id} className={`border-border/60 p-5 ${t.is_active ? '' : 'opacity-70'}`}>
+            <Panel key={t.id} interactive className={`p-5 ${t.is_active ? '' : 'opacity-70'}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-foreground">{t.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{t.slug || t.id}</p>
                 </div>
-                <Badge variant={t.is_active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                  {t.is_active ? 'active' : 'inactive'}
+                <Badge variant={t.is_active ? 'success' : 'secondary'} className="text-[11px] shrink-0">
+                  {t.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
               <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Users className="h-3.5 w-3.5" /> {t.member_count} member{t.member_count !== 1 ? 's' : ''}
+                <Users className="h-3.5 w-3.5" /> {t.member_count} {ta('orgAdm.member')}{t.member_count !== 1 ? 's' : ''}
                 <span className="text-border">·</span>
                 <Badge variant="outline" className="text-[10px] capitalize">{t.plan || 'enterprise'}</Badge>
               </div>
@@ -481,10 +513,10 @@ export default function TenantsPage() {
               <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/40 pt-3">
                 <div className="flex items-center gap-1.5">
                   <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openMembers(t)}>
-                    <Eye className="h-3.5 w-3.5" /> Members
+                    <Eye className="h-3.5 w-3.5" /> {ta('orgAdm.members')}
                   </Button>
                   <Button variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openEdit(t)}>
-                    <Pencil className="h-3.5 w-3.5" /> Edit
+                    <Pencil className="h-3.5 w-3.5" /> {ta('orgAdm.edit')}
                   </Button>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -494,7 +526,7 @@ export default function TenantsPage() {
                         <button
                           type="button"
                           aria-label={`Toggle ${t.name} active state`}
-                          className="rounded p-1 text-muted-foreground hover:text-foreground"
+                          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           onClick={() => void handleToggleActive(t)}
                           disabled={togglingId === t.id}
                         >
@@ -507,7 +539,7 @@ export default function TenantsPage() {
                   <button
                     type="button"
                     aria-label={`Delete ${t.name}`}
-                    className="rounded p-1 text-muted-foreground hover:text-destructive"
+                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={async () => {
                     const ok = await confirm({
                       title: `Delete "${t.name}"?`,
@@ -518,72 +550,72 @@ export default function TenantsPage() {
                     if (ok) void handleDelete(t)
                   }}
                     disabled={deletingId === t.id}
-                    title="Delete"
+                    title={ta('orgAdm.delete')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
-            </Card>
+            </Panel>
           ))}
-        </div>
+        </BentoGrid>
       )}
 
       {/* Create drawer */}
       <Sheet open={createOpen} onOpenChange={setCreateOpen}>
         <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>New organization</SheetTitle>
+            <SheetTitle>{ta('orgAdm.newOrganization')}</SheetTitle>
             <SheetDescription>
-              Create a tenant. Optionally provision the org admin account in the same step, then impersonate them to verify their experience.
+              {ta('orgAdm.createATenantOptionallyProvisionThe')}
             </SheetDescription>
           </SheetHeader>
           <form onSubmit={handleCreate} className="px-4 pb-4">
             <div className="grid gap-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="tenant-name">Organization name</Label>
+                  <Label htmlFor="tenant-name">{ta('orgAdm.organizationName')}</Label>
                   <Input id="tenant-name" required value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="tenant-slug">Slug (optional)</Label>
+                  <Label htmlFor="tenant-slug">{ta('orgAdm.slugOptional')}</Label>
                   <Input id="tenant-slug" value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme" />
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="tenant-plan">Plan</Label>
+                <Label htmlFor="tenant-plan">{ta('orgAdm.plan')}</Label>
                 <Select value={plan} onValueChange={setPlan}>
                   <SelectTrigger id="tenant-plan"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                    <SelectItem value="team">Team</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="enterprise">{ta('orgAdm.enterprise')}</SelectItem>
+                    <SelectItem value="team">{ta('orgAdm.team')}</SelectItem>
+                    <SelectItem value="free">{ta('orgAdm.free')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="rounded-lg border border-border/60 p-3 space-y-3">
-                <p className="text-xs font-semibold text-foreground">Org admin account <span className="font-normal text-muted-foreground">(optional)</span></p>
+                <p className="text-xs font-semibold text-foreground">{ta('orgAdm.orgAdminAccount')} <span className="font-normal text-muted-foreground">{ta('orgAdm.optional')}</span></p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="tenant-admin-name">Name</Label>
+                    <Label htmlFor="tenant-admin-name">{ta('orgAdm.name')}</Label>
                     <Input id="tenant-admin-name" value={adminName} onChange={e => setAdminName(e.target.value)} placeholder="Jane Doe" />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="tenant-admin-email">Email</Label>
+                    <Label htmlFor="tenant-admin-email">{ta('orgAdm.email')}</Label>
                     <Input id="tenant-admin-email" type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="jane@acme.com" />
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="tenant-admin-password">Password</Label>
-                  <PasswordInput id="tenant-admin-password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} placeholder="Min 8 characters" />
+                  <Label htmlFor="tenant-admin-password">{ta('orgAdm.password')}</Label>
+                  <PasswordInput id="tenant-admin-password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} placeholder={ta('orgAdm.min8Characters')} />
                 </div>
-                <p className="text-[11px] text-muted-foreground">Leave email empty to create the org without an admin and assign one later.</p>
+                <p className="text-[11px] text-muted-foreground">{ta('orgAdm.leaveEmailEmptyToCreateThe')}</p>
               </div>
             </div>
             <SheetFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>{ta('orgAdm.cancel')}</Button>
               <Button type="submit" disabled={creating || !name.trim()}>
-                {creating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Creating…</> : 'Create'}
+                {creating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{ta('orgAdm.creating')}</> : 'Create'}
               </Button>
             </SheetFooter>
           </form>
@@ -594,14 +626,14 @@ export default function TenantsPage() {
       <Sheet open={Boolean(editTenant)} onOpenChange={(o) => !o && setEditTenant(null)}>
         <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Edit organization</SheetTitle>
-            <SheetDescription>Update tenant details. Changes apply immediately to members scoped to this org.</SheetDescription>
+            <SheetTitle>{ta('orgAdm.editOrganization')}</SheetTitle>
+            <SheetDescription>{ta('orgAdm.updateTenantDetailsChangesApplyImmediate')}</SheetDescription>
           </SheetHeader>
           <form onSubmit={handleEdit} className="px-4 pb-4">
             <div className="grid gap-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-tenant-name">Organization name</Label>
+                  <Label htmlFor="edit-tenant-name">{ta('orgAdm.organizationName')}</Label>
                   <Input id="edit-tenant-name" required value={editName} onChange={e => setEditName(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
@@ -611,29 +643,29 @@ export default function TenantsPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Plan</Label>
+                  <Label>{ta('orgAdm.plan')}</Label>
                   <Select value={editPlan} onValueChange={setEditPlan}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label={ta('orgAdm.plan')}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                      <SelectItem value="team">Team</SelectItem>
-                      <SelectItem value="free">Free</SelectItem>
+                      <SelectItem value="enterprise">{ta('orgAdm.enterprise')}</SelectItem>
+                      <SelectItem value="team">{ta('orgAdm.team')}</SelectItem>
+                      <SelectItem value="free">{ta('orgAdm.free')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5">
                   <div>
-                    <p className="text-xs font-medium text-foreground">Active</p>
-                    <p className="text-[11px] text-muted-foreground">Inactive tenants block member sign-in / team access</p>
+                    <p className="text-xs font-medium text-foreground">{ta('orgAdm.active')}</p>
+                    <p className="text-[11px] text-muted-foreground">{ta('orgAdm.inactiveTenantsBlockMemberSignIn')}</p>
                   </div>
                   <Switch checked={editActive} onCheckedChange={setEditActive} />
                 </div>
               </div>
             </div>
             <SheetFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => setEditTenant(null)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setEditTenant(null)}>{ta('orgAdm.cancel')}</Button>
               <Button type="submit" disabled={savingEdit || !editName.trim()}>
-                {savingEdit ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : 'Save'}
+                {savingEdit ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{ta('orgAdm.saving')}</> : 'Save'}
               </Button>
             </SheetFooter>
           </form>
@@ -645,28 +677,29 @@ export default function TenantsPage() {
         <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" /> {membersOf?.name || ''} members
+              <Building2 className="h-4 w-4" /> {membersOf?.name || ''} {ta('orgAdm.members2')}
             </SheetTitle>
             <SheetDescription>
-              People attached to this tenant. Add members or impersonate one to view the app as them.
+              {ta('orgAdm.peopleAttachedToThisTenantAdd')}
             </SheetDescription>
           </SheetHeader>
           <div className="px-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-muted-foreground">{members.length} {ta('orgAdm.member')}{members.length !== 1 ? 's' : ''}</p>
               <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setAddMemberOpen(true)}>
-                <Plus className="h-3.5 w-3.5" /> Add member
+                <Plus className="h-3.5 w-3.5" /> {ta('orgAdm.addMember')}
               </Button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto py-2">
               {membersLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : members.length === 0 ? (
-                <div className="text-center py-10">
-                  <UserRound className="h-10 w-10 text-muted-foreground/30" />
-                  <p className="mt-2 text-sm text-muted-foreground">No members in this organization yet.</p>
-                  <p className="text-xs text-muted-foreground">Use "Add member" to create one and attach it to this org.</p>
-                </div>
+                <EmptyState
+                  illustration="team"
+                  title={ta('orgAdm.noMembersInThisOrganizationYet')}
+                  description={ta('orgAdm.useAddMemberToCreateOne')}
+                  className="border-0 bg-transparent py-6 md:py-8"
+                />
               ) : (
                 <div className="space-y-2">
                   {members.map(m => (
@@ -683,12 +716,12 @@ export default function TenantsPage() {
                               value={normalizeUserRole(m.role)}
                               onValueChange={(v) => void handleUpdateMemberRole(m, v)}
                             >
-                              <SelectTrigger className="h-6 w-auto min-w-25 text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
+                              <SelectTrigger aria-label={ta('orgAdm.memberRole')} className="h-6 w-auto min-w-25 text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="user">User</SelectItem>
-                                <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                                <SelectItem value="user">{ta('orgAdm.user')}</SelectItem>
+                                <SelectItem value="tenant_admin">{ta('orgAdm.orgAdmin')}</SelectItem>
                               </SelectContent>
                             </Select>
                           )}
@@ -701,15 +734,15 @@ export default function TenantsPage() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled>
-                                  <ShieldAlert className="h-3.5 w-3.5" /> Protected
+                                  <ShieldAlert className="h-3.5 w-3.5" /> {ta('orgAdm.protected')}
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent side="top"><p className="text-xs">Platform admins can't be impersonated</p></TooltipContent>
+                              <TooltipContent side="top"><p className="text-xs">{ta('orgAdm.platformAdminsCanTBeImpersonated')}</p></TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         ) : (
                           <div className="flex items-center gap-1">
-                            <Button
+                            <Button aria-label={ta('orgAdm.editEmailPassword')}
                               size="sm"
                               variant="ghost"
                               className="h-7 gap-1 px-2 text-xs"
@@ -718,16 +751,16 @@ export default function TenantsPage() {
                                 setEditMemberEmail(m.email)
                                 setEditMemberPassword('')
                               }}
-                              title="Edit email / password"
+                              title={ta('orgAdm.editEmailPassword')}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
+                            <Button aria-label={ta('orgAdm.sendPasswordResetEmail')}
                               size="sm"
                               variant="ghost"
                               className="h-7 gap-1 px-2 text-xs"
                               onClick={() => void handleResendCredentials(m)}
-                              title="Send password reset email"
+                              title={ta('orgAdm.sendPasswordResetEmail')}
                             >
                               <Mail className="h-3.5 w-3.5" />
                             </Button>
@@ -739,7 +772,7 @@ export default function TenantsPage() {
                               disabled={impersonatingId === m.id || Boolean(impersonatingId)}
                             >
                               {impersonatingId === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
-                              Impersonate
+                              {ta('orgAdm.impersonate')}
                             </Button>
                           </div>
                         )}
@@ -751,7 +784,7 @@ export default function TenantsPage() {
             </div>
           </div>
           <SheetFooter>
-            <Button variant="outline" onClick={() => setMembersOf(null)}>Close</Button>
+            <Button variant="outline" onClick={() => setMembersOf(null)}>{ta('orgAdm.close')}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -761,37 +794,38 @@ export default function TenantsPage() {
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleAddMember}>
             <DialogHeader>
-              <DialogTitle>Add member</DialogTitle>
+              <DialogTitle>{ta('orgAdm.addMember')}</DialogTitle>
               <DialogDescription>
-                Create a user and attach them to {membersOf?.name || 'this organization'}.
+                {ta('orgAdm.createAUserAndAttachThem')} {membersOf?.name || 'this organization'}.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="member-name">Name</Label>
+                  <Label htmlFor="member-name">{ta('orgAdm.name')}</Label>
                   <Input id="member-name" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder="Jane Doe" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="member-email">Email</Label>
+                  <Label htmlFor="member-email">{ta('orgAdm.email')}</Label>
                   <Input id="member-email" type="email" required value={newMemberEmail} onChange={e => setNewMemberEmail(e.target.value)} placeholder="jane@acme.com" />
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="member-password">Password</Label>
+                  <Label htmlFor="member-password">{ta('orgAdm.password')}</Label>
                   <div className="relative">
                     <Input
                       id="member-password"
                       type={showNewMemberPassword ? 'text' : 'password'}
                       value={newMemberPassword}
                       onChange={e => setNewMemberPassword(e.target.value)}
-                      placeholder="Min 8 characters"
+                      placeholder={ta('orgAdm.min8Characters')}
                       className="pr-10"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewMemberPassword(!showNewMemberPassword)}
+                    aria-label={showNewMemberPassword ? 'Hide password' : 'Show password'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showNewMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -799,22 +833,22 @@ export default function TenantsPage() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="member-role">Role</Label>
+                  <Label htmlFor="member-role">{ta('orgAdm.role')}</Label>
                   <Select value={newMemberRole} onValueChange={setNewMemberRole}>
                     <SelectTrigger id="member-role"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                      <SelectItem value="user">{ta('orgAdm.user')}</SelectItem>
+                      <SelectItem value="tenant_admin">{ta('orgAdm.orgAdmin')}</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] text-muted-foreground">Org Admin can manage this tenant's team. Pick User for regular members.</p>
+                  <p className="text-[11px] text-muted-foreground">{ta('orgAdm.orgAdminCanManageThisTenant')}</p>
                 </div>
               </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-2">
-              <Button type="button" variant="outline" onClick={() => setAddMemberOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setAddMemberOpen(false)}>{ta('orgAdm.cancel')}</Button>
               <Button type="submit" disabled={addingMember || !newMemberEmail.trim()}>
-                {addingMember ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Adding…</> : 'Add member'}
+                {addingMember ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{ta('orgAdm.adding')}</> : 'Add member'}
               </Button>
             </DialogFooter>
           </form>
@@ -825,14 +859,14 @@ export default function TenantsPage() {
       <Dialog open={Boolean(editingMember)} onOpenChange={(o) => { if (!o) { setEditingMember(null); setEditMemberPassword(''); setShowEditMemberPassword(false) } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit member</DialogTitle>
+            <DialogTitle>{ta('orgAdm.editMember')}</DialogTitle>
             <DialogDescription>
-              Update email or reset password for <strong>{editingMember?.name || editingMember?.email}</strong>.
+              {ta('orgAdm.updateEmailOrResetPasswordFor')} <strong>{editingMember?.name || editingMember?.email}</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 text-xs">
             <div className="grid gap-2">
-              <Label htmlFor="edit-member-email">Email</Label>
+              <Label htmlFor="edit-member-email">{ta('orgAdm.email')}</Label>
               <Input
                 id="edit-member-email"
                 type="email"
@@ -842,19 +876,20 @@ export default function TenantsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-member-password">New Password <span className="text-muted-foreground">(leave blank to keep current)</span></Label>
+              <Label htmlFor="edit-member-password">{ta('orgAdm.newPassword')} <span className="text-muted-foreground">{ta('orgAdm.leaveBlankToKeepCurrent')}</span></Label>
               <div className="relative">
                 <Input
                   id="edit-member-password"
                   type={showEditMemberPassword ? 'text' : 'password'}
                   value={editMemberPassword}
                   onChange={e => setEditMemberPassword(e.target.value)}
-                  placeholder="Min 8 characters"
+                  placeholder={ta('orgAdm.min8Characters')}
                   className="pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowEditMemberPassword(!showEditMemberPassword)}
+                    aria-label={showEditMemberPassword ? 'Hide password' : 'Show password'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showEditMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -863,13 +898,13 @@ export default function TenantsPage() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="destructive" size="sm" onClick={() => void handleDeleteMember()} disabled={deletingMember}>
+            <Button variant="destructive" size="sm" onClick={() => void handleDeleteMember()} disabled={deletingMember} aria-label={ta('orgAdm.deleteMember')}>
               {deletingMember ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </Button>
             <div className="flex-1" />
-            <Button variant="outline" onClick={() => { setEditingMember(null); setEditMemberPassword(''); setShowEditMemberPassword(false) }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditingMember(null); setEditMemberPassword(''); setShowEditMemberPassword(false) }}>{ta('orgAdm.cancel')}</Button>
             <Button onClick={() => void handleEditMember()} disabled={savingMemberEdit || !editMemberEmail.trim()}>
-              {savingMemberEdit ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : 'Save changes'}
+              {savingMemberEdit ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{ta('orgAdm.saving')}</> : 'Save changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

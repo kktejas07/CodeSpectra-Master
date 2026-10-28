@@ -81,7 +81,7 @@ export async function POST(
       leaks: result.leaks,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Plagiarism check failed'
+    const msg = 'Plagiarism check failed'
     console.error('[CodeSpectra] plagiarism POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

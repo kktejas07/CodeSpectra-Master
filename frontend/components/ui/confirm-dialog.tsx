@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Trash2, X } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -18,12 +19,13 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   variant = 'destructive',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useT()
   if (!open) return null
 
   return (
@@ -32,13 +34,20 @@ export function ConfirmDialog({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
       
       {/* Dialog */}
-      <div className="relative bg-background border border-border rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-message"
+        className="relative bg-background border border-border rounded-xl shadow-2xl p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200">
         {/* Close button */}
         <button
+          type="button"
           onClick={onCancel}
-          className="absolute top-3 right-3 text-muted-foreground hover:text-foreground"
+          aria-label={t('common.close')}
+          className="absolute top-3 right-3 rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <X className="h-4 w-4" />
+          <X aria-hidden className="h-4 w-4" />
         </button>
 
         {/* Icon */}
@@ -53,19 +62,19 @@ export function ConfirmDialog({
         </div>
 
         {/* Content */}
-        <h3 className="text-lg font-semibold mb-2">{title}</h3>
-        <p className="text-sm text-muted-foreground mb-6">{message}</p>
+        <h3 id="confirm-dialog-title" className="text-lg font-semibold mb-2">{title}</h3>
+        <p id="confirm-dialog-message" className="text-sm text-muted-foreground mb-6">{message}</p>
 
         {/* Actions */}
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={onCancel}>
-            {cancelLabel}
+            {cancelLabel ?? t('common.cancel')}
           </Button>
           <Button
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('common.confirm')}
           </Button>
         </div>
       </div>

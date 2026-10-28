@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
+import { PageHeader } from '@/components/app/page-kit'
+import { PushDeviceCard } from '@/components/pwa/push-device-card'
 import { Bell, Mail, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Slack } from '@/components/ui/brand-icons'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -15,6 +16,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
 
 interface NotificationPreference {
   id: string
@@ -37,6 +39,7 @@ function ChannelIcon({ type }: { type: string }) {
 }
 
 export default function NotificationPreferencesPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -46,22 +49,19 @@ export default function NotificationPreferencesPage() {
   const [quietStart, setQuietStart] = useState('22:00')
   const [quietEnd, setQuietEnd] = useState('08:00')
   const [savingQuiet, setSavingQuiet] = useState(false)
-  const [dailyDigest, setDailyDigest] = useState(true)
-  const [weeklyReport, setWeeklyReport] = useState(true)
+  const [quietEnabled, setQuietEnabled] = useState(false)
+  const [quietTz, setQuietTz] = useState<string | null>(null)
+  const [digest, setDigest] = useState<{ daily: boolean; weekly: boolean } | null>(null)
+  const browserTz = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' } catch { return 'UTC' }
+  })()
 
   const fetchPreferences = useCallback(async () => {
     try {
       const res = await fetch('/api/notifications/preferences', { credentials: 'include' })
-      if (!res.ok) throw new Error('Failed to fetch')
+      if (!res.ok) throw new Error(t('dash.failedToFetch'))
       const data = await res.json()
       setPreferences(Array.isArray(data) ? data : [])
-      const qh = (data as any).quietHours
-      if (qh) {
-        setQuietStart(qh.quietStart || '22:00')
-        setQuietEnd(qh.quietEnd || '08:00')
-      }
-      if ((data as any).dailyDigest !== undefined) setDailyDigest((data as any).dailyDigest)
-      if ((data as any).weeklyReport !== undefined) setWeeklyReport((data as any).weeklyReport)
     } catch (error) {
       console.error('[CodeSpectra] Failed to fetch preferences:', error)
     } finally {
@@ -70,6 +70,43 @@ export default function NotificationPreferencesPage() {
   }, [])
 
   useEffect(() => { void fetchPreferences() }, [fetchPreferences])
+
+  // Quiet hours load once (not on the 30s poll, so typing isn't overwritten).
+  useEffect(() => {
+    void fetch('/api/notifications/preferences/quiet-hours', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((qh: { quietStart?: string; quietEnd?: string; enabled?: boolean; timeZone?: string | null } | null) => {
+        if (qh?.quietStart) setQuietStart(qh.quietStart)
+        if (qh?.quietEnd) setQuietEnd(qh.quietEnd)
+        if (typeof qh?.enabled === 'boolean') setQuietEnabled(qh.enabled)
+        if (qh?.timeZone) setQuietTz(qh.timeZone)
+      })
+      .catch(() => { /* keep defaults */ })
+    void fetch('/api/notifications/preferences/digest', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { daily?: boolean; weekly?: boolean } | null) => {
+        if (d && typeof d.daily === 'boolean' && typeof d.weekly === 'boolean') setDigest({ daily: d.daily, weekly: d.weekly })
+      })
+      .catch(() => { /* card shows a load error */ })
+  }, [])
+
+  const handleDigestToggle = async (field: 'daily' | 'weekly', value: boolean) => {
+    const prev = digest
+    if (prev) setDigest({ ...prev, [field]: value })
+    try {
+      const res = await csrfFetch('/api/notifications/preferences/digest', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (!res.ok) throw new Error(t('dash.failedToUpdate'))
+      toast({ type: 'success', title: t('dash.digestPreferencesUpdated') })
+    } catch {
+      setDigest(prev)
+      toast({ type: 'error', title: t('dash.failedToUpdateDigestPreferences') })
+    }
+  }
 
   useEffect(() => {
     const interval = setInterval(() => { void fetchPreferences() }, 30_000)
@@ -82,20 +119,20 @@ export default function NotificationPreferencesPage() {
       const notificationPreferencesTour: TourStep[] = [
         {
           target: '[data-tour="notification-preferences-header"]',
-          title: 'Control Notification Channels',
-          description: 'This page lets you control which channels and categories notify you.',
+          title: t('dash.chooseHowWeNotifyYou'),
+          description: t('dash.thisPageLetsYouControlWhich82c'),
           position: 'bottom',
         },
         {
           target: '[data-tour="notification-preferences-inbox"]',
-          title: 'Back to inbox',
-          description: 'Jump back to your notification inbox any time from here.',
+          title: t('dash.backToInbox'),
+          description: t('dash.jumpBackToYourNotificationInbox369'),
           position: 'bottom',
         },
         {
           target: '[data-tour="notification-preferences-channels"]',
-          title: 'Channels and quiet hours',
-          description: 'Toggle email, in-app, and Slack channels, plus digests and quiet hours.',
+          title: t('dash.channelsAndQuietHours'),
+          description: t('dash.turnEmailInAppAndSlack616'),
           position: 'top',
         },
       ]
@@ -110,12 +147,12 @@ export default function NotificationPreferencesPage() {
         credentials: 'include',
         body: JSON.stringify({ [field]: value }),
       })
-      if (!res.ok) throw new Error('Failed to update')
-      toast({ type: 'success', title: 'Preferences updated' })
+      if (!res.ok) throw new Error(t('dash.failedToUpdate'))
+      toast({ type: 'success', title: t('dash.preferencesUpdated') })
       await fetchPreferences()
     } catch (error) {
       console.error('[CodeSpectra] Failed to update preferences:', error)
-      toast({ type: 'error', title: 'Failed to update' })
+      toast({ type: 'error', title: t('dash.failedToUpdate') })
     }
   }
 
@@ -126,12 +163,13 @@ export default function NotificationPreferencesPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ quietStart, quietEnd }),
+        body: JSON.stringify({ quietStart, quietEnd, enabled: quietEnabled, timeZone: browserTz }),
       })
-      if (!res.ok) throw new Error('Failed to save')
-      toast({ type: 'success', title: 'Quiet hours saved' })
+      if (!res.ok) throw new Error(t('dash.failedToSave'))
+      setQuietTz(browserTz)
+      toast({ type: 'success', title: t('dash.quietHoursSaved') })
     } catch {
-      toast({ type: 'error', title: 'Failed to save quiet hours' })
+      toast({ type: 'error', title: t('dash.failedToSaveQuietHours') })
     } finally {
       setSavingQuiet(false)
     }
@@ -156,17 +194,16 @@ export default function NotificationPreferencesPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       <div data-tour="notification-preferences-header">
-      <DashboardPageHeader
-        icon={SlidersHorizontal}
-        title="Notification preferences"
-        description="Fine-tune channels and categories. Quick toggles also live on Settings."
+      <PageHeader
+        className="mb-0"
+        icon={<SlidersHorizontal aria-hidden />}
+        title={t('dash.notificationPreferences')}
+        description={t('dash.fineTuneChannelsAndCategoriesQuick5b1')}
         actions={
           <Button variant="outline" size="sm" className="gap-1 rounded-lg" asChild>
-            <Link href="/dashboard/notifications" data-tour="notification-preferences-inbox">
-              Inbox
-              <ChevronRight className="h-4 w-4" />
+            <Link href="/dashboard/notifications" data-tour="notification-preferences-inbox">{t('dash.inbox')}<ChevronRight className="h-4 w-4" />
             </Link>
           </Button>
         }
@@ -179,21 +216,19 @@ export default function NotificationPreferencesPage() {
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {preferences.map((pref) => (
             <Card
               key={pref.id}
-              className="overflow-hidden rounded-xl border-border/60 shadow-sm"
+              className="overflow-hidden rounded-3xl border-border/70"
             >
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 px-6 py-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
                     <ChannelIcon type={pref.type} />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {getChannelLabel(pref.type)} notifications
-                    </h3>
+                    <h3 className="text-lg font-semibold text-foreground">{t('dash.valueNotifications', { value: getChannelLabel(pref.type) })}</h3>
                     <p className="text-sm text-muted-foreground">{channelBlurb(pref.type)}</p>
                   </div>
                 </div>
@@ -201,10 +236,11 @@ export default function NotificationPreferencesPage() {
                   <span
                     className={`text-sm font-medium ${pref.enabled ? 'text-primary' : 'text-muted-foreground'}`}
                   >
-                    {pref.enabled ? 'On' : 'Off'}
+                    {pref.enabled ? t('dash.on') : t('dash.off')}
                   </span>
                   <Switch
                     checked={pref.enabled}
+                    aria-label={t('dash.valueNotifications', { value: getChannelLabel(pref.type) })}
                     onCheckedChange={(value) => handleToggle(pref.id, 'enabled', value)}
                   />
                 </div>
@@ -216,10 +252,11 @@ export default function NotificationPreferencesPage() {
                     <div key={category} className="flex items-center justify-between gap-4 py-4">
                       <div className="min-w-0 space-y-0.5">
                         <p className="font-medium capitalize text-foreground">{category}</p>
-                        <p className="text-sm text-muted-foreground">Events in this area</p>
+                        <p className="text-sm text-muted-foreground">{t('dash.eventsInThisArea')}</p>
                       </div>
                       <Switch
                         checked={enabled}
+                        aria-label={`${getChannelLabel(pref.type)}: ${category}`}
                         onCheckedChange={(value) =>
                           handleToggle(pref.id, `categories.${category}`, value)
                         }
@@ -231,41 +268,51 @@ export default function NotificationPreferencesPage() {
             </Card>
           ))}
 
-          <Card className="overflow-hidden rounded-xl border-border/60 shadow-sm">
+          <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">
-              <h3 className="text-lg font-semibold text-foreground">Email digest</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Optional summaries (demo toggles — wire to your backend when ready).
-              </p>
+              <h3 className="text-lg font-semibold text-foreground">{t('dash.emailDigest')}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t('dash.summariesSentToYourEmailTurning6bc')}</p>
             </div>
-            <div className="divide-y divide-border/60 px-6">
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="min-w-0 space-y-0.5">
-                  <p className="font-medium text-foreground">Daily digest</p>
-                  <p className="text-sm text-muted-foreground">One summary per day</p>
+            {digest ? (
+              <div className="divide-y divide-border/60 px-6">
+                <div className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0 space-y-0.5">
+                    <Label htmlFor="daily-digest" className="font-medium text-foreground">{t('dash.dailyDigest')}</Label>
+                    <p className="text-sm text-muted-foreground">{t('dash.oneEmailWithTheLast242fe')}</p>
+                  </div>
+                  <Switch id="daily-digest" checked={digest.daily} onCheckedChange={(v) => handleDigestToggle('daily', v)} />
                 </div>
-                <Switch checked={dailyDigest} onCheckedChange={setDailyDigest} />
-              </div>
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="min-w-0 space-y-0.5">
-                  <p className="font-medium text-foreground">Weekly report</p>
-                  <p className="text-sm text-muted-foreground">Activity and usage highlights</p>
+                <div className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0 space-y-0.5">
+                    <Label htmlFor="weekly-report" className="font-medium text-foreground">{t('dash.weeklyReport')}</Label>
+                    <p className="text-sm text-muted-foreground">{t('dash.platformHighlightsEveryMonday')}</p>
+                  </div>
+                  <Switch id="weekly-report" checked={digest.weekly} onCheckedChange={(v) => handleDigestToggle('weekly', v)} />
                 </div>
-                <Switch checked={weeklyReport} onCheckedChange={setWeeklyReport} />
               </div>
-            </div>
+            ) : (
+              <p className="px-6 py-4 text-sm text-muted-foreground">{t('dash.couldntLoadDigestSettingsRefreshThe935')}</p>
+            )}
           </Card>
 
-          <Card className="overflow-hidden rounded-xl border-border/60 shadow-sm">
+          <PushDeviceCard />
+
+          <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">
-              <h3 className="text-lg font-semibold text-foreground">Quiet hours</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Local preview — connect to your notification service to enforce delivery windows.
-              </p>
+              <h3 className="text-lg font-semibold text-foreground">{t('dash.quietHours')}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t('dash.emailPushAndWhatsappNotificationsThat4c0')}</p>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-b border-border/60 px-6 py-4">
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor="quiet-enabled" className="font-medium text-foreground">{t('dash.useQuietHours')}</Label>
+                <p className="text-sm text-muted-foreground">{t('dash.timesAreIn')}{' '}{quietTz ?? browserTz}{quietTz && quietTz !== browserTz ? t('dash.savingWillSwitchToBrowsertz', { browserTz }) : ''}
+                </p>
+              </div>
+              <Switch id="quiet-enabled" checked={quietEnabled} onCheckedChange={setQuietEnabled} />
             </div>
             <div className="grid gap-4 px-6 py-5 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="quiet-start">Start</Label>
+                <Label htmlFor="quiet-start">{t('dash.start')}</Label>
                   <Input
                     id="quiet-start"
                     type="time"
@@ -275,7 +322,7 @@ export default function NotificationPreferencesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="quiet-end">End</Label>
+                  <Label htmlFor="quiet-end">{t('dash.end')}</Label>
                   <Input
                     id="quiet-end"
                     type="time"
@@ -287,18 +334,15 @@ export default function NotificationPreferencesPage() {
             </div>
             <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
               <Button type="button" className="rounded-lg" disabled={savingQuiet} onClick={handleSaveQuietHours}>
-                {savingQuiet ? 'Saving…' : 'Save quiet hours'}
+                {savingQuiet ? t('common.saving') : t('dash.saveQuietHours')}
               </Button>
             </div>
           </Card>
 
-          <Card className="rounded-xl border border-amber-500/30 bg-amber-500/5 shadow-sm">
+          <Card className="rounded-3xl border border-border/70 bg-muted/30">
             <div className="px-6 py-5">
-              <h3 className="text-lg font-semibold text-foreground">Privacy &amp; data</h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                Preferences are stored for your account and used only to deliver notifications. You can change or revoke
-                channels at any time.
-              </p>
+              <h3 className="text-lg font-semibold text-foreground">{t('dash.privacyAndData')}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t('dash.preferencesAreStoredForYourAccount8af')}</p>
             </div>
           </Card>
         </div>

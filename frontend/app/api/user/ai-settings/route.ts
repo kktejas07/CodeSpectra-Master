@@ -6,16 +6,17 @@ import { MODEL_OPTIONS, UserAISettings } from '@/lib/ai/model-options'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Cheap defaults for everyone; a user can opt into a premium model.
 const defaults: UserAISettings = {
   chat_model: 'gemini-flash',
-  review_model: 'claude-sonnet',
+  review_model: 'gemini-flash',
   hints_model: 'gemini-flash',
-  grade_model: 'claude-sonnet',
+  grade_model: 'gemini-flash',
 }
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const db = await getMongoDb()
   const doc = await db.collection('user_ai_settings').findOne({ user_id: user.id })
@@ -25,7 +26,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const body = (await req.json()) as Partial<UserAISettings>
   const db = await getMongoDb()

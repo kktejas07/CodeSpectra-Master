@@ -23,11 +23,11 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
   try {
     const col = await emailCampaigns()
     const campaign = await col.findOne({ id })
-    if (!campaign) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!campaign) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     return NextResponse.json({ campaign })
   } catch (e) {
     console.error('[newsletter] get campaign error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }
 
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   try {
     const col = await emailCampaigns()
     const existing = await col.findOne({ id })
-    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!existing) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     // Only allow editing draft or scheduled campaigns
     if (existing.status !== 'draft' && existing.status !== 'scheduled') {
@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ ok: true, campaign: updated })
   } catch (e) {
     console.error('[newsletter] update campaign error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }
 
@@ -97,7 +97,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
   try {
     const col = await emailCampaigns()
     const existing = await col.findOne({ id })
-    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!existing) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     // Can't delete a sending campaign
     if (existing.status === 'sending') {
@@ -108,6 +108,6 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[newsletter] delete campaign error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

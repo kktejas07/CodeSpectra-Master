@@ -14,7 +14,8 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import Link from 'next/link'
-import { EmptyTimelineIllustration } from '@/components/dashboard/dashboard-vectors'
+import { Illustration } from '@/components/illustrations/spot'
+import { useT } from '@/lib/i18n/client'
 
 interface ActivityItem {
   ts: string
@@ -33,11 +34,11 @@ interface ActivityTimelineProps {
 }
 
 const typeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
-  scan: { icon: Search, color: 'text-emerald-400', bg: 'bg-emerald-500' },
-  review: { icon: Code2, color: 'text-teal-400', bg: 'bg-teal-500' },
-  fix: { icon: Zap, color: 'text-cyan-400', bg: 'bg-cyan-500' },
-  challenge: { icon: Trophy, color: 'text-amber-400', bg: 'bg-amber-500' },
-  daily: { icon: Calendar, color: 'text-emerald-500', bg: 'bg-emerald-500' },
+  scan: { icon: Search, color: 'text-primary', bg: 'bg-primary' },
+  review: { icon: Code2, color: 'text-primary', bg: 'bg-primary' },
+  fix: { icon: Zap, color: 'text-primary', bg: 'bg-primary' },
+  challenge: { icon: Trophy, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500' },
+  daily: { icon: Calendar, color: 'text-primary', bg: 'bg-primary' },
   default: { icon: Sparkles, color: 'text-muted-foreground', bg: 'bg-muted-foreground' },
 }
 
@@ -64,10 +65,11 @@ export function ActivityTimeline({
   title = 'Recent activity',
   subtitle = 'Your latest contributions and actions',
 }: ActivityTimelineProps) {
+  const { t } = useT()
   const displayActivities = limit ? activities.slice(0, limit) : activities
 
   return (
-    <Card className="border-border/60 p-6">
+    <Card className="rounded-3xl border-border/70 p-6">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
@@ -75,22 +77,17 @@ export function ActivityTimeline({
         </div>
         {showViewAll && (
           <Link href="/dashboard/profile">
-            <Badge variant="outline" className="text-xs font-normal gap-1 cursor-pointer">
-              View all <ArrowRight className="h-3 w-3" />
+            <Badge variant="outline" className="text-xs font-normal gap-1 cursor-pointer">{t('dash.viewAll')}{' '}<ArrowRight className="h-3 w-3" />
             </Badge>
           </Link>
         )}
       </div>
 
       {displayActivities.length === 0 ? (
-        <div className="py-4 text-center">
-          <EmptyTimelineIllustration />
-          <p className="text-xs font-medium text-slate-400 mt-1">
-            No recent activity recorded
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Start coding to see your contributions timeline
-          </p>
+        <div className="flex flex-col items-center py-2 text-center" role="status">
+          <Illustration name="calendar" className="mb-1 w-28" />
+          <p className="text-sm font-semibold text-foreground">{t('dash.noRecentActivity')}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('dash.solveAProblemOrRunAff0')}</p>
         </div>
       ) : (
         <div className="relative space-y-0 border-l border-border pl-5">
@@ -122,8 +119,7 @@ export function ActivityTimeline({
       {showViewAll && activities.length > (limit || 0) && (
         <div className="mt-4 pt-4 border-t border-border/60">
           <Link href="/dashboard/profile">
-            <Badge variant="outline" className="w-full justify-center gap-2 cursor-pointer">
-              View all {activities.length} activities <ArrowRight className="h-3 w-3" />
+            <Badge variant="outline" className="w-full justify-center gap-2 cursor-pointer">{t('dash.viewAllCountActivities', { count: activities.length })}{' '}<ArrowRight className="h-3 w-3" />
             </Badge>
           </Link>
         </div>

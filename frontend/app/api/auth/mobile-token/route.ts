@@ -16,6 +16,9 @@ import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { updateUserLastLogin } from '@/lib/db/admin'
+import { accountBlockReason } from '@/lib/auth-account'
+import { checkAuthThrottle, recordAuthFailure, clearAuthFailures } from '@/lib/auth-throttle'
+import { isIpBlocked } from '@/lib/db/security'
 
 export const runtime = 'nodejs'
 
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
     const ipCheck = await rateLimitRedis(`login:ip:${ipKey}`, 10, 60_000)
     if (!ipCheck.ok) {
       return NextResponse.json(
-        { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.` },
+        { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: ipCheck.retryAfterSec } },
         { status: 429 },
       )
     }
@@ -33,9 +36,16 @@ export async function POST(request: Request) {
 
     const { email, password, totpToken } = await request.json()
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Email and password are required', code: 'auth_email_password_required' }, { status: 400 })
     }
     const ident = String(email).toLowerCase().trim()
+    if (await isIpBlocked(rawIp)) {
+      return NextResponse.json({ error: 'Access denied', code: 'access_denied' }, { status: 403 })
+    }
+    const throttle = await checkAuthThrottle('login', ident, rawIp)
+    if (!throttle.ok) {
+      return NextResponse.json({ error: `Too many failed attempts. Try again in ${throttle.retryAfterSec}s.`, code: 'auth_too_many_failed', params: { seconds: throttle.retryAfterSec } }, { status: 429 })
+    }
 
     const db = await getMongoDb()
     const escaped = ident.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -49,7 +59,8 @@ export async function POST(request: Request) {
       ],
     })
     if (!user || !user.passwordHash) {
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      await recordAuthFailure('login', ident, rawIp)
+      return NextResponse.json({ error: 'Invalid email or password', code: 'auth_invalid_credentials' }, { status: 401 })
     }
 
     let valid = false
@@ -62,26 +73,52 @@ export async function POST(request: Request) {
       const emailCheck = await rateLimitRedis(`login:email:${ident}`, 5, 60_000)
       if (!emailCheck.ok) {
         return NextResponse.json(
-          { error: `Too many attempts. Try again in ${emailCheck.retryAfterSec}s.` },
+          { error: `Too many attempts. Try again in ${emailCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: emailCheck.retryAfterSec } },
           { status: 429 },
         )
       }
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      await recordAuthFailure('login', ident, rawIp)
+      return NextResponse.json({ error: 'Invalid email or password', code: 'auth_invalid_credentials' }, { status: 401 })
+    }
+
+    if (accountBlockReason(user)) {
+      return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.', code: 'account_disabled' }, { status: 403 })
     }
 
     const uid = String(user.id || user._id)
     const role = normalizeUserRole(user.role as string | undefined | null)
 
+    {
+      const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+      const { signInBlock } = await import('@/lib/auth-policy')
+      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified, email_verification_required: user.email_verification_required }, { method: 'mobile' })
+      if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
+    }
+
     if (user.totp_enabled) {
       if (!totpToken) return NextResponse.json({ twoFactorRequired: true })
-      const { TOTP } = await import('otplib')
-      const totp = new TOTP()
-      const isValid = totp.verify({ token: totpToken, secret: user.totp_secret } as unknown as string)
-      if (!isValid) return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })
+      const { consumeTotp } = await import('@/lib/totp')
+      const isValid = await consumeTotp(user, totpToken)
+      if (!isValid) await recordAuthFailure('login', ident, rawIp)
+      if (!isValid) return NextResponse.json({ error: 'Invalid two-factor code', code: 'auth_invalid_2fa' }, { status: 401 })
+    }
+
+    // SEC-009: an admin past the 2FA grace period must turn 2FA on (web) first —
+    // a 30-day mobile token must not be a way around it.
+    {
+      const { getAdmin2faState } = await import('@/lib/admin-2fa')
+      const tfa = await getAdmin2faState(uid, role).catch(() => ({ status: 'ok' as const }))
+      if (tfa.status === 'required') {
+        return NextResponse.json(
+          { error: 'Turn on two-factor authentication on the web (Account → Security) before signing in on mobile.', code: 'admin_2fa_required' },
+          { status: 403 },
+        )
+      }
     }
 
     // ponytail: 30d matches a mobile session (no cookies to refresh); logout
     // and password-change still revoke via session_version like web.
+    await clearAuthFailures('login', ident, rawIp)
     const token = await signSessionToken({ uid, email: user.email, role }, '30d')
     await updateUserLastLogin(uid, 'email').catch(() => {})
     await writeAuditLog({
@@ -103,6 +140,6 @@ export async function POST(request: Request) {
     })
   } catch (e) {
     console.error('[mobile-token] Error:', e)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import {
+  certificateTokensForExamSubmissions,
+  certificationAttempts,
+  examCertificateIssueKey,
+  issueMissingExamCertificates,
+} from '@/lib/db/certifications'
+import { examPassPercent } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,8 +33,14 @@ export async function GET() {
 
     const attempts = submissions.map((s: any) => {
       const exam = examMap.get(s.exam_id)
-      const scorePercentage = s.max_score > 0 ? Math.round((s.score / s.max_score) * 100) : 0
-      const passed = s.max_score > 0 && s.score >= s.max_score * 0.6
+      // Scores stay hidden until the organiser releases them (same rule as
+      // GET /api/exams/[id]); released rows carry the pass result computed at
+      // release against the exam's pass mark.
+      const released = s.score_released === true || !!s.released_at
+      const scorePercentage = released ? (s.max_score > 0 ? Math.round((s.score / s.max_score) * 100) : 0) : null
+      const passed = released
+        ? (typeof s.passed === 'boolean' ? s.passed : s.max_score > 0 && s.score >= s.max_score * (examPassPercent(exam || {}) / 100))
+        : null
 
       return {
         id: s.id,
@@ -36,18 +49,70 @@ export async function GET() {
         level: exam?.level || null,
         duration: exam?.duration || null,
         score: scorePercentage,
-        max_score: s.max_score,
+        max_score: released ? s.max_score : null,
         passed,
         has_pending_review: s.has_pending_review || false,
-        score_released: s.score_released || false,
+        score_released: released,
         submitted_at: s.submitted_at || s.created_at,
       }
     })
 
+    // Lazy issue for results released before certificates existed: only exams in
+    // this response that have a released attempt, certificates on, and no
+    // certificate for this user yet (one lookup). Idempotent via issue_key.
+    try {
+      const releasedExamIds = [...new Set(
+        submissions
+          .filter((s: any) => s.score_released === true || !!s.released_at)
+          .map((s: any) => String(s.exam_id || ''))
+          .filter((id) => id && examMap.get(id) && (examMap.get(id) as any).issue_certificates !== false),
+      )]
+      if (releasedExamIds.length) {
+        const held = await (await certificationAttempts())
+          .find(
+            {
+              user_id: userId,
+              $or: [
+                { issue_key: { $in: releasedExamIds.map((id) => examCertificateIssueKey(id, userId)) } },
+                { certification_id: { $in: releasedExamIds }, passed: true },
+              ],
+            } as Record<string, unknown>,
+            { projection: { certification_id: 1, issue_key: 1 } },
+          )
+          .toArray()
+        const heldIds = new Set(held.map((h) => String(h.certification_id || '')))
+        for (const examId of releasedExamIds) {
+          if (heldIds.has(examId)) continue
+          const exam = examMap.get(examId) as Record<string, unknown>
+          await issueMissingExamCertificates(db, exam, examPassPercent(exam), {
+            userId,
+            submissions: submissions.filter((s: any) => s.exam_id === examId) as Record<string, unknown>[],
+          })
+        }
+      }
+    } catch (e) {
+      console.error('[user assessments] lazy certificate issue:', e)
+    }
+
+    // Link a certificate only when a real, unrevoked one exists for the attempt.
+    try {
+      const tokens = await certificateTokensForExamSubmissions(
+        userId,
+        attempts.map((a: any) => ({ id: String(a.id || ''), exam_id: String(a.exam_id || ''), passed: !!a.passed, submitted_at: a.submitted_at || null })),
+      )
+      for (const a of attempts as any[]) {
+        const t = tokens.get(String(a.id || ''))
+        if (t) a.certificate_url = `/cert/verify/${encodeURIComponent(t)}`
+      }
+    } catch (e) {
+      console.error('[user assessments] certificate lookup:', e)
+    }
+
     const total = attempts.length
-    const passed = attempts.filter((a: any) => a.passed).length
-    const avgScore = total > 0
-      ? Math.round(attempts.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / total)
+    const releasedAttempts = attempts.filter((a: any) => a.score_released)
+    const passed = releasedAttempts.filter((a: any) => a.passed === true).length
+    const avgScore = releasedAttempts.length > 0
+      ? Math.round(releasedAttempts.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / releasedAttempts.length)
       : 0
 
     // ---- Available: assigned (pending/active invites) + open published exams ----
@@ -63,7 +128,7 @@ export async function GET() {
     const inviteExamIds = new Set<string>()
     const inviteByExam = new Map<string, any>()
     inviteDocs.forEach((inv: any) => {
-      const fromUrl = inv.target_url?.match(tokenRe)?.[1]
+      const fromUrl = inv.exam_id || inv.target_url?.match(tokenRe)?.[1]
       if (fromUrl && !attemptedIds.has(fromUrl)) {
         inviteExamIds.add(fromUrl)
         if (!inviteByExam.has(fromUrl)) inviteByExam.set(fromUrl, inv)

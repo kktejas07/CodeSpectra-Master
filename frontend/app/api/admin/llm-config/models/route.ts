@@ -3,6 +3,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { isMaskedSecret } from '@/lib/server-secrets-cache'
 import { type LLMConfig } from '@/lib/llm-config'
+import { safeFetch } from '@/lib/url-safety'
 
 export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
@@ -55,12 +56,12 @@ export async function POST(request: Request) {
   try {
     let res: Response
     if (body.provider === 'gemini') {
-      res = await fetch(`${ep}/models`, {
+      res = await safeFetch(`${ep}/models`, {
         headers: body.api_key && !isMaskedSecret(body.api_key) ? { 'x-goog-api-key': body.api_key } : {},
         signal: AbortSignal.timeout(10000),
       })
     } else if (body.provider === 'anthropic') {
-      res = await fetch(`${ep}/v1/models`, {
+      res = await safeFetch(`${ep}/v1/models`, {
         headers: {
           'x-api-key': body.api_key || '',
           'anthropic-version': '2023-06-01',
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
         signal: AbortSignal.timeout(10000),
       })
     } else {
-      res = await fetch(`${ep}/models`, {
+      res = await safeFetch(`${ep}/models`, {
         headers: body.api_key && !isMaskedSecret(body.api_key) ? { Authorization: `Bearer ${body.api_key}` } : {},
         signal: AbortSignal.timeout(10000),
       })
@@ -93,10 +94,11 @@ export async function POST(request: Request) {
     const ids = Array.isArray(raw) ? raw.map((m: any) => (typeof m === 'string' ? m : m.id || m.name)).filter(Boolean) : []
     return NextResponse.json({ ok: true, models: ids })
   } catch (e: any) {
-    const reason = e?.cause?.message || e?.cause?.code || e?.message || 'Connection failed'
+    console.error('[CodeSpectra] admin/llm-config/models:', e)
+    const reason = String(e?.cause?.code || e?.cause?.message || e?.message || '')
     const detailed = reason.includes('ENOTFOUND') || reason.includes('EAI_AGAIN') || reason.includes('fetch failed')
-      ? `Cannot reach endpoint "${body.endpoint}". Check that the API Endpoint URL is valid and reachable (${reason}).`
-      : reason
+      ? `Cannot reach endpoint "${body.endpoint}". Check that the API Endpoint URL is valid and reachable.`
+      : 'Connection failed. See server logs for details.'
     return NextResponse.json({ ok: false, message: detailed })
   }
 }

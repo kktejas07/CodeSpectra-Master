@@ -1,4 +1,12 @@
-# CodeSpectra Mobile (Expo)
+# CodeSpectra Mobile (Expo) — legacy, not published
+
+> **Legacy prototype. Not published to any store.** The store app (Android and
+> iOS) is the Capacitor shell in [`capacitor/`](capacitor/README.md), which owns
+> the `ai.codespectra.app` package / bundle id. This Expo app uses
+> `ai.codespectra.legacy` so the two can never collide on a device, in Firebase
+> or in App Store Connect / Play Console. `eas.json` has no `submit` profile on
+> purpose — do not submit this app. Kept for reference (server-driven shell,
+> `GET /api/mobile/bootstrap`); it may be removed later.
 
 Server-driven learner + judge + admin app. The shell renders from
 `GET /api/mobile/bootstrap` — tabs, role gates, theme, and flags are

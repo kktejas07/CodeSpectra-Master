@@ -1,56 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminAuthInstance } from '@/lib/firebase-admin'
-import { verifySessionToken } from '@/lib/session'
-import { cookies } from 'next/headers'
-import { updateUserLastLogin } from '@/lib/db/admin'
+import { getAPIUser } from '@/lib/route-auth'
+import { recordLoginMethod } from '@/lib/db/admin'
 import { createUserSession } from '@/lib/db/sessions'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
-const SESSION_COOKIE_NAME = 'codespectra_session'
-
+/** POST /api/auth/login-method — record how the signed-in user last signed in. */
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
-    const { uid, method } = await request.json()
+    const user = await getAPIUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
-    if (!uid || !method) {
-      return NextResponse.json({ error: 'uid and method required' }, { status: 400 })
-    }
-
-    if (!['google', 'github', 'email', 'sso'].includes(method)) {
+    const { uid, method } = (await request.json().catch(() => ({}))) as { uid?: unknown; method?: unknown }
+    if (typeof method !== 'string' || !['google', 'github', 'email', 'sso'].includes(method)) {
       return NextResponse.json({ error: 'Invalid method' }, { status: 400 })
     }
-
-    let authorized = false
-
-    if (sessionCookie) {
-      const auth = await getAdminAuthInstance()
-      if (auth) {
-        try {
-          const decoded = await auth.verifySessionCookie(sessionCookie, true)
-          if (decoded?.uid === uid) authorized = true
-        } catch { /* invalid cookie */ }
-      }
-      if (!authorized) {
-        const payload = await verifySessionToken(sessionCookie)
-        if (payload?.uid === uid) authorized = true
-      }
+    if (uid !== undefined && uid !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     }
 
-    if (!authorized) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    await updateUserLastLogin(uid, method)
+    // SEC-011: label only. lastLoginAt / reauth_at are set by the real sign-in
+    // routes; a session alone must not refresh "signed in recently".
+    await recordLoginMethod(user.id, method as 'google' | 'github' | 'email' | 'sso')
 
     const ip = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
     const ua = request.headers.get('user-agent') || 'Unknown device'
-    createUserSession({ user_id: uid, email: '', ip, user_agent: ua }).catch(() => {})
+    createUserSession({ user_id: user.id, email: user.email, ip, user_agent: ua }).catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[login-method] Error:', e)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

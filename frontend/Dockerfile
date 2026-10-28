@@ -6,10 +6,10 @@ ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
 ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
 ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 ARG NEXT_PUBLIC_FIREBASE_APP_ID
-ARG DIDIT_API_KEY
-ARG DIDIT_WEBHOOK_SECRET
-ARG DIDIT_WORKFLOW_ID
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+# Secrets (Didit KYC, payment, AI keys …) are NEVER build args: build args and
+# ENV lines are kept in the image layers/history. Pass them at runtime
+# (docker-compose `environment`, Dokploy env) — see docs/devops/05-Production-Checklist.md.
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
 ENV NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
@@ -17,9 +17,6 @@ ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
 ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
 ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
 ENV NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
-ENV DIDIT_API_KEY=${DIDIT_API_KEY}
-ENV DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET}
-ENV DIDIT_WORKFLOW_ID=${DIDIT_WORKFLOW_ID}
 ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
 ENV PISTON_URL=http://piston:2000/api/v2
 RUN apk add --no-cache docker-cli chromium ffmpeg nss freetype harfbuzz ca-certificates ttf-freefont font-noto gcompat mesa-egl mesa-gbm \
@@ -43,11 +40,17 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Leave REMOTION_BROWSER_EXECUTABLE unset so Remotion uses chrome-headless-shell
 # (glibc binary via gcompat). Override only if you install a working Chromium.
 WORKDIR /app
+# SEC-023: build and run as the image's unprivileged `node` user (uid 1000).
+# Everything the app writes at runtime goes to /tmp (mkdtemp) or /app/.next.
+# docker-cli stays for the optional admin "containers" panel; it only works if
+# an operator deliberately mounts the Docker socket (and adds the group).
+RUN chown node:node /app
+USER node
 # patches/ must exist before yarn install — postinstall runs patch-package
-COPY package.json yarn.lock ./
-COPY patches ./patches
+COPY --chown=node:node package.json yarn.lock ./
+COPY --chown=node:node patches ./patches
 RUN yarn install --frozen-lockfile
-COPY . .
+COPY --chown=node:node . .
 # ponytail: self-host face-api models (~6.7MB) so verification never depends
 # on a third-party CDN at runtime (outages/throttling/regional blocks stalled
 # face capture with zero feedback). Best-effort: the loader falls back to
@@ -58,12 +61,17 @@ RUN test -d docs/public || (echo "ERROR: docs/public missing — run scripts/syn
 RUN chmod +x scripts/docker-entrypoint.sh \
   && npx patch-package \
   && node scripts/ensure-anon-aadhaar-types.cjs
-RUN yarn build
+# The app outgrew Node's default heap (CI build aborted with exit 134).
+# Override with --build-arg NODE_BUILD_HEAP_MB=… on smaller build hosts.
+ARG NODE_BUILD_HEAP_MB=6144
+RUN NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_HEAP_MB} yarn build
 # ponytail: busybox wget is the probe (no curl in node:22-alpine). Compose
 # healthcheck overrides this when deployed via compose; this covers plain builds.
-# NOTE: no USER switch — the entrypoint/hydrate + Remotion/chromium paths assume
-# root; adding one needs appuser creation + chown and is out of scope here.
 HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s CMD wget -q -O- http://localhost:80/api/health >/dev/null 2>&1 || exit 1
+# Port 80 as non-root: Docker grants the bind via net.ipv4.ip_unprivileged_port_start=0
+# (default since Docker 20.10). Override PORT if your runtime doesn't.
+ENV PORT=80
 EXPOSE 80
 ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
-CMD ["npx", "next", "start", "-p", "80"]
+# scripts/server.mjs = `next start` + the real socket peer for client-IP checks (SEC-021).
+CMD ["node", "scripts/server.mjs"]

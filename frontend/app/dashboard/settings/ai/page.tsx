@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { ModelSelector } from '@/components/ai/model-selector'
 import { Sparkles, Bot, FileText, GraduationCap, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
 
 export default function AISettingsPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -17,20 +19,20 @@ export default function AISettingsPage() {
       const aiSettingsTour: TourStep[] = [
         {
           target: '[data-tour="ai-settings-header"]',
-          title: 'Choose AI Models Here',
-          description: 'This page lets every user assign which AI model powers each platform feature.',
+          title: t('account.chooseAiModelsHere'),
+          description: t('account.thisPageLetsEveryUserAssign4de'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-settings-chat"]',
-          title: 'Set Chat Model First',
-          description: 'Select the model powering chat, codebase chat, and the agent workspace.',
+          title: t('account.setChatModelFirst'),
+          description: t('account.selectTheModelPoweringChatCodebase247'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-settings-models"]',
-          title: 'Tip: Keep Flash Default',
-          description: 'Tip: changes apply instantly — keep free Gemini Flash unless your admin added API keys.',
+          title: t('account.tipKeepFlashDefault'),
+          description: t('account.tipChangesApplyInstantlyKeepFreec91'),
           position: 'top',
         },
       ]
@@ -41,58 +43,59 @@ export default function AISettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold flex items-center gap-2" data-tour="ai-settings-header">
-        <Sparkles className="h-7 w-7 text-primary" /> AI Model Preferences
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        Choose which AI model the platform uses for each feature. Changes take effect immediately.
-        Gemini Flash is free; other models require an API key configured by your admin.
-      </p>
+      <div data-tour="ai-settings-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Sparkles aria-hidden />}
+          title={t('account.aiModelPreferences')}
+          description={t('account.chooseWhichAiModelThePlatform193')}
+        />
+      </div>
 
-      <div className="space-y-4" data-tour="ai-settings-models">
-        <Card className="p-5 space-y-3" data-tour="ai-settings-chat">
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+      <div className="grid gap-4 md:grid-cols-2" data-tour="ai-settings-models">
+        <Panel className="p-5 space-y-3" data-tour="ai-settings-chat">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bot className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">AI Chat & Agent</p>
-              <p className="text-xs text-muted-foreground">Used by the chat assistant, codebase chat, and agent workspace</p>
+              <p className="font-medium text-foreground">{t('account.aiChatAndAgent')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedByTheChatAssistantCodebasea7f')}</p>
             </div>
           </div>
           <ModelSelector feature="chat_model" />
-        </Card>
+        </Panel>
 
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
+        <Panel className="p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileText className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">Code Review & Analysis</p>
-              <p className="text-xs text-muted-foreground">Used by automated code reviews, static analysis, and PR reviews</p>
+              <p className="font-medium text-foreground">{t('account.codeReviewAndAnalysis')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedByAutomatedCodeReviewsStaticc1d')}</p>
             </div>
           </div>
           <ModelSelector feature="review_model" />
-        </Card>
+        </Panel>
 
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
+        <Panel className="p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">Hints & Tutoring</p>
-              <p className="text-xs text-muted-foreground">Used by smart hints, problem generation, and tutoring features</p>
+              <p className="font-medium text-foreground">{t('account.hintsAndTutoring')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedBySmartHintsProblemGenerationc59')}</p>
             </div>
           </div>
           <ModelSelector feature="hints_model" />
-        </Card>
+        </Panel>
 
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
+        <Panel className="p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">Auto-Grading</p>
-              <p className="text-xs text-muted-foreground">Used by submission grading and assessment evaluation</p>
+              <p className="font-medium text-foreground">{t('account.autoGrading')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedBySubmissionGradingAndAssessment666')}</p>
             </div>
           </div>
           <ModelSelector feature="grade_model" />
-        </Card>
+        </Panel>
       </div>
     </div>
   )

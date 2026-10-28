@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { getUserXp } from '@/lib/db/leaderboard'
+import { getUserStreak } from '@/lib/activity-streak'
 
 export async function GET() {
   const gate = await requireAuth()
@@ -12,37 +14,18 @@ export async function GET() {
     const db = await getMongoDb()
     const userId = gate.user.id
 
-    const [scanCount, reviewCount, fixCount, integrationCount, submissionCount, userDoc] = await Promise.all([
-      db.collection('scan_comments').countDocuments({ user_id: userId }),
-      db.collection('code_review_comments').countDocuments({ user_id: userId }),
-      db.collection('suggested_fixes').countDocuments({ user_id: userId }),
-      db.collection('integrations').countDocuments({ user_id: userId }),
-      db.collection('submissions').countDocuments({ user_id: userId }),
-      db.collection('user').findOne({ id: userId }).catch(() => ({})),
-    ])
-
-    const dailyChallengeCount = await db.collection('daily_challenges').countDocuments({ user_id: userId, completedAt: { $exists: true } })
-
-    const streakPipeline = [
-      { $match: { user_id: userId, completedAt: { $exists: true } } },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$completedAt' } } } },
-      { $sort: { _id: -1 } },
-    ]
-    const streakDays = await db.collection('daily_challenges').aggregate(streakPipeline).toArray()
-
-    let streak = 0
-    const today = new Date().toISOString().slice(0, 10)
-    let checkDate = today
-    for (const day of streakDays) {
-      if (day._id === checkDate) {
-        streak++
-        const d = new Date(checkDate)
-        d.setDate(d.getDate() - 1)
-        checkDate = d.toISOString().slice(0, 10)
-      } else if (day._id < checkDate) {
-        break
-      }
-    }
+    const [scanCount, reviewCount, fixCount, integrationCount, submissionCount, solvedIds, xp, streak, userDoc] =
+      await Promise.all([
+        db.collection('code_scans').countDocuments({ user_id: userId }),
+        db.collection('code_review_comments').countDocuments({ user_id: userId }),
+        db.collection('suggested_fixes').countDocuments({ user_id: userId }),
+        db.collection('integrations').countDocuments({ user_id: userId }),
+        db.collection('submissions').countDocuments({ user_id: userId }),
+        db.collection('submissions').distinct('problem_id', { user_id: userId, status: 'accepted' }),
+        getUserXp(userId),
+        getUserStreak(userId),
+        db.collection('user').findOne({ id: userId }, { projection: { createdAt: 1, created_at: 1 } }).catch(() => null),
+      ])
 
     const createdAt = (userDoc as any)?.createdAt || (userDoc as any)?.created_at
 
@@ -51,10 +34,16 @@ export async function GET() {
       reviews: reviewCount,
       fixes: fixCount,
       integrations: integrationCount,
-      challenges: submissionCount,
+      // Distinct problems with an accepted submission.
+      challenges: solvedIds.length,
+      solved: solvedIds.length,
       submissions: submissionCount,
-      dailyChallenges: dailyChallengeCount,
-      streak,
+      // Days on which at least one practice problem was solved.
+      dailyChallenges: streak.days.length,
+      streak: streak.current,
+      longestStreak: streak.longest,
+      activeToday: streak.activeToday,
+      xp,
       memberSince: createdAt ? new Date(createdAt).toISOString() : null,
     })
   } catch (error) {

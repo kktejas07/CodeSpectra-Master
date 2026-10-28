@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 import { aiGrades, newId, nowIso } from '@/lib/db/ai'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 
@@ -27,7 +28,7 @@ const DEFAULT_RUBRIC: Record<string, number> = {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'grade_model')
 
@@ -35,13 +36,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = (await req.json()) as GradeReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   if (!body.code) return NextResponse.json({ error: 'code required' }, { status: 400 })
 
   const rubric = body.rubric && Object.keys(body.rubric).length > 0 ? body.rubric : DEFAULT_RUBRIC
 
-  const result = await backendPost<Record<string, unknown>>(
+  const charge = await chargeAiFeature(user.id, 'grade')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
+
+  let result: Record<string, unknown>
+  try {
+  result = await backendPost<Record<string, unknown>>(
     '/internal/ai/grade',
     {
       code: body.code.slice(0, 10_000),
@@ -53,6 +59,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     },
     { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )
+  } catch (err) {
+    console.error('[CodeSpectra] AI grade error:', err)
+    await charge.refund()
+    return NextResponse.json({ success: false, error: 'AI service unavailable' }, { status: 502 })
+  }
 
   const gradesCol = await aiGrades()
   const doc = {

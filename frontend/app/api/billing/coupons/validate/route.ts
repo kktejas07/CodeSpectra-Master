@@ -10,19 +10,22 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const rateCheck = await rateLimitAIRedis(req, user.id)
     if (!rateCheck.ok) {
-      return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
+      return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } }, { status: 429 })
     }
 
-    const { code } = await req.json()
-    if (!code) {
+    const { code, target, currency } = (await req.json().catch(() => ({}))) as { code?: unknown; target?: unknown; currency?: unknown }
+    if (typeof code !== 'string' || !code.trim() || code.length > 64) {
       return NextResponse.json({ error: 'No coupon code provided' }, { status: 400 })
     }
-
-    const result = await validateCoupon(code)
+    // Scope + currency are checked here for the preview and again at checkout (CORE-018).
+    const result = await validateCoupon(code.trim(), {
+      target: target === 'marketplace' ? 'marketplace' : 'plans',
+      currency: typeof currency === 'string' && /^[A-Za-z]{3}$/.test(currency) ? currency.toUpperCase() : undefined,
+    })
     if (!result.valid) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
@@ -31,11 +34,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You have already used this coupon code.' }, { status: 400 })
     }
 
+    // Whitelist: never return redemptions (other users' names/emails), usage
+    // counts or admin fields (D2).
+    const c = result.coupon!
     return NextResponse.json({ coupon: {
-      ...result.coupon,
-      trial_duration_days: result.coupon?.trial_duration_days,
+      code: c.code,
+      discount_type: c.discount_type,
+      discount_value: c.discount_value,
+      currency: c.discount_type === 'flat' ? (c.currency || 'INR') : null,
+      trial_duration_days: c.trial_duration_days ?? null,
+      valid_until: c.valid_until ?? null,
     } })
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+    console.error('[billing/coupons/validate]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

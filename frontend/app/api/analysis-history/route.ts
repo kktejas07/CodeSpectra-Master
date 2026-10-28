@@ -73,8 +73,8 @@ export async function GET(request: NextRequest) {
     const scans = rows.map(rowToClientScan)
     return NextResponse.json({ success: true, scans, count: total })
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    console.error('[CodeSpectra] analysis-history:', msg)
+    const msg = 'Something went wrong. Please try again.'
+    console.error('[CodeSpectra] analysis-history:', error)
     return NextResponse.json({ success: false, error: msg }, { status: 500 })
   }
 }
@@ -102,8 +102,8 @@ export async function DELETE(request: NextRequest) {
     const deleted = await deleteScan(id, gate.user.id)
     return NextResponse.json({ success: true, deleted })
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    console.error('[CodeSpectra] delete scan:', msg)
+    const msg = 'Something went wrong. Please try again.'
+    console.error('[CodeSpectra] delete scan:', error)
     return NextResponse.json({ success: false, error: msg }, { status: 500 })
   }
 }

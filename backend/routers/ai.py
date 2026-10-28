@@ -12,6 +12,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from core.ai_endpoints import prime_endpoint_allowlist
+from core.auth import require_internal_secret
 from core.dependencies import check_rate_limit
 
 # Sliding window rate limiter for AI backend routes (60 requests / minute per client IP)
@@ -20,8 +22,9 @@ AI_RATE_WINDOW_SECONDS = 60.0
 
 
 async def rate_limit_ai_requests(request: Request) -> None:
-    client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "unknown")
-    client_ip = client_ip.split(",")[0].strip()
+    from core.dependencies import client_ip as _client_ip
+
+    client_ip = _client_ip(request)
     # Delegate to the shared Redis+in-memory rate limiter (same key prefix as
     # the previous inline implementation, so existing counters carry over).
     await check_rate_limit(
@@ -34,7 +37,14 @@ async def rate_limit_ai_requests(request: Request) -> None:
 router = APIRouter(
     prefix="/internal/ai",
     tags=["internal-ai"],
-    dependencies=[Depends(rate_limit_ai_requests)],
+    # SEC-001: service-to-service only (Next.js sends x-internal-secret). The
+    # secret check runs before the rate limiter so anonymous callers are
+    # refused without touching the limiter state.
+    dependencies=[
+        Depends(require_internal_secret),
+        Depends(rate_limit_ai_requests),
+        Depends(prime_endpoint_allowlist),
+    ],
 )
 
 from models.ai import (

@@ -7,9 +7,16 @@
  * Fallback chain at runtime:
  *   1. value from MongoDB cache (admin-saved)
  *   2. value from process.env
+ *
+ * SECRET_FIELDS are AES-GCM encrypted at rest (lib/secrets-crypto.ts, key from
+ * SECRETS_ENCRYPTION_KEY env). Reads decrypt transparently; plain-text values
+ * left from before encryption are re-written encrypted on first read (lazy
+ * migration) and on every write. Callers always see plain values.
  */
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
+import { decryptSecretsRecord, decryptWithOneKey, encryptSecretValue, encryptSecretsRecord, isEncryptedSecret, secretsEncryptionKey } from '@/lib/secrets-crypto'
+import { SECRET_FIELDS } from '@/lib/server-secrets-fields'
 
 export const SERVER_SECRETS_PLATFORM_KEY = 'secrets'
 
@@ -19,6 +26,7 @@ export type ServerSecretsRecord = {
   postal_api_key?: string
   postal_from_email?: string
   postal_webhook_secret?: string
+  postal_webhook_public_key?: string // RSA public key Postal signs webhooks with (not secret)
   // --- Razorpay -----------------------------------------------------------
   razorpay_key_id?: string
   razorpay_key_secret?: string
@@ -49,6 +57,22 @@ export type ServerSecretsRecord = {
   firebase_messaging_sender_id?: string
   firebase_app_id?: string
   firebase_vapid_key?: string
+  // --- Android app (Play Integrity) — lib/mobile/play-integrity.ts ----------
+  play_integrity_service_account_json?: string
+  android_package_names?: string
+  android_cert_sha256?: string
+  android_sha256_cert_fingerprints?: string // CORE-043 assetlinks.json
+  // --- iOS app (App Attest / DeviceCheck) — lib/mobile/app-attest.ts ---------
+  apple_team_id?: string
+  ios_bundle_ids?: string
+  ios_app_attest_allow_development?: string
+  apple_app_attest_root_ca_pem?: string
+  apple_devicecheck_key_id?: string
+  apple_devicecheck_private_key?: string
+  // --- Web push (VAPID, PWA — docs/pwa.md). Env fallback VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT.
+  webpush_vapid_public_key?: string
+  webpush_vapid_private_key?: string
+  webpush_vapid_subject?: string
   // --- AI / LLM providers ------------------------------------------------
   anthropic_api_key?: string    // Direct Anthropic key (Claude)
   gemini_api_key?: string       // Direct Google key (Gemini — has free tier)
@@ -78,6 +102,7 @@ export type ServerSecretsRecord = {
   exa_api_key?: string
   langchain_api_key?: string
   langfuse_api_key?: string
+  mem0_api_key?: string
   notion_api_key?: string
   slack_api_key?: string
   stability_api_key?: string
@@ -114,6 +139,17 @@ export type ServerSecretsRecord = {
   s3_bucket?: string
   s3_access_key_id?: string
   s3_secret_access_key?: string
+  // --- Private uploads bucket (lib/storage/config.ts; env UPLOADS_S3_*) ----
+  uploads_s3_bucket?: string
+  uploads_s3_region?: string
+  uploads_s3_endpoint?: string           // empty = AWS S3
+  uploads_s3_force_path_style?: string   // 'true' for MinIO
+  uploads_s3_access_key_id?: string      // empty = IAM role / default chain
+  uploads_s3_secret_access_key?: string
+  uploads_s3_kms_key_id?: string
+  uploads_s3_sse?: string                // AES256 | aws:kms | none
+  uploads_s3_pending_tag?: string        // 'false' on R2 (no object tagging)
+  uploads_allow_unscanned?: string       // comma-separated storage features (admin override, default none)
   // --- PhonePe -----------------------------------------------------------
   phonepe_merchant_id?: string
   phonepe_salt_key?: string
@@ -126,6 +162,37 @@ export type ServerSecretsRecord = {
   openwa_default_country_code?: string // e.g. 91 for India
   openwa_max_concurrency?: string // Max concurrent sends (default: 3)
   openwa_send_delay_ms?: string   // Delay between sends in ms (default: 400)
+  // --- ATS bot screening (lib/ats/screening/config.ts) ---------------------
+  meta_whatsapp_access_token?: string   // System-user token with whatsapp_business_messaging (+ calling)
+  meta_whatsapp_app_secret?: string     // Verifies X-Hub-Signature-256 on the webhook
+  meta_whatsapp_verify_token?: string   // Webhook GET hub.verify_token
+  meta_whatsapp_phone_number_id?: string // Platform default sender
+  meta_whatsapp_waba_id?: string
+  meta_whatsapp_graph_version?: string  // default v23.0
+  meta_whatsapp_template_chat?: string  // approved template: consent + start chat screening
+  meta_whatsapp_template_call?: string  // approved template: consent for a screening call
+  meta_whatsapp_template_language?: string
+  meta_whatsapp_call_mode?: string      // 'sip' (default) | 'graph'
+  meta_whatsapp_template_status?: string // approved template: ATS stage update (4 body vars)
+  vapi_api_key?: string
+  vapi_webhook_secret?: string
+  vapi_phone_number_ids?: string        // "IN=<id>, US=<id>, *=<id>"
+  vapi_whatsapp_trunk_number_id?: string // Vapi BYO SIP trunk number → wa.meta.vc
+  voice_agent_sip_uri?: string          // SIP server set on WhatsApp numbers (sip:agent.example.com:5061)
+  voice_agent_webhook_url?: string      // generic SIP agent dialer (e.g. LiveKit agent service)
+  voice_agent_webhook_secret?: string
+  twilio_auth_token?: string
+  exotel_webhook_token?: string
+  // --- ATS meetings: platform OAuth apps (lib/ats/interviews/integrations.ts) --
+  ats_google_client_id?: string
+  ats_google_client_secret?: string
+  ats_microsoft_client_id?: string
+  ats_microsoft_client_secret?: string
+  ats_microsoft_tenant?: string         // directory ID/domain; default 'common'
+  // --- ATS built-in video (lib/ats/interviews/livekit.ts) --------------------
+  livekit_url?: string                  // wss://… (browser-facing)
+  livekit_api_key?: string
+  livekit_api_secret?: string
   // --- Internal backend auth (frontend-side copy of INTERNAL_BACKEND_SECRET) --
   // Sent as `x-internal-secret` on server->server calls to the FastAPI backend.
   // Must match the backend's INTERNAL_BACKEND_SECRET env var (set in Dokploy).
@@ -136,6 +203,19 @@ export type ServerSecretsRecord = {
   custom_api_key?: string
   custom_endpoint?: string
   custom_model?: string
+  // --- Analytics & tracking (Settings → Analytics; public browser ids, validated in lib/analytics/integrations.ts)
+  ga4_measurement_id?: string
+  gtm_container_id?: string
+  posthog_project_key?: string
+  posthog_host?: string
+  clarity_project_id?: string
+  meta_pixel_id?: string
+  linkedin_partner_id?: string
+  analytics_retention_days?: string
+  analytics_custom_events?: string
+  // --- Knowledge vector store (lib/rag/vector-store; env PGVECTOR_URL / RAG_VECTOR_STORE)
+  pgvector_url?: string
+  rag_vector_store?: string
 }
 
 interface PlatformSettingDoc {
@@ -172,7 +252,10 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
     try {
       const col = await settingsCol()
       const doc = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
-      cached = (doc?.value as ServerSecretsRecord) || {}
+      const stored = (doc?.value as Record<string, unknown>) || {}
+      const { plain, needsMigration } = decryptSecretsRecord(stored, SECRET_FIELDS as string[])
+      cached = plain as ServerSecretsRecord
+      if (needsMigration) void migratePlaintextSecrets(col, stored, plain as Record<string, unknown>)
     } catch (e) {
       console.error('[CodeSpectra] server secrets load:', e)
       cached = {}
@@ -186,6 +269,40 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
   const result = await p
   inflight = null
   return result
+}
+
+let migrating = false
+/** Lazy migration: encrypt plain-text secret values left from older builds. */
+async function migratePlaintextSecrets(col: Collection<PlatformSettingDoc>, stored: Record<string, unknown>, plain: Record<string, unknown> = {}): Promise<void> {
+  if (migrating) return
+  migrating = true
+  try {
+    const sealed = encryptSecretsRecord(stored, SECRET_FIELDS as string[])
+    const $set: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(sealed)) {
+      if (v !== stored[k]) $set[`value.${k}`] = v
+    }
+    // SEC-018: values still sealed with the legacy session-derived key are
+    // re-sealed with SECRETS_ENCRYPTION_KEY.
+    const key = secretsEncryptionKey()
+    if (key) {
+      for (const [k, v] of Object.entries(stored)) {
+        if (isEncryptedSecret(v) && decryptWithOneKey(v, key) === null && typeof plain[k] === 'string' && plain[k]) {
+          $set[`value.${k}`] = encryptSecretValue(plain[k] as string, key)
+        }
+      }
+    }
+    if (Object.keys($set).length === 0) return
+    // Per-field compare-and-set: never overwrite a value another write changed meanwhile.
+    const filter: Record<string, unknown> = { key: SERVER_SECRETS_PLATFORM_KEY }
+    for (const k of Object.keys($set)) filter[k] = stored[k.slice(6)]
+    await col.updateOne(filter as never, { $set })
+    console.log(`[secrets] encrypted ${Object.keys($set).length} stored secret(s) at rest`)
+  } catch (e) {
+    console.error('[secrets] at-rest migration failed:', e instanceof Error ? e.message : e)
+  } finally {
+    migrating = false
+  }
 }
 
 export function getServerSecretsFromCache(): ServerSecretsRecord {
@@ -210,22 +327,26 @@ export async function writeServerSecrets(
 ): Promise<ServerSecretsRecord> {
   const col = await settingsCol()
   const existing = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
-  const prev = (existing?.value as ServerSecretsRecord) || {}
-  const next: ServerSecretsRecord = { ...prev }
+  // Merge on the STORED form so values we can't decrypt (key rotated) are
+  // kept rather than silently wiped by an unrelated save.
+  const prev = (existing?.value as Record<string, unknown>) || {}
+  const next: Record<string, unknown> = { ...prev }
   for (const [k, v] of Object.entries(patch) as [keyof ServerSecretsRecord, unknown][]) {
     if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) {
       delete next[k]
     } else if (typeof v === 'string') {
-      next[k] = v.trim() as never
+      next[k] = v.trim()
     }
   }
+  const key = secretsEncryptionKey()
+  const sealed = encryptSecretsRecord(next, SECRET_FIELDS as string[], key)
   await col.updateOne(
     { key: SERVER_SECRETS_PLATFORM_KEY },
-    { $set: { value: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() } },
+    { $set: { value: sealed, updated_at: new Date().toISOString() } },
     { upsert: true },
   )
   invalidateServerSecretsCache()
-  return next
+  return decryptSecretsRecord(sealed, SECRET_FIELDS as string[], key).plain as ServerSecretsRecord
 }
 
 /** Mask API keys for admin UI (never return full secrets). */

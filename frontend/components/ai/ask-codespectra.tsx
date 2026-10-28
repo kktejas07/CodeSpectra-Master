@@ -5,6 +5,7 @@ import { Sparkles, Send, X, Loader2, MessageSquarePlus, Database } from 'lucide-
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface ChatMessage {
   id: string
@@ -20,6 +21,7 @@ type ContextMode = 'none' | 'rag'
  * `/api/ai/chat` (SSE). Persists chat history server-side in MongoDB.
  */
 export function AskCodeSpectra() {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -83,7 +85,7 @@ export function AskCodeSpectra() {
       })
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({ error: 'request failed' }))
-        throw new Error(j.error || `HTTP ${res.status}`)
+        throw new Error(j.error || (res.status === 429 ? t('dash.tooManyRequestsWaitAMoment928') : t('dash.somethingWentWrongStatusPleaseTryb1e', { status: res.status })))
       }
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -150,7 +152,7 @@ export function AskCodeSpectra() {
           'transition-transform hover:scale-105 active:scale-95',
           open && 'translate-x-20 opacity-0 pointer-events-none',
         )}
-        aria-label="Open Ask CodeSpectra"
+        aria-label={t('dash.openAskCodespectra')}
       >
         <Sparkles className="h-5 w-5" />
       </button>
@@ -168,14 +170,12 @@ export function AskCodeSpectra() {
       >
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
               <Sparkles className="h-3.5 w-3.5" />
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold">Ask CodeSpectra</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                AI Code Assistant · RAG over your scans
-              </div>
+              <div className="text-sm font-semibold">{t('dash.askCodespectra')}</div>
+              <div className="text-xs font-medium text-muted-foreground">{t('dash.aiCodeAssistantAnswersFromYour080')}</div>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -183,7 +183,8 @@ export function AskCodeSpectra() {
               variant="ghost"
               size="icon"
               onClick={newChat}
-              title="New chat"
+              title={t('dash.newChat')}
+              aria-label={t('dash.newChat')}
               data-testid="chat-new"
             >
               <MessageSquarePlus className="h-4 w-4" />
@@ -192,7 +193,8 @@ export function AskCodeSpectra() {
               variant="ghost"
               size="icon"
               onClick={() => setOpen(false)}
-              title="Close"
+              title={t('common.close')}
+              aria-label={t('dash.closeChat')}
               data-testid="chat-close"
             >
               <X className="h-4 w-4" />
@@ -213,9 +215,7 @@ export function AskCodeSpectra() {
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:bg-muted',
             )}
-          >
-            Use my recent scans
-          </button>
+          >{t('dash.useMyRecentScans')}</button>
           <button
             type="button"
             onClick={() => setContextMode('none')}
@@ -226,9 +226,7 @@ export function AskCodeSpectra() {
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:bg-muted',
             )}
-          >
-            Generic
-          </button>
+          >{t('dash.generic')}</button>
         </div>
 
         {/* Messages */}
@@ -258,12 +256,12 @@ export function AskCodeSpectra() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault()
                   void send()
                 }
               }}
-              placeholder="Ask anything — debug, explain, refactor…"
+              placeholder={t('dash.askAnythingDebugExplainRefactor')}
               rows={2}
               className="flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono"
               data-testid="chat-input"
@@ -273,6 +271,7 @@ export function AskCodeSpectra() {
               type="submit"
               size="icon"
               disabled={busy || !input.trim()}
+              aria-label={busy ? t('dash.sending') : t('dash.sendMessage')}
               data-testid="chat-send"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -285,6 +284,7 @@ export function AskCodeSpectra() {
 }
 
 function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
+  const { t } = useT()
   const examples = [
     'Explain my most recent code scan in plain English',
     'Refactor this for readability: paste code…',
@@ -296,10 +296,8 @@ function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <Sparkles className="h-5 w-5" />
       </div>
-      <p className="text-sm text-foreground">Hi! How can I help with your code?</p>
-      <p className="text-xs text-muted-foreground">
-        Try one of these starters or type your own.
-      </p>
+      <p className="text-sm text-foreground">{t('dash.hiHowCanIHelpWithedb')}</p>
+      <p className="text-xs text-muted-foreground">{t('dash.tryOneOfTheseStartersOr2b9')}</p>
       <div className="space-y-2 pt-2">
         {examples.map((p) => (
           <button
@@ -317,6 +315,7 @@ function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
 }
 
 function MessageBubble({ message }: { message: ChatMessage }) {
+  const { t } = useT()
   const isUser = message.role === 'user'
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
@@ -331,8 +330,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       >
         {message.content || (message.pending ? (
           <span className="inline-flex items-center gap-1 text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> thinking…
-          </span>
+            <Loader2 className="h-3 w-3 animate-spin" />{' '}{t('dash.thinking')}</span>
         ) : null)}
       </div>
     </div>

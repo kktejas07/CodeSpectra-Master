@@ -3,7 +3,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { isMaskedSecret } from '@/lib/server-secrets-cache'
 import { LLM_PROVIDERS, type LLMConfig } from '@/lib/llm-config'
-import { isSafeUrl } from '@/lib/url-safety'
+import { isSafeUrl, safeFetch } from '@/lib/url-safety'
 
 export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: ssrfCheck.error }, { status: 400 });
     }
 
-    const res = await fetch(ssrfCheck.url.toString(), {
+    const res = await safeFetch(ssrfCheck.url.toString(), {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
@@ -113,12 +113,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: msg })
     }
 
+    // The test call is real spend: price it under "admin_test" (provider counts, else a tiny estimate).
+    const usage = testCallUsage(await res.json().catch(() => null))
+    void import('@/lib/ai/usage-record').then(({ recordAiUsage }) => {
+      recordAiUsage({ feature: 'admin_test', provider: String(body.provider), model: String(body.model), ...usage })
+    }, () => undefined)
     return NextResponse.json({ ok: true, message: 'Connection successful' })
   } catch (e: any) {
-    const reason = e?.cause?.message || e?.cause?.code || e?.message || 'Connection failed'
+    console.error('[CodeSpectra] admin/llm-config/test:', e)
+    const reason = String(e?.cause?.code || e?.cause?.message || e?.message || '')
     const detailed = reason.includes('ENOTFOUND') || reason.includes('EAI_AGAIN') || reason.includes('fetch failed')
-      ? `Cannot reach endpoint "${body.endpoint}". Check that the API Endpoint URL is valid and reachable (${reason}).`
-      : reason
+      ? `Cannot reach endpoint "${body.endpoint}". Check that the API Endpoint URL is valid and reachable.`
+      : 'Connection failed. See server logs for details.'
     return NextResponse.json({ ok: false, message: detailed })
   }
+}
+
+/** Token counts from an OpenAI-style or Gemini (stream array) reply; estimated when missing. */
+function testCallUsage(j: unknown): { inputTokens: number; outputTokens: number; tokensEstimated: boolean } {
+  const pick = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : undefined)
+  const last = Array.isArray(j) ? j[j.length - 1] : j
+  const o = (last && typeof last === 'object' ? last : {}) as Record<string, Record<string, unknown> | undefined>
+  const u = o.usage ?? {}
+  const g = o.usageMetadata ?? {}
+  const input = pick(u.prompt_tokens) ?? pick(u.input_tokens) ?? pick(g.promptTokenCount)
+  const output = pick(u.completion_tokens) ?? pick(u.output_tokens) ?? pick(g.candidatesTokenCount)
+  return input !== undefined && output !== undefined
+    ? { inputTokens: input, outputTokens: output, tokensEstimated: false }
+    : { inputTokens: 8, outputTokens: 2, tokensEstimated: true }
 }

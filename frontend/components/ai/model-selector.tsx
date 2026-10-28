@@ -60,7 +60,7 @@ export function ModelSelector({ feature, label, onChange }: ModelSelectorProps) 
     <div className="space-y-1">
       {label && <label className="text-xs font-medium text-muted-foreground">{label}</label>}
       <Select value={current} onValueChange={handleChange}>
-        <SelectTrigger className="w-48 h-9">
+        <SelectTrigger className="w-48 h-9" aria-label={label || "AI model"}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

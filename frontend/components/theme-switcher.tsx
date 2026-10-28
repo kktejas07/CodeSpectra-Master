@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 type ThemeSwitcherProps = {
   /** Narrow sidebar: icon-only trigger, menu opens upward to avoid clipping. */
@@ -17,6 +18,7 @@ type ThemeSwitcherProps = {
 }
 
 export function ThemeSwitcher({ compact }: ThemeSwitcherProps) {
+  const { t } = useT()
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
 
@@ -37,7 +39,7 @@ export function ThemeSwitcher({ compact }: ThemeSwitcherProps) {
             'rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
             compact ? 'flex h-9 w-9 shrink-0 items-center justify-center p-0' : 'p-2'
           )}
-          aria-label="Toggle theme"
+          aria-label={t('common.themeToggle')}
         >
           {theme === 'light' ? (
             <Sun className="h-4 w-4 shrink-0" />
@@ -59,7 +61,7 @@ export function ThemeSwitcher({ compact }: ThemeSwitcherProps) {
           data-state={theme === 'light' ? 'checked' : 'unchecked'}
         >
           <Sun className="h-4 w-4" />
-          <span>Light</span>
+          <span>{t('common.themeLight')}</span>
           {theme === 'light' && <span className="ml-auto text-xs">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -68,7 +70,7 @@ export function ThemeSwitcher({ compact }: ThemeSwitcherProps) {
           data-state={theme === 'dark' ? 'checked' : 'unchecked'}
         >
           <Moon className="h-4 w-4" />
-          <span>Dark</span>
+          <span>{t('common.themeDark')}</span>
           {theme === 'dark' && <span className="ml-auto text-xs">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -77,7 +79,7 @@ export function ThemeSwitcher({ compact }: ThemeSwitcherProps) {
           data-state={theme === 'system' ? 'checked' : 'unchecked'}
         >
           <Monitor className="h-4 w-4" />
-          <span>System</span>
+          <span>{t('common.themeSystem')}</span>
           {theme === 'system' && <span className="ml-auto text-xs">✓</span>}
         </DropdownMenuItem>
       </DropdownMenuContent>

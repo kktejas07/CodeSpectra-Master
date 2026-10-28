@@ -33,7 +33,8 @@ export async function GET(req: NextRequest) {
     // Unique visitors (anonymous_id or user_id)
     const uniqueVisitors = await eventsCol.aggregate([
       { $match: { timestamp: { $gte: sinceIso } } },
-      { $group: { _id: { $ifNull: ['$user_id', '$anonymous_id'] } } },
+      { $group: { _id: { $ifNull: ['$user_id', { $ifNull: ['$anonymous_id', '$visitor_hash'] }] } } },
+      { $match: { _id: { $ne: null } } },
       { $count: 'total' },
     ]).toArray()
 
@@ -44,12 +45,14 @@ export async function GET(req: NextRequest) {
     const fiveMinAgo = new Date(now.getTime() - 5 * 60_000).toISOString()
     const activeNow = await sessionsCol.countDocuments({ last_activity_at: { $gte: fiveMinAgo } })
 
-    // Total pageviews
-    const totalPageviews = await pageviewsCol.countDocuments({ timestamp: { $gte: sinceIso } })
+    // Total pageviews — page views live in analytics_events (event 'page_view');
+    // analytics_pageviews was never written, so it is only a fallback for old data.
+    const totalPageviews = (await eventsCol.countDocuments({ event: 'page_view', timestamp: { $gte: sinceIso } }))
+      || (await pageviewsCol.countDocuments({ timestamp: { $gte: sinceIso } }))
 
     // Top pages
-    const topPages = await pageviewsCol.aggregate([
-      { $match: { timestamp: { $gte: sinceIso } } },
+    const topPages = await eventsCol.aggregate([
+      { $match: { event: 'page_view', timestamp: { $gte: sinceIso } } },
       { $group: { _id: '$path', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 10 },
@@ -116,6 +119,6 @@ export async function GET(req: NextRequest) {
     })
   } catch (e) {
     console.error('[analytics overview] error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

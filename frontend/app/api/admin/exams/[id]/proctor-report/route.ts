@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { users as usersCol } from '@/lib/db/admin'
+import { mediaViewUrl } from '@/lib/identity-media'
+import { getAppOrigin } from '@/lib/app-origin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,7 +12,7 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const gate = await requireSuperAdmin()
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { id: examId } = await ctx.params
@@ -17,8 +20,10 @@ export async function GET(
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    // Tenant admins may read reports for their own tenant's exams only.
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
+    const exam = owned.doc
 
     // All submissions for this exam
     const submissions = await db.collection('exam_submissions')
@@ -53,9 +58,20 @@ export async function GET(
 
     // Fetch user profiles
     const users = userIds.length > 0
-      ? await db.collection('users').find({ id: { $in: userIds } }).toArray()
+      ? await (await usersCol()).find({ id: { $in: userIds } } as never).toArray()
       : []
     const userMap = new Map(users.map((u: any) => [u.id, u]))
+
+    // Identity photos: signed 5-minute absolute URLs (the report's own CSP allows https: images).
+    const origin = getAppOrigin()
+    const photoUrl = async (v: unknown) => {
+      const u = await mediaViewUrl(v, gate.user.id)
+      return u && u.startsWith('/') ? `${origin}${u}` : u
+    }
+    const photoUrls = new Map<string, { id: string | null; face: string | null }>()
+    await Promise.all(submissions.map(async (sub: any) => {
+      photoUrls.set(String(sub.id), { id: await photoUrl(sub.id_photo), face: await photoUrl(sub.face_photo) })
+    }))
 
     // Build candidate report
     const candidates = submissions.map((sub: any) => {
@@ -68,8 +84,9 @@ export async function GET(
         max_score: sub.max_score,
         has_pending_review: sub.has_pending_review || false,
         score_released: sub.score_released || false,
-        id_photo: sub.id_photo || null,
-        face_photo: sub.face_photo || null,
+        id_photo: photoUrls.get(String(sub.id))?.id ?? null,
+        face_photo: photoUrls.get(String(sub.id))?.face ?? null,
+        identity_check: sub.identity_check || null,
         device_info: sub.device_info || null,
         submitted_at: sub.created_at,
         proctor_events: eventsByUser[sub.user_id] || [],

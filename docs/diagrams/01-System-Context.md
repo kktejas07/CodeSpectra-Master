@@ -50,6 +50,6 @@ C4Context
 | **OpenAI API** | Interview service, AI chat | Vercel AI SDK (`@ai-sdk/openai`) | API key via environment |
 | **Razorpay** | Payment processing | `razorpay` npm package + webhooks | Key ID + Secret (env or DB) |
 | **GitHub API** | OAuth, repos, file content, PRs | `frontend/lib/github-service.ts` — REST API v3 | OAuth token / GitHub App token |
-| **Piston Engine** | Code execution | Docker container `ghcr.io/engineer-man/piston:latest` on port 2000 | None (internal network) |
+| **Piston Engine** | Code execution | Docker container `ghcr.io/engineer-man/piston@sha256:…` (digest-pinned via PISTON_IMAGE) on port 2000 | None (internal network) |
 | **MongoDB Atlas** | Primary database | `mongodb` npm driver v7.3.0 + `motor` Python driver | Connection string (env) |
 | **Resend / SendGrid** | Email delivery | `frontend/lib/transactional-mail.ts` — multi-provider abstraction | API keys (env or DB secrets) |

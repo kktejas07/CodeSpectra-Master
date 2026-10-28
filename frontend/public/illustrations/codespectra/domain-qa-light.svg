@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img"><title>Test checklist catching a bug</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#5b84ff"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8"/><stop offset=".5" stop-color="#2f5be7"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
+  .surf{fill:#f8fafc;stroke:#64748b;stroke-opacity:.7}
+  .ln{stroke:#64748b;stroke-opacity:.6;fill:none}
+  .txt{fill:#64748b;opacity:.75}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+    .tag,.num,.row,.ev,.pass,.f{opacity:1!important}
+    .ck,.ok{stroke-dashoffset:0!important}
+    .gauge{stroke-dashoffset:36!important}
+    .pkt{offset-distance:50%}
+  }
+
+  .ck{stroke:#2f5be7;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:14;stroke-dashoffset:14;animation:ck 4.5s ease infinite}
+  .k2{animation-delay:.5s}.k3{animation-delay:1s}
+  @keyframes ck{0%,10%{stroke-dashoffset:14}25%,85%{stroke-dashoffset:0}100%{stroke-dashoffset:14}}
+  .bug{animation:bug 4.5s ease infinite;transform-origin:72px 70px}
+  @keyframes bug{0%,45%{transform:scale(1);opacity:1}60%,100%{transform:scale(0);opacity:0}}
+</style><rect x="8" y="10" width="62" height="76" rx="6" class="surf" stroke-width="1.5"/><rect x="16" y="20" width="11" height="11" rx="2.5" class="ln" stroke-width="1.5"/><path class="ck k1" d="M18.5 25.5l3 3 5-6"/><rect x="33" y="23" width="40" height="5" rx="2.5" fill="#94a3b8" opacity=".6"/><rect x="16" y="38" width="11" height="11" rx="2.5" class="ln" stroke-width="1.5"/><path class="ck k2" d="M18.5 43.5l3 3 5-6"/><rect x="33" y="41" width="34" height="5" rx="2.5" fill="#94a3b8" opacity=".6"/><rect x="16" y="56" width="11" height="11" rx="2.5" class="ln" stroke-width="1.5"/><path class="ck k3" d="M18.5 61.5l3 3 5-6"/><rect x="33" y="59" width="28" height="5" rx="2.5" fill="#94a3b8" opacity=".6"/><g class="bug"><ellipse cx="72" cy="70" rx="8" ry="10" fill="#ef4444" opacity=".85"/><path d="M64 64l-5-3M64 72h-6M80 64l5-3M80 72h6M68 61l-2-5M76 61l2-5" stroke="#ef4444" stroke-width="1.5"/></g></svg>

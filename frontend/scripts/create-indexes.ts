@@ -244,6 +244,17 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   ],
   ai_usage: [
     { key: { createdAt: -1 }, expireAfterSeconds: 90 * 24 * 60 * 60 },
+    { key: { createdAt: -1, feature: 1 }, name: 'ai_usage_time_feature' },
+  ],
+  // Month totals + per-feature month totals for AI spend caps / budget (lib/ai/usage-record).
+  // Daily AI spend rollups — never expire (lib/ai/usage-rollup).
+  ai_usage_daily: [
+    { key: { id: 1 }, unique: true, name: 'ai_usage_daily_id' },
+    { key: { day: -1 }, name: 'ai_usage_daily_day' },
+  ],
+  ai_spend_counters: [
+    { key: { id: 1 }, unique: true, name: 'ai_spend_counters_id' },
+    { key: { kind: 1, month: -1 }, name: 'ai_spend_counters_kind_month' },
   ],
 }
 
@@ -251,6 +262,12 @@ async function main() {
   const db = await getMongoDb()
   let total = 0
   let errors = 0
+
+  // Hot-collection indexes (also created automatically on server start — lib/db-indexes.ts).
+  const { ensureHotIndexes, backfillInviteExamIds } = await import('@/lib/db-indexes')
+  const hot = await ensureHotIndexes(db, (m) => console.log(m))
+  console.log(`[hot] ${hot.created} ensured, ${hot.skipped} skipped; backfilled ${await backfillInviteExamIds(db, 100_000)} invite(s)`)
+  total += hot.created
 
   for (const [collection, specs] of Object.entries(INDEX_SPECS)) {
     try {

@@ -8,6 +8,8 @@ import {
   Undo2, Redo2, Minus, RemoveFormatting
 } from 'lucide-react'
 import { compressImageDataUrl } from '@/lib/image-compress'
+import { isSubmitEnter } from '@/lib/keyboard'
+import { useT } from '@/lib/i18n/client'
 
 interface RichTextEditorProps {
   value: string
@@ -17,6 +19,7 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ value, onChange, placeholder = 'Write your content...', minHeight = 250 }: RichTextEditorProps) {
+  const { t } = useT()
   const editorRef = useRef<HTMLDivElement>(null)
   const isInternalEdit = useRef(false)
   const [showLinkInput, setShowLinkInput] = useState(false)
@@ -103,13 +106,13 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
     { icon: Heading1, command: 'formatBlock', value: '<h1>', tooltip: 'Heading 1' },
     { icon: Heading2, command: 'formatBlock', value: '<h2>', tooltip: 'Heading 2' },
     { divider: true },
-    { icon: List, command: 'insertUnorderedList', tooltip: 'Bullet List' },
-    { icon: ListOrdered, command: 'insertOrderedList', tooltip: 'Numbered List' },
+    { icon: List, command: 'insertUnorderedList', tooltip: 'Bullet list' },
+    { icon: ListOrdered, command: 'insertOrderedList', tooltip: 'Numbered list' },
     { icon: Quote, command: 'formatBlock', value: '<blockquote>', tooltip: 'Quote' },
-    { icon: Code, command: 'formatBlock', value: '<pre>', tooltip: 'Code Block' },
+    { icon: Code, command: 'formatBlock', value: '<pre>', tooltip: 'Code block' },
     { divider: true },
     { icon: Minus, command: 'insertHorizontalRule', tooltip: 'Divider' },
-    { icon: RemoveFormatting, command: 'removeFormat', tooltip: 'Clear Formatting' },
+    { icon: RemoveFormatting, command: 'removeFormat', tooltip: 'Clear formatting' },
   ]
 
   return (
@@ -129,6 +132,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
               size="sm"
               className="h-7 w-7 p-0"
               title={btn.tooltip}
+              aria-label={btn.tooltip}
               onMouseDown={e => {
                 e.preventDefault() // Prevent editor losing focus
                 execCommand(btn.command!, btn.value)
@@ -144,7 +148,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Insert Link"
+          title={t('common.editorInsertLink')}
+          aria-label={t('common.editorInsertLink')}
           onMouseDown={e => e.preventDefault()}
           onClick={() => setShowLinkInput(!showLinkInput)}
         >
@@ -155,7 +160,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Insert Image"
+          title={t('common.editorInsertImage')}
+          aria-label={t('common.editorInsertImage')}
           onMouseDown={e => e.preventDefault()}
           onClick={insertImage}
         >
@@ -167,7 +173,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Undo"
+          title={t('common.editorUndo')}
+          aria-label={t('common.editorUndo')}
           onMouseDown={e => { e.preventDefault(); execCommand('undo') }}
         >
           <Undo2 className="h-3.5 w-3.5" />
@@ -177,7 +184,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Redo"
+          title={t('common.editorRedo')}
+          aria-label={t('common.editorRedo')}
           onMouseDown={e => { e.preventDefault(); execCommand('redo') }}
         >
           <Redo2 className="h-3.5 w-3.5" />
@@ -192,11 +200,12 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
             value={linkUrl}
             onChange={e => setLinkUrl(e.target.value)}
             placeholder="https://example.com"
+            aria-label={t('common.editorLinkUrl')}
             className="flex-1 text-sm px-2 py-1 rounded border border-border/60 bg-background"
-            onKeyDown={e => e.key === 'Enter' && insertLink()}
+            onKeyDown={e => isSubmitEnter(e) && insertLink()}
           />
-          <Button type="button" size="sm" onClick={insertLink}>Insert</Button>
-          <Button type="button" size="sm" variant="ghost" onClick={() => { setShowLinkInput(false); setLinkUrl('') }}>Cancel</Button>
+          <Button type="button" size="sm" onClick={insertLink}>{t('common.editorInsert')}</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => { setShowLinkInput(false); setLinkUrl('') }}>{t('common.cancel')}</Button>
         </div>
       )}
 
@@ -205,6 +214,9 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        aria-label={placeholder}
         className="rich-text-editor"
         style={{ minHeight: `${minHeight}px` }}
         onInput={syncContent}

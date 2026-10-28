@@ -3,6 +3,7 @@ import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
 import { isPipelineStage, PIPELINE_STAGE_IDS } from '@/lib/pipeline-stages'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,9 +46,10 @@ export async function PATCH(
     if (res.matchedCount === 0) {
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
     }
+    await auditAdmin(gate.user, 'admin.submission.stage', 'exam_submission', `exam/${examId}/user/${userId}`, `stage: ${stage}`)
     return NextResponse.json({ ok: true, stage })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to set stage'
+    const msg = 'Failed to set stage'
     console.error('[CodeSpectra] pipeline stage PATCH:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

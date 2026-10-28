@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isHackathonStaff } from '@/lib/hackathons/access'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, nowIso } from '@/lib/db/qr-events'
 
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string; teamId: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
@@ -18,13 +19,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   // Verify user is on the team or is an admin
   const isMember = team.members.some((m) => m.user_id === user.id)
-  const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes(user.role || '')
-  if (!isMember && !isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  // tenant_admin acting as admin can only modify teams in their own tenant's event
-  if (!isMember && user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isMember && !isHackathonStaff(user, hk)) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const body = await req.json().catch(() => ({})) as { problem_slug?: string }
@@ -43,7 +39,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // Check limit
   const limit = hk.solve_limit || 0
   if (limit > 0 && selected.length >= limit) {
-    return NextResponse.json({ error: `You have reached the solve limit of ${limit} problem(s).` }, { status: 409 })
+    return NextResponse.json({ error: `You have reached the solve limit of ${limit} problem(s).`, code: 'hk_solve_limit', params: { limit: Number(limit) } }, { status: 409 })
   }
 
   const updatedSelected = [...selected, body.problem_slug]

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { proctorEvents, newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
+import { sanitizeProctorMeta } from '@/lib/exam-access'
+import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
+import { clientIpOrEmpty } from '@/lib/client-ip'
+
+const SESSION_KINDS = ['exam', 'problem', 'interview'] as const
 
 export const runtime = 'nodejs'
 
@@ -14,30 +19,37 @@ interface EventReq {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   let body: EventReq
   try {
     body = (await req.json()) as EventReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
-  if (!body.session_id || !body.event_type) {
+  if (!body || typeof body.session_id !== 'string' || typeof body.event_type !== 'string' || !body.session_id || !body.event_type) {
     return NextResponse.json({ error: 'session_id + event_type required' }, { status: 400 })
   }
+  if (!/^[a-z0-9_]{1,64}$/.test(body.event_type) || body.session_id.length > 128) {
+    return NextResponse.json({ error: 'Invalid event' }, { status: 400 })
+  }
+  // Browser-reported and unauthenticated by design (beacon-style), so bound it.
+  const rl = rateLimitSlidingWindow(`proctor-events:${user.id}`, 600, 10 * 60_000)
+  if (!rl.ok) return NextResponse.json({ error: 'Too many events' }, { status: 429 })
 
   try {
     const ua = req.headers.get('user-agent') || ''
     const parsed = parseUserAgent(ua)
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    const ip = clientIpOrEmpty(req)
 
     const col = await proctorEvents()
     const doc = {
       id: newId(),
       user_id: user.id,
-      session_kind: body.session_kind || 'problem',
+      session_kind: (SESSION_KINDS as readonly string[]).includes(body.session_kind) ? body.session_kind : 'problem',
       session_id: body.session_id,
-      event_type: body.event_type.slice(0, 64),
-      meta: { ...(body.meta || {}), ua, browser: parsed.browser, os: parsed.os, device: parsed.device, ip },
+      event_type: body.event_type,
+      // Client fields are flattened and capped; server fields always win.
+      meta: { ...sanitizeProctorMeta(body.meta), ua: ua.slice(0, 500), browser: parsed.browser, os: parsed.os, device: parsed.device, ip },
       created_at: nowIso(),
     }
     await col.insertOne(doc)
@@ -50,7 +62,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const sessionId = req.nextUrl.searchParams.get('session_id') || ''
     const col = await proctorEvents()

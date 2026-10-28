@@ -5,6 +5,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Loader2, Shield, AlertTriangle, RefreshCw, AlertCircle, Eye } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ProctorEvent {
   event_type: string
@@ -21,8 +23,8 @@ interface ProctoringData {
 const EVENT_COLORS: Record<string, string> = {
   tab_blur: '#f59e0b',
   alt_tab_detected: '#ef4444',
-  clipboard_copy: '#8b5cf6',
-  clipboard_paste: '#8b5cf6',
+  clipboard_copy: '#2f5be7',
+  clipboard_paste: '#2f5be7',
   copy_paste_attempt: '#ef4444',
   screen_share_started: '#3b82f6',
   screen_share_ended: '#3b82f6',
@@ -33,13 +35,13 @@ const EVENT_COLORS: Record<string, string> = {
   usb_device_unplugged: '#f97316',
   navigate_away_attempt: '#ef4444',
   fullscreen_exit: '#f59e0b',
-  answer_pattern_score: '#10b981',
+  answer_pattern_score: '#64748b',
   timer_warning_30min: '#f59e0b',
-  secondary_voice_detected: '#ec4899',
-  volume_anomaly_detected: '#ec4899',
+  secondary_voice_detected: '#b91c1c',
+  volume_anomaly_detected: '#b91c1c',
   hardware_port_anomaly: '#f97316',
-  rapid_window_resize: '#06b6d4',
-  keyboard_shortcut_detected: '#8b5cf6',
+  rapid_window_resize: '#1e40af',
+  keyboard_shortcut_detected: '#2f5be7',
   right_click_detected: '#f59e0b',
   print_attempt: '#ef4444',
   developer_tools: '#ef4444',
@@ -52,17 +54,21 @@ export function ProctoringPanel() {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/analytics/proctoring', { credentials: 'include' })
-      const json = await res.json()
-      if (json) {
-        setData(json)
-        setLastUpdated(new Date())
-      }
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json || json.error) throw new Error('load failed')
+      setData(json)
+      setLastUpdated(new Date())
+      setLoadError(false)
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -80,6 +86,20 @@ export function ProctoringPanel() {
       <div className="flex justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    )
+  }
+
+  // Nothing loaded yet: an honest error instead of an empty dashboard.
+  if (loadError && !data) {
+    return (
+      <EmptyState
+        compact
+        illustration="error"
+        title="Couldn't load proctoring analytics"
+        description="Check your connection and try again."
+        actionLabel="Try again"
+        onAction={() => { setLoading(true); void fetchData() }}
+      />
     )
   }
 
@@ -117,31 +137,32 @@ export function ProctoringPanel() {
   })
 
   const riskPieData = [
-    { name: 'High Risk', value: highRiskCount, color: '#ef4444' },
-    { name: 'Low/Medium Risk', value: lowRiskCount, color: '#f59e0b' }
+    { name: 'High risk', value: highRiskCount, color: '#ef4444' },
+    { name: 'Low/medium risk', value: lowRiskCount, color: '#f59e0b' }
   ]
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Shield className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Proctoring Analytics</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Proctoring flags and event distribution across assessments</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {lastUpdated && (
+      <PageHeader
+        illustration="proctoring"
+        className="mb-0"
+        title="Proctoring analytics"
+        description="Proctoring flags and how they are spread across your assessments."
+        icon={<Shield />}
+        actions={<>
+          {loadError ? (
+            <span className="flex items-center gap-1 text-xs text-destructive" role="status">
+              <AlertCircle className="h-3.5 w-3.5" aria-hidden /> Couldn&apos;t refresh — showing the last data
+            </span>
+          ) : lastUpdated && (
             <span className="text-xs text-muted-foreground">
               Updated: {formatTime(lastUpdated)}
             </span>
           )}
           <button
+            type="button"
             onClick={() => void fetchData()}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -155,60 +176,20 @@ export function ProctoringPanel() {
             />
             Auto-refresh
           </label>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* KPI Row */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{data?.total_flags ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Total Flags</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{highRiskCount}</p>
-              <p className="text-xs text-muted-foreground">High Risk Events</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-              <Eye className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{lowRiskCount}</p>
-              <p className="text-xs text-muted-foreground">Low Risk Events</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
-              <Shield className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{sortedTypes.length}</p>
-              <p className="text-xs text-muted-foreground">Unique Types</p>
-            </div>
-          </div>
-        </Card>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Total flags" value={data?.total_flags ?? 0} icon={<AlertTriangle />} />
+        <StatCard label="High-risk events" value={highRiskCount} icon={<AlertCircle />} />
+        <StatCard label="Low-risk events" value={lowRiskCount} icon={<Eye />} />
+        <StatCard label="Event types" value={sortedTypes.length} icon={<Shield />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/60 p-6 flex flex-col">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h2>
+        <Card className="rounded-3xl border-border/70 p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Risk distribution</h2>
           <div className="flex-1 min-h-[250px]">
             {riskPieData.some(d => d.value > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -234,15 +215,15 @@ export function ProctoringPanel() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No data</div>
+              <EmptyState illustration="proctoring" title="No data yet" description="Flag types appear once proctored sessions are recorded." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
             )}
           </div>
         </Card>
 
-        <Card className="border-border/60 p-6 flex flex-col">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Top Flags per Exam</h2>
+        <Card className="rounded-3xl border-border/70 p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Most-flagged assessments</h2>
           {examFlags.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No proctoring data available.</div>
+            <EmptyState illustration="proctoring" title="No proctoring flags yet" description="Assessments with the most flags show up here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           ) : (
             <div className="space-y-4 overflow-y-auto max-h-[250px] pr-2">
               {examFlags.slice(0, 5).map(exam => (
@@ -252,7 +233,7 @@ export function ProctoringPanel() {
                   </span>
                   <div className="flex-1 h-6 rounded-full bg-muted/50 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-red-500/60 transition-all"
+                      className="h-full rounded-full bg-red-500/60 transition-all motion-reduce:transition-none"
                       style={{ width: `${(exam.total / maxExamFlags) * 100}%` }}
                     />
                   </div>
@@ -264,18 +245,18 @@ export function ProctoringPanel() {
         </Card>
       </div>
 
-      <Card className="border-border/60 overflow-hidden">
+      <Card className="rounded-3xl border-border/70 overflow-hidden">
         <div className="px-6 py-4 border-b border-border/60">
-          <h2 className="text-lg font-semibold text-foreground">Flags by Event Type</h2>
+          <h2 className="text-lg font-semibold text-foreground">Flags by event type</h2>
         </div>
         {sortedTypes.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No event data.</div>
+          <EmptyState illustration="proctoring" title="No proctoring events yet" description="Event types are listed here once candidates take proctored tests." className="rounded-none border-0 bg-transparent" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-muted-foreground">
-                  <th className="px-6 py-3 text-left font-medium">Event Type</th>
+                  <th className="px-6 py-3 text-left font-medium">Event type</th>
                   <th className="px-6 py-3 text-left font-medium w-40">Distribution</th>
                   <th className="px-6 py-3 text-right font-medium">Count</th>
                 </tr>
@@ -295,7 +276,7 @@ export function ProctoringPanel() {
                     <td className="px-6 py-3">
                       <div className="h-4 rounded-full bg-muted/50 overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all"
+                          className="h-full rounded-full transition-all motion-reduce:transition-none"
                           style={{
                             width: `${(count / maxCount) * 100}%`,
                             backgroundColor: EVENT_COLORS[type] || '#6b7280',

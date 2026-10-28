@@ -106,7 +106,15 @@ memory/test_credentials.md
 .env
 .env.*
 *.env
+# …but the documented templates are tracked
+!.env.example
+!**/.env.example
 credentials.json
+# Service-account / private-key material (Firebase Admin, GCP, TLS) — never commit
+*service-account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+firebase-adminsdk*.json
 *.key
 .credentials
 codespectra/CodeSpectra-Master/node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node

@@ -7,13 +7,17 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'product',
   'certificates',
   'integrations',
+  'hiring',
   'payments',
   'email-templates',
   'llm',
   'gamification',
   'kyc',
   'redis',
+  'storage',
   'whatsapp',
+  'analytics',
+  'seo',
 ] as const
 
 export type PlatformSettingsSection = (typeof PLATFORM_SETTINGS_SECTIONS)[number]

@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useState, use } from 'react'
+import Link from 'next/link'
 import { ChallengeEditor } from '@/components/challenges/challenge-editor'
 import { Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface ProblemData {
   id: string
@@ -19,6 +22,8 @@ interface ProblemData {
   constraints?: string
   test_cases: Array<{ stdin?: string; expected_stdout?: string; is_sample?: boolean }>
   starter_code?: Record<string, string>
+  time_limit_ms?: number
+  memory_limit_kb?: number
 }
 
 interface ChallengeData {
@@ -32,15 +37,18 @@ interface ChallengeData {
 }
 
 export default function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
 
   const { id: challengeId } = use(params)
   const [challenge, setChallenge] = useState<ChallengeData | null>(null)
   const [problem, setProblem] = useState<ProblemData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true)
       try {
         const chRes = await fetch(`/api/challenges/${challengeId}`, { credentials: 'include' })
         const chData = await chRes.json()
@@ -60,7 +68,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
       setLoading(false)
     }
     void load()
-  }, [challengeId])
+  }, [challengeId, reloadKey])
 
   if (loading) {
     return (
@@ -74,6 +82,23 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   }
 
   if (!gate.ready) return null
+
+  if (!challenge && !problem) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <EmptyState
+          illustration="error"
+          title={tr('practice.couldntLoadThisChallenge')}
+          description={tr('practice.itMayHaveBeenRemovedOrc49')}
+          actionLabel={tr('common.tryAgain')}
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
+        <p className="mt-4 text-center text-sm">
+          <Link href="/dashboard/challenges" className="text-primary hover:underline">{tr('practice.backToChallenges')}</Link>
+        </p>
+      </div>
+    )
+  }
 
   const title = problem?.title || challenge?.title || challengeId
   const description = problem?.statement_md || challenge?.description || ''
@@ -112,6 +137,8 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
         constraints={constraints}
         inputFormat={inputFormat}
         outputFormat={outputFormat}
+        timeLimitMs={problem?.time_limit_ms ?? null}
+        memoryLimitKb={problem?.memory_limit_kb ?? null}
       />
     </div>
   )

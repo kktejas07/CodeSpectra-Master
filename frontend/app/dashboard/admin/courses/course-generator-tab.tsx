@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
+import { Panel } from '@/components/app/page-kit'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Loader2, Clock, Pause,
@@ -17,6 +17,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { estimateCatalog, estimateCourse, COURSE_LEVELS, INDUSTRIES, subjectsForIndustry } from '@/lib/courses/syllabus'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface JobLog {
   timestamp: string
@@ -298,7 +299,7 @@ export default function CourseGeneratorTab() {
 
   // Delete course
   const handleDeleteCourse = (courseId: string, title: string) => {
-    setConfirmTitle('Delete Course')
+    setConfirmTitle('Delete course')
     setConfirmMessage(`Delete "${title}"? This action cannot be undone. All videos, quizzes, and progress will be permanently removed.`)
     setConfirmAction(() => async () => {
       try {
@@ -337,7 +338,7 @@ export default function CourseGeneratorTab() {
   }
 
   const handleDeleteJob = (jobId: string) => {
-    setConfirmTitle('Delete Job')
+    setConfirmTitle('Delete job')
     setConfirmMessage('Delete this job record? This cannot be undone.')
     setConfirmAction(() => async () => {
       try {
@@ -354,14 +355,14 @@ export default function CourseGeneratorTab() {
 
   const StatusBadge = ({ status }: { status: string }) => {
     const styles: Record<string, string> = {
-      pending: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-      running: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-      completed: 'bg-green-500/10 text-green-600 border-green-500/20',
-      failed: 'bg-red-500/10 text-red-600 border-red-500/20',
-      cancelled: 'bg-gray-500/10 text-gray-600 border-gray-500/20',
+      pending: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20',
+      running: 'bg-primary/10 text-primary border-primary/20',
+      completed: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20',
+      failed: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20',
+      cancelled: 'bg-muted text-muted-foreground border-border',
     }
     return (
-      <Badge variant="outline" className={`text-xs ${styles[status] || styles.pending}`}>
+      <Badge variant="outline" className={`text-xs capitalize ${styles[status] || styles.pending}`}>
         {status}
       </Badge>
     )
@@ -382,29 +383,30 @@ export default function CourseGeneratorTab() {
       return { dot: 'bg-muted-foreground', text: 'LLM chain: checking…', tone: 'text-muted-foreground', link }
     }
     if (llmHealth.total === 0 || !llmHealth.checkedAt) {
-      return { dot: 'bg-amber-500', text: 'LLM providers not tested yet — generation may fail. Run “Test all providers” in settings.', tone: 'text-amber-600', link }
+      return { dot: 'bg-amber-500', text: 'LLM providers not tested yet — generation may fail. Run “Test all providers” in settings.', tone: 'text-amber-700 dark:text-amber-300', link }
     }
     if (llmHealth.working === 0) {
-      return { dot: 'bg-red-500', text: `LLM chain DOWN (0/${llmHealth.total} working) — generation will fail. Fix a provider first.`, tone: 'text-red-600', link }
+      return { dot: 'bg-red-500', text: `LLM chain down (0/${llmHealth.total} working) — generation will fail. Fix a provider first.`, tone: 'text-red-700 dark:text-red-300', link }
     }
     if (llmHealth.working < llmHealth.total) {
-      return { dot: 'bg-amber-500', text: `LLM chain degraded (${llmHealth.working}/${llmHealth.total} working) — fallback covers the gaps.`, tone: 'text-amber-600', link }
+      return { dot: 'bg-amber-500', text: `LLM chain degraded (${llmHealth.working}/${llmHealth.total} working) — fallback covers the gaps.`, tone: 'text-amber-700 dark:text-amber-300', link }
     }
-    return { dot: 'bg-emerald-500', text: `LLM chain healthy (${llmHealth.working}/${llmHealth.total} providers working)`, tone: 'text-emerald-600', link }
+    return { dot: 'bg-green-500', text: `LLM chain healthy (${llmHealth.working}/${llmHealth.total} providers working)`, tone: 'text-green-700 dark:text-green-300', link }
   })()
 
   return (
     <div className="space-y-6">
       {/* LLM chain status — cached probe, refreshes via Test-all in settings */}
-      <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs">
+      <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-card px-4 py-2.5 text-xs">
         <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${llmStrip.dot}`} />
         <span className={`truncate flex-1 ${llmStrip.tone}`}>{llmStrip.text}</span>
         {llmStrip.link}
         <button
           type="button"
           onClick={() => { void loadLlmHealth(); loadWorker() }}
-          className="text-muted-foreground hover:text-foreground shrink-0"
+          className="text-muted-foreground hover:text-foreground shrink-0 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           title="Refresh status"
+          aria-label="Refresh status"
         >
           <RefreshCw className="h-3.5 w-3.5" />
         </button>
@@ -414,47 +416,47 @@ export default function CourseGeneratorTab() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left: Generation Form */}
         <div className="lg:col-span-1 space-y-4">
-          <Card className="p-5 space-y-4">
+          <Panel className="p-5 space-y-4">
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <Zap className="h-4 w-4 text-primary" />
-              New Course
+              New course
             </h2>
 
             <div>
-              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Industry</label>
-              <select
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Industry</label>
+              <select aria-label="Industry"
                 value={industry}
                 onChange={e => {
                   setIndustry(e.target.value as (typeof INDUSTRIES)[number]['id'])
                   setTechnology('')
                   setCustomTech('')
                 }}
-                className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm"
+                className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {INDUSTRIES.map(ind => <option key={ind.id} value={ind.id}>{ind.label}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Subject</label>
-              <select value={technology} onChange={e => { setTechnology(e.target.value); setCustomTech('') }} className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Subject</label>
+              <select aria-label="Subject" value={technology} onChange={e => { setTechnology(e.target.value); setCustomTech('') }} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Select subject</option>
                 {industrySubjects.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
               </select>
-              <input type="text" value={customTech} onChange={e => setCustomTech(e.target.value)} placeholder="Or type a custom subject..." className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm mt-2" />
+              <input type="text" value={customTech} onChange={e => setCustomTech(e.target.value)} placeholder="Or type a custom subject..." className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-2" />
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Level</label>
-              <select value={level} onChange={e => setLevel(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Level</label>
+              <select aria-label="Level" value={level} onChange={e => setLevel(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Select level</option>
                 {LEVELS.map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Lesson length</label>
-              <select value={targetMinutes} onChange={e => setTargetMinutes(Number(e.target.value) || 10)} className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Lesson length</label>
+              <select aria-label="Lesson length" value={targetMinutes} onChange={e => setTargetMinutes(Number(e.target.value) || 10)} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value={10}>~10 min / lesson (15 slides)</option>
                 <option value={15}>~15 min / lesson (22 slides)</option>
                 <option value={30}>~30 min / lesson (40 slides)</option>
@@ -463,13 +465,13 @@ export default function CourseGeneratorTab() {
             </div>
 
             <Button onClick={handleGenerate} disabled={generating || !selectedTech || !level} className="w-full gap-2">
-              {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Zap className="h-4 w-4" /> Generate Course</>}
+              {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Zap className="h-4 w-4" /> Generate course</>}
             </Button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Full syllabus + curriculum for this subject/level, then MP4, audio, and captions (~{targetMinutes} min/lesson, one job at a time).
             </p>
             {preview && (
-              <div className="rounded-md border border-border/60 p-3 space-y-2">
+              <div className="rounded-2xl border border-border/60 bg-muted/30 p-3 space-y-2">
                 <p className="text-sm font-medium">{preview.title}</p>
                 <p className="text-[11px] text-muted-foreground">{preview.brief}</p>
                 <p className="text-[11px] text-muted-foreground">
@@ -480,12 +482,12 @@ export default function CourseGeneratorTab() {
                 </ol>
               </div>
             )}
-          </Card>
+          </Panel>
 
           {/* Stats Card */}
-          <Card className="p-5 space-y-3">
+          <Panel className="p-5 space-y-3">
             <h2 className="text-sm font-semibold flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <BarChart3 className="h-4 w-4 text-primary" />
               Worker
             </h2>
             <div className="flex items-center gap-2">
@@ -504,39 +506,39 @@ export default function CourseGeneratorTab() {
               Unstick hung job
             </Button>
             {workerStuck && (
-              <p className="text-[11px] text-amber-600">Job is marked running but the worker is idle. Unstick requeues it.</p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-300">Job is marked running but the worker is idle. Unstick requeues it.</p>
             )}
-          </Card>
+          </Panel>
 
           {/* Stats Card */}
-          <Card className="p-5">
+          <Panel className="p-5">
             <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              Quick Stats
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Quick stats
             </h2>
             <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="p-2 rounded-lg bg-muted/30">
-                <p className="text-lg font-bold">{existingCourses.length}</p>
-                <p className="text-[10px] text-muted-foreground">Courses</p>
+              <div className="p-2.5 rounded-xl bg-muted/40">
+                <p className="text-lg font-bold tabular-nums">{existingCourses.length}</p>
+                <p className="text-[11px] text-muted-foreground">Courses</p>
               </div>
-              <div className="p-2 rounded-lg bg-muted/30">
-                <p className="text-lg font-bold">{jobs.length}</p>
-                <p className="text-[10px] text-muted-foreground">Jobs</p>
+              <div className="p-2.5 rounded-xl bg-muted/40">
+                <p className="text-lg font-bold tabular-nums">{jobs.length}</p>
+                <p className="text-[11px] text-muted-foreground">Jobs</p>
               </div>
-              <div className="p-2 rounded-lg bg-muted/30">
-                <p className="text-lg font-bold text-green-600">{completedJobs.filter(j => j.status === 'completed').length}</p>
-                <p className="text-[10px] text-muted-foreground">Completed</p>
+              <div className="p-2.5 rounded-xl bg-muted/40">
+                <p className="text-lg font-bold tabular-nums text-green-700 dark:text-green-400">{completedJobs.filter(j => j.status === 'completed').length}</p>
+                <p className="text-[11px] text-muted-foreground">Completed</p>
               </div>
-              <div className="p-2 rounded-lg bg-muted/30">
-                <p className="text-lg font-bold text-blue-600">{runningJobs.length}</p>
-                <p className="text-[10px] text-muted-foreground">Running</p>
+              <div className="p-2.5 rounded-xl bg-muted/40">
+                <p className="text-lg font-bold tabular-nums text-primary">{runningJobs.length}</p>
+                <p className="text-[11px] text-muted-foreground">Running</p>
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
               This industry: <strong>{industryCatalog.courses} courses</strong>, ~{industryCatalog.lessons.toLocaleString()} lessons, ~{industryCatalog.hours}h, ~{industryCatalog.gb} GB.
               Full catalog ({catalog.industries} industries, {catalog.subjects} subjects): <strong>{catalog.courses} courses</strong>, ~{catalog.lessons.toLocaleString()} lessons, ~{catalog.hours}h, ~{catalog.gb} GB.
             </p>
-          </Card>
+          </Panel>
         </div>
 
         {/* Right: Tabs */}
@@ -555,19 +557,16 @@ export default function CourseGeneratorTab() {
 
             {/* Courses Tab */}
             <TabsContent value="courses" className="mt-4">
-              <Card className="p-5">
+              <Panel className="p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold">Existing Courses</h2>
-                  <Button variant="ghost" size="sm" onClick={loadExistingCourses}>
+                  <h2 className="text-sm font-semibold">Existing courses</h2>
+                  <Button variant="ghost" size="sm" onClick={loadExistingCourses} aria-label="Refresh courses">
                     <RefreshCw className="h-3.5 w-3.5" />
                   </Button>
                 </div>
 
                 {existingCourses.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                    <p>No courses yet. Create your first course above.</p>
-                  </div>
+                  <EmptyState variant="courses" title="No courses yet" description="Pick an industry, subject and level, then select Generate course." className="border-0 bg-transparent py-6 md:py-8" />
                 ) : (
                   <div className="space-y-2">
                     {existingCourses.map((course: any) => {
@@ -576,10 +575,10 @@ export default function CourseGeneratorTab() {
                       const sections = course.sections || []
 
                       return (
-                        <div key={course.id} className="rounded-lg border border-border/60">
-                          <div className="flex items-center justify-between p-3 hover:bg-muted/20">
+                        <div key={course.id} className="rounded-2xl border border-border/60 overflow-hidden">
+                          <div className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors">
                           <button type="button" className="flex items-center gap-3 text-left min-w-0" onClick={() => setExpandedCourse(open ? null : course.id)}>
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                               <Film className="h-5 w-5 text-primary" />
                             </div>
                             <div className="min-w-0">
@@ -588,18 +587,18 @@ export default function CourseGeneratorTab() {
                                 <span>{sections.length} modules · {media.total} lessons</span>
                                 <Badge
                                   variant="outline"
-                                  className={`h-5 px-1.5 text-[10px] font-normal ${
+                                  className={`h-5 px-1.5 text-[11px] font-normal tabular-nums ${
                                     media.mp4Ready === media.total && media.total > 0
-                                      ? 'border-green-500/40 text-green-600'
+                                      ? 'border-green-500/40 text-green-700 dark:text-green-300'
                                       : media.mp4Ready > 0
-                                        ? 'border-amber-500/40 text-amber-600'
+                                        ? 'border-amber-500/40 text-amber-700 dark:text-amber-300'
                                         : 'border-border text-muted-foreground'
                                   }`}
                                 >
                                   MP4 {media.mp4Ready}/{media.total}
                                 </Badge>
                                 {media.pending > 0 && (
-                                  <span className="text-amber-600">{media.pending} pending</span>
+                                  <span className="text-amber-700 dark:text-amber-300">{media.pending} pending</span>
                                 )}
                                 {media.scriptOnly > 0 && media.mp4Ready === 0 && (
                                   <span className="text-muted-foreground">(script only — no MP4 yet)</span>
@@ -608,15 +607,15 @@ export default function CourseGeneratorTab() {
                             </div>
                           </button>
                           <div className="flex items-center gap-1 shrink-0">
-                            <Button variant="ghost" size="sm" onClick={() => handleRegenerate(course.id, course.title)} title="Regenerate videos (Force)">
+                            <Button variant="ghost" size="sm" onClick={() => handleRegenerate(course.id, course.title)} title="Regenerate videos (force)" aria-label="Regenerate videos">
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
-                            <Link href={`/dashboard/courses/${course.id}`}>
-                              <Button variant="ghost" size="sm" title="Open course">
+                            <Button variant="ghost" size="sm" title="Open course" aria-label="Open course" asChild>
+                              <Link href={`/dashboard/courses/${course.id}`}>
                                 <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                            </Link>
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteCourse(course.id, course.title)} title="Delete course" className="text-red-500 hover:text-red-600">
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteCourse(course.id, course.title)} title="Delete course" aria-label="Delete course" className="text-destructive hover:text-destructive">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
@@ -632,12 +631,12 @@ export default function CourseGeneratorTab() {
                                       return (
                                         <li key={lesson.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
                                           {hasMp4 ? (
-                                            <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                                            <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600 dark:text-green-400" />
                                           ) : (
                                             <Circle className="h-3 w-3 shrink-0 text-muted-foreground/50" />
                                           )}
                                           <span className="truncate flex-1">{lesson.title}</span>
-                                          <span className={hasMp4 ? 'text-green-600 shrink-0' : 'shrink-0'}>
+                                          <span className={hasMp4 ? 'text-green-700 dark:text-green-400 shrink-0' : 'shrink-0'}>
                                             {hasMp4 ? 'MP4' : '—'}
                                           </span>
                                         </li>
@@ -653,62 +652,59 @@ export default function CourseGeneratorTab() {
                     })}
                   </div>
                 )}
-              </Card>
+              </Panel>
             </TabsContent>
 
             {/* Jobs Tab */}
             <TabsContent value="jobs" className="mt-4">
-              <Card className="p-5">
+              <Panel className="p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold">Generation Jobs</h2>
+                  <h2 className="text-sm font-semibold">Generation jobs</h2>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" title="Delete failed jobs" onClick={handleDeleteFailedJobs}>
+                    <Button variant="ghost" size="sm" title="Delete failed jobs" aria-label="Delete failed jobs" onClick={handleDeleteFailedJobs}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={loadJobs}>
+                    <Button variant="ghost" size="sm" onClick={loadJobs} aria-label="Refresh jobs">
                       <RefreshCw className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
 
                 {jobs.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Clock className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                    <p>No jobs yet. Generate a course to start.</p>
-                  </div>
+                  <EmptyState illustration="courses" variant="sessions" title="No jobs yet" description="Generate a course and its video job will appear here." className="border-0 bg-transparent py-6 md:py-8" />
                 ) : (
                   <div className="space-y-3">
                     {jobs.map(job => (
-                      <div key={job.id} className="border border-border/60 rounded-lg overflow-hidden">
-                        <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30" onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}>
+                      <div key={job.id} className="border border-border/60 rounded-2xl overflow-hidden">
+                        <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-primary" role="button" tabIndex={0} aria-expanded={expandedJob === job.id} onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedJob(expandedJob === job.id ? null : job.id) } }}>
                           <div className="flex items-center gap-3">
                             <StatusBadge status={job.status} />
                             <div>
                               <p className="text-sm font-medium">{job.courseTitle}</p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs tabular-nums text-muted-foreground">
                                 MP4 {job.completedItems}/{job.totalItems}
-                                {job.failedItems > 0 && <span className="text-red-500 ml-2">{job.failedItems} failed</span>}
+                                {job.failedItems > 0 && <span className="text-red-600 dark:text-red-400 ml-2">{job.failedItems} failed</span>}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                             {(job.status === 'failed' || job.status === 'cancelled' || job.status === 'running' || job.status === 'pending') && (
-                              <Button variant="ghost" size="sm" title="Retry remaining lessons (keep successful videos)" onClick={(e) => handleRetryJob(job.id, e)}>
+                              <Button variant="ghost" size="sm" title="Retry remaining lessons (keep successful videos)" aria-label="Retry remaining lessons" onClick={(e) => handleRetryJob(job.id, e)}>
                                 <RotateCw className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             {(job.status === 'failed' || job.status === 'cancelled' || job.status === 'completed') && (
-                              <Button variant="ghost" size="sm" title="Regenerate all videos from scratch" onClick={(e) => handleRegenerateAllJob(job.id, job.courseTitle, e)}>
+                              <Button variant="ghost" size="sm" title="Regenerate all videos from scratch" aria-label="Regenerate all videos" onClick={(e) => handleRegenerateAllJob(job.id, job.courseTitle, e)}>
                                 <RotateCcw className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             {(job.status === 'pending' || job.status === 'running') && (
-                              <Button variant="ghost" size="sm" title="Cancel job" onClick={(e) => handleCancelJob(job.id, e)}>
+                              <Button variant="ghost" size="sm" title="Cancel job" aria-label="Cancel job" onClick={(e) => handleCancelJob(job.id, e)}>
                                 <Pause className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             {job.status !== 'running' && (
-                              <Button variant="ghost" size="sm" title="Delete job" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteJob(job.id)}>
+                              <Button variant="ghost" size="sm" title="Delete job" aria-label="Delete job" className="text-destructive hover:text-destructive" onClick={() => handleDeleteJob(job.id)}>
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
@@ -719,7 +715,7 @@ export default function CourseGeneratorTab() {
                         {job.status === 'running' && (
                           <div className="px-3 pb-3">
                             <div className="w-full bg-muted rounded-full h-1.5">
-                              <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${job.progress}%` }} />
+                              <div className="bg-primary h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none" style={{ width: `${job.progress}%` }} />
                             </div>
                           </div>
                         )}
@@ -732,14 +728,14 @@ export default function CourseGeneratorTab() {
                               <div className="space-y-1">
                                 {job.logs.slice().reverse().map((log, i) => (
                                   <div key={i} className="flex items-start gap-2 text-xs">
-                                    <span className="text-muted-foreground shrink-0">{formatTime(log.timestamp)}</span>
+                                    <span className="text-muted-foreground shrink-0 font-mono tabular-nums">{formatTime(log.timestamp)}</span>
                                     <span className={
                                       log.type === 'success' || /MP4 .+object storage/i.test(log.message || '')
-                                        ? 'text-green-600'
+                                        ? 'text-green-700 dark:text-green-400'
                                         : log.type === 'error'
-                                          ? 'text-red-600'
+                                          ? 'text-red-600 dark:text-red-400'
                                           : log.type === 'warning'
-                                            ? 'text-yellow-600'
+                                            ? 'text-amber-700 dark:text-amber-300'
                                             : 'text-foreground'
                                     }>
                                       {log.message}
@@ -754,7 +750,7 @@ export default function CourseGeneratorTab() {
                     ))}
                   </div>
                 )}
-              </Card>
+              </Panel>
             </TabsContent>
           </Tabs>
         </div>

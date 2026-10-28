@@ -3,7 +3,10 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
 import { getArenaChallenge, type ArenaChallenge } from '@/lib/arena-challenges'
 import { backendComplete } from '@/lib/ai/backend'
-import { getApiKey } from '@/lib/ai/get-api-key'
+import { hasAnyAiProvider } from '@/lib/ai/provider-fallback'
+import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
+import { outOfCredits, refundAiCredits, spendAiCredits } from '@/lib/user-credits'
+import { saveArenaVariant } from '@/lib/arena-awards'
 
 const adaptSchema = z.object({
   title: z.string(),
@@ -45,7 +48,7 @@ export async function POST(request: Request) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const challengeId = String(body.challengeId ?? '1')
@@ -55,9 +58,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unknown challenge' }, { status: 404 })
   }
 
-  // Check if any AI provider is configured
-  const key = await getApiKey('openai')
-  if (!key) {
+  // AGT-024: any configured provider (not only OpenAI) — the call uses the fallback chain.
+  if (!(await hasAnyAiProvider())) {
     return NextResponse.json({
       source: 'static' as const,
       challenge: base,
@@ -66,8 +68,16 @@ export async function POST(request: Request) {
     })
   }
 
+  // AGT-024: AI calls here are rate limited and cost one AI credit (refunded on failure).
+  const rate = await rateLimitAIRedis(request, gate.user.id)
+  if (!rate.ok) return NextResponse.json({ error: `Rate limit exceeded. Try again in ${rate.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rate.retryAfterSec } }, { status: 429 })
+  const spent = await spendAiCredits(gate.user.id, 1).catch(() => null)
+  if (!spent) return NextResponse.json({ error: 'Could not check your AI credits. Try again.' }, { status: 503 })
+  if (!spent.ok) return NextResponse.json(outOfCredits({ cost: 1, balance: spent.balance }), { status: 402 })
+
   try {
     const result = await backendComplete({
+      cache: false, // AGT-022: a generator must never replay a cached batch
       systemMessage: 'You write concise competitive-programming style prompts. Reply with a single JSON object only — no markdown, no commentary.',
       userMessage: `Seed problem (do not copy wording; invent a fresh variant of similar difficulty and topic):
 title: ${base.title}
@@ -101,12 +111,19 @@ Keep numbers realistic and ensure one clear correct idea.`,
       constraints: v.constraints,
     }
 
+    // The server grades submits on these stored tests (the variant maps back to
+    // the original id for points). If it can't be stored, serve the seed so
+    // grading and what the user sees always match.
+    const variantId = await saveArenaVariant(gate.user.id, base.id, v.examples)
+
     return NextResponse.json({
       source: 'ai' as const,
       challenge: merged,
+      variant_id: variantId,
     })
   } catch (e) {
     console.error('[arena/adapt]', e)
+    await refundAiCredits(gate.user.id, 1).catch(() => undefined)
     return NextResponse.json({
       source: 'static' as const,
       challenge: base,

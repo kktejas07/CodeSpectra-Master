@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const res = await backendComplete({
+      cache: false, // AGT-022: a generator must never replay a cached batch
       systemMessage: `You are an ebook outline generator. Create a structured outline for an educational ebook.
 Return strict JSON only:
 {

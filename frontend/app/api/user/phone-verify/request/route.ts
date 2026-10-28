@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
+import { escapeHtml } from '@/lib/safe-html'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,16 +17,25 @@ const TTL_MS = 15 * 60 * 1000
  */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if (!user.email) {
     return NextResponse.json({ error: 'Add a login email before verifying phone' }, { status: 400 })
   }
 
   const body = await req.json().catch(() => ({}))
   const phone = String(body.phone || '').replace(/\D/g, '')
-  const countryCode = String(body.countryCode || '+91')
-  if (phone.length < 6) {
-    return NextResponse.json({ error: 'Enter a valid mobile number' }, { status: 400 })
+  const countryCode = String(body.countryCode || '+91').trim()
+  // SEC-014: validated before it is stored or echoed into the email HTML.
+  if (!/^\+\d{1,4}$/.test(countryCode)) {
+    return NextResponse.json({ error: 'Choose a valid country code', code: 'country_code_invalid' }, { status: 400 })
+  }
+  if (phone.length < 6 || phone.length > 15) {
+    return NextResponse.json({ error: 'Enter a valid mobile number', code: 'phone_invalid' }, { status: 400 })
+  }
+  const { rateLimitRedis } = await import('@/lib/upstash-rate-limit')
+  const limit = await rateLimitRedis(`phone-verify:${user.id}`, 5, 3600_000)
+  if (!limit.ok) {
+    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.`, code: 'rate_limited_minutes', params: { minutes: Math.ceil(limit.retryAfterSec / 60) } }, { status: 429 })
   }
 
   const code = String(randomInt(100000, 999999))
@@ -38,6 +48,7 @@ export async function POST(req: NextRequest) {
         phone,
         countryCode,
         code,
+        attempts: 0,
         expiresAt: new Date(Date.now() + TTL_MS),
         createdAt: new Date(),
       },
@@ -45,13 +56,13 @@ export async function POST(req: NextRequest) {
     { upsert: true },
   )
 
-  await sendEmail(user.email, {
-    subject: 'Confirm your mobile number on CodeSpectra',
-    html: `<p>Confirm mobile <strong>${countryCode} ${phone}</strong>.</p><p>Your code is <strong>${code}</strong> (expires in 15 minutes).</p><p>SMS OTP will be available once an SMS provider is configured.</p>`,
-  }, undefined, { category: 'transactional' })
+  // SEO-033: in the account owner's language.
+  const { emailTemplatesFor } = await import('@/lib/email-templates')
+  const { localeForUser } = await import('@/lib/i18n/recipient')
+  await sendEmail(user.email, emailTemplatesFor(await localeForUser(user.id)).notice({ key: 'phoneVerify', params: { phone: escapeHtml(`${countryCode} ${phone}`) }, code }), undefined, { category: 'transactional' })
 
   return NextResponse.json({
     ok: true,
-    message: 'Verification code sent to your login email (SMS coming later)',
+    message: 'Confirmation code sent to your login email',
   })
 }

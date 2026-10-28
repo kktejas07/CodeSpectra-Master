@@ -76,15 +76,26 @@ async function pollinationsCover(prompt: string, width: number, height: number):
  * Generate cover art for a prompt. Returns a persistent image URL, or null if
  * every provider fails (caller keeps its existing fallback).
  */
+/** Price + record one generated image (lib/ai/usage-record; model and size only, never the prompt). */
+function recordImage(provider: string, model: string, size: string, feature: string | undefined, ok: boolean, started: number): void {
+  void import('@/lib/ai/usage-record').then(({ recordAiUsage }) => {
+    recordAiUsage({ feature: feature || 'cover-image', provider, model, kind: 'image', images: 1, imageSize: size, ok, latencyMs: Date.now() - started })
+  }, () => undefined)
+}
+
 export async function generateCoverImage(
   prompt: string,
-  opts: { width?: number; height?: number } = {},
+  opts: { width?: number; height?: number; feature?: string } = {},
 ): Promise<string | null> {
   const width = opts.width || 1280
   const height = opts.height || 720
 
   const openaiKey = (await readServerSecrets()).openai_api_key
-  if (openaiKey && !openaiKey.includes('*')) {
+  // Budget hard stop: skip the paid model and use the free renderer instead.
+  const paused = await import('@/lib/ai/usage-record').then(({ aiBudgetBlocks }) => aiBudgetBlocks(opts.feature || 'cover-image'), () => false)
+  if (openaiKey && !openaiKey.includes('*') && !paused) {
+    const size = width > height ? '1792x1024' : '1024x1792'
+    const started = Date.now()
     try {
       const res = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
@@ -95,7 +106,7 @@ export async function generateCoverImage(
         body: JSON.stringify({
           model: 'dall-e-3',
           prompt: prompt.slice(0, 3800),
-          size: width > height ? '1792x1024' : '1024x1792',
+          size,
           n: 1,
           response_format: 'b64_json',
         }),
@@ -104,6 +115,7 @@ export async function generateCoverImage(
       if (res.ok) {
         const data = (await res.json()) as { data?: { b64_json?: string }[] }
         const b64 = data.data?.[0]?.b64_json
+        recordImage('openai', 'dall-e-3', size, opts.feature, !!b64, started)
         if (b64) return `data:image/png;base64,${b64}`
       }
     } catch {
@@ -111,5 +123,8 @@ export async function generateCoverImage(
     }
   }
 
-  return pollinationsCover(prompt, width, height)
+  const started = Date.now()
+  const url = await pollinationsCover(prompt, width, height)
+  if (url) recordImage('pollinations', 'flux', `${width}x${height}`, opts.feature, true, started)
+  return url
 }

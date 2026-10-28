@@ -8,6 +8,7 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { createHash } from 'crypto'
 import { sanitizeTestCases, sanitizeExamQuestion } from '@/lib/grading'
+import { extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
 import { canonicalType, metaFor, BANK_QUESTION_TYPES as ALL_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import type { Collection } from 'mongodb'
 
@@ -17,9 +18,10 @@ export type BankQuestionType = QuestionType
 export interface BankTestCase {
   input: string
   output: string
+  hidden?: true
 }
 
-export interface BankQuestionDoc {
+export interface BankQuestionDoc extends ExtendedQuestionFields {
   id: string
   /** Short question label (for tables/lists). */
   title: string
@@ -60,7 +62,19 @@ export interface BankQuestionDoc {
   /** Coding language + starter snippet (coding variants). */
   language?: string
   starter_code?: string
+  /** Question-bot domain (lib/question-bot/domains.ts) — set on bot drafts. */
+  domain?: string
+  /** Bot quality gate: 0–100 score and reasons shown to reviewers. */
+  quality_score?: number
+  quality_reasons?: string[]
+  bot_run_id?: string
   source: 'seed' | 'ai' | 'import' | 'manual'
+  /**
+   * AI-generated and imported questions start as `draft` and are never
+   * sampled into exams until a reviewer approves them (editing = reviewing).
+   * Docs from before this field existed count as approved.
+   */
+  review_status?: 'draft' | 'approved'
   is_active: boolean
   createdAt: string
   updatedAt: string
@@ -73,6 +87,59 @@ export async function questionBank(): Promise<Collection<BankQuestionDoc>> {
 }
 
 const nowIso = (): string => new Date().toISOString()
+
+// ─── De-duplication by stored keys (CORE-031) ───────────────────────────────
+//
+// Each question stores `content_hash` (bankContentHash) and `title_key`, both
+// indexed, so generate/import check only the new candidates with $in instead
+// of loading the whole bank on every call. Older rows are backfilled once per
+// process (only rows still missing the key are read).
+
+/** Lower-cased, whitespace-collapsed title. Pure. */
+export function bankTitleKey(title: unknown): string {
+  return String(title || '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+let keysReady: Promise<void> | null = null
+export function ensureBankDedupeKeys(col: Collection<BankQuestionDoc>): Promise<void> {
+  if (!keysReady) {
+    keysReady = (async () => {
+      try {
+        await col.createIndex({ content_hash: 1 } as never, { name: 'question_bank_content_hash', sparse: true })
+        await col.createIndex({ title_key: 1 } as never, { name: 'question_bank_title_key', sparse: true })
+        for (let round = 0; round < 1000; round++) {
+          const batch = await col.find({ content_hash: { $exists: false } } as never, { projection: { _id: 1, id: 1, question: 1, title: 1, type: 1, difficulty: 1, branch: 1, options: 1, answer: 1 } }).limit(1000).toArray()
+          if (!batch.length) break
+          await col.bulkWrite(batch.map((d) => ({
+            updateOne: { filter: { _id: (d as { _id: unknown })._id } as never, update: { $set: { content_hash: bankContentHash(d), title_key: bankTitleKey(d.title) } } as never },
+          })))
+        }
+      } catch (e) {
+        keysReady = null // retry next call
+        console.error('[question-bank] dedupe key backfill failed:', (e as Error)?.message)
+      }
+    })()
+  }
+  return keysReady
+}
+
+/** Which of these hashes / title keys already exist (two indexed $in queries). */
+export async function existingBankKeys(col: Collection<BankQuestionDoc>, hashes: string[], titleKeys: string[]): Promise<{ hashes: Set<string>; titles: Set<string> }> {
+  await ensureBankDedupeKeys(col)
+  const [h, t] = await Promise.all([
+    hashes.length ? col.find({ content_hash: { $in: [...new Set(hashes)] } } as never, { projection: { _id: 0, content_hash: 1 } }).toArray() : [],
+    titleKeys.length ? col.find({ title_key: { $in: [...new Set(titleKeys.filter(Boolean))] } } as never, { projection: { _id: 0, title_key: 1 } }).toArray() : [],
+  ])
+  return {
+    hashes: new Set(h.map((d) => String((d as { content_hash?: unknown }).content_hash))),
+    titles: new Set(t.map((d) => String((d as { title_key?: unknown }).title_key))),
+  }
+}
+
+/** Stamp the dedupe keys on a doc before insert. */
+export function withBankKeys<T extends Partial<BankQuestionDoc>>(doc: T): T & { content_hash: string; title_key: string } {
+  return Object.assign(doc, { content_hash: bankContentHash(doc), title_key: bankTitleKey(doc.title) })
+}
 
 function normString(v: unknown, max = 2000): string {
   if (typeof v !== 'string') return ''
@@ -212,7 +279,9 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     regions: (sf.regions as BankQuestionDoc['regions']) || undefined,
     language: typeof sf.language === 'string' ? sf.language : undefined,
     starter_code: typeof sf.starter_code === 'string' ? sf.starter_code : undefined,
+    ...extendedFieldsOf(sf),
     source: sourceRaw === 'ai' || sourceRaw === 'seed' || sourceRaw === 'import' ? (sourceRaw as BankQuestionDoc['source']) : 'manual',
+    review_status: raw.review_status === 'draft' ? 'draft' : 'approved',
     is_active: raw.is_active !== false,
     createdAt: normString(raw.createdAt, 40) || nowIso(),
     updatedAt: nowIso(),
@@ -245,6 +314,7 @@ export function bankToExamQuestion(b: BankQuestionDoc): Record<string, unknown> 
     ...(b.regions ? { regions: b.regions } : {}),
     ...(b.language ? { language: b.language } : {}),
     ...(b.starter_code ? { starter_code: b.starter_code } : {}),
+    ...extendedFieldsOf(b as unknown as Record<string, unknown>),
     ...(b.branch ? { branch: b.branch } : {}),
     ...(b.subject ? { subject: b.subject } : {}),
     ...(b.difficulty ? { difficulty: b.difficulty } : {}),
@@ -278,7 +348,7 @@ export async function sampleFromBank(params: {
   const split = params.difficultySplit || { Easy: Math.ceil(params.count / 3), Medium: Math.ceil(params.count / 3), Hard: params.count - 2 * Math.ceil(params.count / 3) }
 
   const baseMatch = (difficulty: string): Record<string, unknown> => {
-    const match: Record<string, unknown> = { is_active: true, difficulty }
+    const match: Record<string, unknown> = { is_active: true, review_status: { $ne: 'draft' }, difficulty }
     if (params.branch) match.branch = params.branch
     if (params.degree_type) match.degree_type = params.degree_type
     if (params.types?.length) match.type = { $in: params.types }
@@ -303,7 +373,7 @@ export async function sampleFromBank(params: {
   // Top up any shortfall with unrestricted picks.
   if (picked.length < params.count) {
     const want = params.count - picked.length
-    const match: Record<string, unknown> = { is_active: true }
+    const match: Record<string, unknown> = { is_active: true, review_status: { $ne: 'draft' } }
     if (params.branch) match.branch = params.branch
     if (params.degree_type) match.degree_type = params.degree_type
     if (params.types?.length) match.type = { $in: params.types }

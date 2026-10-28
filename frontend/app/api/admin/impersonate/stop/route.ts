@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { revokeSessionToken, verifySessionToken } from '@/lib/session'
+import { writeAuditLog } from '@/lib/db/misc'
 
 const SESSION_COOKIE = 'codespectra_session'
 const IMPERSONATOR_COOKIE = 'codespectra_impersonator'
@@ -32,7 +34,20 @@ export async function POST() {
   const saved = cookieStore.get(IMPERSONATOR_COOKIE)?.value
 
   if (saved) {
-    cookieStore.set(SESSION_COOKIE, saved, sessionCookieOptions)
+    // Only restore a still-valid admin session (it may have been revoked
+    // meanwhile), and kill the impersonated session server-side.
+    const admin = await verifySessionToken(saved)
+    const impersonated = await verifySessionToken(cookieStore.get(SESSION_COOKIE)?.value || '')
+    await revokeSessionToken(cookieStore.get(SESSION_COOKIE)?.value)
+    if (admin) {
+      cookieStore.set(SESSION_COOKIE, saved, sessionCookieOptions)
+      await writeAuditLog({
+        action: 'admin.impersonate.stop', outcome: 'success', actor: admin.uid, actorIp: '',
+        resource: `user/${impersonated?.uid ?? 'unknown'}`, resourceType: 'user', severity: 'info', user_id: admin.uid,
+      }).catch(() => {})
+    } else {
+      cookieStore.set(SESSION_COOKIE, '', { ...sessionCookieOptions, maxAge: 0 })
+    }
   }
 
   cookieStore.set(IMPERSONATOR_COOKIE, '', clearCookieOptions)

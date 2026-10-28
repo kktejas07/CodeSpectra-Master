@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
+import { isAdminCaller } from '@/lib/route-auth'
 import { hackathons, hackathonSubmissions } from '@/lib/db/qr-events'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
@@ -99,32 +100,32 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const userId = user.id
 
   const rateCheck = await rateLimitAIRedis(req, userId)
   if (!rateCheck.ok) {
-    return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
+    return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: rateCheck.retryAfterSec } }, { status: 429 })
   }
 
   const { id } = await ctx.params
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
-  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!hk) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
+  if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
-  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  const isAdmin = isAdminCaller(user) // SEC-029: admin 2FA owed → judge rights only
   const isJudge = (hk.judges || []).includes(user.id)
   if (!isAdmin && !isJudge) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   let body: { aSubmissionId?: unknown; bSubmissionId?: unknown; criterion?: unknown }
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const aId = str(body.aSubmissionId).trim()
   const bId = str(body.bSubmissionId).trim()

@@ -14,11 +14,15 @@ import { Badge } from '@/components/ui/badge'
 import { DASHBOARD_ROUTES } from '@/lib/rbac'
 import { AnalyticsDashboard, type AnalyticsDashboardProps } from '@/components/admin/analytics-dashboard'
 import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
+import { AdminOverviewBento } from '@/components/admin/admin-overview-bento'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { useAdminT } from '@/lib/i18n/admin'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary, Illustration } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const emptyCharts: AnalyticsDashboardProps = {
   userGrowth: [],
@@ -32,7 +36,7 @@ interface ServerStats {
   disk: { total: number; used: number; free: number; usagePct: number }
   uptime: number
   containers: { available: boolean; count: number; list: Array<{ name: string; status: string; cpu: string; memory: string }> }
-  piston: { status: string; runtimes: number; queue: number }
+  piston: { status: string; runtimes: number; queue: number; image_pinned?: boolean }
   node: { heapUsed: number; heapTotal: number; rss: number }
 }
 
@@ -68,7 +72,8 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
   return (
     <div className="h-2 w-full rounded-full bg-muted/50">
       <div
-        className={`h-2 rounded-full transition-all duration-500 ${color}`}
+        // High usage reads as a warning regardless of the metric's own colour.
+        className={`h-2 rounded-full transition-all duration-500 motion-reduce:transition-none ${pct >= 90 ? 'bg-red-500' : pct >= 75 ? 'bg-amber-500' : color}`}
         style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
       />
     </div>
@@ -153,8 +158,10 @@ export default function SystemAdminDashboard() {
   const gate = usePageGuard('/dashboard/admin/system')
   const addToast = useToast()
   const { startTour, setTourSeen } = useTour()
+  const { t: ta } = useAdminT()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, superadmins: 0, admins: 0 })
+  const [metricsLoaded, setMetricsLoaded] = useState(false)
   const [charts, setCharts] = useState<AnalyticsDashboardProps>(emptyCharts)
   const [summary, setSummary] =
     useState<NonNullable<AnalyticsDashboardProps['summary']> | undefined>()
@@ -172,7 +179,9 @@ export default function SystemAdminDashboard() {
   } | null>(null)
 
   const fetchMetrics = useCallback(async () => {
-    const res = await fetch('/api/admin/metrics', { credentials: 'include' })
+    const res = await fetch('/api/admin/metrics', { credentials: 'include' }).catch(() => null)
+    setMetricsLoaded(true)
+    if (!res) return
     const json = await res.json().catch(() => ({}))
     if (res.ok) {
       setStats({
@@ -280,44 +289,44 @@ export default function SystemAdminDashboard() {
       const adminSystemTour: TourStep[] = [
         {
           target: '[data-tour="admin-system-header"]',
-          title: 'Platform Operations Overview',
-          description: 'Admin hub for live server health, platform metrics, and audit access.',
+          title: ta('system.tourHeaderTitle'),
+          description: ta('system.tourHeaderBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-server-health"]',
-          title: 'Monitor Server Health',
-          description: 'Monitor CPU, RAM, disk, and containers; refresh or clear caches in Maintenance.',
+          title: ta('system.tourHealthTitle'),
+          description: ta('system.tourHealthBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-redis"]',
-          title: 'Check Redis Limits',
-          description: 'Check Redis mode, latency, and live rate-limit counters before debugging throttles.',
+          title: ta('system.tourRedisTitle'),
+          description: ta('system.tourRedisBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-quick-links"]',
-          title: 'Jump to Admin Sections',
-          description: 'Open Users and roles, Insights, Platform settings, or Audit logs quickly.',
+          title: ta('system.tourLinksTitle'),
+          description: ta('system.tourLinksBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-web-vitals"]',
-          title: 'Review Web Vitals',
-          description: 'Review LCP, INP, and CLS p75 scores by range; refresh for latest samples.',
+          title: ta('system.tourVitalsTitle'),
+          description: ta('system.tourVitalsBody'),
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-analytics"]',
-          title: 'Spot Trends Next',
-          description: 'Tip: spot user growth and activity trends here, then check audit logs below.',
+          title: ta('system.tourTrendsTitle'),
+          description: ta('system.tourTrendsBody'),
           position: 'bottom',
         },
       ];
       autoPlayPageTour('admin-system', adminSystemTour)
     }
-  }, [gate.ready, startTour]);
+  }, [gate.ready, startTour, ta]);
 
   if (!gate.ready || loading) {
     return (
@@ -331,98 +340,114 @@ export default function SystemAdminDashboard() {
 
   return (
     <div className="space-y-8" data-testid="admin-system-page">
-      <div className="space-y-2" data-tour="admin-system-header">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Server className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Operations overview</h1>
-            <p className="text-muted-foreground">
-              Live server health, platform metrics, and audit access.
-            </p>
-          </div>
-        </div>
+      <div data-tour="admin-system-header">
+        <AppBanner
+          eyebrow="Platform admin"
+          title={ta('system.operationsOverview')}
+          description={ta('system.liveServerHealthPlatformMetricsAnd')}
+          actions={
+            <>
+              <Link href={p.users} className={bannerBtnPrimary}>
+                <Users className="h-4 w-4" /> {ta('system.usersRoles')}
+              </Link>
+              <Link href={p.analytics} className={bannerBtnSecondary}>
+                <BarChart3 className="h-4 w-4" /> {ta('system.insights')}
+              </Link>
+              <Link href={p.settings} className={bannerBtnSecondary}>
+                <Settings className="h-4 w-4" /> {ta('system.settings')}
+              </Link>
+            </>
+          }
+          art={
+            <div className="flex flex-col items-end gap-3 pr-2">
+              <Illustration name="settings" inverse className="w-40" />
+              <BannerChip icon={<Server />} label={ta('system.serverHealth')} sub="Refreshes every 30s" className="mr-10" />
+            </div>
+          }
+        />
       </div>
+
+      <AdminOverviewBento totalUsers={stats.totalUsers} usersLoaded={metricsLoaded} proctorHref="/dashboard/admin/proctor" />
 
       {/* Server Health */}
       {server && (
         <div className="space-y-4" data-tour="admin-system-server-health">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <Cpu className="h-5 w-5 text-primary" /> Server health
-              <Badge variant="outline" className="ml-2 text-[10px]">
-                auto-refresh 30s
+              <Cpu className="h-5 w-5 text-primary" /> {ta('system.serverHealth')}
+              <Badge variant="outline" className="ml-2 text-[11px] font-normal">
+                {ta('system.refreshesEvery30s')}
               </Badge>
             </h2>
             <Button variant="outline" size="sm" onClick={fetchServerStats} disabled={refreshing}>
               <RefreshCw className={`mr-1 h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
+              {ta('system.refresh')}
             </Button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* CPU */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">CPU</p>
-                <Cpu className="h-5 w-5 text-blue-400" />
+                <Cpu className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{server.cpu.usagePct}%</p>
-              <ProgressBar pct={server.cpu.usagePct} color="bg-blue-500" />
-              <p className="text-[11px] text-muted-foreground">
-                {server.cpu.cores} cores · load {server.cpu.loadAvg1.toFixed(1)}
-              </p>
+              <p className="text-2xl font-bold tabular-nums text-foreground">{server.cpu.usagePct}%</p>
+              <ProgressBar pct={server.cpu.usagePct} color="bg-primary" />
+              <p className="text-[11px] text-muted-foreground">{ta('system.coresLoad', { cores: server.cpu.cores, toFixed: server.cpu.loadAvg1.toFixed(1) })}</p>
             </Card>
 
             {/* RAM */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">RAM</p>
-                <MemoryStick className="h-5 w-5 text-green-400" />
+                <MemoryStick className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{server.memory.usagePct}%</p>
-              <ProgressBar pct={server.memory.usagePct} color="bg-green-500" />
+              <p className="text-2xl font-bold tabular-nums text-foreground">{server.memory.usagePct}%</p>
+              <ProgressBar pct={server.memory.usagePct} color="bg-primary" />
               <p className="text-[11px] text-muted-foreground">
                 {fmtBytes(server.memory.used)} / {fmtBytes(server.memory.total)}
               </p>
             </Card>
 
             {/* Disk */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Disk</p>
-                <HardDrive className="h-5 w-5 text-yellow-400" />
+                <p className="text-sm text-muted-foreground">{ta('system.disk')}</p>
+                <HardDrive className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{server.disk.usagePct}%</p>
-              <ProgressBar pct={server.disk.usagePct} color="bg-yellow-500" />
-              <p className="text-[11px] text-muted-foreground">
-                {fmtBytes(server.disk.free)} free of {fmtBytes(server.disk.total)}
-              </p>
+              <p className="text-2xl font-bold tabular-nums text-foreground">{server.disk.usagePct}%</p>
+              <ProgressBar pct={server.disk.usagePct} color="bg-primary" />
+              <p className="text-[11px] text-muted-foreground">{ta('system.freeOf', { fmtBytes: fmtBytes(server.disk.free), fmtBytes2: fmtBytes(server.disk.total) })}</p>
             </Card>
 
             {/* Containers */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Containers</p>
-                <Container className="h-5 w-5 text-purple-400" />
+                <p className="text-sm text-muted-foreground">{ta('system.containers')}</p>
+                <Container className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-bold tabular-nums text-foreground">
                 {server.containers.available ? server.containers.count : '—'}
               </p>
               {server.containers.available ? (
-                <p className="text-[11px] text-muted-foreground">running on this host</p>
+                <p className="text-[11px] text-muted-foreground">{ta('system.runningOnThisHost')}</p>
               ) : (
-                <p className="text-[11px] text-muted-foreground">Docker daemon not reachable</p>
+                <p className="text-[11px] text-muted-foreground">{ta('system.dockerDaemonNotReachable')}</p>
               )}
               <p className="text-[11px] text-muted-foreground">
-                Piston: <Badge variant={server.piston.status === 'connected' ? 'default' : 'destructive'} className="text-[10px] px-1 py-0">
+                {ta('system.codeRunner')} <Badge variant={server.piston.status === 'connected' ? 'success' : 'destructive'} className="text-[10px] px-1 py-0">
                   {server.piston.status}
                 </Badge>
-                {' '}· {server.piston.runtimes} langs
+                {' '}· {server.piston.runtimes} {ta('system.langs')}
               </p>
+              {server.piston.image_pinned === false && (
+                <p role="status" className="text-[11px] text-amber-700 dark:text-amber-400">
+                  {ta('system.pistonImageNotPinnedSetPiston')}
+                </p>
+              )}
               <p className="text-[11px] text-muted-foreground">
-                <Clock className="inline h-3 w-3 mr-1" /> Up {fmtUptime(server.uptime)}
+                <Clock className="inline h-3 w-3 mr-1" /> {ta('system.up')} {fmtUptime(server.uptime)}
               </p>
             </Card>
           </div>
@@ -430,36 +455,35 @@ export default function SystemAdminDashboard() {
           {/* Container list + Cache management row */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Container list */}
-            <Card className="p-5">
+            <Card className="rounded-3xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Terminal className="h-4 w-4 text-muted-foreground" /> Running containers
+                  <Terminal className="h-4 w-4 text-muted-foreground" /> {ta('system.runningContainers')}
                 </h3>
                 {server.containers.available ? (
-                  <span className="text-[11px] text-muted-foreground">{server.containers.count} total</span>
+                  <span className="text-[11px] text-muted-foreground">{ta('system.total', { count: server.containers.count })}</span>
                 ) : null}
               </div>
               {!server.containers.available ? (
                 <div className="space-y-2 rounded-md border border-dashed p-4 text-center">
                   <CircleSlash className="h-6 w-6 text-muted-foreground/60" />
-                  <p className="text-xs font-medium text-foreground">Docker stats unavailable</p>
+                  <p className="text-xs font-medium text-foreground">{ta('system.dockerStatsUnavailable')}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    The frontend container can't reach the Docker daemon. To enable live container
-                    metrics + one-click cleanup, mount the Docker socket on the{' '}
+                    {ta('system.theFrontendContainerCanTReach')}{' '}
                     <code className="rounded bg-muted px-1">codespectra-frontend</code> service:{' '}
-                    <span className="text-foreground">Volumes → add <code className="rounded bg-muted px-1">/var/run/docker.sock</code> → <code className="rounded bg-muted px-1">/var/run/docker.sock</code></span>{' '}
-                    and redeploy. The command below shows what the dashboard will then run.
+                    <span className="text-foreground">{ta('system.volumesAdd')} <code className="rounded bg-muted px-1">/var/run/docker.sock</code> → <code className="rounded bg-muted px-1">/var/run/docker.sock</code></span>{' '}
+                    {ta('system.andRedeployTheCommandBelowShows')}
                   </p>
                   <button
                     onClick={() => copyCmd('docker ps --format "table {{.Names}}\t{{.Status}}\t{{.CPUPerc}}\t{{.MemUsage}}"')}
                     className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
                   >
-                    <Zap className="h-3 w-3" /> Copy equivalent SSH command
+                    <Zap className="h-3 w-3" /> {ta('system.copyEquivalentSshCommand')}
                   </button>
                 </div>
               ) : server.containers.list.length === 0 ? (
                 <p className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                  No containers currently running.
+                  {ta('system.noContainersCurrentlyRunning')}
                 </p>
               ) : (
                 <div className="max-h-75 overflow-y-auto space-y-2">
@@ -480,79 +504,84 @@ export default function SystemAdminDashboard() {
             </Card>
 
             {/* Cache management */}
-            <Card className="p-5">
+            <Card className="rounded-3xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Zap className="h-4 w-4 text-muted-foreground" /> Maintenance
+                  <Zap className="h-4 w-4 text-muted-foreground" /> {ta('system.maintenance')}
                 </h3>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
-                    <p className="text-xs font-medium text-foreground">Next.js build cache</p>
-                    <p className="text-[10px] text-muted-foreground">Clear ISR cache & .next artifacts</p>
+                    <p className="text-xs font-medium text-foreground">{ta('system.nextJsBuildCache')}</p>
+                    <p className="text-[10px] text-muted-foreground">{ta('system.clearIsrCacheNextArtifacts')}</p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={clearing === 'next'}
                     onClick={() => clearCache('next')}
+                    aria-label={ta('system.clearNextJsBuildCache')}
                   >
                     {clearing === 'next' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
-                    <p className="text-xs font-medium text-foreground">Server secrets cache</p>
-                    <p className="text-[10px] text-muted-foreground">Invalidate in-memory secrets</p>
+                    <p className="text-xs font-medium text-foreground">{ta('system.serverSecretsCache')}</p>
+                    <p className="text-[10px] text-muted-foreground">{ta('system.invalidateInMemorySecrets')}</p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={clearing === 'secrets'}
                     onClick={() => clearCache('secrets')}
+                    aria-label={ta('system.clearServerSecretsCache')}
                   >
                     {clearing === 'secrets' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
-                    <p className="text-xs font-medium text-foreground">Piston restart</p>
-                    <p className="text-[10px] text-muted-foreground">Restart Piston container (re-index packages)</p>
+                    <p className="text-xs font-medium text-foreground">{ta('system.pistonRestart')}</p>
+                    <p className="text-[10px] text-muted-foreground">{ta('system.restartPistonContainerReIndexPackages')}</p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={clearing === 'piston'}
                     onClick={() => clearCache('piston')}
+                    aria-label={ta('system.restartPiston')}
                   >
                     {clearing === 'piston' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
-                    <p className="text-xs font-medium text-foreground">System cleanup</p>
-                    <p className="text-[10px] text-muted-foreground">Clears build cache, secrets cache & rate-limit counters</p>
+                    <p className="text-xs font-medium text-foreground">{ta('system.systemCleanup')}</p>
+                    <p className="text-[10px] text-muted-foreground">{ta('system.clearsBuildCacheSecretsCacheRate')}</p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={clearing === 'system'}
                     onClick={() => clearCache('system')}
+                    aria-label={ta('system.runSystemCleanup')}
                   >
                     {clearing === 'system' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
-                    <p className="text-xs font-medium text-foreground">Docker system prune</p>
-                    <p className="text-[10px] text-muted-foreground">Reclaims unused images & build cache (needs Docker socket)</p>
+                    <p className="text-xs font-medium text-foreground">{ta('system.dockerSystemPrune')}</p>
+                    <p className="text-[10px] text-muted-foreground">{ta('system.reclaimsUnusedImagesBuildCacheNeeds')}</p>
                   </div>
                   <Button
                     variant="destructive"
                     size="sm"
                     disabled={clearing === 'docker'}
                     onClick={() => clearCache('docker')}
+                    aria-label={ta('system.runDockerSystemPrune')}
                   >
                     {clearing === 'docker' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   </Button>
@@ -561,10 +590,10 @@ export default function SystemAdminDashboard() {
             </Card>
 
             {/* Redis health + live rate-limit counters */}
-            <Card className="p-5 lg:col-span-2" data-tour="admin-system-redis">
+            <Card className="rounded-3xl p-5 lg:col-span-2" data-tour="admin-system-redis">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Database className="h-4 w-4 text-muted-foreground" /> Redis & rate limiting
+                  <Database className="h-4 w-4 text-muted-foreground" /> {ta('system.redisRateLimiting')}
                 </h3>
                 <div className="flex items-center gap-2">
                   {redis?.configured && (
@@ -575,48 +604,48 @@ export default function SystemAdminDashboard() {
                       {redis.connected ? 'Connected' : 'Disconnected'}
                     </Badge>
                   )}
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchRedisStatus}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchRedisStatus} aria-label={ta('system.refreshRedisStatus')}>
                     <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
                   </Button>
                 </div>
               </div>
 
               {!redis ? (
-                <p className="text-xs text-muted-foreground">Loading Redis status…</p>
+                <p className="text-xs text-muted-foreground">{ta('system.loadingRedisStatus')}</p>
               ) : !redis.configured ? (
                 <div className="rounded-md border border-dashed p-4 text-center">
-                  <p className="text-xs text-muted-foreground">Redis not configured.</p>
+                  <p className="text-xs text-muted-foreground">{ta('system.redisNotConfigured')}</p>
                   <Link href="/dashboard/admin/settings?section=redis" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                    Configure in settings <ArrowRight className="h-3 w-3" />
+                    {ta('system.configureInSettings')} <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
               ) : redis.error ? (
-                <p className="text-xs text-destructive">Connection failed: {redis.error}</p>
+                <p className="text-xs text-destructive">{ta('system.connectionFailed', { error: redis.error })}</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                   <div className="rounded-md bg-muted/30 px-3 py-2">
-                    <p className="text-[10px] text-muted-foreground">Mode</p>
+                    <p className="text-[10px] text-muted-foreground">{ta('system.mode')}</p>
                     <p className="text-sm font-medium text-foreground capitalize">{redis.mode === 'upstash-rest' ? 'Upstash REST' : 'Self-hosted'}</p>
                   </div>
                   <div className="rounded-md bg-muted/30 px-3 py-2">
-                    <p className="text-[10px] text-muted-foreground">Latency</p>
+                    <p className="text-[10px] text-muted-foreground">{ta('system.latency')}</p>
                     <p className="text-sm font-medium text-foreground">{redis.latencyMs != null ? `${redis.latencyMs}ms` : '—'}</p>
                   </div>
                   {redis.memoryUsedMb != null && (
                     <div className="rounded-md bg-muted/30 px-3 py-2">
-                      <p className="text-[10px] text-muted-foreground">Memory</p>
+                      <p className="text-[10px] text-muted-foreground">{ta('system.memory')}</p>
                       <p className="text-sm font-medium text-foreground">{redis.memoryUsedMb} MB</p>
                     </div>
                   )}
                   {redis.connectedClients != null && (
                     <div className="rounded-md bg-muted/30 px-3 py-2">
-                      <p className="text-[10px] text-muted-foreground">Clients</p>
+                      <p className="text-[10px] text-muted-foreground">{ta('system.clients')}</p>
                       <p className="text-sm font-medium text-foreground">{redis.connectedClients}</p>
                     </div>
                   )}
                   {redis.opsPerSec != null && (
                     <div className="rounded-md bg-muted/30 px-3 py-2">
-                      <p className="text-[10px] text-muted-foreground">Ops / sec</p>
+                      <p className="text-[10px] text-muted-foreground">{ta('system.opsSec')}</p>
                       <p className="text-sm font-medium text-foreground">{redis.opsPerSec.toLocaleString()}</p>
                     </div>
                   )}
@@ -628,8 +657,8 @@ export default function SystemAdminDashboard() {
                   <div className="flex items-center justify-between">
                     <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <Gauge className="h-3.5 w-3.5 text-muted-foreground" />
-                      Live rate-limit counters
-                      <span className="font-normal text-muted-foreground">({redis.keyspace} active)</span>
+                      {ta('system.liveRateLimitCounters')}
+                      <span className="font-normal text-muted-foreground">{ta('system.active', { keyspace: redis.keyspace })}</span>
                     </p>
                   </div>
 
@@ -641,7 +670,7 @@ export default function SystemAdminDashboard() {
                         return (
                           <div key={cat.kind}>
                             <div className="mb-1.5 flex items-center gap-2">
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cat.label}</p>
+                              <p className="text-xs font-semibold text-muted-foreground">{cat.label}</p>
                               <Badge variant="outline" className="px-1 text-[9px]">{items.length}</Badge>
                             </div>
                             <div className="space-y-1.5">
@@ -658,7 +687,7 @@ export default function SystemAdminDashboard() {
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="truncate font-medium text-foreground">{info.label}</span>
-                                        <span className="whitespace-nowrap text-[10px] text-muted-foreground">{info.windowLabel} window</span>
+                                        <span className="whitespace-nowrap text-[10px] text-muted-foreground">{ta('system.window', { windowLabel: info.windowLabel })}</span>
                                       </div>
                                       <div className="mt-1 flex items-center justify-between gap-2">
                                         <span className="truncate font-mono text-[10px] text-muted-foreground" title={k.key}>
@@ -670,13 +699,13 @@ export default function SystemAdminDashboard() {
                                               {k.count}/{info.limit}
                                             </Badge>
                                           ) : (
-                                            <span className="text-[10px] text-muted-foreground">{k.count} hits</span>
+                                            <span className="text-[10px] text-muted-foreground">{ta('system.hits', { count: k.count })}</span>
                                           )}
                                         </span>
                                       </div>
                                       {info.limit != null && <ProgressBar pct={pct ?? 0} color={pctColor} />}
                                     </div>
-                                    <span className="whitespace-nowrap text-[10px] text-muted-foreground" title="TTL remaining">
+                                    <span className="whitespace-nowrap text-[10px] text-muted-foreground" title={ta('system.ttlRemaining')}>
                                       <Timer className="mr-1 inline h-3 w-3" />{k.ttlSec}s
                                     </span>
                                   </div>
@@ -689,11 +718,11 @@ export default function SystemAdminDashboard() {
                     </div>
                   ) : (
                     <p className="rounded-md border border-dashed p-3 text-center text-xs text-muted-foreground">
-                      No active counters — nothing is currently rate-limited. Counters expire automatically.
+                      {ta('system.noActiveCountersNothingIsCurrently')}
                     </p>
                   )}
                   <p className="text-[10px] text-muted-foreground">
-                    Counters are ephemeral fixed windows and expire on their own. Reset them all anytime from Maintenance → System cleanup.
+                    {ta('system.countersAreEphemeralFixedWindowsAnd')}
                   </p>
                 </div>
               )}
@@ -702,22 +731,15 @@ export default function SystemAdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Kpi label="Total users" value={stats.totalUsers} icon={Users} />
-        <Kpi label="Active (15m)" value={stats.activeUsers} icon={Activity} />
-        <Kpi label="Platform admins" value={stats.superadmins} icon={Shield} />
-        <Kpi label="Org admins" value={stats.admins} icon={BarChart3} />
-      </div>
-
-      <div className="rounded-lg border border-border/40 bg-card p-8 space-y-6" data-tour="admin-system-quick-links">
-        <h2 className="flex items-center gap-3 text-xl font-bold text-foreground">
-          <Lock className="h-5 w-5 text-primary" /> Quick links
+      <div className="rounded-3xl border border-border/70 bg-card p-6 space-y-5 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none" data-tour="admin-system-quick-links">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Lock className="h-5 w-5 text-primary" /> {ta('system.quickLinks')}
         </h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <QL href={p.users} icon={Users} label="Users & roles" />
-          <QL href={p.analytics} icon={BarChart3} label="Insights" />
-          <QL href={p.settings} icon={Settings} label="Platform settings" />
-          <QL href={p.security} icon={Activity} label="Audit logs" />
+          <QL href={p.users} icon={Users} label={ta('system.usersRoles')} />
+          <QL href={p.analytics} icon={BarChart3} label={ta('system.insights')} />
+          <QL href={p.settings} icon={Settings} label={ta('system.platformSettings')} />
+          <QL href={p.security} icon={Activity} label={ta('system.auditLogs')} />
         </div>
       </div>
 
@@ -725,23 +747,23 @@ export default function SystemAdminDashboard() {
       <div className="space-y-4" data-tour="admin-system-web-vitals">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Gauge className="h-5 w-5 text-primary" /> Performance
+            <Gauge className="h-5 w-5 text-primary" /> {ta('system.performance')}
             <Badge variant="outline" className="ml-2 text-[10px]">
               Core Web Vitals
             </Badge>
           </h2>
           <div className="flex items-center gap-2">
-            <select
+            <select aria-label={ta('system.timeRange')}
               value={webVitalsRange}
               onChange={(e) => setWebVitalsRange(e.target.value)}
               className="h-8 rounded-md border border-input bg-background px-2 text-xs"
             >
-              <option value="24h">Last 24 hours</option>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
+              <option value="24h">{ta('system.last24Hours')}</option>
+              <option value="7d">{ta('system.last7Days')}</option>
+              <option value="30d">{ta('system.last30Days')}</option>
             </select>
             <Button variant="outline" size="sm" onClick={fetchWebVitals}>
-              <RefreshCw className="mr-1 h-3 w-3" /> Refresh
+              <RefreshCw className="mr-1 h-3 w-3" /> {ta('system.refresh')}
             </Button>
           </div>
         </div>
@@ -761,9 +783,9 @@ export default function SystemAdminDashboard() {
               const isGood = key === 'CLS' ? (p75 != null ? p75 <= 0.1 : false) : (p75 != null ? p75 <= 2500 : false)
               const isPoor = key === 'CLS' ? (p75 != null ? p75 > 0.25 : false) : (p75 != null ? p75 > 4000 : false)
               const ratingLabel = p75 == null ? 'No data' : isGood ? 'Good' : isPoor ? 'Poor' : 'Needs work'
-              const ratingColor = p75 == null ? 'text-muted-foreground' : isGood ? 'text-green-500' : isPoor ? 'text-red-500' : 'text-amber-500'
+              const ratingColor = p75 == null ? 'text-muted-foreground' : isGood ? 'text-green-600 dark:text-green-400' : isPoor ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
               return (
-                <Card key={key} className="border-border/60 p-4">
+                <Card key={key} className="rounded-2xl border-border/70 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-muted-foreground" />
@@ -776,47 +798,28 @@ export default function SystemAdminDashboard() {
                   </p>
                   <div className="flex items-center justify-between mt-1">
                     <span className={`text-xs font-medium ${ratingColor}`}>{ratingLabel}</span>
-                    <span className="text-xs text-muted-foreground">{n} samples</span>
+                    <span className="text-xs text-muted-foreground">{ta('system.samples', { n: n })}</span>
                   </div>
                 </Card>
               )
             })}
           </div>
         ) : (
-          <Card className="border-dashed border-muted-foreground/30 p-6 text-center">
-            <Gauge className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">
-              {webVitals ? 'No web vitals data collected yet' : 'Loading performance data...'}
-            </p>
-          </Card>
+          webVitals ? (
+            <EmptyState
+              illustration="analytics"
+              title={ta('system.noPageSpeedDataYet')}
+              description={ta('system.coreWebVitalsAppearHereOnce')}
+            />
+          ) : (
+            <SkeletonStats />
+          )
         )}
       </div>
 
       <div data-tour="admin-system-analytics"><AnalyticsDashboard {...charts} summary={summary} /></div>
       <AuditLogsViewer />
     </div>
-  )
-}
-
-function Kpi({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: number
-  icon: React.ComponentType<{ className?: string }>
-}) {
-  return (
-    <Card className="p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="mb-2 text-sm text-muted-foreground">{label}</p>
-          <p className="text-3xl font-bold text-foreground">{value}</p>
-        </div>
-        <Icon className="h-8 w-8 text-primary/40" />
-      </div>
-    </Card>
   )
 }
 
@@ -830,7 +833,7 @@ function QL({
   label: string
 }) {
   return (
-    <Button className="h-12 justify-start" asChild variant="secondary">
+    <Button className="h-12 justify-start rounded-xl" asChild variant="secondary">
       <Link href={href}>
         <Icon className="mr-3 h-5 w-5" /> {label}
       </Link>

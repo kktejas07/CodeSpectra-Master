@@ -104,7 +104,7 @@ export function WhatsAppSettingsSection() {
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await fetch('/api/admin/whatsapp/test-connection', { credentials: 'include' })
+      const res = await csrfFetch('/api/admin/whatsapp/test-connection', { method: 'POST', credentials: 'include' })
       const data = await res.json()
       if (data.ok) {
         setTestResult({
@@ -136,7 +136,7 @@ export function WhatsAppSettingsSection() {
       <div className="border-b border-border/60 px-6 py-4">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-foreground">WhatsApp (OpenWA)</h3>
+          <h3 className="text-base font-semibold text-foreground">WhatsApp (OpenWA)</h3>
           {isConfigured && <Badge variant="success" className="text-[10px]">Configured</Badge>}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -146,7 +146,7 @@ export function WhatsAppSettingsSection() {
       <div className="p-6 space-y-4">
         <div className="grid gap-2">
           <Label>OpenWA Base URL</Label>
-          <Input
+          <Input aria-label="OpenWA Base URL"
             value={config.openwa_base_url}
             onChange={e => setConfig(c => ({ ...c, openwa_base_url: e.target.value }))}
             placeholder="https://your-openwa-server.com"
@@ -164,28 +164,28 @@ export function WhatsAppSettingsSection() {
               className="flex-1"
             />
             {maskedApiKey && !config.openwa_api_key && (
-              <Button variant="outline" size="sm" onClick={handleRevealKey}>
+              <Button variant="outline" size="sm" onClick={handleRevealKey} aria-label="Reveal saved API key">
                 <Eye className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => setShowApiKey(!showApiKey)}>
+            <Button variant="outline" size="sm" onClick={() => setShowApiKey(!showApiKey)} aria-label={showApiKey ? 'Hide API key' : 'Show API key'}>
               {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
         </div>
         <div className="grid gap-2">
           <Label>Session ID</Label>
-          <Input
+          <Input aria-label="Session ID"
             value={config.openwa_session_id}
             onChange={e => setConfig(c => ({ ...c, openwa_session_id: e.target.value }))}
             placeholder="your-whatsapp-session"
           />
           <p className="text-xs text-muted-foreground">The WhatsApp session ID from your OpenWA instance</p>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="grid gap-2">
-            <Label>Default Country Code</Label>
-            <Input
+            <Label>Default country code</Label>
+            <Input aria-label="Default country code"
               value={config.openwa_default_country_code}
               onChange={e => setConfig(c => ({ ...c, openwa_default_country_code: e.target.value }))}
               placeholder="91"
@@ -193,16 +193,16 @@ export function WhatsAppSettingsSection() {
             <p className="text-xs text-muted-foreground">e.g. 91 for India</p>
           </div>
           <div className="grid gap-2">
-            <Label>Max Concurrency</Label>
-            <Input
+            <Label>Max concurrency</Label>
+            <Input aria-label="Max concurrency"
               value={config.openwa_max_concurrency}
               onChange={e => setConfig(c => ({ ...c, openwa_max_concurrency: e.target.value }))}
               placeholder="3"
             />
           </div>
           <div className="grid gap-2">
-            <Label>Send Delay (ms)</Label>
-            <Input
+            <Label>Send delay (ms)</Label>
+            <Input aria-label="Send delay (ms)"
               value={config.openwa_send_delay_ms}
               onChange={e => setConfig(c => ({ ...c, openwa_send_delay_ms: e.target.value }))}
               placeholder="400"

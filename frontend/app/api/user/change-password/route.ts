@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { requireAuth } from '@/lib/route-auth'
-import { revokeAllUserSessions } from '@/lib/session'
+import { readSessionCookie, revokeAllUserSessions, setSessionCookie } from '@/lib/session'
+import { passwordProblem } from '@/lib/auth-account'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
   const rateCheck = await rateLimitRedis(`change-pw:${gate.user.id}`, 3, 60_000)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -24,10 +25,11 @@ export async function POST(request: NextRequest) {
   try {
     const { currentPassword, newPassword } = await request.json()
     if (!currentPassword || !newPassword) {
-      return NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Current password and new password are required', code: 'auth_passwords_required' }, { status: 400 })
     }
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 })
+    const pwProblem = passwordProblem(newPassword)
+    if (pwProblem) {
+      return NextResponse.json({ error: pwProblem }, { status: 400 })
     }
 
     const db = await getMongoDb()
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash)
     if (!valid) {
-      return NextResponse.json({ error: 'Current password is incorrect' }, { status: 403 })
+      return NextResponse.json({ error: 'Current password is incorrect', code: 'auth_current_password_incorrect' }, { status: 403 })
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12)
@@ -46,11 +48,15 @@ export async function POST(request: NextRequest) {
       { id: gate.user.id },
       { $set: { passwordHash, updatedAt: new Date() } },
     )
+    // Sign out every other session, then give this browser a fresh one so
+    // the person who just changed the password stays signed in.
+    const hadCookie = !!(await readSessionCookie())
     await revokeAllUserSessions(gate.user.id)
+    if (hadCookie) await setSessionCookie({ uid: gate.user.id, email: gate.user.email, role: gate.user.role })
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[ChangePassword] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

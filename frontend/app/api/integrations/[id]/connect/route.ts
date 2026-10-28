@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
 
   const providerRoutes: Record<string, string> = {
-    github: '/api/integrations/github',
+    github: '/api/github/oauth/start',
     slack: '/api/integrations/slack',
     sonarqube: '/api/integrations/sonarqube',
   }

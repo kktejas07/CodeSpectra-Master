@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberField } from '@/components/ui/number-field'
@@ -12,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { toLocalDatetimeString } from '@/lib/datetime-local'
+import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   Trash2, HelpCircle, CheckSquare, ListChecks,
@@ -23,26 +25,32 @@ import {
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
 import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface ProblemOption { slug: string; title: string; difficulty: string; topics?: string[] }
 
 export default function HackathonCreatePage() {
+  const { t: ta } = useAdminT()
   const router = useRouter()
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
+  const problemToast = useToast()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
 
+  // Dates are entered in the platform timezone, like the edit page and list modal.
+  const tz = usePlatformTimezone()
   const [form, setForm] = useState({
     name: '',
     description: '',
     num_teams: 8,
     max_per_team: 4,
     timeout_minutes: 60,
-    starts_at: toLocalDatetimeString(new Date(Date.now() + 3600000)),
+    starts_at: toZonedDatetimeString(new Date(Date.now() + 3600000), tz),
     tasks: [] as { slug: string; title: string; points: number; difficulty: string; required: boolean }[],
     rules: [
       { type: 'scoring' as const, title: 'Scoring', description: 'Points are awarded based on test cases passed and code quality.' },
@@ -62,7 +70,7 @@ export default function HackathonCreatePage() {
       judging_rubrics: false,
       rubric_criteria: [
         { name: 'Innovation', weight: 25 },
-        { name: 'Technical Complexity', weight: 25 },
+        { name: 'Technical complexity', weight: 25 },
         { name: 'Design/UX', weight: 20 },
         { name: 'Impact', weight: 20 },
         { name: 'Completeness', weight: 10 },
@@ -155,10 +163,12 @@ export default function HackathonCreatePage() {
         const j = await res.json()
         if (!res.ok) throw new Error(j.error || 'Generation failed')
         const prob = j.problem as Record<string, unknown>
-        const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
-          ? j.published_problem_slug
-          : (typeof prob.slug === 'string' ? prob.slug
-            : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+        // Only a problem that was actually saved can be a task — a made-up slug
+        // would leave the workspace problem panel empty.
+        if (typeof j.published_problem_slug !== 'string' || !j.published_problem_slug) {
+          throw new Error('The problem was generated but could not be saved. Try again.')
+        }
+        const slug: string = j.published_problem_slug
         const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
           ? prob.difficulty : 'medium') as string
         const title = String(prob.title || slug)
@@ -184,9 +194,14 @@ export default function HackathonCreatePage() {
   async function editProblem(slug: string) {
     setEditLoading(true)
     try {
-      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}?edit=1`, { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
+      // Company admins can use platform problems but only edit their own organization's.
+      if (j.can_edit !== true) {
+        problemToast({ type: 'info', title: 'Only the problem’s owner can edit it', message: 'You can still use it in this event, or write your own version.' })
+        return
+      }
       setOwnForm({
         title: j.title || '',
         difficulty: (['easy', 'medium', 'hard'].includes(j.difficulty) ? j.difficulty : 'medium') as 'easy' | 'medium' | 'hard',
@@ -277,8 +292,17 @@ export default function HackathonCreatePage() {
     }
   }
 
+  const [rubricTouched, setRubricTouched] = useState(false)
+  const rubricHasEmptyName = form.features.judging_rubrics
+    && form.features.rubric_criteria.some((c) => !c.name.trim())
+
   async function create() {
     if (!form.name.trim()) return
+    if (rubricHasEmptyName) {
+      setRubricTouched(true)
+      setError('Give every rubric criterion a name, or remove the empty ones, before saving.')
+      return
+    }
     setBusy(true); setError(null)
     try {
       const res = await csrfFetch('/api/hackathons', {
@@ -288,7 +312,7 @@ export default function HackathonCreatePage() {
           name: form.name, description: form.description,
           num_teams: form.num_teams, max_per_team: form.max_per_team,
           timeout_minutes: form.timeout_minutes,
-          starts_at: new Date(form.starts_at).toISOString(),
+          starts_at: fromZonedDatetimeString(form.starts_at, tz),
           tasks: form.tasks.map((t) => ({
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
@@ -313,32 +337,27 @@ export default function HackathonCreatePage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/admin/hackathons" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Back to listing
+      <PageHeader
+        icon={<Trophy />}
+        title={ta('hkForm.newHackathonEvent')}
+        description={ta('hkForm.createACodingCompetitionAssignProblems')}
+        actions={
+          <Link href="/dashboard/admin/hackathons" className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-4 w-4" /> {ta('hkForm.backToEvents')}
           </Link>
-          <div className="w-px h-6 bg-border" />
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Trophy className="h-7 w-7 text-primary" /> New Hackathon Event
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create a new coding competition, assign problems, and configure rules.
-            </p>
-          </div>
-        </div>
-      </div>
+        }
+        className="mb-0"
+      />
 
-      {error && <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
+      {error && <Card className="rounded-2xl border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
 
-      <Card className="space-y-6 p-6">
+      <Panel className="space-y-6">
         {/* Step indicator */}
         <EventStepIndicator
           steps={[
             { n: 1, label: 'Basics', icon: FileText },
             { n: 2, label: 'Problems', icon: ListChecks },
-            { n: 3, label: 'Rules & Scoring', icon: Sliders },
+            { n: 3, label: 'Rules and scoring', icon: Sliders },
             { n: 4, label: 'Features', icon: Settings },
             { n: 5, label: 'Review', icon: CheckSquare },
           ]}
@@ -349,18 +368,18 @@ export default function HackathonCreatePage() {
         {/* Step 1: Basics */}
         {step === 1 && (
           <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Event Details</h3>
+            <h3 className="font-semibold text-lg">{ta('hkForm.eventDetails')}</h3>
             <div className="space-y-2">
-              <Label>Event name</Label>
-              <Input autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Frostbyte Winter 2026" />
+              <Label>{ta('hkForm.eventName')}</Label>
+              <Input aria-label={ta('hkForm.eventName')} autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Frostbyte Winter 2026" />
             </div>
             <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the event, theme, and what participants will build..." />
+              <Label>{ta('hkForm.description')}</Label>
+              <Textarea aria-label={ta('hkForm.description')} rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder={ta('hkForm.describeTheEventThemeAndWhat')} />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <NumberField
-                label="Teams allowed"
+                label={ta('hkForm.teamsAllowed')}
                 value={form.num_teams}
                 onChange={(v) => setForm((f) => ({ ...f, num_teams: v }))}
                 min={1}
@@ -368,7 +387,7 @@ export default function HackathonCreatePage() {
                 hint="Total number of teams that can compete in this event."
               />
               <NumberField
-                label="Max per team"
+                label={ta('hkForm.maxPerTeam')}
                 value={form.max_per_team}
                 onChange={(v) => setForm((f) => ({ ...f, max_per_team: v }))}
                 min={1}
@@ -377,7 +396,7 @@ export default function HackathonCreatePage() {
               />
               <div className="space-y-1.5">
                 <NumberField
-                  label="Duration (minutes)"
+                  label={ta('hkForm.durationMinutes')}
                   value={form.timeout_minutes}
                   onChange={(v) => setForm((f) => ({ ...f, timeout_minutes: v }))}
                   min={5}
@@ -410,21 +429,22 @@ export default function HackathonCreatePage() {
             </div>
             <div className="grid gap-6 md:grid-cols-2 mt-6">
               <div className="space-y-2.5">
-                <Label className="text-sm font-medium">Starts at</Label>
-                <Input type="datetime-local" className="h-10" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
+                <Label className="text-sm font-medium">{ta('hkForm.startsAt')}</Label>
+                <Input aria-label={ta('hkForm.startsAt')} type="datetime-local" className="h-10" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
                 <p className="mt-1.5 text-[11px] text-muted-foreground bg-muted/30 p-2 rounded-md border border-border/50 inline-block">
-                  Ends at {formatDateTime(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000)}
+                  {ta('hkForm.endsAt')} {/T\d{2}:\d{2}/.test(form.starts_at) ? formatDateTime(new Date(fromZonedDatetimeString(form.starts_at, tz)).getTime() + form.timeout_minutes * 60000) : '–'}
                 </p>
               </div>
               <div className="space-y-2.5">
-                <Label className="text-sm font-medium">Banner image</Label>
+                <Label className="text-sm font-medium">{ta('hkForm.bannerImage')}</Label>
               {form.banner_url && (
                 <div className="relative w-full h-48 rounded-lg overflow-hidden border bg-muted mb-2">
-                  <img src={form.banner_url} alt="Banner preview" className="w-full h-full object-cover" />
+                  <img src={form.banner_url} alt={ta('hkForm.bannerPreview')} className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, banner_url: '' }))}
                     className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1.5 hover:bg-black/80"
+                    aria-label={ta('hkForm.removeBannerImage')}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -445,24 +465,24 @@ export default function HackathonCreatePage() {
                   reader.readAsDataURL(file)
                 }}
               />
-              <p className="text-xs text-muted-foreground">Upload an image or paste a URL below. Leave empty for default.</p>
+              <p className="text-xs text-muted-foreground">{ta('hkForm.uploadAnImageOrPasteA')}</p>
               <Input
                 value={form.banner_url.startsWith('data:') ? '' : form.banner_url}
                 onChange={(e) => setForm((f) => ({ ...f, banner_url: e.target.value }))}
-                placeholder="Or paste image URL..."
+                placeholder={ta('hkForm.orPasteImageUrl')}
               />
             </div>
             </div>
-            <Button onClick={() => setStep(2)}>Next: Problems →</Button>
+            <Button onClick={() => setStep(2)}>{ta('hkForm.nextProblems')}</Button>
           </div>
         )}
 
         {/* Step 2: Problems */}
         {step === 2 && (
           <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Assign Problems</h3>
+            <h3 className="font-semibold text-lg">{ta('hkForm.assignProblems')}</h3>
             <p className="text-sm text-muted-foreground">
-              Choose how to add problems — pick from your library, write your own, or generate with AI.
+              {ta('hkForm.chooseHowToAddProblemsPick')}
             </p>
 
             <div className="flex gap-2">
@@ -472,7 +492,7 @@ export default function HackathonCreatePage() {
                   problemSource === 'pick' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-muted/50'
                 }`}
               >
-                <Search className="h-4 w-4" /> Pick from library
+                <Search className="h-4 w-4" /> {ta('hkForm.pickFromLibrary')}
               </button>
               <button
                 onClick={() => setProblemSource('own')}
@@ -480,7 +500,7 @@ export default function HackathonCreatePage() {
                   problemSource === 'own' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-muted/50'
                 }`}
               >
-                <BookOpen className="h-4 w-4" /> Own questions
+                <BookOpen className="h-4 w-4" /> {ta('hkForm.ownQuestions')}
               </button>
               <button
                 onClick={() => setProblemSource('ai')}
@@ -488,7 +508,7 @@ export default function HackathonCreatePage() {
                   problemSource === 'ai' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-muted/50'
                 }`}
               >
-                <Sparkles className="h-4 w-4" /> AI generate
+                <Sparkles className="h-4 w-4" /> {ta('hkForm.aiGenerate')}
               </button>
             </div>
 
@@ -496,7 +516,7 @@ export default function HackathonCreatePage() {
             {problemSource === 'pick' && (
               <>
                 <div className="flex gap-2">
-                  <Input placeholder="Search problems..." value={problemSearch}
+                  <Input aria-label={ta('hkForm.searchProblems')} placeholder={ta('hkForm.searchProblems2')} value={problemSearch}
                     onChange={(e) => { setProblemSearch(e.target.value); searchProblems(e.target.value) }} />
                 </div>
                 {searchingProblems && <p className="text-xs text-muted-foreground">Searching...</p>}
@@ -516,11 +536,11 @@ export default function HackathonCreatePage() {
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                             {added ? (
-                              <Badge variant="outline">Added</Badge>
+                              <Badge variant="outline">{ta('hkForm.added')}</Badge>
                             ) : (
                               <Button size="sm" variant="ghost" onClick={() => setForm((f) => ({
                                 ...f, tasks: [...f.tasks, { slug: p.slug, title: p.title, points: 100, difficulty: p.difficulty, required: true }]
-                              }))}>Add</Button>
+                              }))}>{ta('hkForm.add')}</Button>
                             )}
                           </div>
                         </div>
@@ -533,61 +553,61 @@ export default function HackathonCreatePage() {
 
             {/* Own questions */}
             {problemSource === 'own' && (
-              <div className="space-y-4 rounded-lg border border-border/60 bg-card/40 p-5">
+              <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-5">
                 <div className="space-y-3">
                   <p className="text-sm font-semibold">
                     {editingSlug ? 'Edit problem' : 'Write your own problem'}
-                    {editingSlug && <span className="ml-2 text-xs text-muted-foreground">editing {editingSlug}</span>}
+                    {editingSlug && <span className="ml-2 text-xs text-muted-foreground">{ta('hkForm.editing', { editingSlug: editingSlug })}</span>}
                   </p>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="md:col-span-2 space-y-1.5">
-                      <Label>Problem title *</Label>
-                      <Input value={ownForm.title}
+                      <Label>{ta('hkForm.problemTitle')}</Label>
+                      <Input aria-label={ta('hkForm.problemTitle2')} value={ownForm.title}
                         onChange={(e) => setOwnForm((f) => ({ ...f, title: e.target.value }))}
                         placeholder="Two Sum" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Difficulty</Label>
-                      <select className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                      <Label>{ta('hkForm.difficulty')}</Label>
+                      <select aria-label={ta('hkForm.difficulty')} className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
                         value={ownForm.difficulty}
                         onChange={(e) => setOwnForm((f) => ({ ...f, difficulty: e.target.value as 'easy' | 'medium' | 'hard' }))}>
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
+                        <option value="easy">{ta('hkForm.easy')}</option>
+                        <option value="medium">{ta('hkForm.medium')}</option>
+                        <option value="hard">{ta('hkForm.hard')}</option>
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Points</Label>
+                      <Label>{ta('hkForm.points')}</Label>
                       <NumberField value={ownForm.points} min={10} max={1000} step={10} unit="pts"
                         onChange={(v) => setOwnForm((f) => ({ ...f, points: v }))} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
-                      <Label>Topics (comma-separated)</Label>
-                      <Input value={ownForm.topics}
+                      <Label>{ta('hkForm.topicsCommaSeparated')}</Label>
+                      <Input aria-label={ta('hkForm.topicsCommaSeparated')} value={ownForm.topics}
                         onChange={(e) => setOwnForm((f) => ({ ...f, topics: e.target.value }))}
-                        placeholder="arrays, dynamic programming, strings" />
+                        placeholder={ta('hkForm.arraysDynamicProgrammingStrings')} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
-                      <Label>Problem statement (Markdown)</Label>
-                      <Textarea rows={5} value={ownForm.statement_md}
+                      <Label>{ta('hkForm.problemStatementMarkdown')}</Label>
+                      <Textarea aria-label={ta('hkForm.problemStatementMarkdown')} rows={5} value={ownForm.statement_md}
                         onChange={(e) => setOwnForm((f) => ({ ...f, statement_md: e.target.value }))}
                         placeholder="## Problem Description&#10;Given an array of integers, return indices of the two numbers that add up to a specific target..." />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Input format</Label>
-                      <Input value={ownForm.input_format}
+                      <Label>{ta('hkForm.inputFormat')}</Label>
+                      <Input aria-label={ta('hkForm.inputFormat')} value={ownForm.input_format}
                         onChange={(e) => setOwnForm((f) => ({ ...f, input_format: e.target.value }))}
-                        placeholder="First line contains n..." />
+                        placeholder={ta('hkForm.firstLineContainsN')} />
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Output format</Label>
-                      <Input value={ownForm.output_format}
+                      <Label>{ta('hkForm.outputFormat')}</Label>
+                      <Input aria-label={ta('hkForm.outputFormat')} value={ownForm.output_format}
                         onChange={(e) => setOwnForm((f) => ({ ...f, output_format: e.target.value }))}
-                        placeholder="Print the two indices..." />
+                        placeholder={ta('hkForm.printTheTwoIndices')} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
-                      <Label>Constraints</Label>
-                      <Input value={ownForm.constraints}
+                      <Label>{ta('hkForm.constraints')}</Label>
+                      <Input aria-label={ta('hkForm.constraints')} value={ownForm.constraints}
                         onChange={(e) => setOwnForm((f) => ({ ...f, constraints: e.target.value }))}
                         placeholder="2 ≤ n ≤ 10⁵, -10⁹ ≤ nums[i] ≤ 10⁹" />
                     </div>
@@ -595,15 +615,15 @@ export default function HackathonCreatePage() {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label>Test cases</Label>
+                      <Label>{ta('hkForm.testCases')}</Label>
                       <Button size="sm" variant="outline" onClick={() => setOwnTestCases((t) => [...t, { stdin: '', expected: '', is_sample: true }])}>
-                        <Plus className="h-3 w-3 mr-1" /> Add test case
+                        <Plus className="h-3 w-3 mr-1" /> {ta('hkForm.addTestCase')}
                       </Button>
                     </div>
                     {ownTestCases.map((tc, i) => (
                       <div key={i} className="rounded-lg border bg-muted/20 p-3 space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium">Test case {i + 1}</span>
+                          <span className="text-xs font-medium">{ta('hkForm.testCase', { value: i + 1 })}</span>
                           <div className="flex items-center gap-2">
                             <label className="flex items-center gap-1 text-xs text-muted-foreground">
                               <input type="checkbox" checked={tc.is_sample}
@@ -612,11 +632,11 @@ export default function HackathonCreatePage() {
                                   next[i] = { ...next[i], is_sample: e.target.checked }
                                   setOwnTestCases(next)
                                 }} />
-                              Sample
+                              {ta('hkForm.sample')}
                             </label>
                             {ownTestCases.length > 1 && (
                               <Button size="sm" variant="ghost" className="h-6 text-destructive"
-                                onClick={() => setOwnTestCases((t) => t.filter((_, idx) => idx !== i))}>
+                                onClick={() => setOwnTestCases((t) => t.filter((_, idx) => idx !== i))} aria-label={ta('hkForm.removeTestCase')}>
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             )}
@@ -624,8 +644,8 @@ export default function HackathonCreatePage() {
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           <div>
-                            <Label className="text-[10px] uppercase tracking-wider">Input</Label>
-                            <Textarea rows={2} value={tc.stdin}
+                            <Label className="text-xs text-muted-foreground">{ta('hkForm.input')}</Label>
+                            <Textarea aria-label={ta('hkForm.input')} rows={2} value={tc.stdin}
                               onChange={(e) => {
                                 const next = [...ownTestCases]
                                 next[i] = { ...next[i], stdin: e.target.value }
@@ -634,8 +654,8 @@ export default function HackathonCreatePage() {
                               placeholder="[2,7,11,15]&#10;9" className="font-mono text-xs" />
                           </div>
                           <div>
-                            <Label className="text-[10px] uppercase tracking-wider">Expected output</Label>
-                            <Textarea rows={2} value={tc.expected}
+                            <Label className="text-xs text-muted-foreground">{ta('hkForm.expectedOutput')}</Label>
+                            <Textarea aria-label={ta('hkForm.expectedOutput')} rows={2} value={tc.expected}
                               onChange={(e) => {
                                 const next = [...ownTestCases]
                                 next[i] = { ...next[i], expected: e.target.value }
@@ -660,7 +680,7 @@ export default function HackathonCreatePage() {
                         setOwnForm({ title: '', difficulty: 'medium', topics: '', statement_md: '', input_format: '', output_format: '', constraints: '', points: 100 })
                         setOwnTestCases([{ stdin: '', expected: '', is_sample: true }])
                       }} disabled={editLoading}>
-                        Cancel edit
+                        {ta('hkForm.cancelEdit')}
                       </Button>
                     )}
                   </div>
@@ -670,45 +690,45 @@ export default function HackathonCreatePage() {
 
             {/* AI generate */}
             {problemSource === 'ai' && (
-              <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-5">
+              <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-5">
                 <div className="flex items-start gap-3">
                   <Sparkles className="h-5 w-5 text-primary mt-0.5" />
                   <div className="flex-1 space-y-3">
-                    <p className="text-sm font-semibold">AI generates problems for you</p>
+                    <p className="text-sm font-semibold">{ta('hkForm.aiGeneratesProblemsForYou')}</p>
                     <p className="text-xs text-muted-foreground">
-                      Configure the role, difficulty, and topics. The AI will create a polished problem with test cases and add it to the event.
+                      {ta('hkForm.configureTheRoleDifficultyAndTopics')}
                     </p>
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="space-y-1.5">
-                        <Label>Role / Persona</Label>
-                        <Input value={aiConfig.role}
+                        <Label>{ta('hkForm.rolePersona')}</Label>
+                        <Input aria-label={ta('hkForm.rolePersona')} value={aiConfig.role}
                           onChange={(e) => setAiConfig((c) => ({ ...c, role: e.target.value }))}
-                          placeholder="Software Engineer" />
+                          placeholder={ta('hkForm.softwareEngineer')} />
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Difficulty</Label>
-                        <select className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                        <Label>{ta('hkForm.difficulty')}</Label>
+                        <select aria-label={ta('hkForm.difficulty')} className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
                           value={aiConfig.difficulty}
                           onChange={(e) => setAiConfig((c) => ({ ...c, difficulty: e.target.value as 'easy' | 'medium' | 'hard' }))}>
-                          <option value="easy">Easy</option>
-                          <option value="medium">Medium</option>
-                          <option value="hard">Hard</option>
+                          <option value="easy">{ta('hkForm.easy')}</option>
+                          <option value="medium">{ta('hkForm.medium')}</option>
+                          <option value="hard">{ta('hkForm.hard')}</option>
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Language hint</Label>
-                        <Input value={aiConfig.language_hint}
+                        <Label>{ta('hkForm.languageHint')}</Label>
+                        <Input aria-label={ta('hkForm.languageHint')} value={aiConfig.language_hint}
                           onChange={(e) => setAiConfig((c) => ({ ...c, language_hint: e.target.value }))}
                           placeholder="python" />
                       </div>
                       <div className="space-y-1.5">
-                        <Label>Topics (comma-separated)</Label>
-                        <Input value={aiConfig.topics}
+                        <Label>{ta('hkForm.topicsCommaSeparated')}</Label>
+                        <Input aria-label={ta('hkForm.topicsCommaSeparated')} value={aiConfig.topics}
                           onChange={(e) => setAiConfig((c) => ({ ...c, topics: e.target.value }))}
-                          placeholder="arrays, strings, sorting" />
+                          placeholder={ta('hkForm.arraysStringsSorting')} />
                       </div>
                       <NumberField
-                        label="How many to generate"
+                        label={ta('hkForm.howManyToGenerate')}
                         value={aiConfig.count}
                         onChange={(v) => setAiConfig((c) => ({ ...c, count: v }))}
                         min={1}
@@ -732,7 +752,7 @@ export default function HackathonCreatePage() {
             {/* Selected problems */}
             {form.tasks.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Selected Problems ({form.tasks.length})</p>
+                <p className="text-sm font-medium">{ta('hkForm.selectedProblems', { length: form.tasks.length })}</p>
                 {form.tasks.map((t, i) => (
                   <div key={t.slug} className="flex items-center gap-2 p-2 rounded border bg-muted/20">
                     <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -755,7 +775,7 @@ export default function HackathonCreatePage() {
                     </Button>
                     <Button size="sm" variant="ghost" className="text-destructive"
                       onClick={() => setForm((f) => ({ ...f, tasks: f.tasks.filter((_, idx) => idx !== i) }))}>
-                      Remove
+                      {ta('hkForm.remove')}
                     </Button>
                   </div>
                 ))}
@@ -763,8 +783,8 @@ export default function HackathonCreatePage() {
             )}
 
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
-              <Button onClick={() => setStep(3)}>Next: Rules →</Button>
+              <Button variant="outline" onClick={() => setStep(1)}>{ta('hkForm.back')}</Button>
+              <Button onClick={() => setStep(3)}>{ta('hkForm.nextRules')}</Button>
             </div>
           </div>
         )}
@@ -772,7 +792,7 @@ export default function HackathonCreatePage() {
         {/* Step 3: Rules & Scoring */}
         {step === 3 && (
           <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Rules & Scoring</h3>
+            <h3 className="font-semibold text-lg">{ta('hkForm.rulesAndScoring')}</h3>
 
             <div className="space-y-4">
               {form.rules.map((r, i) => (
@@ -781,31 +801,31 @@ export default function HackathonCreatePage() {
                     <Badge variant="outline">{r.type}</Badge>
                     <Button size="sm" variant="ghost" className="text-destructive h-6"
                       onClick={() => setForm((f) => ({ ...f, rules: f.rules.filter((_, idx) => idx !== i) }))}>
-                      Remove
+                      {ta('hkForm.remove')}
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    <Label>Rule title</Label>
-                    <Input value={r.title}
+                    <Label>{ta('hkForm.ruleTitle')}</Label>
+                    <Input aria-label={ta('hkForm.ruleTitle')} value={r.title}
                       onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x) }))} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea rows={2} value={r.description}
+                    <Label>{ta('hkForm.description')}</Label>
+                    <Textarea aria-label={ta('hkForm.description')} rows={2} value={r.description}
                       onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x) }))} />
                   </div>
                 </div>
               ))}
               <Button variant="outline" size="sm" onClick={() => setForm((f: any) => ({
                 ...f, rules: [...f.rules, { type: 'general' as const, title: '', description: '' }]
-              }))}>+ Add Rule</Button>
+              }))}>{ta('hkForm.addRule')}</Button>
             </div>
 
             <div className="rounded border p-4 space-y-4">
-              <h4 className="text-sm font-semibold">Scoring Configuration</h4>
+              <h4 className="text-sm font-semibold">{ta('hkForm.scoringConfiguration')}</h4>
               <div className="grid gap-4 md:grid-cols-4">
                 <NumberField
-                  label="Points per problem"
+                  label={ta('hkForm.pointsPerProblem')}
                   value={form.scoring.points_per_problem}
                   onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: v } }))}
                   min={10}
@@ -815,7 +835,7 @@ export default function HackathonCreatePage() {
                   hint="Base score for a fully correct solution."
                 />
                 <NumberField
-                  label="Bonus (early submit)"
+                  label={ta('hkForm.bonusEarlySubmit')}
                   value={form.scoring.bonus_time}
                   onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: v } }))}
                   min={0}
@@ -825,7 +845,7 @@ export default function HackathonCreatePage() {
                   hint="Extra points per remaining minute on early submissions."
                 />
                 <NumberField
-                  label="Penalty per attempt"
+                  label={ta('hkForm.penaltyPerAttempt')}
                   value={form.scoring.penalty_per_attempt}
                   onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: v } }))}
                   min={0}
@@ -835,7 +855,7 @@ export default function HackathonCreatePage() {
                   hint="Points deducted for each wrong submission."
                 />
                 <NumberField
-                  label="Solve limit"
+                  label={ta('hkForm.solveLimit')}
                   value={form.solve_limit}
                   onChange={(v) => setForm((f) => ({ ...f, solve_limit: v }))}
                   min={0}
@@ -846,13 +866,13 @@ export default function HackathonCreatePage() {
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="auto_grade" checked={form.scoring.auto_grade}
                   onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, auto_grade: e.target.checked } }))} />
-                <Label htmlFor="auto_grade">Auto-grade submissions on submit</Label>
+                <Label htmlFor="auto_grade">{ta('hkForm.autoGradeSubmissionsOnSubmit')}</Label>
               </div>
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
-              <Button onClick={() => setStep(4)}>Next: Features →</Button>
+              <Button variant="outline" onClick={() => setStep(2)}>{ta('hkForm.back')}</Button>
+              <Button onClick={() => setStep(4)}>{ta('hkForm.nextFeatures')}</Button>
             </div>
           </div>
         )}
@@ -861,28 +881,28 @@ export default function HackathonCreatePage() {
         {step === 4 && (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Features & Visibility</h3>
-              <p className="text-sm text-muted-foreground mt-1">Toggle features on/off for this event. Participants will see and use only the enabled features.</p>
+              <h3 className="font-semibold text-lg">{ta('hkForm.featuresAndVisibility')}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{ta('hkForm.toggleFeaturesOnOffForThis')}</p>
             </div>
 
             {/* Team & Participation */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Team & Participation</h4>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <h4 className="text-sm font-semibold text-muted-foreground">{ta('hkForm.teamAndParticipation')}</h4>
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Team Formation</Label>
-                    <p className="text-xs text-muted-foreground">Allow participants to create and join teams</p>
+                    <Label className="text-sm font-medium">{ta('hkForm.teamFormation')}</Label>
+                    <p className="text-xs text-muted-foreground">{ta('hkForm.allowParticipantsToCreateAndJoin')}</p>
                   </div>
                   <Switch checked={form.features.team_formation}
                     onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, team_formation: checked } }))} />
                 </div>
               </div>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Claims System</Label>
-                    <p className="text-xs text-muted-foreground">First-come lock on problems (5-minute claim timer)</p>
+                    <Label className="text-sm font-medium">{ta('hkForm.claimsSystem')}</Label>
+                    <p className="text-xs text-muted-foreground">{ta('hkForm.firstComeLockOnProblems5')}</p>
                   </div>
                   <Switch checked={form.features.claims_system}
                     onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, claims_system: checked } }))} />
@@ -892,34 +912,34 @@ export default function HackathonCreatePage() {
 
             {/* Submission Settings */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Submission Settings</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">{ta('hkForm.submissionSettings')}</h4>
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                  <Label className="text-sm font-medium">Demo Video</Label>
-                  <select value={form.features.demo_video}
+                <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">{ta('hkForm.demoVideo')}</Label>
+                  <select aria-label={ta('hkForm.demoVideo')} value={form.features.demo_video}
                     onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, demo_video: e.target.value as 'required' | 'optional' | 'disabled' } }))}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
-                    <option value="required">Required</option>
-                    <option value="optional">Optional</option>
-                    <option value="disabled">Disabled</option>
+                    <option value="required">{ta('hkForm.required')}</option>
+                    <option value="optional">{ta('hkForm.optional')}</option>
+                    <option value="disabled">{ta('hkForm.disabled')}</option>
                   </select>
                 </div>
-                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                  <Label className="text-sm font-medium">Live URL</Label>
-                  <select value={form.features.live_url}
+                <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">{ta('hkForm.liveUrl')}</Label>
+                  <select aria-label={ta('hkForm.liveUrl')} value={form.features.live_url}
                     onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, live_url: e.target.value as 'required' | 'optional' | 'disabled' } }))}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
-                    <option value="required">Required</option>
-                    <option value="optional">Optional</option>
-                    <option value="disabled">Disabled</option>
+                    <option value="required">{ta('hkForm.required')}</option>
+                    <option value="optional">{ta('hkForm.optional')}</option>
+                    <option value="disabled">{ta('hkForm.disabled')}</option>
                   </select>
                 </div>
               </div>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Code Upload (Editor)</Label>
-                    <p className="text-xs text-muted-foreground">Allow participants to write code in the built-in editor</p>
+                    <Label className="text-sm font-medium">{ta('hkForm.codeUploadEditor')}</Label>
+                    <p className="text-xs text-muted-foreground">{ta('hkForm.allowParticipantsToWriteCodeIn')}</p>
                   </div>
                   <Switch checked={form.features.code_upload}
                     onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, code_upload: checked } }))} />
@@ -929,12 +949,12 @@ export default function HackathonCreatePage() {
 
             {/* Judging */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Judging & Scoring</h4>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <h4 className="text-sm font-semibold text-muted-foreground">{ta('hkForm.judgingAndScoring')}</h4>
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Judging Rubrics</Label>
-                    <p className="text-xs text-muted-foreground">Use weighted criteria instead of simple 0-100</p>
+                    <Label className="text-sm font-medium">{ta('hkForm.judgingRubrics')}</Label>
+                    <p className="text-xs text-muted-foreground">{ta('hkForm.useWeightedCriteriaInsteadOfSimple')}</p>
                   </div>
                   <Switch checked={form.features.judging_rubrics}
                     onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, judging_rubrics: checked } }))} />
@@ -942,14 +962,21 @@ export default function HackathonCreatePage() {
               </div>
               {form.features.judging_rubrics && (
                 <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
-                  <p className="text-xs text-muted-foreground">Rubric criteria (weights should sum to 100):</p>
+                  <p className="text-xs text-muted-foreground">{ta('hkForm.rubricCriteriaWeightsShouldSumTo')}</p>
                   {form.features.rubric_criteria.map((c, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={i} className="space-y-1">
+                    <div className="flex items-center gap-2">
                       <Input value={c.name} className="flex-1 h-8 text-xs"
+                        aria-label={`Criterion ${i + 1} name`}
+                        placeholder={ta('hkForm.criterionNameEGCodeQuality')}
+                        aria-invalid={rubricTouched && !c.name.trim() ? true : undefined}
+                        aria-describedby={rubricTouched && !c.name.trim() ? `rubric-name-error-${i}` : undefined}
+                        onBlur={() => setRubricTouched(true)}
                         onChange={(e) => setForm((f) => ({
                           ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
                         }))} />
                       <Input type="number" value={c.weight} className="w-20 h-8 text-xs"
+                        aria-label={`Criterion ${i + 1} weight (percent)`}
                         onChange={(e) => setForm((f) => ({
                           ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, weight: Number(e.target.value) } : x) }
                         }))} />
@@ -957,36 +984,41 @@ export default function HackathonCreatePage() {
                       <Button size="sm" variant="ghost" className="text-destructive h-6"
                         onClick={() => setForm((f) => ({
                           ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.filter((_, idx) => idx !== i) }
-                        }))}>×</Button>
+                        }))}
+                        aria-label={`Remove criterion ${i + 1}`}>×</Button>
+                    </div>
+                    {rubricTouched && !c.name.trim() && (
+                      <p id={`rubric-name-error-${i}`} className="text-xs text-destructive">{ta('hkForm.criterionNameIsRequired')}</p>
+                    )}
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
                     ...f, features: { ...f.features, rubric_criteria: [...f.features.rubric_criteria, { name: '', weight: 0 }] }
-                  }))}>+ Add Criterion</Button>
+                  }))}>{ta('hkForm.addCriterion')}</Button>
                 </div>
               )}
             </div>
 
             {/* Visibility */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Visibility & Engagement</h4>
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                <Label className="text-sm font-medium">Leaderboard Visibility</Label>
-                <select value={form.features.leaderboard_visibility}
+              <h4 className="text-sm font-semibold text-muted-foreground">{ta('hkForm.visibilityAndEngagement')}</h4>
+              <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
+                <Label className="text-sm font-medium">{ta('hkForm.leaderboardVisibility')}</Label>
+                <select aria-label={ta('hkForm.leaderboardVisibility')} value={form.features.leaderboard_visibility}
                   onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, leaderboard_visibility: e.target.value as 'public' | 'private' | 'after_event' } }))}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
-                  <option value="public">Public (visible during event)</option>
-                  <option value="after_event">After Event Ends</option>
-                  <option value="private">Private (admin only)</option>
+                  <option value="public">{ta('hkForm.publicVisibleDuringEvent')}</option>
+                  <option value="after_event">{ta('hkForm.afterEventEnds')}</option>
+                  <option value="private">{ta('hkForm.privateAdminOnly')}</option>
                 </select>
               </div>
               {[
-                { key: 'project_showcase' as const, label: 'Project Showcase', desc: 'Show submitted projects publicly after event ends' },
+                { key: 'project_showcase' as const, label: 'Project showcase', desc: 'Show submitted projects publicly after event ends' },
                 { key: 'forum' as const, label: 'Forum', desc: 'Q&A forum for participants during the event' },
                 { key: 'proctoring' as const, label: 'Proctoring', desc: 'Detect cheating (tab switch, copy, paste, etc.)' },
                 { key: 'certificates' as const, label: 'Certificates', desc: 'Generate certificates for participants' },
               ].map((item) => (
-                <div key={item.key} className="rounded-lg border bg-muted/30 p-4">
+                <div key={item.key} className="rounded-2xl border bg-muted/30 p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">{item.label}</Label>
@@ -1002,20 +1034,20 @@ export default function HackathonCreatePage() {
             {/* Sponsor Tracks */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Sponsor Tracks</h4>
+                <h4 className="text-sm font-semibold text-muted-foreground">{ta('hkForm.sponsorTracks')}</h4>
                 <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
                   ...f, features: { ...f.features, sponsor_tracks: [...f.features.sponsor_tracks, { name: '', prize: '', description: '' }] }
-                }))}>+ Add Track</Button>
+                }))}>{ta('hkForm.addTrack')}</Button>
               </div>
               {form.features.sponsor_tracks.length > 0 && (
                 <div className="space-y-2">
                   {form.features.sponsor_tracks.map((t, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
-                      <Input value={t.name} placeholder="Track name" className="flex-1 h-8 text-xs"
+                    <div key={i} className="flex items-center gap-2 rounded-xl border bg-muted/30 p-3">
+                      <Input value={t.name} placeholder={ta('hkForm.trackName')} className="flex-1 h-8 text-xs"
                         onChange={(e) => setForm((f) => ({
                           ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
                         }))} />
-                      <Input value={t.prize} placeholder="Prize" className="w-32 h-8 text-xs"
+                      <Input value={t.prize} placeholder={ta('hkForm.prize')} className="w-32 h-8 text-xs"
                         onChange={(e) => setForm((f) => ({
                           ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, prize: e.target.value } : x) }
                         }))} />
@@ -1030,8 +1062,8 @@ export default function HackathonCreatePage() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={() => setStep(3)}>← Back</Button>
-              <Button onClick={() => setStep(5)}>Next: Review →</Button>
+              <Button variant="outline" onClick={() => setStep(3)}>{ta('hkForm.back')}</Button>
+              <Button onClick={() => setStep(5)}>{ta('hkForm.nextReview')}</Button>
             </div>
           </div>
         )}
@@ -1040,18 +1072,18 @@ export default function HackathonCreatePage() {
         {step === 5 && (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Review & Create</h3>
-              <p className="text-sm text-muted-foreground mt-1">Review your event configuration before creating.</p>
+              <h3 className="font-semibold text-lg">{ta('hkForm.reviewAndCreate')}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{ta('hkForm.reviewYourEventConfigurationBeforeCreati')}</p>
             </div>
 
             {/* Event Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <h4 className="text-sm font-semibold">Event Details</h4>
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">{ta('hkForm.eventDetails')}</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{form.name || '—'}</span></div>
                 <div><span className="text-muted-foreground">Duration:</span> <span className="font-medium">{form.timeout_minutes} min</span></div>
-                <div><span className="text-muted-foreground">Teams:</span> <span className="font-medium">{form.num_teams} max</span></div>
-                <div><span className="text-muted-foreground">Per team:</span> <span className="font-medium">{form.max_per_team} members</span></div>
+                <div><span className="text-muted-foreground">Teams:</span> <span className="font-medium">{ta('hkForm.max', { num_teams: form.num_teams })}</span></div>
+                <div><span className="text-muted-foreground">{ta('hkForm.perTeam')}</span> <span className="font-medium">{ta('hkForm.members', { max_per_team: form.max_per_team })}</span></div>
                 <div className="col-span-2"><span className="text-muted-foreground">Starts:</span> <span className="font-medium">{formatDateTime(form.starts_at)}</span></div>
                 {form.description && (
                   <div className="col-span-2"><span className="text-muted-foreground">Description:</span> <span className="font-medium line-clamp-2">{form.description}</span></div>
@@ -1060,10 +1092,10 @@ export default function HackathonCreatePage() {
             </div>
 
             {/* Problems Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <h4 className="text-sm font-semibold">Problems ({form.tasks.length})</h4>
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">{ta('hkForm.problems', { length: form.tasks.length })}</h4>
               {form.tasks.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No problems added</p>
+                <p className="text-xs text-muted-foreground">{ta('hkForm.noProblemsAddedYetGoBack')}</p>
               ) : (
                 <div className="space-y-2">
                   {form.tasks.map((t, i) => (
@@ -1073,12 +1105,12 @@ export default function HackathonCreatePage() {
                         <span className="text-sm">{t.title}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-[10px] ${
-                          t.difficulty === 'hard' ? 'text-rose-500 border-rose-500/30' :
-                          t.difficulty === 'medium' ? 'text-amber-500 border-amber-500/30' :
-                          'text-emerald-500 border-emerald-500/30'
+                        <Badge variant="outline" className={`text-[11px] capitalize ${
+                          t.difficulty === 'hard' ? 'text-red-600 dark:text-red-400 border-red-500/30' :
+                          t.difficulty === 'medium' ? 'text-amber-700 dark:text-amber-300 border-amber-500/30' :
+                          'text-green-700 dark:text-green-300 border-green-500/30'
                         }`}>{t.difficulty}</Badge>
-                        <span className="text-xs text-muted-foreground">{t.points} pts</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{ta('hkForm.pts', { points: t.points })}</span>
                       </div>
                     </div>
                   ))}
@@ -1087,10 +1119,10 @@ export default function HackathonCreatePage() {
             </div>
 
             {/* Rules Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <h4 className="text-sm font-semibold">Rules ({form.rules.length})</h4>
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">{ta('hkForm.rules', { length: form.rules.length })}</h4>
               {form.rules.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No rules added</p>
+                <p className="text-xs text-muted-foreground">{ta('hkForm.noRulesAddedYet')}</p>
               ) : (
                 <div className="space-y-2">
                   {form.rules.map((r, i) => (
@@ -1104,36 +1136,39 @@ export default function HackathonCreatePage() {
             </div>
 
             {/* Features Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <h4 className="text-sm font-semibold">Enabled Features</h4>
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">{ta('hkForm.enabledFeatures')}</h4>
               <div className="flex flex-wrap gap-2">
-                {form.features.team_formation && <Badge variant="secondary">Team Formation</Badge>}
-                {form.features.claims_system && <Badge variant="secondary">Claims System</Badge>}
-                {form.features.code_upload && <Badge variant="secondary">Code Editor</Badge>}
-                {form.features.judging_rubrics && <Badge variant="secondary">Rubric Judging</Badge>}
-                {form.features.project_showcase && <Badge variant="secondary">Showcase</Badge>}
-                {form.features.forum && <Badge variant="secondary">Forum</Badge>}
-                {form.features.proctoring && <Badge variant="secondary">Proctoring</Badge>}
-                {form.features.certificates && <Badge variant="secondary">Certificates</Badge>}
-                {form.features.demo_video !== 'disabled' && <Badge variant="secondary">Demo Video {form.features.demo_video}</Badge>}
-                {form.features.live_url !== 'disabled' && <Badge variant="secondary">Live URL {form.features.live_url}</Badge>}
-                {form.features.sponsor_tracks.length > 0 && <Badge variant="secondary">{form.features.sponsor_tracks.length} Sponsor Tracks</Badge>}
+                {form.features.team_formation && <Badge variant="secondary">{ta('hkForm.teamFormation')}</Badge>}
+                {form.features.claims_system && <Badge variant="secondary">{ta('hkForm.claimsSystem')}</Badge>}
+                {form.features.code_upload && <Badge variant="secondary">{ta('hkForm.codeEditor')}</Badge>}
+                {form.features.judging_rubrics && <Badge variant="secondary">{ta('hkForm.rubricJudging')}</Badge>}
+                {form.features.project_showcase && <Badge variant="secondary">{ta('hkForm.showcase')}</Badge>}
+                {form.features.forum && <Badge variant="secondary">{ta('hkForm.forum')}</Badge>}
+                {form.features.proctoring && <Badge variant="secondary">{ta('hkForm.proctoring')}</Badge>}
+                {form.features.certificates && <Badge variant="secondary">{ta('hkForm.certificates')}</Badge>}
+                {form.features.demo_video !== 'disabled' && <Badge variant="secondary">{ta('hkForm.demoVideo2', { demo_video: form.features.demo_video })}</Badge>}
+                {form.features.live_url !== 'disabled' && <Badge variant="secondary">{ta('hkForm.liveUrl2', { live_url: form.features.live_url })}</Badge>}
+                {form.features.sponsor_tracks.length > 0 && <Badge variant="secondary">{ta('hkForm.sponsorTracks2', { length: form.features.sponsor_tracks.length })}</Badge>}
               </div>
               <div className="text-xs text-muted-foreground">
                 Leaderboard: <span className="font-medium">{form.features.leaderboard_visibility}</span>
               </div>
             </div>
 
+            {rubricTouched && rubricHasEmptyName && (
+              <p role="alert" className="text-xs text-destructive">{ta('hkForm.someRubricCriteriaHaveNoName')}</p>
+            )}
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" onClick={() => setStep(4)}>← Back</Button>
+              <Button variant="outline" onClick={() => setStep(4)}>{ta('hkForm.back')}</Button>
               <Button onClick={create} disabled={busy}>
                 {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trophy className="mr-1 h-3 w-3" />}
-                Create Hackathon
+                {ta('hkForm.createHackathon')}
               </Button>
             </div>
           </div>
         )}
-      </Card>
+      </Panel>
         <ProblemViewDialog open={viewSlug !== null} slug={viewSlug} onClose={() => setViewSlug(null)} />
     </div>
   )

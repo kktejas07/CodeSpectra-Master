@@ -7,20 +7,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, Video } from 'lucide-react'
+import { PageHeader } from '@/components/app/page-kit'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
 
 export default function ScheduleInterviewPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
 
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [users, setUsers] = useState<{ id: string; email: string; name?: string }[]>([])
   const [form, setForm] = useState({
     title: '',
     type: 'technical',
@@ -31,13 +33,6 @@ export default function ScheduleInterviewPage() {
     resume_info: '',
   })
 
-  useEffect(() => {
-    fetch('/api/admin/users', { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : [])
-      .then((d) => setUsers(d.users || d.items || []))
-      .catch(() => {})
-  }, [])
-
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
@@ -45,20 +40,20 @@ export default function ScheduleInterviewPage() {
       const interviewScheduleTour: TourStep[] = [
         {
           target: '[data-tour="interview-schedule-header"]',
-          title: 'Book Interviews For Candidates',
-          description: 'This page books a new interview slot for a registered candidate.',
+          title: t('career.bookInterviewsForCandidates'),
+          description: t('career.thisPageBooksANewInterview7dc'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-schedule-submit"]',
-          title: 'Schedule Interview Now',
-          description: 'Click Schedule Interview to book the slot and open the interview room.',
+          title: t('career.scheduleTheInterview'),
+          description: t('career.clickScheduleInterviewToBookThe3af'),
           position: 'top',
         },
         {
           target: '[data-tour="interview-schedule-form"]',
-          title: 'Enter Accurate Candidate Details',
-          description: 'Pro tip: use a registered candidate email or scheduling fails.',
+          title: t('career.enterTheCandidateDetails'),
+          description: t('career.proTipUseARegisteredCandidatee94'),
           position: 'top',
         },
       ]
@@ -69,15 +64,13 @@ export default function ScheduleInterviewPage() {
     if (!form.title || !form.role || !form.candidate_email) return
     setBusy(true); setError(null)
     try {
-      const candidate = users.find((u) => u.email.toLowerCase() === form.candidate_email.toLowerCase())
-      if (!candidate) throw new Error(`User with email "${form.candidate_email}" not found`)
-
       const res = await csrfFetch('/api/interviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: form.title, type: form.type, role: form.role,
-          candidate_id: candidate.id,
+          // Resolved on the server (scoped to candidates + your organisation).
+          candidate_email: form.candidate_email.trim(),
           scheduled_at: new Date(form.scheduled_at).toISOString(),
           duration_minutes: form.duration_minutes,
           resume_info: form.resume_info || undefined,
@@ -102,56 +95,60 @@ export default function ScheduleInterviewPage() {
   return (
     <div className="space-y-6">
       <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3 w-3" /> Back to interviews
-      </Link>
+        <ArrowLeft className="h-3 w-3" />{' '}{t('career.backToInterviews')}</Link>
 
-      <h1 className="text-3xl font-bold" data-tour="interview-schedule-header">Schedule Interview</h1>
+      <div data-tour="interview-schedule-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Video aria-hidden />}
+          title={t('career.scheduleInterview')}
+          description={t('career.setUpAnInterviewWithA7f3')}
+        />
+      </div>
 
-      <Card className="p-6 space-y-4" data-tour="interview-schedule-form">
+      <Card className="max-w-3xl rounded-3xl border-border/70 p-6 space-y-4" data-tour="interview-schedule-form">
         <div>
-          <Label>Interview Title</Label>
-          <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Senior Frontend Screening" />
+          <Label htmlFor="iv-title">{t('career.interviewTitle')}</Label>
+          <Input id="iv-title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t('career.seniorFrontendScreening')} />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <Label>Type</Label>
-            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm">
-              <option value="technical">Technical</option>
-              <option value="behavioral">Behavioral</option>
-              <option value="system-design">System Design</option>
-              <option value="coding">Coding</option>
+            <Label htmlFor="iv-type">{t('career.type')}</Label>
+            <select id="iv-type" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
+              <option value="technical">{t('career.technical')}</option>
+              <option value="behavioral">{t('career.behavioral')}</option>
+              <option value="system-design">{t('career.systemDesign')}</option>
+              <option value="coding">{t('career.coding')}</option>
             </select>
           </div>
           <div>
-            <Label>Role</Label>
-            <Input value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder="Frontend Engineer" />
+            <Label htmlFor="iv-role">{t('career.role')}</Label>
+            <Input id="iv-role" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder={t('career.frontendEngineer')} />
           </div>
         </div>
         <div>
-          <Label>Candidate Email</Label>
-          <Input value={form.candidate_email} onChange={(e) => setForm((f) => ({ ...f, candidate_email: e.target.value }))} placeholder="candidate@company.com" type="email" />
-          <p className="text-xs text-muted-foreground mt-1">Must be a registered user on the platform</p>
+          <Label htmlFor="iv-email">{t('career.candidateEmail')}</Label>
+          <Input id="iv-email" value={form.candidate_email} onChange={(e) => setForm((f) => ({ ...f, candidate_email: e.target.value }))} placeholder="candidate@company.com" type="email" />
+          <p className="text-xs text-muted-foreground mt-1">{t('career.theEmailTheCandidateSignedUp0aa')}</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <Label>Scheduled At</Label>
-            <Input type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm((f) => ({ ...f, scheduled_at: e.target.value }))} />
+            <Label htmlFor="iv-when">{t('career.scheduledAt')}</Label>
+            <Input id="iv-when" type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm((f) => ({ ...f, scheduled_at: e.target.value }))} />
           </div>
           <div>
-            <Label>Duration (minutes)</Label>
-            <Input type="number" min={15} max={180} value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: Number(e.target.value) }))} />
+            <Label htmlFor="iv-duration">{t('career.durationMinutes')}</Label>
+            <Input id="iv-duration" type="number" min={15} max={180} value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: Number(e.target.value) }))} />
           </div>
         </div>
         <div>
-          <Label>Resume / Context (optional)</Label>
-          <Textarea rows={4} value={form.resume_info} onChange={(e) => setForm((f) => ({ ...f, resume_info: e.target.value }))} placeholder="Paste resume text or notes about the candidate..." />
+          <Label htmlFor="iv-context">{t('career.resumeContextOptional')}</Label>
+          <Textarea id="iv-context" rows={4} value={form.resume_info} onChange={(e) => setForm((f) => ({ ...f, resume_info: e.target.value }))} placeholder={t('career.pasteResumeTextOrNotesAbout1a5')} />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button onClick={schedule} disabled={busy} data-tour="interview-schedule-submit">
-          {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-          Schedule Interview
-        </Button>
+          {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}{t('career.scheduleInterview')}</Button>
       </Card>
     </div>
   )

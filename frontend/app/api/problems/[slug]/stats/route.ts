@@ -11,7 +11,7 @@ export async function GET(
     const pCol = await problems()
     const problem = await pCol.findOne({ $or: [{ slug }, { id: slug }] })
     if (!problem) {
-      return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
     }
 
     const sCol = await submissions()

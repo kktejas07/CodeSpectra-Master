@@ -2,17 +2,21 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
+import { Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals/stage'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, CheckCircle, XCircle, Trophy, Users, Award } from 'lucide-react'
+import { Loader2, Trophy, Users, Award } from 'lucide-react'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface Verification {
   valid: boolean
   event?: string
   team?: string
   members?: string[]
-  xp?: number
+  rank?: number | null
+  tied?: boolean
+  points?: number | null
   released_at?: string
   error?: string
 }
@@ -39,32 +43,37 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md p-8 text-center space-y-4">
+    <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+      <SoftGlow />
+      <Panel className="w-full max-w-md p-8 text-center space-y-4">
         {data?.valid ? (
           <>
-            <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-            <h1 className="text-xl font-bold">Certificate Verified</h1>
+            <Illustration name="certificate" className="mx-auto w-40" />
+            <h1 className="text-xl font-semibold text-foreground">Certificate verified</h1>
             <div className="space-y-1 text-sm text-muted-foreground">
-              <p><strong>Event:</strong> {data.event}</p>
-              <p><strong>Team:</strong> {data.team}</p>
+              <p><span className="font-medium text-foreground">Event:</span> {data.event}</p>
+              <p><span className="font-medium text-foreground">Team:</span> {data.team}</p>
               <div className="flex items-center justify-center gap-2">
-                <Users className="h-4 w-4" />
+                <Users aria-hidden className="h-4 w-4" />
                 <span>{data.members?.join(', ') || 'N/A'}</span>
               </div>
-              <div className="flex items-center justify-center gap-2">
-                <Award className="h-4 w-4" />
-                <span>{data.xp} XP</span>
-              </div>
+              {typeof data.rank === 'number' && (
+                <div className="flex items-center justify-center gap-2">
+                  <Award aria-hidden className="h-4 w-4" />
+                  <span className="tabular-nums">
+                    Rank #{data.rank}{data.tied ? ' (tied)' : ''}{typeof data.points === 'number' ? ` · ${data.points} points` : ''}
+                  </span>
+                </div>
+              )}
             </div>
-            <Badge variant="outline" className="text-green-400 border-green-400/40">
+            <Badge variant="outline" className="text-green-700 dark:text-green-400 border-green-500/40 bg-green-500/10">
               Verified on CodeSpectra
             </Badge>
           </>
         ) : (
           <>
-            <XCircle className="mx-auto h-12 w-12 text-destructive" />
-            <h1 className="text-xl font-bold">Certificate Not Found</h1>
+            <Illustration name="not-found" className="mx-auto w-40" />
+            <h1 className="text-xl font-semibold text-foreground">Certificate not found</h1>
             <p className="text-sm text-muted-foreground">
               {data?.error || 'This certificate could not be verified.'}
             </p>
@@ -75,7 +84,7 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
             <Trophy className="mr-2 h-4 w-4" /> Powered by CodeSpectra
           </Link>
         </Button>
-      </Card>
+      </Panel>
     </div>
   )
 }

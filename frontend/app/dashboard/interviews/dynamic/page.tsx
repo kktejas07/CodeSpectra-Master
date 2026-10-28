@@ -1,54 +1,11 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import { Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { DynamicInterview } from '@/components/interviews/dynamic-interview'
-import type { InterviewFeedback } from '@/lib/interview-service'
-import { usePageGuard } from '@/lib/use-page-guard'
-import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
-
-function DynamicInterviewPageInner() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const roleId = searchParams.get('role') || 'software-engineer'
-  const interviewType = (searchParams.get('type') || 'technical') as
-    | 'technical'
-    | 'behavioral'
-    | 'system-design'
-  const resumeInfo = searchParams.get('resume')
-
-  const handleInterviewComplete = (feedback: InterviewFeedback[]) => {
-    sessionStorage.setItem('interviewFeedback', JSON.stringify(feedback))
-    router.push('/dashboard/interviews/results')
-  }
-
-  return (
-    <DynamicInterview
-      roleId={roleId}
-      interviewType={interviewType}
-      resumeInfo={resumeInfo || undefined}
-      onComplete={handleInterviewComplete}
-    />
-  )
+/**
+ * Legacy "dynamic interview" flow (setup → dynamic → results) — retired
+ * (audit CORE-017): it kept feedback only in the browser and its results page
+ * promised a notification that never came. AI mock interviews replace it and
+ * save every report (/dashboard/interviews lists them).
+ */
+export default function LegacyInterviewRedirect() {
+  redirect('/dashboard/interviews/ai-mock/setup')
 }
-
-export default function DynamicInterviewPage() {
-  const gate = usePageGuard('user')
-  if (!gate.ready) return null
-
-  return (
-    <Suspense
-      fallback={
-        <div className="space-y-6">
-          <SkeletonCard />
-          <SkeletonText lines={4} />
-          <SkeletonCard />
-        </div>
-      }
-    >
-      <DynamicInterviewPageInner />
-    </Suspense>
-  )
-}
-
-

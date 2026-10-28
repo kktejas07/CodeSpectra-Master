@@ -1,7 +1,46 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
-import { problems, nowIso, type TestCase } from '@/lib/db/problems'
+import { requireAuth, requireSuperAdmin, gateErrorBody, getAPIUser, isAdminCaller, isSuperAdminCaller, type APIUser } from '@/lib/route-auth'
+import { problems, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
+import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
+import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
+import { checkProblemAccess, packLockedError } from '@/lib/entitlements'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
+
+/**
+ * Who may edit a problem: superadmin; its creator; or a tenant_admin of the
+ * problem's own tenant. Global problems (no tenant_id) are superadmin/owner
+ * only — a tenant admin editing them would change grading for everyone.
+ */
+function canEditProblem(user: APIUser | null, doc: Pick<ProblemDoc, 'created_by'> & { tenant_id?: string | null }): boolean {
+  if (!user) return false
+  if (isSuperAdminCaller(user)) return true // SEC-029: admin 2FA owed → no admin edit rights
+  if (doc.created_by && doc.created_by === user.id) return true
+  return user.role === 'tenant_admin' && isAdminCaller(user) && !!doc.tenant_id && doc.tenant_id === user.tenantId
+}
+
+/**
+ * hackathon_only problems are visible to editors, and to staff, judges and
+ * team members of an event that uses them once it has started; after an
+ * event ends they become readable by anyone (showcase).
+ */
+async function canSeeHackathonProblem(user: APIUser | null, doc: ProblemDoc & { tenant_id?: string | null }): Promise<boolean> {
+  if (canEditProblem(user, doc)) return true
+  const events = await (await hackathons())
+    .find({ 'tasks.problem_slug': doc.slug, status: { $ne: 'draft' } }, { projection: { id: 1, tenant_id: 1, judges: 1, starts_at: 1, ends_at: 1, status: 1 } })
+    .toArray()
+  const now = Date.now()
+  for (const hk of events) {
+    if (new Date(hk.ends_at).getTime() < now) return true
+    if (!user) continue
+    if (isHackathonStaff(user, hk) || isHackathonJudge(user, hk)) return true
+    if (new Date(hk.starts_at).getTime() <= now) {
+      const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id }, { projection: { id: 1 } })
+      if (team) return true
+    }
+  }
+  return false
+}
 
 /**
  * GET /api/problems/[slug]
@@ -12,15 +51,45 @@ import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
  * so the arena UI remains usable in demo mode.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await ctx.params
+  const wantsEdit = new URL(request.url).searchParams.get('edit') === '1'
 
   try {
     const col = await problems()
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
     if (doc) {
+      const user = await getAPIUser().catch(() => null)
+      // Editors loading the edit form get every test, so a save never drops the hidden ones.
+      if (wantsEdit && canEditProblem(user, doc)) {
+        const { _id, ...rest } = doc
+        void _id
+        return NextResponse.json({ ...rest, can_edit: true })
+      }
+      if (doc.visibility === 'hackathon_only' && !(await canSeeHackathonProblem(user, doc))) {
+        return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
+      }
+      if (doc.is_published === false && doc.visibility !== 'hackathon_only' && !canEditProblem(user, doc)) {
+        return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
+      }
+      // Problem packs: locked problems show title only (lib/entitlements-core problemAccess).
+      // Hackathon problems are gated by their event instead.
+      if (doc.visibility !== 'hackathon_only') {
+        // Fail closed: the seed fallback below must never serve a problem we couldn't check.
+        const access = await checkProblemAccess(user, doc, canEditProblem(user, doc)).catch((e) => {
+          console.error('[problems/[slug]] pack access check failed:', e)
+          return null
+        })
+        if (!access) return NextResponse.json({ error: 'Could not load this problem. Please try again.' }, { status: 503 })
+        if (access.locked) {
+          return NextResponse.json(
+            { ...packLockedError(access), problem: { id: doc.id, slug: doc.slug, title: doc.title, difficulty: doc.difficulty, topics: doc.topics } },
+            { status: 402 },
+          )
+        }
+      }
       return NextResponse.json({
         ...doc,
         test_cases: (doc.test_cases || []).filter((t) => t.is_sample),
@@ -36,7 +105,7 @@ export async function GET(
   // Fallback: in-memory seed (check both slug and id fields)
   const seed = SEED_PROBLEMS.find((p) => p.slug === slug || p.id === slug)
   if (!seed) {
-    return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
   }
   return NextResponse.json({
     ...seed,
@@ -63,12 +132,10 @@ export async function PATCH(
   try {
     const col = await problems()
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
-    if (!doc) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    if (!doc) return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
 
-    const isOwner = doc.created_by && doc.created_by === gate.user.id
-    const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
-    if (!isOwner && !isAdmin) {
-      return NextResponse.json({ error: 'Forbidden — only the owner or an admin can edit this problem' }, { status: 403 })
+    if (!canEditProblem(gate.user, doc)) {
+      return NextResponse.json({ error: 'Forbidden — only the owner or a platform admin can edit this problem' }, { status: 403 })
     }
 
     const body = (await request.json()) as Record<string, unknown>
@@ -97,11 +164,18 @@ export async function PATCH(
     if ('time_limit_ms' in body) patch.time_limit_ms = Number(body.time_limit_ms) || 2000
     if ('memory_limit_kb' in body) patch.memory_limit_kb = Number(body.memory_limit_kb) || 65536
     if ('is_published' in body) patch.is_published = Boolean(body.is_published)
+    // SEC-037: only an admin publishes to the public library / knowledge index.
+    // A learner who created a problem earlier keeps it as a private draft: any
+    // edit by a non-admin takes it out of the library until an admin publishes it.
+    if (!isAdminCaller(gate.user) && Object.keys(patch).length > 0) {
+      patch.is_published = false
+      patch.review_status = 'pending_review' // shows up under Admin → Problems review
+    }
     if ('test_cases' in body) {
       patch.test_cases = (Array.isArray(body.test_cases) ? body.test_cases : ([] as unknown[])).map((tc, i) => {
         const t = tc as Record<string, unknown>
         return {
-          id: String(t.id) || `tc_${Date.now()}_${i}`,
+          id: t.id ? String(t.id) : `tc_${Date.now()}_${i}`,
           stdin: String(t.stdin ?? ''),
           expected_stdout: String(t.expected_stdout ?? ''),
           is_sample: Boolean(t.is_sample),
@@ -115,9 +189,11 @@ export async function PATCH(
 
     patch.updated_at = nowIso()
     await col.updateOne({ _id: doc._id }, { $set: patch })
+    knowledgeOnLibraryChange('problem', doc.id)
     return NextResponse.json({ ...doc, ...patch })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[problems/[slug]]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -130,21 +206,18 @@ export async function DELETE(
   _request: Request,
   ctx: { params: Promise<{ slug: string }> },
 ) {
-  const gate = await requireAuth()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
-  }
-  if (gate.user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden — superadmin only' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   const { slug } = await ctx.params
   try {
     const col = await problems()
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
-    if (!doc) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    if (!doc) return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
     await col.deleteOne({ _id: doc._id })
+    knowledgeOnLibraryChange('problem', doc.id)
     return NextResponse.json({ success: true, deletedId: doc.slug ?? doc.id })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[problems/[slug]]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

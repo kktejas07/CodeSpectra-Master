@@ -10,15 +10,15 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          'border-transparent bg-linear-to-r from-mint-pulse to-[#3ecf8e] text-slate-950 font-bold shadow-xs',
+          'border-transparent bg-primary text-primary-foreground font-semibold shadow-xs',
         secondary:
-          'border-emerald-800/40 bg-emerald-950/50 text-emerald-300 [a&]:hover:bg-emerald-900/60',
+          'border-primary/20 bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/80',
         destructive:
-          'border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+          'border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40',
         outline:
-          'border-emerald-800/40 text-foreground [a&]:hover:bg-emerald-950/40 [a&]:hover:text-emerald-300',
+          'border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
         success:
-          'border-transparent bg-emerald-500/15 text-emerald-400 [a&]:hover:bg-emerald-500/25',
+          'border-transparent bg-green-500/15 text-green-700 dark:text-green-400 [a&]:hover:bg-green-500/25',
         warning:
           'border-transparent bg-amber-500/15 text-amber-400 [a&]:hover:bg-amber-500/25',
         info:

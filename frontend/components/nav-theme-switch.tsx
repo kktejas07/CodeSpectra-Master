@@ -57,7 +57,7 @@ export function NavThemeSwitch({ compact, className }: NavThemeSwitchProps) {
       />
       <Moon
         className={cn(
-          'shrink-0 text-muted-foreground/50 dark:text-indigo-200/90',
+          'shrink-0 text-muted-foreground/50 dark:text-primary',
           compact ? 'h-3 w-3' : 'h-3.5 w-3.5'
         )}
         aria-hidden

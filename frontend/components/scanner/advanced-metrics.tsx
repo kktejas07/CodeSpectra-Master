@@ -2,6 +2,7 @@
 
 import { AlertCircle, TrendingDown, TrendingUp, Shield, Zap, Code2, Bug, AlertTriangle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
+import { useT } from '@/lib/i18n/client'
 
 interface AdvancedMetricsProps {
   quality: number
@@ -26,6 +27,7 @@ export function AdvancedMetrics({
   maintainabilityIndex,
   testCoveragePercentage,
 }: AdvancedMetricsProps) {
+  const { t } = useT()
   const getSeverityColor = (value: number, threshold: number) => {
     if (value === 0) return 'text-green-500'
     if (value <= threshold * 0.5) return 'text-yellow-500'
@@ -53,16 +55,16 @@ export function AdvancedMetrics({
     color?: string
     secondaryValue?: string
   }) => (
-    <Card className="bg-card/30 border border-border p-4">
+    <Card className="p-4">
       <div className="flex items-start justify-between mb-2">
         <Icon className={`w-5 h-5 ${color}`} />
-        <p className="text-xs text-foreground/60">{label}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
       </div>
       <div className="flex items-baseline gap-1">
         <span className={`text-2xl font-bold ${color}`}>{value}</span>
-        {unit && <span className="text-xs text-foreground/50">{unit}</span>}
+        {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </div>
-      {secondaryValue && <p className="text-xs text-foreground/50 mt-1">{secondaryValue}</p>}
+      {secondaryValue && <p className="text-xs text-muted-foreground mt-1">{secondaryValue}</p>}
     </Card>
   )
 
@@ -72,15 +74,15 @@ export function AdvancedMetrics({
       <div className="relative overflow-hidden rounded-lg bg-linear-to-r from-primary/20 to-primary/10 border border-primary/30 p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-foreground/70 mb-2">Overall Code Quality</p>
+            <p className="text-sm text-foreground/70 mb-2">{t('tools.overallCodeQuality')}</p>
             <div className="flex items-baseline gap-3">
               <span className="text-5xl font-bold text-primary">{quality}</span>
-              <span className="text-lg text-foreground/60">/100</span>
+              <span className="text-lg text-muted-foreground">/100</span>
             </div>
           </div>
           <div className={`px-4 py-2 rounded-lg border ${getQualityBadgeColor(quality)}`}>
             <p className="font-semibold text-sm">
-              {quality >= 80 ? 'Excellent' : quality >= 60 ? 'Good' : 'Needs Work'}
+              {quality >= 80 ? t('tools.excellent') : quality >= 60 ? t('tools.good') : t('tools.needsWork')}
             </p>
           </div>
         </div>
@@ -93,28 +95,28 @@ export function AdvancedMetrics({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard
           icon={Bug}
-          label="Bugs"
+          label={t('tools.bugs')}
           value={bugs}
           color={getSeverityColor(bugs, 5)}
           secondaryValue={bugs > 0 ? 'Issues to fix' : 'No bugs found'}
         />
         <MetricCard
           icon={Shield}
-          label="Vulnerabilities"
+          label={t('tools.vulnerabilities')}
           value={vulnerabilities}
           color={getSeverityColor(vulnerabilities, 2)}
           secondaryValue={vulnerabilities > 0 ? 'Security risks' : 'No vulnerabilities'}
         />
         <MetricCard
           icon={AlertTriangle}
-          label="Code Smells"
+          label={t('tools.codeSmells')}
           value={codeSmells}
           color={getSeverityColor(codeSmells, 50)}
           secondaryValue="Quality issues"
         />
         <MetricCard
           icon={AlertCircle}
-          label="Hotspots"
+          label={t('tools.hotspots')}
           value={securityHotspots}
           color={getSeverityColor(securityHotspots, 5)}
           secondaryValue="Need review"
@@ -125,7 +127,7 @@ export function AdvancedMetrics({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <MetricCard
           icon={Code2}
-          label="Duplicated Code"
+          label={t('tools.duplicatedCode')}
           value={duplicatePercentage.toFixed(1)}
           unit="%"
           color={duplicatePercentage < 10 ? 'text-green-500' : 'text-yellow-500'}
@@ -133,14 +135,14 @@ export function AdvancedMetrics({
         />
         <MetricCard
           icon={Zap}
-          label="Complexity"
+          label={t('tools.complexity')}
           value={complexityScore}
           color={complexityScore < 20 ? 'text-green-500' : 'text-yellow-500'}
           secondaryValue="Cyclomatic complexity"
         />
         <MetricCard
           icon={TrendingUp}
-          label="Maintainability"
+          label={t('tools.maintainability')}
           value={maintainabilityIndex}
           unit="/100"
           color={maintainabilityIndex >= 70 ? 'text-green-500' : 'text-yellow-500'}
@@ -148,7 +150,7 @@ export function AdvancedMetrics({
         />
         <MetricCard
           icon={TrendingDown}
-          label="Test Coverage"
+          label={t('tools.testCoverage')}
           value={testCoveragePercentage.toFixed(1)}
           unit="%"
           color={testCoveragePercentage >= 50 ? 'text-green-500' : 'text-red-500'}
@@ -157,27 +159,21 @@ export function AdvancedMetrics({
       </div>
 
       {/* Metrics Information */}
-      <Card className="bg-card/30 border border-border p-4">
-        <h4 className="text-sm font-semibold text-foreground mb-3">Understanding the Metrics</h4>
+      <Card className="p-4">
+        <h4 className="text-sm font-semibold text-foreground mb-3">{t('tools.understandingTheMetrics')}</h4>
         <div className="space-y-2 text-xs text-foreground/70">
           <p>
-            <strong>Bugs:</strong> Potential runtime errors and logical issues that should be fixed immediately.
-          </p>
+            <strong>{t('tools.bugs2')}</strong>{' '}{t('tools.potentialRuntimeErrorsAndLogicalIssues59c')}</p>
           <p>
-            <strong>Vulnerabilities:</strong> Security risks that could be exploited. Should be prioritized for fixes.
-          </p>
+            <strong>{t('tools.vulnerabilities2')}</strong>{' '}{t('tools.securityRisksThatCouldBeExploited158')}</p>
           <p>
-            <strong>Code Smells:</strong> Design and readability issues that don&apos;t break functionality but reduce maintainability.
-          </p>
+            <strong>{t('tools.codeSmells2')}</strong>{' '}{t('tools.designAndReadabilityIssuesThatDontf27')}</p>
           <p>
-            <strong>Duplicated Code:</strong> Repeated code segments that violate DRY principle and increase maintenance burden.
-          </p>
+            <strong>{t('tools.duplicatedCode2')}</strong>{' '}{t('tools.repeatedCodeSegmentsThatViolateDry4c0')}</p>
           <p>
-            <strong>Complexity:</strong> Higher scores indicate harder-to-understand code. Aim for scores below 15.
-          </p>
+            <strong>{t('tools.complexity2')}</strong>{' '}{t('tools.higherScoresIndicateHarderToUnderstanda54')}</p>
           <p>
-            <strong>Test Coverage:</strong> Percentage of code executed by tests. Aim for 70%+ in production code.
-          </p>
+            <strong>{t('tools.testCoverage2')}</strong>{' '}{t('tools.percentageOfCodeExecutedByTests483')}</p>
         </div>
       </Card>
     </div>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" fill="none" role="img"><title>The CodeSpectra visor mascot with live test results</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#5b84ff"/></linearGradient><linearGradient id="visor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a6cf0"/><stop offset=".6" stop-color="#2f5be7"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient></defs><style>
+  .surf{fill:#f8fafc;stroke:#64748b;stroke-opacity:.7}
+  .ln{stroke:#64748b;stroke-opacity:.6;fill:none}
+  .txt{fill:#64748b;opacity:.75}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+    .tag,.num,.row,.ev,.pass,.f{opacity:1!important}
+    .ck,.ok{stroke-dashoffset:0!important}
+    .gauge{stroke-dashoffset:36!important}
+    .pkt{offset-distance:50%}
+  }
+
+  .float{animation:float 5s ease-in-out infinite}
+  @keyframes float{50%{transform:translateY(-6px)}}
+  .knob{animation:knob 2.4s ease-in-out infinite}
+  @keyframes knob{50%{fill:#93b4ff}}
+  .scan{animation:scan 3s ease-in-out infinite alternate}
+  @keyframes scan{to{transform:translateY(84px)}}
+  .bl{animation:bl 3.2s ease-in-out infinite}.br{animation:br 3.2s ease-in-out infinite}
+  @keyframes bl{50%{transform:translateX(-4px)}}@keyframes br{50%{transform:translateX(4px)}}
+  .sl{animation:sl 3.2s ease-in-out infinite}
+  @keyframes sl{0%,100%{opacity:1}50%{opacity:.7}}
+
+  .chip{opacity:0;animation:chip 7s ease infinite}
+  .c2{animation-delay:1.6s}.c3{animation-delay:3.2s}
+  @keyframes chip{0%{opacity:0;transform:translateY(6px)}8%,70%{opacity:1;transform:none}80%,100%{opacity:0}}
+  @media (prefers-reduced-motion: reduce){.chip{opacity:1!important}}
+</style><g class="float" style="transform-origin:150px 132px"><rect x="146.0" y="30.0" width="8.0" height="36.0" rx="4.0" fill="#c9d5f5"/><circle class="knob" cx="150" cy="28.0" r="8.0" fill="#2f5be7"/><ellipse cx="150" cy="68.0" rx="26.0" ry="10.0" fill="#c9d5f5"/><rect x="44.0" y="102.0" width="28.0" height="60.0" rx="12.0" fill="#c9d5f5"/><rect x="228.0" y="102.0" width="28.0" height="60.0" rx="12.0" fill="#c9d5f5"/><rect x="58.0" y="74.0" width="184.0" height="116.0" rx="34.0" fill="#c9d5f5"/><rect x="70.0" y="86.0" width="160.0" height="92.0" rx="24.0" fill="url(#visor)"/><path d="M82.0 134.0 C84.0 108.0 106.0 94.0 144.0 94.0" stroke="#fff" stroke-opacity=".18" stroke-width="10.0" stroke-linecap="round"/><clipPath id="scr"><rect x="70.0" y="86.0" width="160.0" height="92.0" rx="24.0"/></clipPath><g clip-path="url(#scr)"><rect class="scan" x="58.0" y="88.0" width="184.0" height="3.0" fill="#fff" opacity=".35"/></g><g stroke="#fff" stroke-width="9.0" stroke-linecap="round" stroke-linejoin="round" fill="none"><path class="bl" d="M124.0 112.0 L104.0 132 L124.0 152.0"/><path class="br" d="M176.0 112.0 L196.0 132 L176.0 152.0"/><path class="sl" d="M158.0 106.0 L142.0 158.0"/></g></g><g class="chip c1"><rect x="248" y="34" width="174" height="30" rx="15" fill="#f8fafc" stroke="#64748b" stroke-opacity=".35"/><circle cx="264" cy="49" r="5" fill="#2f5be7"/><text x="276" y="53.5" font-family="ui-sans-serif,system-ui" font-size="12.5" font-weight="600" fill="#64748b">12 / 12 tests passed</text></g><g class="chip c2"><rect x="262" y="150" width="104" height="30" rx="15" fill="#f8fafc" stroke="#64748b" stroke-opacity=".35"/><circle cx="278" cy="165" r="5" fill="#f59e0b"/><text x="290" y="169.5" font-family="ui-sans-serif,system-ui" font-size="12.5" font-weight="600" fill="#64748b">42:10 left</text></g><g class="chip c3"><rect x="0" y="222" width="202" height="30" rx="15" fill="#f8fafc" stroke="#64748b" stroke-opacity=".35"/><circle cx="16" cy="237" r="5" fill="#5b84ff"/><text x="28" y="241.5" font-family="ui-sans-serif,system-ui" font-size="12.5" font-weight="600" fill="#64748b">Score 94 · rank 3 of 100</text></g></svg>

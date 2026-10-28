@@ -4,6 +4,8 @@ import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 import { codeScans } from '@/lib/db/scans'
 import { aiCodeReviews, newId, nowIso } from '@/lib/db/ai'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 
@@ -16,15 +18,15 @@ interface ReviewReq {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'review_model')
 
   let body: ReviewReq
   try {
-    body = (await req.json()) as ReviewReq
+    body = sanitizeMongoInput(await req.json()) as ReviewReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   if (!body.code || typeof body.code !== 'string') {
     return NextResponse.json({ error: 'code required' }, { status: 400 })
@@ -41,6 +43,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     scanCtx = `Scan id ${scan.id}; language ${scan.language}; type ${scan.scan_type}.`
   }
 
+  const charge = await chargeAiFeature(user.id, 'code_review')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
+
   let result: Record<string, unknown>
   try {
     result = await backendPost<Record<string, unknown>>(
@@ -54,6 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
   } catch (err) {
     console.error('[CodeSpectra] AI code-review error:', err)
+    await charge.refund()
     return NextResponse.json({ success: false, error: 'AI service unavailable' }, { status: 502 })
   }
 

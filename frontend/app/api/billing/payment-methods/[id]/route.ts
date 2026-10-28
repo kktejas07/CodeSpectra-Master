@@ -10,13 +10,13 @@ export async function DELETE(_req: NextRequest, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const ps = new PaymentService()
     await ps.detachPaymentMethod(user.id, user.email, id)
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[payment-methods] DELETE:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

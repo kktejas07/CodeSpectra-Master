@@ -6,14 +6,23 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, XCircle, HelpCircle, RotateCcw, BookOpen, Lightbulb, Bookmark } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 export interface QuizQuestion {
   id: string
   type: 'mcq' | 'code' | 'true_false'
   question: string
   options: string[]
-  correct: number
-  explanation: string
+  /** Absent when the quiz is graded on the server (answer key never reaches the browser). */
+  correct?: number
+  explanation?: string
+}
+
+export type QuizGradeResult = {
+  score: number
+  total: number
+  passed: boolean
+  results: Array<{ questionIndex: number; userAnswer: number | null; correctAnswer: number | null; isCorrect: boolean; explanation?: string }>
 }
 
 export type QuizBookmarkContext = {
@@ -33,6 +42,12 @@ interface QuizComponentProps {
   passPercent?: number
   /** When set, each question can be bookmarked (snapshot stored server-side). */
   bookmark?: QuizBookmarkContext
+  /**
+   * Server grading. When set, answers are collected for every question and
+   * submitted at the end; correct answers are only shown from the server's
+   * response. `onComplete` then receives the server's score.
+   */
+  grade?: (answers: Record<number, number>) => Promise<QuizGradeResult>
 }
 
 /**
@@ -47,7 +62,13 @@ export function QuizComponent({
   reviewLabel = 'Review the lesson',
   passPercent = 80,
   bookmark,
+  grade,
 }: QuizComponentProps) {
+  const { t } = useT()
+  const graded = !!grade
+  const [grading, setGrading] = useState(false)
+  const [gradeError, setGradeError] = useState<string | null>(null)
+  const [graderResult, setGraderResult] = useState<QuizGradeResult | null>(null)
   const [currentQ, setCurrentQ] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
   const [showAnswer, setShowAnswer] = useState(false)
@@ -77,8 +98,8 @@ export function QuizComponent({
     }
   }, [bookmark?.courseId, bookmark?.lessonId])
 
-  async function toggleBookmark(q: QuizQuestion) {
-    if (!bookmark || bookmarkBusy || readOnly) return
+  async function toggleBookmark(q: QuizQuestion, key: { correct?: number; explanation?: string } = q) {
+    if (!bookmark || bookmarkBusy || readOnly || typeof key.correct !== 'number') return
     setBookmarkBusy(true)
     const next = !bookmarkedIds.has(q.id)
     setBookmarkedIds((prev) => {
@@ -98,8 +119,8 @@ export function QuizComponent({
           questionId: q.id,
           question: q.question,
           options: q.options,
-          correct: q.correct,
-          explanation: q.explanation,
+          correct: key.correct,
+          explanation: key.explanation || '',
           href:
             bookmark.href ||
             `/dashboard/courses/${encodeURIComponent(bookmark.courseId)}/lesson/${encodeURIComponent(bookmark.lessonId)}`,
@@ -157,6 +178,36 @@ export function QuizComponent({
     setShowAnswer(false)
   }
 
+  const submitForGrading = async (all: Record<number, number>) => {
+    if (!grade) return
+    setGrading(true)
+    setGradeError(null)
+    try {
+      const r = await grade(all)
+      setGraderResult(r)
+      setCompleted(true)
+      const correctCount = r.results.filter((x) => x.isCorrect).length
+      onComplete?.(correctCount, r.total || questions.length)
+    } catch (e) {
+      setGradeError(e instanceof Error ? e.message : t('learning.couldNotSubmitYourAnswersTrybcb'))
+    } finally {
+      setGrading(false)
+    }
+  }
+
+  /** Server-graded mode: lock this answer in and move on (no answer reveal until the end). */
+  const handleGradedNext = () => {
+    if (selected === null) return
+    const all = { ...answers, [currentQ]: selected }
+    setAnswers(all)
+    if (currentQ < questions.length - 1) {
+      setCurrentQ(currentQ + 1)
+      setSelected(all[currentQ + 1] ?? null)
+    } else {
+      void submitForGrading(all)
+    }
+  }
+
   const handleNext = () => {
     if (currentQ < questions.length - 1) {
       setCurrentQ(currentQ + 1)
@@ -169,6 +220,8 @@ export function QuizComponent({
   }
 
   const handleRetryAll = () => {
+    setGraderResult(null)
+    setGradeError(null)
     setCurrentQ(0)
     setSelected(null)
     setShowAnswer(false)
@@ -177,51 +230,69 @@ export function QuizComponent({
   }
 
   if (!questions.length) {
-    return <p className="text-sm text-muted-foreground p-4">No quiz questions yet.</p>
+    return <p className="text-sm text-muted-foreground p-4">{t('learning.noQuizQuestionsYet')}</p>
   }
 
   if (completed) {
-    const percentage = Math.round((score / questions.length) * 100)
-    const passed = percentage >= passPercent
+    const keyFor = (i: number) => {
+      const r = graderResult?.results.find((x) => x.questionIndex === i)
+      // The server only sends the key after a pass (correctAnswer is null otherwise).
+      return r
+        ? { correct: r.correctAnswer ?? undefined, explanation: r.explanation || '', isCorrect: r.isCorrect }
+        : { correct: questions[i]?.correct, explanation: questions[i]?.explanation || '', isCorrect: answers[i] === questions[i]?.correct }
+    }
+    const finalScore = graderResult ? graderResult.results.filter((x) => x.isCorrect).length : score
+    const percentage = graderResult ? graderResult.score : Math.round((score / questions.length) * 100)
+    const passed = graderResult ? graderResult.passed : percentage >= passPercent
     const missed = questions
-      .map((q, i) => ({ q, i, picked: answers[i] }))
-      .filter(({ q, picked }) => picked !== q.correct)
+      .map((q, i) => ({ q, i, picked: answers[i], key: keyFor(i) }))
+      .filter(({ key }) => !key.isCorrect)
 
     return (
       <div className="p-6 space-y-5">
         <div className="text-center space-y-2">
           <div
-            className="text-4xl font-bold"
-            style={{ color: passed ? '#22c55e' : percentage >= 50 ? '#f59e0b' : '#ef4444' }}
+            className={`text-4xl font-bold ${passed ? 'text-green-600 dark:text-green-400' : percentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}
           >
-            {passed ? 'Passed' : 'Not yet'}
+            {passed ? t('learning.passed2') : t('learning.notYet')}
           </div>
           <h3 className="text-2xl font-bold">
-            {score} / {questions.length} · {percentage}%
+            {finalScore} / {questions.length} · {percentage}%
           </h3>
           <p className="text-muted-foreground text-sm">
             {passed
-              ? 'Nice work — you can continue to the next module.'
-              : `You need ${passPercent}% to pass. Review the concepts below, then retry.`}
+              ? t('learning.niceWorkYouCanContinueTod0e')
+              : t('learning.youNeedPasspercentToPassReview6aa', { passPercent })}
           </p>
         </div>
 
         {missed.length > 0 && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 text-left">
             <div className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
-              <Lightbulb className="h-4 w-4" />
-              Concepts to review
-            </div>
-            {missed.map(({ q, i, picked }) => (
+              <Lightbulb className="h-4 w-4" />{t('learning.conceptsToReview')}</div>
+            {missed.map(({ q, i, picked, key }) => (
               <div key={q.id || i} className="text-sm border-t border-border/40 pt-3 first:border-0 first:pt-0">
-                <p className="font-medium text-foreground">{q.question}</p>
-                <p className="text-red-600 dark:text-red-400 mt-1">
-                  Your answer: {typeof picked === 'number' ? q.options[picked] : '—'}
-                </p>
-                <p className="text-green-700 dark:text-green-400 mt-0.5">
-                  Correct: {q.options[q.correct]}
-                </p>
-                <p className="text-muted-foreground mt-1">{q.explanation}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-foreground">{q.question}</p>
+                  {bookmark && graded && typeof key.correct === 'number' ? (
+                    <Button
+                      aria-label={bookmarkedIds.has(q.id) ? t('learning.removeBookmark') : t('learning.bookmarkQuestion')}
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 shrink-0"
+                      disabled={bookmarkBusy}
+                      onClick={() => void toggleBookmark(q, key)}
+                    >
+                      <Bookmark className={`h-4 w-4 ${bookmarkedIds.has(q.id) ? 'fill-amber-400 text-amber-400' : ''}`} />
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="text-red-600 dark:text-red-400 mt-1">{t('learning.yourAnswerValue', { value: typeof picked === 'number' ? q.options[picked] : '—' })}</p>
+                {typeof key.correct === 'number' ? (
+                  <p className="text-green-700 dark:text-green-400 mt-0.5">{t('learning.correctValue', { value: q.options[key.correct] })}</p>
+                ) : null}
+                {key.explanation ? <p className="text-muted-foreground mt-1">{key.explanation}</p> : null}
               </div>
             ))}
             {reviewHref && (
@@ -237,9 +308,7 @@ export function QuizComponent({
 
         <div className="flex gap-2 justify-center flex-wrap">
           <Button variant="outline" onClick={handleRetryAll}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Retry quiz
-          </Button>
+            <RotateCcw className="h-4 w-4 mr-2" />{t('learning.retryQuiz')}</Button>
         </div>
       </div>
     )
@@ -247,23 +316,22 @@ export function QuizComponent({
 
   if (!question) return null
 
-  const correctLabel = question.options[question.correct]
+  const correctLabel = typeof question.correct === 'number' ? question.options[question.correct] : ''
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <Badge variant="outline">
-          Question {currentQ + 1} of {questions.length}
-        </Badge>
+        <Badge variant="outline">{t('learning.question')}{' '}{currentQ + 1}{' '}{t('learning.ofCount', { count: questions.length })}</Badge>
         <div className="flex items-center gap-2">
-          {bookmark ? (
+          {bookmark && !graded ? (
             <Button
+              aria-label={bookmarkedIds.has(question.id) ? t('learning.removeBookmark') : t('learning.bookmarkQuestion')}
               type="button"
               size="sm"
               variant="ghost"
               className="h-8 px-2"
               disabled={bookmarkBusy || readOnly}
-              title={bookmarkedIds.has(question.id) ? 'Remove bookmark' : 'Bookmark question'}
+              title={bookmarkedIds.has(question.id) ? t('learning.removeBookmark') : t('learning.bookmarkQuestion')}
               onClick={() => void toggleBookmark(question)}
             >
               <Bookmark
@@ -277,9 +345,11 @@ export function QuizComponent({
                 key={i}
                 className={`h-2 w-2 rounded-full ${
                   i < currentQ
-                    ? answers[i] === questions[i].correct
-                      ? 'bg-green-500'
-                      : 'bg-red-500'
+                    ? graded
+                      ? 'bg-primary/60'
+                      : answers[i] === questions[i].correct
+                        ? 'bg-green-500'
+                        : 'bg-red-500'
                     : i === currentQ
                       ? 'bg-primary'
                       : 'bg-muted'
@@ -291,12 +361,16 @@ export function QuizComponent({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Choose an answer, then press <span className="font-medium text-foreground">Check answer</span>.
+        {graded ? (
+          <>{t('learning.chooseAnAnswerForEachQuestion283')}{' '}<span className="font-medium text-foreground">{t('learning.submitAnswers')}</span>.</>
+        ) : (
+          <>{t('learning.chooseAnAnswerThenPress')}{' '}<span className="font-medium text-foreground">{t('learning.checkAnswer')}</span>.</>
+        )}
       </p>
 
       <div className="text-lg font-medium leading-snug">{question.question}</div>
 
-      <div className="space-y-2" role="radiogroup" aria-label="Answer choices">
+      <div className="space-y-2" role="radiogroup" aria-label={t('learning.answerChoices')}>
         {question.options.map((option, i) => {
           const isSelected = selected === i
           const isCorrectOption = i === question.correct
@@ -324,7 +398,7 @@ export function QuizComponent({
               <div className="flex items-start gap-3">
                 <span className="font-mono text-sm mt-0.5">{String.fromCharCode(65 + i)})</span>
                 <span className="flex-1">{option}</span>
-                {showCorrect && <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />}
+                {showCorrect && <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />}
                 {showWrong && <XCircle className="h-5 w-5 text-red-500 shrink-0" />}
               </div>
             </button>
@@ -342,27 +416,26 @@ export function QuizComponent({
         >
           <div className="flex items-start gap-2">
             {isCorrect ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
             ) : (
               <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
             )}
             <div className="space-y-1">
               <div className={`font-semibold ${isCorrect ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                {isCorrect ? 'Correct!' : 'Incorrect'}
+                {isCorrect ? t('learning.correct') : t('learning.incorrect')}
               </div>
               {!isCorrect && (
-                <p className="text-sm">
-                  Correct answer: <span className="font-medium text-foreground">{correctLabel}</span>
+                <p className="text-sm">{t('learning.correctAnswer')}{' '}<span className="font-medium text-foreground">{correctLabel}</span>
                 </p>
               )}
             </div>
           </div>
 
           <div className="flex items-start gap-2 pl-0.5">
-            <HelpCircle className={`h-4 w-4 shrink-0 mt-0.5 ${isCorrect ? 'text-green-600' : 'text-amber-600'}`} />
+            <HelpCircle className={`h-4 w-4 shrink-0 mt-0.5 ${isCorrect ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
             <div>
               <p className="text-sm font-medium text-foreground mb-0.5">
-                {isCorrect ? 'Why this is right' : 'Why this matters — learn it again'}
+                {isCorrect ? t('learning.whyThisIsRight') : t('learning.whyThisMattersLearnItAgain')}
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">{question.explanation}</p>
             </div>
@@ -379,20 +452,38 @@ export function QuizComponent({
         </div>
       )}
 
+      {gradeError && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">{gradeError}</p>
+      )}
+
       <div className="flex justify-end gap-2 flex-wrap">
-        {!showAnswer ? (
-          <Button onClick={handleSubmit} disabled={selected === null || readOnly}>
-            Check answer
-          </Button>
+        {graded ? (
+          <>
+            {currentQ > 0 && (
+              <Button
+                variant="outline"
+                disabled={grading}
+                onClick={() => {
+                  const all = selected === null ? answers : { ...answers, [currentQ]: selected }
+                  setAnswers(all)
+                  setCurrentQ(currentQ - 1)
+                  setSelected(all[currentQ - 1] ?? null)
+                }}
+              >{t('learning.previousQuestion')}</Button>
+            )}
+            <Button onClick={handleGradedNext} disabled={selected === null || readOnly || grading}>
+              {currentQ < questions.length - 1 ? t('learning.nextQuestion') : grading ? t('learning.checking') : t('learning.submitAnswers')}
+            </Button>
+          </>
+        ) : !showAnswer ? (
+          <Button onClick={handleSubmit} disabled={selected === null || readOnly}>{t('learning.checkAnswer')}</Button>
         ) : (
           <>
             {!isCorrect && (
-              <Button variant="outline" onClick={handleTryAgain}>
-                Try this question again
-              </Button>
+              <Button variant="outline" onClick={handleTryAgain}>{t('learning.tryThisQuestionAgain')}</Button>
             )}
             <Button onClick={handleNext}>
-              {currentQ < questions.length - 1 ? 'Next question' : 'See results'}
+              {currentQ < questions.length - 1 ? t('learning.nextQuestion') : t('learning.seeResults')}
             </Button>
           </>
         )}

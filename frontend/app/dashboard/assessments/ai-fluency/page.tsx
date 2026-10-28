@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -10,8 +11,12 @@ import {
   CheckCircle2, XCircle, AlertCircle, Send, BarChart3,
 } from 'lucide-react'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
+import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CATEGORY_LABELS, type FluencyQuestion, type FluencyEvaluation, type CategoryBreakdown } from '@/lib/assessments/ai-fluency-types'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface StoredSession {
   sessionId: string
@@ -28,6 +33,8 @@ function formatTime(sec: number): string {
 }
 
 export default function AiFluencySessionPage() {
+  const apiError = useApiError()
+  const { td, t: tr } = useT()
   const gate = usePageGuard('user')
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -79,7 +86,7 @@ export default function AiFluencySessionPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/assessments/ai-fluency/answer', {
+      const res = await csrfFetch('/api/assessments/ai-fluency/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,7 +98,7 @@ export default function AiFluencySessionPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to submit answer.')
+        setError(apiError(data, tr('practice.failedToSubmitAnswer')))
         setSubmitting(false)
         return
       }
@@ -125,7 +132,7 @@ export default function AiFluencySessionPage() {
         }
       }, 4000)
     } catch {
-      setError('Network error.')
+      setError(tr('practice.networkError'))
     } finally {
       setSubmitting(false)
     }
@@ -136,7 +143,7 @@ export default function AiFluencySessionPage() {
     setCompleting(true)
 
     try {
-      const res = await fetch('/api/assessments/ai-fluency/complete', {
+      const res = await csrfFetch('/api/assessments/ai-fluency/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
@@ -148,7 +155,7 @@ export default function AiFluencySessionPage() {
         router.push(`/dashboard/assessments/ai-fluency?session=${sessionId}&done=true`)
       }
     } catch {
-      setError('Failed to generate report.')
+      setError(tr('practice.failedToGenerateReport'))
     } finally {
       setCompleting(false)
     }
@@ -171,19 +178,19 @@ export default function AiFluencySessionPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BrainCircuit className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-sm">AI Fluency Assessment</span>
+          <span className="font-semibold text-sm">{tr('practice.aiFluencyAssessment')}</span>
           <Badge variant="outline" className="text-[10px]">{stored.difficulty}</Badge>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatTime(elapsed)}</span>
-          <span>Q{questionIndex + 1}/{totalQuestions}</span>
+          <span className="flex items-center gap-1 font-mono tabular-nums"><Clock className="h-3 w-3" /> {formatTime(elapsed)}</span>
+          <span className="tabular-nums">{tr('practice.question')}{' '}{questionIndex + 1}{' '}{tr('practice.ofTotalquestions', { totalQuestions })}</span>
         </div>
       </div>
 
       {/* Progress bar */}
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div
-          className="h-full bg-primary rounded-full transition-all duration-500"
+          className="h-full bg-primary rounded-full transition-all duration-500 motion-reduce:transition-none"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -191,15 +198,15 @@ export default function AiFluencySessionPage() {
       {/* Score + category bar */}
       {scores.length > 0 && (
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>Avg: <span className="font-medium text-foreground">{avgScore}/10</span></span>
+          <span>{tr('practice.average')}{' '}<span className="font-medium tabular-nums text-foreground">{avgScore}/10</span></span>
           <span>·</span>
-          <span>{scores.length} answered</span>
+          <span>{tr('practice.countAnswered', { count: scores.length })}</span>
           {categoryScores.size > 1 && (
             <>
               <span>·</span>
               {Array.from(categoryScores.entries()).map(([cat, sc]) => (
                 <span key={cat} className="text-[10px]">
-                  {CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS]?.split(' ')[0]}: {(sc.reduce((a, b) => a + b, 0) / sc.length).toFixed(1)}
+                  {td(`practice.categoryLabels:${cat as keyof typeof CATEGORY_LABELS}`, CATEGORY_LABELS[cat as keyof typeof CATEGORY_LABELS])?.split(' ')[0]}: {(sc.reduce((a, b) => a + b, 0) / sc.length).toFixed(1)}
                 </span>
               ))}
             </>
@@ -209,20 +216,20 @@ export default function AiFluencySessionPage() {
 
       {/* Question Card */}
       {currentQuestion && !showEvaluation && (
-        <Card className="p-6 space-y-4">
+        <Card className="rounded-3xl border-border/70 p-6 space-y-4">
           <div className="flex items-start gap-2">
             <Badge variant="outline" className="shrink-0 text-[10px]">
-              {CATEGORY_LABELS[currentQuestion.category]}
+              {td(`practice.categoryLabels:${currentQuestion.category}`, CATEGORY_LABELS[currentQuestion.category])}
             </Badge>
             <Badge variant="outline" className="shrink-0 text-[10px]">{currentQuestion.difficulty}</Badge>
           </div>
           <div className="space-y-3">
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Scenario</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">{tr('practice.scenario')}</p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{currentQuestion.scenario}</p>
             </div>
             <div className="border-t border-border pt-3">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Your Task</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">{tr('practice.yourTask')}</p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{currentQuestion.task}</p>
             </div>
           </div>
@@ -231,25 +238,25 @@ export default function AiFluencySessionPage() {
 
       {/* Evaluation Display */}
       {showEvaluation && evaluation && (
-        <Card className={`p-6 space-y-3 border-2 ${
+        <Card className={`rounded-3xl p-6 space-y-3 border-2 ${
           evaluation.score >= 7 ? 'border-green-500/40' : evaluation.score >= 4 ? 'border-amber-500/40' : 'border-red-500/40'
         }`}>
           <div className="flex items-center gap-2">
             {evaluation.score >= 7 ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
             ) : evaluation.score >= 4 ? (
               <AlertCircle className="h-5 w-5 text-amber-500" />
             ) : (
               <XCircle className="h-5 w-5 text-red-500" />
             )}
-            <span className="font-semibold">Score: {evaluation.score}/10</span>
+            <span className="font-semibold">{tr('practice.scoreScore10', { score: evaluation.score })}</span>
           </div>
           {evaluation.detailedFeedback && (
             <p className="text-sm text-muted-foreground">{evaluation.detailedFeedback}</p>
           )}
           {evaluation.strengths.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-green-600 mb-1">Strengths</p>
+              <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">{tr('practice.strengths')}</p>
               {evaluation.strengths.map((s, i) => (
                 <p key={i} className="text-xs text-muted-foreground">• {s}</p>
               ))}
@@ -257,7 +264,7 @@ export default function AiFluencySessionPage() {
           )}
           {evaluation.improvements.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-amber-600 mb-1">Areas to improve</p>
+              <p className="text-xs font-medium text-amber-600 mb-1">{tr('practice.areasToImprove')}</p>
               {evaluation.improvements.map((s, i) => (
                 <p key={i} className="text-xs text-muted-foreground">• {s}</p>
               ))}
@@ -268,15 +275,15 @@ export default function AiFluencySessionPage() {
 
       {/* Answer Input */}
       {!showEvaluation && currentQuestion && (
-        <Card className="p-4 space-y-3">
+        <Card className="rounded-3xl border-border/70 p-5 space-y-3">
           <textarea
             ref={answerRef}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Type your answer here... (be thorough — the AI evaluates depth, accuracy, and practical understanding)"
+            placeholder={tr('practice.typeYourAnswerHereBeThorough3f7')}
             className="w-full h-40 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              if (isSubmitEnter(e, { modifier: true })) {
                 e.preventDefault()
                 submitAnswer()
               }
@@ -284,7 +291,7 @@ export default function AiFluencySessionPage() {
           />
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex items-center justify-between">
-            <p className="text-[10px] text-muted-foreground">Ctrl+Enter to submit</p>
+            <p className="text-[10px] text-muted-foreground">{tr('practice.ctrlEnterToSubmit')}</p>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -292,8 +299,7 @@ export default function AiFluencySessionPage() {
                 onClick={handleComplete}
                 disabled={completing}
               >
-                <Flag className="mr-1 h-3 w-3" /> End Early
-              </Button>
+                <Flag className="mr-1 h-3 w-3" />{' '}{tr('practice.endEarly')}</Button>
               <Button
                 size="sm"
                 onClick={submitAnswer}
@@ -303,9 +309,7 @@ export default function AiFluencySessionPage() {
                   <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                 ) : (
                   <Send className="mr-1 h-3 w-3" />
-                )}
-                Submit
-              </Button>
+                )}{tr('common.submit')}</Button>
             </div>
           </div>
         </Card>
@@ -315,6 +319,7 @@ export default function AiFluencySessionPage() {
 }
 
 function ReportView({ sessionId, router }: { sessionId: string; router: ReturnType<typeof useRouter> }) {
+  const { t } = useT()
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
@@ -349,50 +354,48 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
   if (!report) {
     return (
       <div className="text-center text-muted-foreground py-12">
-        <p>Report not found.</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.push('/dashboard/assessments/ai-fluency/setup')}>
-          Start New Assessment
-        </Button>
+        <p>{t('practice.reportNotFound')}</p>
+        <Button variant="outline" className="mt-4" onClick={() => router.push('/dashboard/assessments/ai-fluency/setup')}>{t('practice.startANewAssessment')}</Button>
       </div>
     )
   }
 
-  const scoreColor = report.overallScore >= 80 ? 'text-green-500' : report.overallScore >= 60 ? 'text-amber-500' : 'text-red-500'
+  const scoreColor = report.overallScore >= 80 ? 'text-green-600 dark:text-green-400' : report.overallScore >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BrainCircuit className="h-6 w-6 text-primary" /> AI Fluency Report
-        </h1>
-        <Button variant="outline" onClick={() => router.push('/dashboard/assessments/ai-fluency/setup')}>
-          New Assessment
-        </Button>
-      </div>
+      <PageHeader
+        title={t('practice.aiFluencyReport')}
+        description={t('practice.howYouDidAcrossEachSkill1f6')}
+        icon={<BrainCircuit />}
+        className="mb-0"
+        actions={
+          <Button variant="outline" onClick={() => router.push('/dashboard/assessments/ai-fluency/setup')}>{t('practice.newAssessment')}</Button>
+        }
+      />
 
-      <Card className="p-6 text-center space-y-3">
-        <p className={`text-5xl font-bold ${scoreColor}`}>{report.overallScore}</p>
-        <p className="text-sm text-muted-foreground">out of 100</p>
+      <Card className="rounded-3xl border-border/70 p-6 text-center space-y-3">
+        <p className={`text-5xl font-bold tabular-nums ${scoreColor}`}>{report.overallScore}</p>
+        <p className="text-sm text-muted-foreground">{t('practice.outOf100')}</p>
         <Badge variant="outline" className="text-sm">{report.level}</Badge>
       </Card>
 
       {report.summary && (
-        <Card className="p-5">
+        <Card className="rounded-3xl border-border/70 p-5">
           <p className="text-sm leading-relaxed">{report.summary}</p>
         </Card>
       )}
 
       {/* Category Breakdown */}
       {report.categoryBreakdown?.length > 0 && (
-        <Card className="p-5 space-y-3">
+        <Card className="rounded-3xl border-border/70 p-5 space-y-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" /> Category Breakdown
-          </h3>
+            <BarChart3 className="h-4 w-4" />{' '}{t('practice.scoreBySkill')}</h3>
           {report.categoryBreakdown.map((cat: CategoryBreakdown) => (
             <div key={cat.category} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium">{cat.label}</span>
-                <span className="text-muted-foreground">{cat.score}/100 ({cat.count} question{cat.count !== 1 ? 's' : ''})</span>
+                <span className="text-muted-foreground tabular-nums">{cat.score}/100 ({cat.count} question{cat.count !== 1 ? 's' : ''})</span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
@@ -405,24 +408,24 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
             </div>
           ))}
           <div className="flex gap-4 text-xs text-muted-foreground pt-2 border-t border-border">
-            <span>Strongest: <span className="text-green-600 font-medium">{report.strongestCategory}</span></span>
-            <span>Weakest: <span className="text-amber-600 font-medium">{report.weakestCategory}</span></span>
+            <span>{t('practice.strongest')}{' '}<span className="text-green-600 dark:text-green-400 font-medium">{report.strongestCategory}</span></span>
+            <span>{t('practice.weakest')}{' '}<span className="text-amber-600 dark:text-amber-400 font-medium">{report.weakestCategory}</span></span>
           </div>
         </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {report.topStrengths?.length > 0 && (
-          <Card className="p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-green-600">Top Strengths</h3>
+          <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-green-600 dark:text-green-400">{t('practice.topStrengths')}</h3>
             {report.topStrengths.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
           </Card>
         )}
         {report.topImprovements?.length > 0 && (
-          <Card className="p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-amber-600">Areas to Improve</h3>
+          <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-amber-600 dark:text-amber-400">{t('practice.areasToImprove')}</h3>
             {report.topImprovements.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
@@ -431,8 +434,8 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
       </div>
 
       {report.recommendations?.length > 0 && (
-        <Card className="p-5 space-y-2">
-          <h3 className="text-sm font-semibold">Recommendations</h3>
+        <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+          <h3 className="text-sm font-semibold">{t('practice.recommendations')}</h3>
           {report.recommendations.map((r: string, i: number) => (
             <p key={i} className="text-xs text-muted-foreground">• {r}</p>
           ))}

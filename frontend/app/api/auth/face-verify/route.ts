@@ -1,85 +1,127 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { writeAuditLog } from '@/lib/db/misc'
+import { createUserSession } from '@/lib/db/sessions'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
-import { setSessionCookie } from '@/lib/session'
+import { clearPending2faCookie, clearPendingFaceEmailCookie, setPending2faCookie, setPendingFaceEmailCookie, setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
-import { createUserSession } from '@/lib/db/sessions'
+import { accountBlockReason } from '@/lib/auth-account'
+import { checkAuthThrottle, clearAuthFailures, recordAuthFailure } from '@/lib/auth-throttle'
 import { isIpBlocked, isIpOutsideWhitelist } from '@/lib/db/security'
+import { matchAllFrames, parseLivenessClaim } from '@/lib/auth-face-liveness'
+import { faceSignInAllowed, faceSignInNextStep } from '@/lib/auth-trusted-device'
+import { issueFaceEmailCode, trustedDeviceFor } from '@/lib/trusted-devices'
 
+import { openFaceTemplate } from '@/lib/identity-media'
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// Helper function to calculate cosine similarity between two vectors
-function cosineSimilarity(A: number[], B: number[]) {
-  if (A.length !== B.length) return 0;
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < A.length; i++) {
-    dotProduct += A[i] * B[i];
-    normA += A[i] * A[i];
-    normB += B[i] * B[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+const GENERIC_FAIL = 'Face sign-in didn’t work. Try again, or use your password.'
 
+/**
+ * POST /api/auth/face-verify — face sign-in.
+ * Body: { email, descriptors: number[128][] (2–4 frames), liveness: { challenge, passed } }
+ *
+ * The descriptors are computed in the browser, so the server can't prove
+ * they came from a live camera. A match is therefore only enough on a
+ * device this account already trusts (signed `cs_trusted_device` cookie
+ * set after a full sign-in). On a new device the user must also enter a
+ * code we email them (POST /api/auth/face-email-code). Accounts with an
+ * authenticator app still finish with that code (POST /api/auth/two-factor).
+ *
+ * → { user } | { twoFactorRequired: true } | { emailCodeRequired: true }
+ */
 export async function POST(request: Request) {
   try {
     const ipKey = clientLimiterKeyFromRequest(request, null)
-    const ipCheck = await rateLimitRedis(`face-login:ip:${ipKey}`, 5, 3600_000)
+    const ipCheck = await rateLimitRedis(`face-login:ip:${ipKey}`, 20, 3600_000)
     if (!ipCheck.ok) {
-      return NextResponse.json({ error: 'Too many biometric login attempts from this location. Try again later.' }, { status: 429 })
+      return NextResponse.json({ error: 'Too many face sign-in attempts from this location. Try again later.', code: 'auth_face_ip_limit' }, { status: 429 })
     }
 
     const rawIp = ipKey.replace(/^(ip:|u:)/, '')
     if (await isIpBlocked(rawIp) || await isIpOutsideWhitelist(rawIp)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied', code: 'access_denied' }, { status: 403 })
     }
 
-    const { email, descriptor } = await request.json()
-
-    if (!email || !descriptor || !Array.isArray(descriptor) || descriptor.length !== 128) {
-      return NextResponse.json({ error: 'Email and a valid 128-dimensional biometric descriptor are required' }, { status: 400 })
+    const body = (await request.json().catch(() => ({}))) as { email?: unknown; descriptors?: unknown; liveness?: unknown }
+    const normalizedEmail = typeof body.email === 'string' ? body.email.toLowerCase().trim().slice(0, 320) : ''
+    const claim = parseLivenessClaim({ descriptors: body.descriptors, liveness: body.liveness })
+    if (!normalizedEmail || !claim) {
+      return NextResponse.json({ error: 'Enter your email and complete the camera check.', code: 'auth_face_email_required' }, { status: 400 })
     }
 
-    const normalizedEmail = email.toLowerCase().trim()
+    const throttle = await checkAuthThrottle('face', normalizedEmail, rawIp)
+    if (!throttle.ok) {
+      return NextResponse.json({ error: `Too many attempts. Try again in ${throttle.retryAfterSec}s, or use your password.`, code: 'auth_too_many_attempts_password', params: { seconds: throttle.retryAfterSec } }, { status: 429 })
+    }
+    const acctCheck = await rateLimitRedis(`face-login:acct:${normalizedEmail}`, 10, 3600_000)
+    if (!acctCheck.ok) {
+      return NextResponse.json({ error: 'Too many face sign-in attempts for this account. Use your password.', code: 'auth_face_account_limit' }, { status: 429 })
+    }
+
     const db = await getMongoDb()
     const user = await db.collection('user').findOne({ email: normalizedEmail })
-
-    if (!user) {
-      // Don't leak that the user doesn't exist
-      return NextResponse.json({ error: 'Authentication failed. Face does not match or user not found.' }, { status: 401 })
+    if (!user || accountBlockReason(user) || !faceSignInAllowed(user)) {
+      await recordAuthFailure('face', normalizedEmail, rawIp)
+      return NextResponse.json({ error: GENERIC_FAIL }, { status: 401 })
     }
 
-    if (!user.facial_biometric_template) {
-      return NextResponse.json({ error: 'No biometric template enrolled for this user.' }, { status: 400 })
+    const uid = String(user.id || user._id)
+    const template = await openFaceTemplate(user.facial_biometric_template)
+    if (!template) {
+      await recordAuthFailure('face', normalizedEmail, rawIp)
+      return NextResponse.json({ error: GENERIC_FAIL }, { status: 401 })
     }
-
-    // Compare face embeddings
-    const similarityScore = cosineSimilarity(descriptor, user.facial_biometric_template);
-    
-    // Threshold > 0.85 indicates a very strong match for 128d embeddings (face-api.js)
-    if (similarityScore < 0.85) {
-      await writeAuditLog({ action: 'auth.biometric_login', outcome: 'denied', actor: normalizedEmail, actorIp: rawIp, resource: 'user/' + user._id.toString(), resourceType: 'auth', severity: 'warning', user_id: user._id.toString(), detail: `Biometric login failed. Score: ${similarityScore.toFixed(3)}` })
-      return NextResponse.json({ error: 'Face does not match the enrolled template.' }, { status: 401 })
+    const match = matchAllFrames(claim.descriptors, template)
+    if (!match.ok) {
+      await recordAuthFailure('face', normalizedEmail, rawIp)
+      await writeAuditLog({ action: 'auth.biometric_login', outcome: 'denied', actor: normalizedEmail, actorIp: rawIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', user_id: uid, detail: `face did not match (score ${match.score.toFixed(3)}, challenge ${claim.challenge})` }).catch(() => {})
+      return NextResponse.json({ error: GENERIC_FAIL }, { status: 401 })
     }
+    await clearAuthFailures('face', normalizedEmail, rawIp)
 
-    // Login successful
     const role = normalizeUserRole(user.role)
-    await setSessionCookie({ uid: user._id.toString(), email: normalizedEmail, role })
-    await writeAuditLog({ action: 'auth.biometric_login', outcome: 'success', actor: normalizedEmail, actorIp: rawIp, resource: 'user/' + user._id.toString(), resourceType: 'auth', severity: 'info', user_id: user._id.toString() })
-    
-    const userAgent = request.headers.get('user-agent') || 'Unknown device'
-    createUserSession({ user_id: user._id.toString(), email: normalizedEmail, ip: rawIp, user_agent: userAgent }).catch(() => {})
+    const email = String(user.email || normalizedEmail)
+    {
+      const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+      const { signInBlock } = await import('@/lib/auth-policy')
+      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified, email_verification_required: user.email_verification_required }, { method: 'face' })
+      if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
+    }
+    const trusted = !!(await trustedDeviceFor(uid))
+    const totpEnabled = !!(user.totp_enabled && user.totp_secret)
+    const step = faceSignInNextStep({ trustedDevice: trusted, totpEnabled })
+    const audit = (detail: string) =>
+      writeAuditLog({ action: 'auth.biometric_login', outcome: 'success', actor: email, actorIp: rawIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid, detail }).catch(() => {})
 
-    return NextResponse.json({ 
-      user: { id: user._id.toString(), email: normalizedEmail, role, name: user.name } 
-    })
+    if (step === 'email_code') {
+      const issued = await issueFaceEmailCode(uid, email)
+      if (!issued.ok) {
+        return issued.reason === 'rate_limited'
+          ? NextResponse.json({ error: `We’ve sent several codes already. Try again in ${issued.retryAfterSec ?? 600}s, or use your password.`, code: 'auth_codes_limit_password', params: { seconds: issued.retryAfterSec ?? 600 } }, { status: 429 })
+          : NextResponse.json({ error: 'We couldn’t send your sign-in code. Use your password instead.', code: 'auth_code_send_failed' }, { status: 503 })
+      }
+      await clearPending2faCookie()
+      await setPendingFaceEmailCookie({ uid, email, role, challengeId: issued.challengeId })
+      await audit('face matched on a new device; email code sent')
+      return NextResponse.json({ emailCodeRequired: true })
+    }
 
+    await clearPendingFaceEmailCookie()
+    if (step === 'totp') {
+      await setPending2faCookie({ uid, email, role, method: 'face' })
+      await audit('face matched on a trusted device; awaiting 2FA code')
+      return NextResponse.json({ twoFactorRequired: true })
+    }
+
+    await setSessionCookie({ uid, email, role })
+    await audit('face matched on a trusted device; signed in')
+    createUserSession({ user_id: uid, email, ip: rawIp, user_agent: request.headers.get('user-agent') || 'Unknown device' }).catch(() => {})
+    return NextResponse.json({ user: { id: uid, email, role, name: user.name || null } })
   } catch (error) {
     console.error('[FaceVerify] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

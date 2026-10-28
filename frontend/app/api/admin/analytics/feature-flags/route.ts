@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { featureFlags, newId, nowIso } from '@/lib/db/misc'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const name = String(body.name || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   await col.insertOne(doc as any)
+  await auditAdmin(gate.user, 'admin.feature_flag.create', 'feature_flag', `flag/${name}`)
   return NextResponse.json({ ok: true, flag: doc })
 }
 
@@ -76,7 +78,7 @@ export async function PATCH(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const name = String(body.name || '').trim()
@@ -90,6 +92,7 @@ export async function PATCH(req: NextRequest) {
   if (Array.isArray(body.allowed_users)) update.allowed_users = body.allowed_users.map(String)
 
   await col.updateOne({ id: name }, { $set: update })
+  await auditAdmin(gate.user, 'admin.feature_flag.update', 'feature_flag', `flag/${name}`, Object.keys(update).join(', '))
   return NextResponse.json({ ok: true })
 }
 
@@ -101,9 +104,10 @@ export async function DELETE(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const name = searchParams.get('id')
-  if (!name) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!name) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
 
   const col = await featureFlags()
   await col.deleteOne({ id: name })
+  await auditAdmin(gate.user, 'admin.feature_flag.delete', 'feature_flag', `flag/${name}`, undefined, 'warning')
   return NextResponse.json({ ok: true })
 }

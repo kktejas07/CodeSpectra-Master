@@ -1,9 +1,12 @@
-import { formatDate } from '@/lib/format-datetime'
+'use client'
+
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { GitBranch, TrendingUp, Calendar, Users, MapPin, Leaf } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface Branch {
   id: string
@@ -28,6 +31,8 @@ interface BranchAnalyticsProps {
 }
 
 export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const [sortBy, setSortBy] = useState<'name' | 'issues' | 'coverage' | 'activity'>('name')
 
   const sortedBranches = [...branches].sort((a, b) => {
@@ -67,8 +72,8 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Branch Analytics</h1>
-        <p className="text-foreground/60">Track quality metrics across all branches</p>
+        <h2 className="sr-only">{t('tools.branchAnalytics')}</h2>
+        <p className="text-sm text-muted-foreground">{t('tools.trackQualityMetricsAcrossAllBranches')}</p>
       </div>
 
       {/* Controls */}
@@ -80,10 +85,10 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
             onClick={() => setSortBy(option as any)}
             size="sm"
           >
-            {option === 'name' && 'Name'}
-            {option === 'issues' && 'Most Issues'}
-            {option === 'coverage' && 'Coverage'}
-            {option === 'activity' && 'Recent'}
+            {option === 'name' && t('tools.name')}
+            {option === 'issues' && t('tools.mostIssues')}
+            {option === 'coverage' && t('tools.coverage')}
+            {option === 'activity' && t('tools.recent')}
           </Button>
         ))}
       </div>
@@ -91,9 +96,9 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
       {/* Branch List */}
       <div className="space-y-4">
         {branches.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
+          <Card className="rounded-3xl p-8 text-center border-dashed">
             <GitBranch className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
-            <p className="text-foreground/60">No branches found</p>
+            <p className="text-muted-foreground">{t('tools.noBranchesFound')}</p>
           </Card>
         ) : (
           sortedBranches.map((branch) => {
@@ -109,21 +114,19 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-lg text-foreground">{branch.name}</h3>
                         {branch.isMainBranch && (
-                          <Badge variant="default">Main Branch</Badge>
+                          <Badge variant="default">{t('tools.mainBranch')}</Badge>
                         )}
                         <Badge variant="outline" className="text-xs">
                           {branch.type}
                         </Badge>
                       </div>
-                      <p className="text-sm text-foreground/60 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {getBranchTypeLabel(branch.type)}
                       </p>
                     </div>
                   </div>
 
-                  <Badge className={getHealthColor(healthScore)}>
-                    {healthScore}% Health
-                  </Badge>
+                  <Badge className={getHealthColor(healthScore)}>{t('tools.healthscoreHealth', { healthScore })}</Badge>
                 </div>
 
                 {/* Metrics Grid */}
@@ -132,26 +135,26 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
                     <p className="text-2xl font-bold text-foreground">
                       {(branch.linesOfCode / 1000).toFixed(1)}k
                     </p>
-                    <p className="text-xs text-foreground/60">Lines of Code</p>
+                    <p className="text-xs text-muted-foreground">{t('tools.linesOfCode')}</p>
                   </div>
 
                   <div className="text-center">
                     <p className={`text-2xl font-bold ${branch.issues > 10 ? 'text-red-600' : branch.issues > 5 ? 'text-yellow-600' : 'text-green-600'}`}>
                       {branch.issues}
                     </p>
-                    <p className="text-xs text-foreground/60">Open Issues</p>
+                    <p className="text-xs text-muted-foreground">{t('tools.openIssues')}</p>
                   </div>
 
                   <div className="text-center">
                     <p className={`text-2xl font-bold ${branch.coverage < 60 ? 'text-red-600' : branch.coverage < 80 ? 'text-yellow-600' : 'text-green-600'}`}>
                       {branch.coverage}%
                     </p>
-                    <p className="text-xs text-foreground/60">Coverage</p>
+                    <p className="text-xs text-muted-foreground">{t('tools.coverage')}</p>
                   </div>
 
                   <div className="text-center">
                     <p className="text-2xl font-bold text-foreground">{branch.commits}</p>
-                    <p className="text-xs text-foreground/60">Commits</p>
+                    <p className="text-xs text-muted-foreground">{t('tools.commits')}</p>
                   </div>
 
                   <div className="text-center">
@@ -159,36 +162,32 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
                       <Users className="w-4 h-4" />
                       {branch.contributors}
                     </p>
-                    <p className="text-xs text-foreground/60">Contributors</p>
+                    <p className="text-xs text-muted-foreground">{t('tools.contributors')}</p>
                   </div>
                 </div>
 
                 {/* Activity Info */}
-                <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-4 text-sm text-foreground/60">
+                <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span>Last commit: {formatDate(branch.lastCommit)}</span>
+                    <span>{t('tools.lastCommitDate', { date: formatDate(branch.lastCommit) })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
-                    <span>Last analyzed: {formatDate(branch.lastAnalysis)}</span>
+                    <span>{t('tools.lastAnalyzedDate', { date: formatDate(branch.lastAnalysis) })}</span>
                   </div>
                 </div>
 
                 {/* Warnings */}
                 {branch.coverage < 60 && (
                   <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">
-                    <p className="text-sm text-yellow-600">
-                      ⚠️ Coverage is below 60%. Consider adding more tests.
-                    </p>
+                    <p className="text-sm text-yellow-600">{t('tools.coverageIsBelow60ConsiderAddingce9')}</p>
                   </div>
                 )}
 
                 {branch.issues > 10 && (
                   <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded">
-                    <p className="text-sm text-red-600">
-                      ✗ High number of open issues. Please address quality concerns.
-                    </p>
+                    <p className="text-sm text-red-600">{t('tools.highNumberOfOpenIssuesPlease556')}</p>
                   </div>
                 )}
               </Card>

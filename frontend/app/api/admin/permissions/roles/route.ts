@@ -4,6 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { getDefaultRolePermissions, discoverAllResources } from '@/lib/permissions-db'
 import { invalidatePermissionCache } from '@/lib/route-auth'
 import type { UserRole } from '@/lib/rbac'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,8 +42,9 @@ export async function GET() {
       })),
       allResources,
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/permissions/roles:', e)
+    return NextResponse.json({ error: 'Something went wrong with roles. Try again.' }, { status: 500 })
   }
 }
 
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
 
   let body: any
   try { body = await request.json() } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   try {
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
         await col.updateOne({ role }, { $set: { permissions: defaults, name, description: `Default ${role} role`, updatedAt: now } })
       }
       invalidatePermissionCache()
+      await auditAdmin(gate.user, 'admin.roles.reseed', 'role', 'roles/system', undefined, 'critical')
       return NextResponse.json({ message: 'System roles reseeded with defaults', roles: systemRoles })
     }
 
@@ -107,8 +110,10 @@ export async function POST(request: Request) {
 
     await col.updateOne({ role: body.role }, { $set: doc }, { upsert: true })
     invalidatePermissionCache()
+    await auditAdmin(gate.user, 'admin.roles.update', 'role', `role/${String(body.role)}`, `${mergedPermissions.length} permission override(s)`, 'critical')
     return NextResponse.json({ role: doc })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/permissions/roles:', e)
+    return NextResponse.json({ error: 'Something went wrong with roles. Try again.' }, { status: 500 })
   }
 }

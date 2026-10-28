@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
-import { getAPIUser } from '@/lib/route-auth'
+import { getAPIUser, isSuperAdminCaller, gateErrorBody, requireSuperAdmin } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id } = await params
 
   const db = await getMongoDb()
   const filter: any = { id }
-  if (user.role !== 'superadmin') filter.user_id = user.id
+  if (!isSuperAdminCaller(user)) filter.user_id = user.id // SEC-029
   const ticket = await db.collection('support_tickets').findOne(filter)
   if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
 
@@ -21,17 +21,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id } = await params
 
   let message = ''
   try { const body = await req.json(); message = String(body.message || '').trim() }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }) }
+  catch { return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 }) }
   if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 })
 
   const db = await getMongoDb()
   const filter: any = { id }
-  if (user.role !== 'superadmin') filter.user_id = user.id
+  if (!isSuperAdminCaller(user)) filter.user_id = user.id // SEC-029
   const ticket = await db.collection('support_tickets').findOne(filter)
   if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
   if (ticket.status === 'closed') return NextResponse.json({ error: 'Ticket is closed' }, { status: 400 })
@@ -50,13 +50,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
   const { id } = await params
 
   let status = ''
   try { const body = await req.json(); status = String(body.status || '').trim() }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }) }
+  catch { return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 }) }
   if (!status || !['open', 'closed'].includes(status)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
 
   const db = await getMongoDb()

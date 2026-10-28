@@ -1,5 +1,6 @@
 'use client'
 
+import { EmptyState } from '@/components/ui/empty-state'
 import React, { useEffect, useState, use } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader } from '@/components/app/page-kit'
 import { useRouter } from 'next/navigation'
 
 interface Lesson {
@@ -121,7 +123,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
     if (!course) return
     setCourse({
       ...course,
-      sections: [...(course.sections || []), { title: 'New Module', slug: `module-${Date.now()}`, lessons: [] }]
+      sections: [...(course.sections || []), { title: 'New module', slug: `module-${Date.now()}`, lessons: [] }]
     })
   }
 
@@ -145,7 +147,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
     const newSections = [...course.sections]
     newSections[sectionIndex].lessons.push({
       id: crypto.randomUUID(),
-      title: 'New Lesson',
+      title: 'New lesson',
       slug: `lesson-${Date.now()}`,
       type: 'text',
       videoType: 'youtube',
@@ -320,50 +322,54 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
   }
 
   if (!course) {
-    return <div className="p-6">Course not found.</div>
+    return <EmptyState illustration="not-found" title="Course not found" description="It may have been deleted — go back to Courses to pick another one." actionLabel="All courses" actionHref="/dashboard/admin/courses" className="m-6" />
   }
 
   return (
     <div className="space-y-6 pb-20 w-full px-4 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md py-4 z-10 border-b border-border/50">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/admin/courses')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{course.title}</h1>
-            <p className="text-muted-foreground text-xs">Course Builder</p>
-          </div>
-        </div>
-        <Button
-          className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 font-semibold shadow-md"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Save Changes
-        </Button>
+      <div className="sticky top-0 z-10 border-b border-border/50 bg-background/85 py-4 backdrop-blur-md">
+        <PageHeader
+          icon={<BookOpen />}
+          title={course.title}
+          description="Course builder: edit the details, then arrange modules, lessons and quizzes."
+          actions={
+            <>
+              <Button variant="outline" size="icon" onClick={() => router.push('/dashboard/admin/courses')} aria-label="Back to courses">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                className="gap-2"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save changes
+              </Button>
+            </>
+          }
+          className="mb-0"
+        />
       </div>
 
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="mb-6">
-          <TabsTrigger value="details">Basic Details</TabsTrigger>
+          <TabsTrigger value="details">Basic details</TabsTrigger>
           <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="details" className="space-y-6 bg-card border border-border/50 rounded-xl p-6 shadow-sm">
+        <TabsContent value="details" className="space-y-6 bg-card border border-border/70 rounded-3xl p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Course Title</Label>
-              <Input
+              <Label>Course title</Label>
+              <Input aria-label="Course title"
                 value={course.title}
                 onChange={e => setCourse({ ...course, title: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label>Instructor</Label>
-              <Input
+              <Input aria-label="Instructor"
                 value={course.instructor}
                 onChange={e => setCourse({ ...course, instructor: e.target.value })}
               />
@@ -371,7 +377,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2 md:col-span-2">
               <Label>Description</Label>
-              <Textarea
+              <Textarea aria-label="Description"
                 rows={4}
                 value={course.description}
                 onChange={e => setCourse({ ...course, description: e.target.value })}
@@ -384,7 +390,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 value={course.category}
                 onValueChange={(v) => setCourse({ ...course, category: v })}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
@@ -397,7 +403,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 value={course.level}
                 onValueChange={(v) => setCourse({ ...course, level: v })}
               >
-                <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Level" className="capitalize"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LEVELS.map(l => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}
                 </SelectContent>
@@ -410,10 +416,10 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 value={course.type || 'video'}
                 onValueChange={(v) => setCourse({ ...course, type: v })}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Type"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="video">Video Course</SelectItem>
-                  <SelectItem value="text">Text Course</SelectItem>
+                  <SelectItem value="video">Video course</SelectItem>
+                  <SelectItem value="text">Text course</SelectItem>
                   <SelectItem value="interactive">Interactive</SelectItem>
                 </SelectContent>
               </Select>
@@ -421,7 +427,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Duration (e.g. 40h)</Label>
-              <Input
+              <Input aria-label="Duration (e.g. 40h)"
                 value={course.duration || ''}
                 onChange={e => setCourse({ ...course, duration: e.target.value })}
               />
@@ -429,7 +435,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Rating (out of 5)</Label>
-              <Input
+              <Input aria-label="Rating (out of 5)"
                 type="number"
                 step="0.1"
                 max="5"
@@ -440,8 +446,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             </div>
             
             <div className="space-y-2">
-              <Label>Total Sessions</Label>
-              <Input
+              <Label>Total sessions</Label>
+              <Input aria-label="Total sessions"
                 type="number"
                 value={course.sessions || 0}
                 onChange={e => setCourse({ ...course, sessions: parseInt(e.target.value) || 0 })}
@@ -449,8 +455,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             </div>
             
             <div className="space-y-2">
-              <Label>Enrolled Count</Label>
-              <Input
+              <Label>Enrolled count</Label>
+              <Input aria-label="Enrolled count"
                 type="number"
                 value={course.enrolled || 0}
                 onChange={e => setCourse({ ...course, enrolled: parseInt(e.target.value) || 0 })}
@@ -458,16 +464,16 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             </div>
 
             <div className="space-y-2">
-              <Label>Image URL (Thumbnail)</Label>
-              <Input
+              <Label>Thumbnail image URL</Label>
+              <Input aria-label="Thumbnail image URL"
                 value={course.image || ''}
                 onChange={e => setCourse({ ...course, image: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Tags (Comma separated)</Label>
-              <Input
+              <Label>Tags (comma separated)</Label>
+              <Input aria-label="Tags (comma separated)"
                 value={course.tags?.join(', ') || ''}
                 onChange={e => setCourse({ ...course, tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                 placeholder="React, Next.js, Web"
@@ -475,8 +481,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             </div>
             
             <div className="space-y-2 md:col-span-2">
-              <Label>What You'll Learn (One per line)</Label>
-              <Textarea
+              <Label>What you&apos;ll learn (one per line)</Label>
+              <Textarea aria-label="What you'll learn (one per line)"
                 rows={4}
                 value={course.whatYoullLearn?.join('\n') || ''}
                 onChange={e => setCourse({ ...course, whatYoullLearn: e.target.value.split('\n').filter(Boolean) })}
@@ -486,8 +492,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
 
             {/* Source Information */}
             <div className="space-y-2">
-              <Label>Source / Origin</Label>
-              <Input
+              <Label>Source or origin</Label>
+              <Input aria-label="Source or origin"
                 value={course.source || ''}
                 onChange={e => setCourse({ ...course, source: e.target.value })}
                 placeholder="e.g. FreeCodeCamp"
@@ -496,7 +502,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Source URL</Label>
-              <Input
+              <Input aria-label="Source URL"
                 value={course.source_url || ''}
                 onChange={e => setCourse({ ...course, source_url: e.target.value })}
                 placeholder="https://..."
@@ -505,7 +511,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
 
             <div className="space-y-2 md:col-span-2">
               <Label>License</Label>
-              <Input
+              <Input aria-label="License"
                 value={course.license || ''}
                 onChange={e => setCourse({ ...course, license: e.target.value })}
                 placeholder="e.g. MIT, CC BY 4.0"
@@ -515,13 +521,13 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
         </TabsContent>
 
         <TabsContent value="curriculum" className="space-y-6">
-          <div className="flex justify-between items-center bg-card border border-border/50 rounded-xl p-4 shadow-sm">
+          <div className="flex flex-wrap gap-3 justify-between items-center bg-card border border-border/70 rounded-3xl p-5 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none">
             <div>
-              <h2 className="font-semibold text-lg">Modules & Lessons</h2>
-              <p className="text-xs text-muted-foreground">Structure your course curriculum here.</p>
+              <h2 className="font-semibold text-lg">Modules and lessons</h2>
+              <p className="text-xs text-muted-foreground">Add modules, then lessons inside each one. Drag to reorder.</p>
             </div>
             <Button onClick={addSection} variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" /> Add Module
+              <Plus className="w-4 h-4" /> Add module
             </Button>
           </div>
 
@@ -529,7 +535,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             {course.sections?.map((section, sIndex) => (
               <div 
                 key={section.slug || `section-${sIndex}`} 
-                className={`bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm transition-all ${draggedSectionIndex === sIndex ? 'opacity-50 border-primary' : ''}`}
+                className={`bg-card border border-border/70 rounded-3xl overflow-hidden shadow-sm dark:shadow-none transition-[opacity,border-color] duration-200 ${draggedSectionIndex === sIndex ? 'opacity-50 border-primary' : ''}`}
                 draggable
                 onDragStart={(e) => onSectionDragStart(e, sIndex)}
                 onDragOver={onSectionDragOver}
@@ -544,12 +550,13 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                       value={section.title}
                       onChange={e => updateSection(sIndex, e.target.value)}
                       className="font-semibold bg-background/50 text-base"
+                      aria-label="Module title"
                     />
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => addLesson(sIndex)} className="gap-1 text-indigo-600 hover:text-indigo-700">
+                  <Button variant="ghost" size="sm" onClick={() => addLesson(sIndex)} className="gap-1 text-primary hover:text-primary">
                     <Plus className="w-4 h-4" /> Lesson
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => removeSection(sIndex)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50">
+                  <Button variant="ghost" size="icon" onClick={() => removeSection(sIndex)} aria-label="Delete module" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -558,7 +565,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                   {section.lessons.map((lesson, lIndex) => (
                     <div 
                       key={lesson.id || `lesson-${lIndex}`} 
-                      className={`border border-border/60 rounded-lg p-4 bg-background shadow-sm space-y-4 transition-all hover:border-border ${draggedLesson?.sIndex === sIndex && draggedLesson?.lIndex === lIndex ? 'opacity-50 border-primary' : ''}`}
+                      className={`border border-border/60 rounded-2xl p-4 bg-background space-y-4 transition-[opacity,border-color] duration-200 hover:border-primary/30 ${draggedLesson?.sIndex === sIndex && draggedLesson?.lIndex === lIndex ? 'opacity-50 border-primary' : ''}`}
                       draggable
                       onDragStart={(e) => onLessonDragStart(e, sIndex, lIndex)}
                       onDragOver={onLessonDragOver}
@@ -570,16 +577,16 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                         </div>
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Lesson Title</Label>
-                            <Input 
+                            <Label className="text-xs text-muted-foreground">Lesson title</Label>
+                            <Input aria-label="Lesson title" 
                               value={lesson.title}
                               onChange={e => updateLesson(sIndex, lIndex, 'title', e.target.value)}
                               className="h-8"
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Duration (Seconds)</Label>
-                            <Input 
+                            <Label className="text-xs text-muted-foreground">Duration (seconds)</Label>
+                            <Input aria-label="Duration (seconds)" 
                               type="number"
                               value={lesson.duration || ''}
                               onChange={e => updateLesson(sIndex, lIndex, 'duration', Number(e.target.value))}
@@ -588,23 +595,23 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                           </div>
                           
                           <div className="md:col-span-2 space-y-1 mt-2">
-                            <Label className="text-xs text-muted-foreground">Video Source Type</Label>
+                            <Label className="text-xs text-muted-foreground">Video source</Label>
                             <Select 
                               value={lesson.videoType || 'youtube'} 
                               onValueChange={(v) => updateLesson(sIndex, lIndex, 'videoType', v)}
                             >
-                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectTrigger aria-label="Video source" className="h-8"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="youtube">Free YouTube Embed</SelectItem>
-                                <SelectItem value="ai">Generate AI Video</SelectItem>
+                                <SelectItem value="youtube">Free YouTube embed</SelectItem>
+                                <SelectItem value="ai">Generate AI video</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
 
                           {(!lesson.videoType || lesson.videoType === 'youtube') ? (
                             <div className="md:col-span-2 space-y-1">
-                              <Label className="text-xs text-muted-foreground">Video URL (YouTube Embed)</Label>
-                              <Input 
+                              <Label className="text-xs text-muted-foreground">Video URL (YouTube embed)</Label>
+                              <Input aria-label="Video URL (YouTube embed)" 
                                 value={lesson.url || ''}
                                 onChange={e => updateLesson(sIndex, lIndex, 'url', e.target.value)}
                                 placeholder="https://www.youtube.com/embed/..."
@@ -614,8 +621,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                           ) : (
                             <>
                               <div className="md:col-span-2 space-y-1">
-                                <Label className="text-xs text-muted-foreground">AI Topic / Script Request</Label>
-                                <Textarea 
+                                <Label className="text-xs text-muted-foreground">AI topic or script request</Label>
+                                <Textarea aria-label="AI topic or script request" 
                                   value={lesson.content || ''}
                                   onChange={e => updateLesson(sIndex, lIndex, 'content', e.target.value)}
                                   placeholder="Write the topic or prompt for AI generation..."
@@ -624,10 +631,10 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                                 />
                               </div>
                               <div className="md:col-span-2 flex justify-end gap-2">
-                                {lesson.script && <Badge variant="outline" className="self-center mr-auto bg-green-50 text-green-700 border-green-200">AI Video Generated</Badge>}
+                                {lesson.script && <Badge variant="outline" className="self-center mr-auto border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300">AI video generated</Badge>}
                                 <Button 
                                   variant="default" 
-                                  className="gap-2 shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white"
+                                  className="gap-2 shrink-0"
                                   onClick={() => handleGenerateVideo(sIndex, lIndex)}
                                   disabled={generating === lesson.id}
                                 >
@@ -643,7 +650,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                           )}
                         </div>
                         
-                        <Button variant="ghost" size="icon" onClick={() => removeLesson(sIndex, lIndex)} className="text-muted-foreground hover:text-rose-500 shrink-0 mt-6">
+                        <Button variant="ghost" size="icon" onClick={() => removeLesson(sIndex, lIndex)} aria-label="Delete lesson" className="text-muted-foreground hover:text-destructive shrink-0 mt-6">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -651,8 +658,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                   ))}
                   
                   {section.lessons.length === 0 && (
-                    <div className="text-center py-6 text-sm text-muted-foreground border border-dashed border-border rounded-lg">
-                      No lessons in this module. Add one above.
+                    <div className="text-center py-6 text-sm text-muted-foreground border border-dashed border-border rounded-2xl">
+                      No lessons in this module yet. Select + Lesson above to add one.
                     </div>
                   )}
 
@@ -661,9 +668,9 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Module Quiz</span>
+                        <span className="text-sm font-medium">Module quiz</span>
                         {section.quiz && section.quiz.length > 0 && (
-                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          <Badge variant="outline" className="text-xs tabular-nums border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300">
                             {section.quiz.length} questions
                           </Badge>
                         )}
@@ -680,13 +687,13 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                         ) : (
                           <Wand2 className="h-3.5 w-3.5" />
                         )}
-                        {section.quiz && section.quiz.length > 0 ? 'Regenerate Quiz' : 'Generate Quiz'}
+                        {section.quiz && section.quiz.length > 0 ? 'Regenerate quiz' : 'Generate quiz'}
                       </Button>
                     </div>
                     {section.quiz && section.quiz.length > 0 && (
                       <div className="space-y-2">
                         {section.quiz.slice(0, 3).map((q: any, qi: number) => (
-                          <div key={qi} className="text-xs p-2 rounded bg-muted/30 border border-border/30">
+                          <div key={qi} className="text-xs p-2 rounded-lg bg-muted/40 border border-border/40">
                             <span className="font-medium">Q{qi + 1}:</span> {q.question?.slice(0, 80)}...
                           </div>
                         ))}
@@ -701,8 +708,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             ))}
             
             {(!course.sections || course.sections.length === 0) && (
-              <div className="text-center py-12 text-muted-foreground bg-card border border-dashed border-border rounded-xl">
-                <BookOpen className="w-12 h-12 mb-3 opacity-20" />
+              <div className="text-center py-12 text-muted-foreground bg-card border border-dashed border-border rounded-3xl">
+                <BookOpen className="w-12 h-12 mb-3 mx-auto opacity-20" />
                 <p>Your curriculum is empty. Add a module to start building.</p>
               </div>
             )}

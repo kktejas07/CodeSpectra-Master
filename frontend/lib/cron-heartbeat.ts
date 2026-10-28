@@ -18,6 +18,8 @@ export interface CronRunRow {
   last_status: 'ok' | 'error'
   last_duration_ms: number
   last_error?: string | null
+  /** The run stopped at its time budget with work left (still ok — not a failure). */
+  last_partial?: boolean
   runs: number
   failures: number
 }
@@ -28,6 +30,7 @@ export async function recordCronRun(
   ok: boolean,
   durationMs: number,
   error?: string,
+  opts: { partial?: boolean } = {},
 ): Promise<void> {
   try {
     const db = await getMongoDb()
@@ -40,6 +43,7 @@ export async function recordCronRun(
           last_status: ok ? 'ok' : 'error',
           last_duration_ms: Math.max(0, Math.round(durationMs)),
           last_error: error ? error.slice(0, 300) : null,
+          last_partial: ok && opts.partial === true,
         },
         $inc: { runs: 1, failures: ok ? 0 : 1 },
       },
@@ -62,7 +66,8 @@ export function withCronHeartbeat<TReq extends Request>(
     const started = Date.now()
     try {
       const res = await handler(req)
-      await recordCronRun(id, res.status < 400, Date.now() - started, res.status >= 400 ? `HTTP ${res.status}` : undefined)
+      // A route that stopped at its time budget answers 200 with `x-cron-partial: 1`: ok, but more to do.
+      await recordCronRun(id, res.status < 400, Date.now() - started, res.status >= 400 ? `HTTP ${res.status}` : undefined, { partial: res.headers.get('x-cron-partial') === '1' })
       return res
     } catch (e) {
       await recordCronRun(id, false, Date.now() - started, e instanceof Error ? e.message : String(e))

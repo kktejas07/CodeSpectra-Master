@@ -1,7 +1,7 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,11 +11,16 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2, Bell, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/app/page-kit'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import DOMPurify from 'isomorphic-dompurify'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html || '', {
@@ -62,18 +67,18 @@ interface NewsletterPayload {
   completed_at?: string
 }
 
-const CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'hackathon', label: 'Hackathons' },
-  { id: 'billing', label: 'Billing' },
-  { id: 'interview', label: 'Interviews' },
-  { id: 'code', label: 'Code Quality' },
-  { id: 'account', label: 'Account' },
-  { id: 'team', label: 'Team' },
-  { id: 'learning', label: 'Learning' },
-  { id: 'system', label: 'System' },
-  { id: 'security', label: 'Security' },
-]
+const CATEGORIES = (t: Translator) => ([
+  { id: 'all', label: t('dash.all') },
+  { id: 'hackathon', label: t('dash.hackathons') },
+  { id: 'billing', label: t('dash.billing') },
+  { id: 'interview', label: t('dash.interviews') },
+  { id: 'code', label: t('dash.codeQuality') },
+  { id: 'account', label: t('dash.account') },
+  { id: 'team', label: t('dash.team') },
+  { id: 'learning', label: t('dash.learning') },
+  { id: 'system', label: t('dash.system') },
+  { id: 'security', label: t('dash.security') },
+])
 
 const DEFAULT_LINKS: Record<string, string> = {
   'auth.login': '/dashboard/profile',
@@ -94,9 +99,15 @@ const DEFAULT_LINKS: Record<string, string> = {
   'interview.completed': '/dashboard/interviews',
   'certification.earned': '/dashboard/certifications',
   'certificate.issued': '/dashboard/certifications',
-  'scan.completed': '/dashboard/projects',
-  'team.invite': '/dashboard/team',
-  'team.joined': '/dashboard/team',
+  'scan.completed': '/dashboard/scanner',
+  'team.invite': '/dashboard/notifications',
+  'team.joined': '/dashboard',
+}
+
+// Links stored on older notifications that point at pages that no longer exist.
+const STALE_LINKS: Record<string, string> = {
+  '/dashboard/projects': '/dashboard/scanner',
+  '/dashboard/team': '/dashboard',
 }
 
 function isNewsletter(n: Notification): boolean {
@@ -116,12 +127,21 @@ function newsletterApiId(n: Notification): string {
 
 function resolveNotificationLink(n: Notification): string {
   const raw = (n.link || '').trim()
-  if (raw && raw !== '/dashboard' && !isNewsletter(n)) return raw
+  if (raw && raw !== '/dashboard' && !isNewsletter(n)) {
+    const path = raw.split(/[?#]/)[0]
+    if (STALE_LINKS[path]) return STALE_LINKS[path]
+    if (/^\/courses\/[^/]+$/.test(path)) return `/dashboard/courses/${path.split('/')[2]}`
+    return raw
+  }
   return DEFAULT_LINKS[n.type] || '/dashboard'
 }
 
 export default function NotificationsPage() {
+  const apiError = useApiError()
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
+  const addToast = useToast()
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
 
@@ -135,15 +155,25 @@ export default function NotificationsPage() {
   const [newsletter, setNewsletter] = useState<NewsletterPayload | null>(null)
   const [newsletterError, setNewsletterError] = useState('')
 
+  const [loadError, setLoadError] = useState(false)
+  // Older pages (CORE-008): the poll refreshes the newest page; "Show older" appends these.
+  const [older, setOlder] = useState<Notification[]>([])
+  const [nextBefore, setNextBefore] = useState<string | null>(null)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const olderLoadedRef = useRef(false)
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/notifications', { cache: 'no-store' })
+      if (!res.ok) throw new Error(t('dash.failedToLoadNotificationsStatus', { status: res.status }))
       const data = await res.json()
       if (data.items) {
         setItems(data.items)
         setUnreadCount(data.unread || 0)
+        if (!olderLoadedRef.current) setNextBefore(data.next_before ?? null)
       }
-    } catch {} finally { setLoading(false) }
+      setLoadError(false)
+    } catch { setLoadError(true) } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { void load() }, [load])
@@ -159,20 +189,20 @@ export default function NotificationsPage() {
       const notificationsTour: TourStep[] = [
         {
           target: '[data-tour="notifications-header"]',
-          title: 'Your Notification Inbox',
-          description: 'This inbox gathers your product and account updates; use Mark all read to clear them.',
+          title: t('dash.yourNotificationInbox'),
+          description: t('dash.thisInboxGathersYourProductAnd944'),
           position: 'bottom',
         },
         {
           target: '[data-tour="notifications-filters"]',
-          title: 'Filter Inbox by Category',
-          description: 'Filter inbox by category to find billing, security, or learning updates fast.',
+          title: t('dash.filterYourInboxByCategory'),
+          description: t('dash.filterInboxByCategoryToFindc74'),
           position: 'bottom',
         },
         {
           target: '[data-tour="notifications-list"]',
-          title: 'Tip: Open Unread First',
-          description: 'Tip: open unread items first; each jumps to its related page or newsletter.',
+          title: t('dash.tipOpenUnreadFirst'),
+          description: t('dash.tipOpenUnreadItemsFirstEach13b'),
           position: 'top',
         },
       ]
@@ -189,12 +219,12 @@ export default function NotificationsPage() {
       const res = await fetch(`/api/newsletter/${encodeURIComponent(id)}`, { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) {
-        setNewsletterError(data.error || 'Newsletter not found')
+        setNewsletterError(apiError(data, t('dash.newsletterNotFound')))
         return
       }
       setNewsletter(data)
     } catch {
-      setNewsletterError('Failed to load newsletter')
+      setNewsletterError(t('dash.failedToLoadNewsletter'))
     } finally {
       setNewsletterLoading(false)
     }
@@ -202,42 +232,75 @@ export default function NotificationsPage() {
 
   if (!gate.ready) return null
 
+  const loadOlder = async () => {
+    if (!nextBefore || loadingOlder) return
+    setLoadingOlder(true)
+    try {
+      const res = await fetch(`/api/notifications?before=${encodeURIComponent(nextBefore)}`, { cache: 'no-store' })
+      if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      olderLoadedRef.current = true
+      setOlder((prev) => [...prev, ...(data.items || [])])
+      setNextBefore(data.next_before ?? null)
+    } catch { /* keep the button; the user can try again */ } finally { setLoadingOlder(false) }
+  }
+
   const markAllRead = async () => {
-    await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })
+    try {
+      const res = await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })
+      if (!res.ok) throw new Error(String(res.status))
+    } catch {
+      addToast({ type: 'error', title: t('dash.couldntMarkNotificationsAsRead'), message: t('dash.pleaseTryAgain') })
+      return
+    }
+    addToast({ type: 'success', title: t('dash.allNotificationsMarkedAsRead') })
+    setOlder((prev) => prev.map((n) => ({ ...n, is_read: true })))
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
     setUnreadCount(0)
   }
 
   const markRead = async (id: string) => {
-    await csrfFetch(`/api/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) })
+    const res = await csrfFetch(`/api/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) }).catch(() => null)
+    if (!res?.ok) {
+      addToast({ type: 'error', title: t('dash.couldntMarkThisNotificationAsRead') })
+      return
+    }
     setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
+    setOlder((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
     setUnreadCount((c) => Math.max(0, c - 1))
   }
 
+  const seen = new Set(items.map((n) => n.id))
+  const allItems = [...items, ...older.filter((n) => !seen.has(n.id))]
   const filtered = category === 'all'
-    ? items
-    : items.filter((n) => (n.category || 'general') === category || n.type.startsWith(category))
+    ? allItems
+    : allItems.filter((n) => (n.category || 'general') === category || n.type.startsWith(category))
 
   const IconComponent = (icon: string) => ICON_MAP[icon] || Bell
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between" data-tour="notifications-header">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Bell className="h-7 w-7 text-primary" /> Notifications
-          {unreadCount > 0 && (
-            <Badge variant="default" className="ml-2">{unreadCount} unread</Badge>
-          )}
-        </h1>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead}>
-            <CheckCheck className="h-4 w-4 mr-1" /> Mark all read
-          </Button>
-        )}
+      <div data-tour="notifications-header">
+        <PageHeader
+          illustration="notifications"
+          className="mb-0"
+          icon={<Bell aria-hidden />}
+          title={
+            <span className="flex flex-wrap items-center gap-2">{t('dash.notifications')}{unreadCount > 0 && (
+                <Badge variant="default" className="tabular-nums">{t('dash.unreadcountUnread', { unreadCount })}</Badge>
+              )}
+            </span>
+          }
+          description={t('dash.updatesAboutYourAssessmentsCoursesEventsd73')}
+          actions={unreadCount > 0 ? (
+            <Button variant="outline" size="sm" onClick={markAllRead}>
+              <CheckCheck className="h-4 w-4 mr-1" />{' '}{t('dash.markAllRead')}</Button>
+          ) : undefined}
+        />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2" data-tour="notifications-filters">
-        {CATEGORIES.map((c) => (
+        {CATEGORIES(t).map((c) => (
           <button key={c.id} onClick={() => setCategory(c.id)}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
               category === c.id
@@ -254,25 +317,33 @@ export default function NotificationsPage() {
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : loadError && items.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title={t('dash.couldntLoadNotifications')}
+          description={t('dash.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
+          onAction={() => { setLoading(true); void load() }}
+        />
       ) : filtered.length === 0 ? (
         <EmptyState
           variant="notifications"
-          title={category !== 'all' ? 'No notifications in this category' : 'No notifications yet'}
+          title={category !== 'all' ? t('dash.noNotificationsInThisCategory') : t('dash.noNotificationsYet')}
           description={
             category !== 'all'
-              ? 'Try another category, or check back when something new arrives.'
-              : 'When you get updates about courses, assessments, or account activity, they will show up here.'
+              ? t('dash.tryAnotherCategoryOrCheckBackb96')
+              : t('dash.whenYouGetUpdatesAboutCourses68a')
           }
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {filtered.map((n) => {
             const Icon = IconComponent(n.icon || 'bell') as React.ComponentType<{ className?: string }>
             return (
-              <div key={n.id} className={`rounded-lg border transition-colors ${
-                n.is_read ? 'border-border bg-card hover:bg-muted/30' : 'border-primary/30 bg-primary/10 hover:bg-primary/15'
+              <div key={n.id} className={`rounded-2xl border transition-colors duration-200 ${
+                n.is_read ? 'border-border/70 bg-card hover:border-primary/30 hover:bg-muted/30' : 'border-primary/30 bg-primary/5 hover:bg-primary/10'
               }`}>
-                <div className="flex items-start gap-3 p-4 cursor-pointer"
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} className="flex items-start gap-3 p-4 cursor-pointer"
                   onClick={async () => {
                     if (!n.is_read) await markRead(n.id)
                     if (isNewsletter(n)) {
@@ -288,10 +359,10 @@ export default function NotificationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm ${n.is_read ? 'text-muted-foreground' : 'font-medium'}`}>
+                      <p className={`text-sm ${n.is_read ? 'text-muted-foreground' : 'font-medium text-foreground'}`}>
                         {n.title}
                       </p>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                      <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                         {formatDate(n.created_at)}
                       </span>
                     </div>
@@ -301,7 +372,7 @@ export default function NotificationsPage() {
                         {formatNotificationType(n.type)}
                       </span>
                       <span className="text-[10px] text-primary">
-                        {isNewsletter(n) ? 'Tap to read →' : 'Tap to view →'}
+                        {isNewsletter(n) ? t('dash.tapToRead') : t('dash.tapToView')}
                       </span>
                     </div>
                   </div>
@@ -309,6 +380,13 @@ export default function NotificationsPage() {
               </div>
             )
           })}
+          {nextBefore && (
+            <div className="flex justify-center pt-2">
+              <Button type="button" variant="outline" onClick={loadOlder} disabled={loadingOlder}>
+                {loadingOlder ? t('common.loading') : t('dash.showOlder')}
+              </Button>
+            </div>
+          )}
         </div>
       )}
       </div>
@@ -317,7 +395,7 @@ export default function NotificationsPage() {
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="pr-6 text-left text-xl leading-snug">
-              {newsletterLoading ? 'Loading…' : (newsletter?.subject || 'Newsletter')}
+              {newsletterLoading ? t('common.loading') : (newsletter?.subject || t('dash.newsletter'))}
             </DialogTitle>
             {newsletter?.completed_at && (
               <DialogDescription className="text-left">
@@ -328,8 +406,7 @@ export default function NotificationsPage() {
 
           {newsletterLoading && (
             <div className="flex h-24 items-center justify-center text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading newsletter…
-            </div>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />{' '}{t('dash.loadingNewsletter')}</div>
           )}
 
           {newsletterError && (

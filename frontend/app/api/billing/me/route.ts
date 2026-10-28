@@ -12,7 +12,7 @@ export const runtime = 'nodejs'
  */
 export async function GET(): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const subs = await billingSubscriptions()
   const active = await subs.findOne({ user_id: user.id, status: 'active' })

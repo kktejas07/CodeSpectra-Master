@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -7,8 +8,12 @@ import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ArrowLeft, Mic, MicOff, VideoIcon, VideoOff } from 'lucide-react'
 import Link from 'next/link'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export default function LiveInterviewPage() {
+  const apiError = useApiError()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -35,7 +40,7 @@ export default function LiveInterviewPage() {
         const userId = authJson?.user?.id || authJson?.uid || 'anonymous'
         const userName = authJson?.user?.name || authJson?.user?.fullName || undefined
 
-        const res = await fetch(`/api/interviews/${id}/live/token`, {
+        const res = await csrfFetch(`/api/interviews/${id}/live/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -43,7 +48,7 @@ export default function LiveInterviewPage() {
         })
         if (!res.ok) {
           const json = await res.json().catch(() => ({}))
-          throw new Error(json.error || 'Failed to get token')
+          throw new Error(apiError(json, t('career.failedToGetToken')))
         }
         const { token, url } = await res.json()
         if (cancelled) return
@@ -110,30 +115,27 @@ export default function LiveInterviewPage() {
       <div className="flex flex-col items-center justify-center gap-4 h-[60vh]">
         <p className="text-destructive text-sm max-w-md text-center">{error}</p>
         {error.includes('unreachable') && (
-          <p className="text-muted-foreground text-xs">Run: docker compose up livekit</p>
+          <p className="text-muted-foreground text-xs">{t('career.theVideoServiceIsntReachableRight36b')}</p>
         )}
-        <Link href={`/dashboard/interviews/${id}`} className="text-sm text-primary hover:underline">
-          ← Back to interview
-        </Link>
+        <Link href={`/dashboard/interviews/${id}`} className="text-sm text-primary hover:underline">{t('career.backToInterview')}</Link>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-card">
         <Link href={`/dashboard/interviews/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-3 w-3" /> Back
-        </Link>
-        <p className="text-sm font-medium">Interview Live Room</p>
+          <ArrowLeft className="h-3 w-3" />{' '}{t('common.back')}</Link>
+        <h1 className="text-sm font-medium text-foreground">{t('career.interviewLiveRoom')}</h1>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant={micOn ? 'default' : 'destructive'} onClick={toggleMic}>
+          <Button size="sm" variant={micOn ? 'default' : 'destructive'} onClick={toggleMic} aria-label={micOn ? t('career.muteMicrophone') : t('career.unmuteMicrophone')} aria-pressed={!micOn}>
             {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
           </Button>
-          <Button size="sm" variant={camOn ? 'default' : 'destructive'} onClick={toggleCam}>
+          <Button size="sm" variant={camOn ? 'default' : 'destructive'} onClick={toggleCam} aria-label={camOn ? t('career.turnCameraOff') : t('career.turnCameraOn')} aria-pressed={!camOn}>
             {camOn ? <VideoIcon className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
           </Button>
-          <Button size="sm" variant="outline" onClick={leave}>Leave</Button>
+          <Button size="sm" variant="outline" onClick={leave}>{t('career.leave')}</Button>
         </div>
       </div>
       <div ref={containerRef} className="flex-1 grid gap-2 p-2" style={{
@@ -144,9 +146,7 @@ export default function LiveInterviewPage() {
           <ParticipantTile key={p.identity} participant={p} />
         ))}
         {!connected && participants.length === 0 && (
-          <div className="flex items-center justify-center text-muted-foreground text-sm">
-            Connecting to room…
-          </div>
+          <div className="flex items-center justify-center text-muted-foreground text-sm">{t('career.connectingToRoom')}</div>
         )}
       </div>
     </div>
@@ -154,6 +154,7 @@ export default function LiveInterviewPage() {
 }
 
 function ParticipantTile({ participant }: { participant: Participant }) {
+  const { t } = useT()
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const [videoTrack, setVideoTrack] = useState<TrackPublication | null>(null)
@@ -199,11 +200,11 @@ function ParticipantTile({ participant }: { participant: Participant }) {
   }, [audioTrack])
 
   return (
-    <div className="relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+    <div className="relative rounded-2xl overflow-hidden bg-neutral-900 flex items-center justify-center">
       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted={participant.isLocal} />
       <audio ref={audioRef} autoPlay />
       <span className="absolute bottom-2 left-2 text-xs bg-black/60 text-white px-2 py-0.5 rounded">
-        {participant.name || participant.identity}{participant.isLocal ? ' (You)' : ''}
+        {participant.name || participant.identity}{participant.isLocal ? t('career.you') : ''}
       </span>
     </div>
   )

@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 
 import httpx
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
@@ -29,15 +30,36 @@ load_dotenv(ROOT_DIR / ".env")
 
 NEXT_ORIGIN = os.environ.get("NEXTJS_INTERNAL_URL", "http://localhost:3000")
 
-app = FastAPI(title="CodeSpectra API")
+from core.log_redact import install_log_redaction
+
+# Mask tokens / keys / credentialed URLs in every log record (core/log_redact.py).
+install_log_redaction()
 
 
+def _api_docs_enabled() -> bool:
+    """Swagger UI, ReDoc and /openapi.json are off in production.
+
+    On only when ENVIRONMENT=development (or test), or ENABLE_API_DOCS=1 is
+    set explicitly for a protected staging host. ENVIRONMENT defaults to
+    production (core/config.py), so a missing value fails closed.
+    """
+    if os.environ.get("ENABLE_API_DOCS", "").strip() == "1":
+        return True
+    return os.environ.get("ENVIRONMENT", "production").strip().lower() in {"development", "dev", "test", "local"}
+
+
+_DOCS = _api_docs_enabled()
 _scheduler_task = None
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize Redis client and background scheduler on startup."""
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage startup and shutdown via the modern lifespan context manager.
+
+    Replaces the deprecated @app.on_event("startup") / ("shutdown") pattern.
+    """
     global _redis_client, _scheduler_task
+    # ── startup ──────────────────────────────────────────────────────────
     try:
         _redis_client = await init_redis_client()
         if _redis_client:
@@ -47,7 +69,7 @@ async def startup_event():
     except Exception as e:
         logging.warning(f"Failed to initialize Redis client: {e}")
         _redis_client = None
-        
+
     try:
         from scheduler import start_scheduler
         _scheduler_task = start_scheduler()
@@ -55,15 +77,12 @@ async def startup_event():
     except Exception as e:
         logging.warning(f"Failed to start scheduler: {e}")
 
+    yield  # ← application runs here
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close Redis client and stop scheduler on shutdown."""
-    global _redis_client, _scheduler_task
-    
+    # ── shutdown ─────────────────────────────────────────────────────────
     if _scheduler_task:
         _scheduler_task.cancel()
-        
+
     if _redis_client:
         try:
             await _redis_client.close()
@@ -72,6 +91,23 @@ async def shutdown_event():
             logging.warning(f"Error closing Redis client: {e}")
         finally:
             _redis_client = None
+
+
+# ── FastAPI app — created AFTER lifespan is defined ─────────────────────
+app = FastAPI(
+    title="CodeSpectra API",
+    debug=False,
+    lifespan=lifespan,
+    docs_url="/docs" if _DOCS else None,
+    redoc_url="/redoc" if _DOCS else None,
+    openapi_url="/openapi.json" if _DOCS else None,
+)
+
+# AI cost tracking: model usage of each /internal/* request → `x-ai-usage` header
+# (priced and recorded by Next.js lib/ai/backend.ts; counts only, no prompts).
+from core.ai_usage import AiUsageHeaderMiddleware
+
+app.add_middleware(AiUsageHeaderMiddleware)
 
 # ── Mount internal routers (modular backend) ───────────────────
 # Each router is self-contained in its own module.
@@ -87,6 +123,27 @@ app.include_router(item_bank_rtr)
 app.include_router(webhooks_rtr)
 app.include_router(learning_rtr)
 app.include_router(security_rtr)
+
+# ── Crash analytics ingest endpoint ──────────────────────────────────────
+
+from fastapi import HTTPException
+from services.crash_analytics import CrashEvent as _CrashEvent, ingest as _crash_ingest
+
+
+@app.post("/internal/crash-report", status_code=204)
+async def crash_report(request: Request):
+    """Ingest a frontend crash event.
+
+    POST body: CrashEvent JSON (see services/crash_analytics.py).
+    Returns 204 No Content on success.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid JSON")
+    event = _CrashEvent.from_dict(data)
+    await _crash_ingest(event)
+
 
 # ── Proxy to Next.js (for all /api/* requests NOT handled above) ──
 

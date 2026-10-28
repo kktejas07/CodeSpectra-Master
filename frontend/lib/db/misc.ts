@@ -78,17 +78,32 @@ export interface AuditLogDoc {
   outcome: 'success' | 'denied'
   detail?: string
   user_id: string
+  /** Tenant of the acting admin (tenant_admin entries); null for platform actions. */
+  tenant_id?: string | null
   created_at: string
+}
+
+/** SEC-010: the impersonating admin of the current request, if any. */
+async function currentImpersonator(): Promise<string | null> {
+  try {
+    const { cookies } = await import('next/headers')
+    const { impersonatorOfToken } = await import('@/lib/request-guards')
+    return impersonatorOfToken((await cookies()).get('codespectra_session')?.value)
+  } catch {
+    return null // outside a request
+  }
 }
 
 export async function writeAuditLog(entry: Omit<AuditLogDoc, 'id' | 'ts' | 'created_at'>): Promise<void> {
   try {
     const col = await adminAuditLogs()
+    const imp = await currentImpersonator()
     await col.insertOne({
       id: newId(),
       ts: nowIso(),
       created_at: nowIso(),
       ...entry,
+      ...(imp ? { impersonated_by: imp, detail: `${entry.detail ? entry.detail + ' · ' : ''}impersonated by admin ${imp}` } : {}),
     } as AuditLogDoc)
   } catch (e) {
     console.error('[audit] Failed to write audit log:', e)

@@ -6,8 +6,8 @@ import { Loader2, Plus, Eye, Trash2, Check, Sparkles } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +15,9 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 import { EbookOutlineReview } from '@/components/resources/ebook-outline-review'
 import { SkeletonCard, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { BookOpen, FileText } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type AdminEbook = EbookCardData & { id: string; status: string }
 
@@ -29,6 +32,29 @@ export default function AdminResourcesPage() {
   const [busy, setBusy] = useState(false)
   const [coverBusy, setCoverBusy] = useState<string | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; slug: string | null }>({ open: false, slug: null })
+  // AUTO-086: the daily AI draft is off until switched on here.
+  const [autoDraft, setAutoDraft] = useState<boolean | null>(null)
+  const [autoBusy, setAutoBusy] = useState(false)
+  useEffect(() => {
+    if (!gate.ready) return
+    fetch('/api/resources/ebooks/settings', { credentials: 'include', cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setAutoDraft(d?.settings?.auto_draft_enabled === true))
+      .catch(() => setAutoDraft(false))
+  }, [gate.ready])
+  async function toggleAutoDraft(next: boolean) {
+    setAutoBusy(true)
+    try {
+      const r = await csrfFetch('/api/resources/ebooks/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auto_draft_enabled: next }) })
+      if (!r.ok) throw new Error('Could not save the setting')
+      setAutoDraft(next)
+      addToast({ type: 'success', title: next ? 'Daily AI draft turned on' : 'Daily AI draft turned off' })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not save the setting' })
+    } finally {
+      setAutoBusy(false)
+    }
+  }
 
   // Outline review state
   const [outlineReview, setOutlineReview] = useState<{
@@ -57,10 +83,13 @@ export default function AdminResourcesPage() {
     }
   }
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(() => {
     setLoading(true)
+    setLoadError(false)
     fetch('/api/resources/ebooks?all=1', { credentials: 'include', cache: 'no-store' })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) =>
         setItems(
           (d.items || []).map((e: Record<string, unknown>) => ({
@@ -77,7 +106,7 @@ export default function AdminResourcesPage() {
           })),
         ),
       )
-      .catch(() => setItems([]))
+      .catch(() => { setItems([]); setLoadError(true) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -189,17 +218,40 @@ export default function AdminResourcesPage() {
   }
 
   return (
-    <div className="w-full space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Resources / Ebooks</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Generate original CodeSpectra pocket guides. Daily cron creates drafts — publish here.
-        </p>
+    <div className="w-full space-y-6">
+      <PageHeader
+        illustration="courses"
+        title="Resources and ebooks"
+        description="Short CodeSpectra guides for candidates. Generate drafts (or turn on the daily AI draft), then review and publish them here."
+        icon={<BookOpen />}
+      />
+
+      <Panel className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h2 className="font-semibold text-foreground">Daily AI draft</h2>
+          <p className="text-sm text-muted-foreground">Creates one draft ebook with an AI cover every day at 07:00 UTC. Uses your AI budget.</p>
+        </div>
+        <Button
+          type="button"
+          variant={autoDraft ? 'outline' : 'default'}
+          disabled={autoDraft === null || autoBusy}
+          aria-pressed={autoDraft === true}
+          onClick={() => void toggleAutoDraft(!autoDraft)}
+        >
+          {autoBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
+          {autoDraft ? 'Turn off' : 'Turn on'}
+        </Button>
+      </Panel>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Ebooks" value={items.length} icon={<BookOpen />} />
+        <StatCard label="Published" value={items.filter((e) => e.status === 'published').length} icon={<Check />} />
+        <StatCard label="Drafts" value={items.filter((e) => e.status === 'draft').length} icon={<FileText />} />
       </div>
 
-      <Card className="space-y-4 p-4 md:p-6">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Plus className="h-4 w-4" /> Generate ebook
+      <Panel className="space-y-4">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground">
+          <Plus className="h-4 w-4 text-primary" aria-hidden /> Generate an ebook
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5">
@@ -222,16 +274,17 @@ export default function AdminResourcesPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pageCount">Pages</Label>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Number of pages">
               {[6, 12, 16, 24, 50].map((n) => (
                 <button
                   key={n}
                   type="button"
                   onClick={() => setPageCount(n)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  aria-pressed={pageCount === n}
+                  className={`min-w-10 rounded-lg px-3 py-2 text-xs font-medium tabular-nums transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-primary ${
                     pageCount === n
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      : 'border border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
                   }`}
                 >
                   {n}
@@ -244,12 +297,13 @@ export default function AdminResourcesPage() {
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
           {busy ? `Generating outline...` : `Generate ${pageCount}-page ebook`}
         </Button>
-      </Card>
+      </Panel>
 
       {/* Outline Review Modal */}
-      {outlineReview?.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={!!outlineReview?.show} onOpenChange={(open) => { if (!open && !busy) setOutlineReview(null) }}>
+        {outlineReview?.show && (
+          <DialogContent showCloseButton={false} className="block max-h-[90vh] overflow-y-auto border-0 bg-transparent p-0 shadow-none sm:max-w-2xl">
+            <DialogTitle className="sr-only">Review the ebook outline</DialogTitle>
             <EbookOutlineReview
               topic={outlineReview.topic}
               outline={outlineReview.outline}
@@ -257,11 +311,18 @@ export default function AdminResourcesPage() {
               onCancel={() => setOutlineReview(null)}
               loading={busy}
             />
-          </div>
-        </div>
+          </DialogContent>
+        )}
+      </Dialog>
+
+      {loadError && items.length === 0 && (
+        <EmptyState illustration="error" title="Couldn't load ebooks" description="Check your connection and try again." actionLabel="Try again" onAction={load} />
+      )}
+      {!loadError && items.length === 0 && (
+        <EmptyState illustration="courses" variant="courses" title="No ebooks yet" description="Enter a topic above to generate your first one." />
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="cs-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((e) => (
           <div key={e.id || e.slug} className="space-y-2">
             <EbookCoverCard ebook={e} href={`/dashboard/resources/${e.slug}`} showStatus />
@@ -269,7 +330,7 @@ export default function AdminResourcesPage() {
               <Badge variant="outline" className="capitalize">
                 {e.status}
               </Badge>
-              {e.pageCount != null ? <Badge variant="secondary">{e.pageCount} pages</Badge> : null}
+              {e.pageCount != null ? <Badge variant="secondary" className="tabular-nums">{e.pageCount} pages</Badge> : null}
             </div>
             <div className="flex flex-wrap gap-1">
               <Button
@@ -283,7 +344,7 @@ export default function AdminResourcesPage() {
                 {coverBusy === e.slug ? (
                   <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                  <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                 )}
                 AI cover
               </Button>
@@ -297,11 +358,11 @@ export default function AdminResourcesPage() {
                 </Button>
               )}
               <Button type="button" size="sm" variant="ghost" asChild>
-                <Link href={`/dashboard/resources/${e.slug}`}>
+                <Link href={`/dashboard/resources/${e.slug}`} aria-label={`Open ${e.title}`} title="Open">
                   <Eye className="h-3.5 w-3.5" />
                 </Link>
               </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => confirmDelete(e.slug)}>
+              <Button type="button" size="sm" variant="ghost" onClick={() => confirmDelete(e.slug)} aria-label={`Delete ${e.title}`} title="Delete">
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </Button>
             </div>
@@ -311,7 +372,7 @@ export default function AdminResourcesPage() {
 
       <ConfirmDialog
         open={deleteDialog.open}
-        title="Delete Ebook"
+        title="Delete ebook?"
         message={`Are you sure you want to delete "${deleteDialog.slug}"? This action cannot be undone.`}
         confirmLabel="Delete"
         cancelLabel="Cancel"

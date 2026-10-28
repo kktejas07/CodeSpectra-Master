@@ -13,11 +13,13 @@ Both check the internal secret FIRST (fast path), then fall back to session vali
 """
 from __future__ import annotations
 
+import hmac
 import logging
 
+import jwt as pyjwt
+from bson import ObjectId
 from fastapi import Depends, HTTPException, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from jose import jwt as jose_jwt
 
 from core.database import get_database
 from core.config import settings
@@ -89,69 +91,158 @@ async def get_session_secret() -> str:
     return (settings.SESSION_SECRET or "").strip()
 
 
-async def _get_session_payload_from_request(request: Request) -> dict | None:
-    """Extract and verify a session payload from the request.
+def secrets_match(provided: str | None, expected: str | None) -> bool:
+    """Timing-safe comparison of a presented secret against the configured one.
 
-    Checks Authorization header first, then session cookie.
-    Returns the JWT payload dict (containing at minimum 'uid') or None.
+    Empty values never match (an unset secret must not authenticate an empty
+    header).
     """
-    # 1. Try Authorization: Bearer <token>
+    if not provided or not expected:
+        return False
+    return hmac.compare_digest(provided.encode("utf-8"), expected.encode("utf-8"))
+
+
+def _decode_session_token(token: str, secret: str) -> dict | None:
+    """Verify an HS256 session JWT (PyJWT; algorithm pinned, exp required)."""
+    if not token or not secret:
+        return None
+    try:
+        payload = pyjwt.decode(
+            token,
+            secret,
+            algorithms=["HS256"],
+            options={"require": ["exp"], "verify_exp": True},
+        )
+    except Exception:
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("uid"), str) or not payload.get("uid"):
+        return None
+    return payload
+
+
+def _uid_filter(uid: str) -> dict:
+    """Same lookup as frontend lib/session.ts uidFilter (id | _id | firebase_uid)."""
+    ors: list[dict] = [{"id": uid}, {"_id": uid}, {"firebase_uid": uid}]
+    if len(uid) == 24 and ObjectId.is_valid(uid):
+        ors.append({"_id": ObjectId(uid)})
+    return {"$or": ors}
+
+
+def account_block_reason(profile: dict | None) -> str | None:
+    """Mirror of frontend lib/auth-account.ts accountBlockReason."""
+    if profile is None:
+        return "missing"
+    st = str(profile.get("status") or "").lower().strip()
+    if st in ("inactive", "suspended", "deleted", "disabled"):
+        return "inactive"
+    if profile.get("isActive") is False:
+        return "inactive"
+    if profile.get("deletedAt"):
+        return "inactive"
+    return None
+
+
+def session_version_current(token_ver, profile: dict | None) -> bool:
+    """Mirror of frontend isSessionVersionCurrent (missing version == 1)."""
+    if profile is None:
+        return False
+    current = profile.get("session_version")
+    current = current if isinstance(current, int) and not isinstance(current, bool) else 1
+    ver = token_ver if isinstance(token_ver, int) and not isinstance(token_ver, bool) else 1
+    return ver == current
+
+
+async def _session_still_valid(payload: dict) -> dict | None:
+    """Account exists + active, session version current, sid not signed out.
+
+    Fails closed: any DB error refuses the token (same as verifySessionToken).
+    Returns the user document on success.
+    """
+    try:
+        db = await get_database()
+        user = await db["user"].find_one(_uid_filter(payload["uid"]))
+        if account_block_reason(user):
+            return None
+        if not session_version_current(payload.get("ver"), user):
+            return None
+        sid = payload.get("sid")
+        if isinstance(sid, str) and sid:
+            revoked = await db["revoked_sessions"].find_one({"sid": sid}, {"_id": 1})
+            if revoked:
+                return None
+        return user
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[auth] session account check failed, refusing token: %s", type(exc).__name__)
+        return None
+
+
+async def _get_session_payload_from_request(request: Request) -> dict | None:
+    """Extract, verify and re-check a session (signature, expiry, account, version, revocation).
+
+    Bearer header first, then the session cookie. Returns the JWT payload with
+    the user document under ``_user`` or None.
+    """
+    secret = await get_session_secret()
+    if not secret:
+        return None
+    candidates: list[str] = []
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        secret = await get_session_secret()
-        if secret:
-            try:
-                payload = jose_jwt.decode(
-                    token, secret, algorithms=["HS256"], options={"verify_exp": True}
-                )
-                if payload and payload.get("uid"):
-                    return payload
-            except Exception:
-                pass
-
-    # 2. Try session cookie
-    cookie = request.headers.get("Cookie", "")
-    for part in cookie.split(";"):
-        part = part.strip()
-        if part.startswith(f"{SESSION_COOKIE_NAME}="):
-            session_cookie = part[len(SESSION_COOKIE_NAME) + 1:]
-            secret = await get_session_secret()
-            if secret:
-                try:
-                    payload = jose_jwt.decode(
-                        session_cookie,
-                        secret,
-                        algorithms=["HS256"],
-                        options={"verify_exp": True},
-                    )
-                    if payload and payload.get("uid"):
-                        return payload
-                except Exception:
-                    pass
-
+        candidates.append(auth_header[7:].strip())
+    cookie_val = request.cookies.get(SESSION_COOKIE_NAME, "")
+    if cookie_val:
+        candidates.append(cookie_val)
+    for token in candidates:
+        payload = _decode_session_token(token, secret)
+        if not payload:
+            continue
+        user = await _session_still_valid(payload)
+        if user:
+            payload["_user"] = user
+            return payload
     return None
+
+
+async def has_valid_internal_secret(request: Request) -> bool:
+    presented = request.headers.get("x-internal-secret", "")
+    return secrets_match(presented, await get_internal_backend_secret())
+
+
+def _dev_bypass_allowed(backend_secret: str) -> bool:
+    return not backend_secret and settings.ENVIRONMENT == "development"
+
+
+async def require_internal_secret(request: Request) -> bool:
+    """Service-to-service only: the caller must present INTERNAL_BACKEND_SECRET.
+
+    Used on every /internal/* AI route — those spend platform API keys, so a
+    user session is NOT enough (the browser never talks to the backend).
+    Timing-safe compare. Local development with no secret configured is the
+    only bypass.
+    """
+    backend_secret = await get_internal_backend_secret()
+    if secrets_match(request.headers.get("x-internal-secret", ""), backend_secret):
+        return True
+    if _dev_bypass_allowed(backend_secret):
+        return True
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Internal endpoint.")
 
 
 async def require_auth(request: Request):
     """Authenticate the request via internal secret, bearer token, or session cookie.
 
     Fast path: the x-internal-secret header matches INTERNAL_BACKEND_SECRET.
-    Fallback: a valid JWT session cookie or bearer token.
+    Fallback: a valid, current session (same checks as the frontend).
 
     Raises 401 if no valid authentication is found.
     """
-    # Fast path: internal shared secret (service-to-service calls from Next.js)
-    secret = request.headers.get("x-internal-secret", "")
     backend_secret = await get_internal_backend_secret()
-    if secret and backend_secret and secret == backend_secret:
+    if secrets_match(request.headers.get("x-internal-secret", ""), backend_secret):
         return True
 
-    # Only allow bypass if INTERNAL_BACKEND_SECRET is explicitly empty AND env is dev
-    if not backend_secret and settings.ENVIRONMENT == "development":
+    if _dev_bypass_allowed(backend_secret):
         return True
 
-    # Full path: validate session cookie or bearer token
     payload = await _get_session_payload_from_request(request)
     if payload:
         return True
@@ -171,42 +262,17 @@ async def get_current_user(
     Returns the full user document on success.
     Raises 401 if authentication fails.
     """
-    uid: str | None = None
-
-    # Fast path: internal secret — return a minimal user stub
-    secret = request.headers.get("x-internal-secret", "")
     backend_secret = await get_internal_backend_secret()
-    if secret and backend_secret and secret == backend_secret:
+    if secrets_match(request.headers.get("x-internal-secret", ""), backend_secret):
         return {"_is_internal": True, "_id": "__internal__", "role": "internal_service"}
 
-    # Only allow bypass in dev
-    if not backend_secret and settings.ENVIRONMENT == "development":
+    if _dev_bypass_allowed(backend_secret):
         return {"_is_internal": True, "_id": "__dev__", "role": "superadmin"}
 
-    # Extract session payload
     payload = await _get_session_payload_from_request(request)
-    if not payload:
+    if not payload or not payload.get("_user"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required. Please sign in.",
         )
-
-    uid = payload.get("uid")
-    if not uid:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid session: no user identifier found.",
-        )
-
-    # Look up user in MongoDB (try both id and _id)
-    user = await db["user"].find_one({"id": uid})
-    if not user:
-        user = await db["user"].find_one({"_id": uid})
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or session invalid.",
-        )
-
-    return user
+    return payload["_user"]

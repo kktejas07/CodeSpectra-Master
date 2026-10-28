@@ -7,116 +7,8 @@ import {
   writeServerSecrets,
   type ServerSecretsRecord,
 } from '@/lib/server-secrets-cache'
-
-const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
-  'postal_api_key',
-  'postal_webhook_secret',
-  'razorpay_key_id',
-  'razorpay_key_secret',
-  'razorpay_webhook_secret',
-  'github_app_token',
-  'github_client_secret',
-  'anthropic_api_key',
-  'gemini_api_key',
-  'openai_api_key',
-  'groq_api_key',
-  'opencode_api_key',
-  'openrouter_api_key',
-  'openwa_api_key',
-  'nvidia_api_key',
-  // ponytail: every provider the Settings → LLM UI offers MUST be here —
-  // a missing entry means saves are silently dropped while the UI reports success.
-  'deepseek_api_key',
-  'cerebras_api_key',
-  'mistral_api_key',
-  'cohere_api_key',
-  'fireworks_api_key',
-  'xai_api_key',
-  'replicate_api_key',
-  'huggingface_api_key',
-  'elevenlabs_api_key',
-  'assemblyai_api_key',
-  'deepgram_api_key',
-  'pinecone_api_key',
-  'qdrant_api_key',
-  'tavily_api_key',
-  'firecrawl_api_key',
-  'serper_api_key',
-  'jina_api_key',
-  'exa_api_key',
-  'langchain_api_key',
-  'langfuse_api_key',
-  'notion_api_key',
-  'slack_api_key',
-  'stability_api_key',
-  'fal_api_key',
-  'deepinfra_api_key',
-  'novita_api_key',
-  'ai21_api_key',
-  'kimi_api_key',
-  'lemonfox_api_key',
-  'cloudflare_workers_api_key',
-  'sambanova_api_key',
-  'nscale_api_key',
-  'chutes_api_key',
-  'modelscope_api_key',
-  'google_knowledge_graph_api_key',
-  'browserbase_api_key',
-  'brightdata_api_key',
-  'scrapingbee_api_key',
-  'cloudflare_api_token',
-  'r2_secret_access_key',
-  's3_secret_access_key',
-  'phonepe_salt_key',
-  'phonepe_webhook_secret',
-  'stripe_secret_key',
-  'stripe_webhook_secret',
-  'upstash_redis_rest_token',
-  'internal_backend_secret',
-  'session_secret',
-  'typesafe_api_key',
-  'custom_api_key',
-]
-
-const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
-  'postal_server',
-  'postal_from_email',
-  'trusted_origins_extra',
-  'piston_url',
-  'piston_run_timeout_ms',
-  'piston_max_concurrent',
-  'custom_endpoint',
-  'custom_model',
-  'github_client_id',
-  'stripe_price_pro_monthly',
-  'stripe_price_pro_yearly',
-  'stripe_price_enterprise_monthly',
-  'stripe_price_enterprise_yearly',
-  'cloudflare_zone_id',
-  'r2_account_id',
-  'r2_access_key_id',
-  'r2_bucket',
-  's3_provider',
-  's3_endpoint',
-  's3_region',
-  's3_bucket',
-  's3_access_key_id',
-  'firebase_api_key',
-  'firebase_auth_domain',
-  'firebase_project_id',
-  'firebase_storage_bucket',
-  'firebase_messaging_sender_id',
-  'firebase_app_id',
-  'firebase_vapid_key',
-  'phonepe_merchant_id',
-  'phonepe_salt_index',
-  'upstash_redis_rest_url',
-  'openwa_base_url',
-  'openwa_session_id',
-  'openwa_default_country_code',
-  'openwa_max_concurrency',
-  'openwa_send_delay_ms',
-]
+import { SECRET_FIELDS, PLAIN_FIELDS, HIRING_FIELDS } from '@/lib/server-secrets-fields'
+import { auditAdmin } from '@/lib/admin-audit'
 
 const ALL_FIELDS: (keyof ServerSecretsRecord)[] = [...SECRET_FIELDS, ...PLAIN_FIELDS]
 
@@ -137,6 +29,14 @@ export async function GET() {
   for (const k of PLAIN_FIELDS) {
     masked[k] = String(raw[k] ?? '').trim() || null
   }
+  // Hiring integrations: whether the env fallback is set (booleans only), and which
+  // key encrypts tenant meeting credentials (env only — never stored in the DB).
+  for (const k of HIRING_FIELDS) {
+    masked[`env_${k}`] = Boolean((process.env[k.toUpperCase()] || '').trim())
+  }
+  const atsKey = (process.env.ATS_ENCRYPTION_KEY || '').trim()
+  masked.ats_encryption_key_from_env = atsKey.length >= 32
+  masked.ats_encryption_key_too_short = atsKey.length > 0 && atsKey.length < 32
   return NextResponse.json({ secrets: masked })
 }
 
@@ -149,7 +49,7 @@ export async function PATCH(request: Request) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const patch: Partial<ServerSecretsRecord> = {}
@@ -175,8 +75,22 @@ export async function PATCH(request: Request) {
     )
   }
 
+  if (patch.livekit_url && !/^wss?:\/\/\S+$/i.test(patch.livekit_url.trim())) {
+    return NextResponse.json({ error: 'LiveKit URL must start with wss:// (or ws:// for local testing)' }, { status: 400 })
+  }
+  if (patch.meta_whatsapp_call_mode && !['sip', 'graph'].includes(patch.meta_whatsapp_call_mode.trim())) {
+    return NextResponse.json({ error: 'WhatsApp call mode must be sip or graph' }, { status: 400 })
+  }
+
+  {
+    const { validateIntegrationPatch } = await import('@/lib/analytics/integrations')
+    const bad = validateIntegrationPatch(patch as Record<string, unknown>)
+    if (bad) return NextResponse.json({ error: bad }, { status: 400 })
+  }
+
   try {
     const updated = await writeServerSecrets(patch)
+    await auditAdmin(gate.user, 'admin.server_secrets.update', 'settings', 'server-secrets', `fields: ${Object.keys(patch).join(', ')}`, 'critical')
     return NextResponse.json({
       ok: true,
       secrets: {
@@ -200,7 +114,7 @@ export async function PATCH(request: Request) {
   } catch (e) {
     console.error('[server-secrets] PATCH error:', e)
     return NextResponse.json(
-      { error: 'Save failed: ' + (e instanceof Error ? e.message : String(e)) },
+      { error: 'Save failed. See server logs for details.' },
       { status: 500 },
     )
   }

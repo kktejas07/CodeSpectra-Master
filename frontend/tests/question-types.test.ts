@@ -23,7 +23,7 @@ describe('question-type registry', () => {
     expect(canonicalType('debug')).toBe('debugging')
     expect(canonicalType('predict the output')).toBe('output_prediction')
     expect(canonicalType('Multiple True-False')).toBe('matrix')
-    expect(canonicalType('case study')).toBe('descriptive')
+    expect(canonicalType('case study')).toBe('case_study')
   })
 
   it('falls back for unknown values', () => {

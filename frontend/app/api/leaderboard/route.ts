@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { dicebearUrl } from '@/lib/avatar'
+import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
+import { assignRanks, parseLeaderboardQuery, rankFromAbove } from '@/lib/leaderboard-calc'
+import { countAbove, getLeaderboardSnapshot } from '@/lib/leaderboard-cache'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 
-const LIMIT = 80
-
+/**
+ * GET /api/leaderboard?category=global|practice|hackathon|exams&period=all|month&limit=80
+ *
+ * Ranks users by XP summed from `xp_events` (the only place XP is written).
+ * Never returns emails.
+ */
 export async function GET(req: NextRequest) {
   const gate = await requireAuth()
   if ('error' in gate) {
@@ -13,47 +21,53 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const { category, period, limit } = parseLeaderboardQuery(new URL(req.url).searchParams)
     const db = await getMongoDb()
+    // Cached totals (60 s, one aggregation per category/period) — lib/leaderboard-cache.ts (A-047).
+    const snap = await getLeaderboardSnapshot(category, period)
+    // Over-fetch a little so users whose account was deleted can be dropped.
+    const totals = snap.top.slice(0, limit + 20).map((t) => ({ _id: t.userId, xp: t.xp, solved: t.solved, last: t.last }))
 
-    // ponytail: single collection scan sorted by points; rank = sort position.
-    // Categories (Female/Engineering/etc.) need profile fields we don't store yet.
-    const topUsers = await db.collection('user')
-      .find({ points: { $gt: 0 } })
-      .sort({ points: -1 })
-      .limit(LIMIT)
-      .project({ _id: 0, id: 1, name: 1, fullName: 1, email: 1, points: 1, avatarUrl: 1 })
-      .toArray()
+    const ids = totals.map((t) => String(t._id))
+    const users = ids.length
+      ? await db
+          .collection('user')
+          .find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, name: 1, fullName: 1, avatarUrl: 1 } })
+          .toArray()
+      : []
+    const byId = new Map(users.map((u) => [String(u.id), u]))
 
-    const entries: LeaderboardEntryDTO[] = topUsers.map((u, i) => ({
-      rank: i + 1,
-      userId: String(u.id ?? ''),
-      name: String(u.fullName || u.name || u.email || 'Anonymous'),
-      title: 'CodeSpectra Learner',
-      level: Math.max(1, Math.floor((Number(u.points) || 0) / 1000) + 1),
-      xp: Number(u.points) || 0,
-      language: '—',
-      languageClass: 'text-muted-foreground',
-      avatar:
-        String(u.avatarUrl || '') || dicebearUrl(String(u.id || u.email || i)),
-      lastSubmission: null,
-      streak: 0,
-      challengesSolved: 0,
-    }))
+    const levels = (await getGamificationConfig()).levels
+    const ranked = assignRanks(
+      totals
+        .filter((t) => byId.has(String(t._id)))
+        .map((t) => ({ userId: String(t._id), xp: Number(t.xp) || 0, solved: t.solved, last: t.last })),
+    ).slice(0, limit)
 
-    const currentUser = await db.collection('user').findOne({ id: gate.user.id })
-    const currentUserPoints = Number(currentUser?.points) || 0
-    const betterUsers =
-      currentUserPoints > 0
-        ? await db.collection('user').countDocuments({ points: { $gt: currentUserPoints } })
-        : 0
-    const currentUserRank = currentUserPoints > 0 ? betterUsers + 1 : null
+    const entries: LeaderboardEntryDTO[] = ranked.map((r) => {
+      const u = byId.get(r.userId)!
+      const level = xpToLevel(r.xp, levels)
+      return {
+        rank: r.rank,
+        userId: r.userId,
+        name: String(u.fullName || u.name || 'Learner'),
+        title: `Level ${level}`,
+        level,
+        xp: r.xp,
+        avatar: String(u.avatarUrl || '') || dicebearUrl(r.userId),
+        lastActivity: r.last ? String(r.last) : null,
+        challengesSolved: Number(r.solved) || 0,
+      }
+    })
+
+    const myXp = snap.byUser.get(gate.user.id) ?? 0
+    const above = myXp > 0 ? countAbove(snap.xpDesc, myXp) : 0
 
     return NextResponse.json({
+      category,
+      period,
       entries,
-      currentUser: {
-        points: currentUserPoints,
-        rank: currentUserRank,
-      },
+      currentUser: { points: myXp, rank: rankFromAbove(myXp, above) },
     })
   } catch (error) {
     console.error('[CodeSpectra] Error fetching leaderboard:', error)

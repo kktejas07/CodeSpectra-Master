@@ -1,0 +1,19 @@
+{
+  "checkConnection": "Check your connection and try again.",
+  "couldNotLoad": "Could not load",
+  "serverUnreachable": "Couldn’t reach the server. Check your connection and try again.",
+  "somethingWentWrong": "Something went wrong",
+  "somethingWentWrongRetry": "Something went wrong. Try again.",
+  "tooManyRequests": "Too many requests. Wait a moment and try again.",
+  "tryAgainMoment": "Try again in a moment.",
+  "micBlocked": "Microphone access is blocked. Allow it for this site, or type your answer.",
+  "sttStopped": "Speech recognition stopped. Try again, or type your answer.",
+  "sttCouldNotStart": "Speech recognition could not start. Type your answer instead.",
+  "voiceUnavailable": "Voice input isn’t available in this browser. Type instead.",
+  "transcribeFailed": "We could not transcribe that. Type your answer instead.",
+  "micCouldNotStart": "The microphone could not start. Type your answer instead.",
+  "sectionDidNotLoad": "This section didn’t load. Your work is saved — try again, or head back home.",
+  "reference": "Reference:",
+  "goHome": "Go home",
+  "checkStatus": "Check system status"
+}

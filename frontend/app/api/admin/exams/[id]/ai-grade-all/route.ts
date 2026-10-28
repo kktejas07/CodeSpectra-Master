@@ -55,9 +55,10 @@ export async function POST(
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
 
-    const submissionQuery: Record<string, unknown> = { exam_id: examId }
+    // Released results are final for the candidate (score, pass, certificate) — never regraded here.
+    const submissionQuery: Record<string, unknown> = { exam_id: examId, score_released: { $ne: true }, released_at: { $exists: false } }
     if (userIds) submissionQuery.user_id = { $in: userIds }
-    const submissions = await db.collection('exam_submissions').find(submissionQuery).toArray()
+    const submissions = await db.collection('exam_submissions').find(submissionQuery, { projection: { id_photo: 0, face_photo: 0 } }).toArray()
     if (submissions.length === 0) {
       return NextResponse.json({ error: 'No submissions found to grade' }, { status: 404 })
     }
@@ -86,6 +87,17 @@ export async function POST(
       const setOp: Record<string, unknown> = { details: updatedDetails, score: newScore, has_pending_review: stillPending }
       if (!stillPending) setOp.graded = true
       await db.collection('exam_submissions').updateOne({ exam_id: examId, user_id: userId }, { $set: setOp })
+      // Hiring pipeline: grading finished → record the assessment stage result.
+      if (!stillPending) {
+        const sub = submissions.find((x) => x.user_id === userId)
+        import('@/lib/ats/handlers/assessment')
+          .then(({ notifyAssessmentFinal }) => notifyAssessmentFinal({ id: sub?.id, exam_id: examId, user_id: userId, email: sub?.email, score: newScore, max_score: sub?.max_score, has_pending_review: false }))
+          .catch((e) => console.error('[CodeSpectra] ats assessment hook:', e))
+        void import('@/lib/automation/events').then(({ emit }) => emit('exam.graded', {
+          submission_id: sub?.id, exam_id: examId, exam_title: exam.title ?? null, user_id: userId, email: sub?.email, score: newScore, max_score: sub?.max_score,
+          percent: Number(sub?.max_score) > 0 ? Math.round((newScore / Number(sub?.max_score)) * 100) : 0, graded_by: 'ai',
+        }, { tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null, idempotencyKey: `exam.graded:${String(sub?.id)}:${String(sub?.attempt_no ?? 1)}` })).catch((e) => console.error('[automation] emit failed:', e))
+      }
     }
 
     outer:
@@ -101,7 +113,10 @@ export async function POST(
 
       for (let i = 0; i < details.length; i++) {
         const d = details[i]
-        const isPending = d.pending_review === true
+        // AI already graded it and flagged it for a human: leave it for the
+        // reviewer instead of re-grading it on every round (LLM cost).
+        const awaitingHuman = d.pending_review === true && d.requires_human_review === true && d.awarded !== undefined
+        const isPending = d.pending_review === true && !awaitingHuman
         const needsGrade = isPending || (d.awarded === undefined && !d.correct && (body.includeAnswered ? !!answers[d.qId] : false))
         const q = questions.find((x: any) => x.id === d.qId)
         const answer = String(answers[d.qId] || '').trim()
@@ -133,6 +148,7 @@ export async function POST(
                 pairs: Array.isArray(q.pairs) ? q.pairs : undefined,
                 matrix: q.matrix || undefined,
                 table: q.table || undefined,
+                question: q,
               }),
               GRADE_TIMEOUT_MS,
               'grade timeout',
@@ -154,6 +170,7 @@ export async function POST(
                     maxPoints: q.points || q.score || d.points || 10,
                     options: Array.isArray(q.options) ? q.options.map(String) : undefined,
                     testCases: q.test_cases || q.testCases,
+                    question: q,
                   }),
                   GRADE_TIMEOUT_MS,
                   'grade timeout',
@@ -217,7 +234,7 @@ export async function POST(
       hasMore,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Bulk AI grading failed'
+    const msg = 'Bulk AI grading failed'
     console.error('[CodeSpectra] ai-grade-all POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

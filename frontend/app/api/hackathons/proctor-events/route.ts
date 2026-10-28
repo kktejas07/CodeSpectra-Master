@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonProctorEvents, HackathonProctorEventDoc, newId, nowIso } from '@/lib/db/qr-events'
+import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const body = await req.json()
   const type = typeof body?.type === 'string' ? body.type : null
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
   const hackathonId = searchParams.get('hackathon_id')
@@ -59,9 +60,8 @@ export async function GET(req: NextRequest) {
   const hk = await (await hackathons()).findOne({ $or: [{ id: hackathonId }, { slug: hackathonId }] })
   if (!hk) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
 
-  const isJudge = hk.judges?.includes(user.id)
-  const isSuperAdmin = user.role === 'superadmin'
-  if (!isJudge && !isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // Judges of this event, superadmin, or this event's own company admin (deny by default).
+  if (!isHackathonJudge(user, hk) && !isHackathonStaff(user, hk)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const col = await hackathonProctorEvents()
   const events = await col.find({ hackathon_id: hk.id }).sort({ created_at: -1 }).toArray()

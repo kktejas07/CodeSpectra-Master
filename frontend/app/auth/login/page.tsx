@@ -1,88 +1,172 @@
 "use client";
-import { formatDate } from '@/lib/format-datetime'
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { safeRedirect } from "@/lib/safe-redirect";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  AlertCircle,
-  ArrowRight,
-  Code2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Mail,
-  Terminal,
-  Zap,
-  ShieldCheck,
-} from "lucide-react";
+import { ShieldCheck, ScanFace } from "lucide-react";
+import { safeRedirect } from "@/lib/safe-redirect";
+import { csrfFetch } from "@/lib/csrf-fetch";
 import { Github } from "@/components/ui/brand-icons";
 import { useAuth, getLastLogin } from "@/lib/auth-context";
-import { FaceCamera } from "@/components/auth/face-camera";
+import { FaceCamera, type LivenessCapture } from "@/components/auth/face-camera";
+import { pickLivenessChallenge, type LivenessChallenge } from "@/lib/auth-face-liveness";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { DeviceShowcase } from "@/components/visuals";
+import { useT } from "@/lib/i18n/client";
+import type { Translator } from "@/lib/i18n/catalog";
+import {
+  AuthShell,
+  AuthHeading,
+  AsideNote,
+  Divider,
+  Field,
+  FormError,
+  GoogleIcon,
+  LastUsedBadge,
+  PasswordField,
+  PrimaryButton,
+  SecondaryButton,
+} from "@/components/auth/auth-shell";
+
+type Mode = "password" | "sso" | "face";
+
+/** Plain-language text for the `?error=` codes the SSO / OAuth callbacks send back. */
+function loginErrorMessage(code: string | null, t: Translator): string | null {
+  if (!code) return null;
+  switch (code) {
+    case "sso_idp_error":
+      return t("auth.ssoIdpError");
+    case "sso_missing_code":
+    case "sso_invalid_state":
+      return t("auth.ssoExpired");
+    case "sso_provider_not_found":
+    case "sso_unsupported_provider_type":
+      return t("auth.ssoUnavailable");
+    case "sso_discovery_failed":
+    case "sso_bad_discovery":
+    case "sso_token_exchange_failed":
+    case "sso_token_exchange_error":
+    case "sso_userinfo_failed":
+    case "sso_userinfo_error":
+      return t("auth.ssoUnreachable");
+    case "sso_no_email":
+    case "sso_email_unverified":
+      return t("auth.ssoNoEmail");
+    case "sso_domain_mismatch":
+      return t("auth.ssoDomainMismatch");
+    case "sso_account_disabled":
+      return t("auth.accountDisabled");
+    case "sso_maintenance":
+      return t("auth.maintenance");
+    case "sso_registration_closed":
+      return t("auth.registrationClosed");
+    case "access_denied":
+      return t("auth.signInCancelled");
+    default:
+      return code.startsWith("sso_") ? t("auth.ssoIncomplete") : t("auth.signInIncomplete");
+  }
+}
 
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = safeRedirect(searchParams.get("redirectTo") || searchParams.get("redirect"));
+  const { t, rich } = useT();
 
+  const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [keepSignedIn, setKeepSignedIn] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    () => loginErrorMessage(searchParams.get("error"), t) || (searchParams.get("verify_error") ? t("auth.verifyLinkInvalid") : null),
+  );
+  const notice =
+    searchParams.get("verified") === "true"
+      ? t("auth.emailVerified")
+      : searchParams.get("verify_sent") === "1"
+        ? t("auth.accountCreatedVerify")
+      : searchParams.get("expired") === "1"
+        ? t("auth.sessionEnded")
+        : null;
+  // First factor passed with face or SSO; the server holds a 5-minute pending
+  // sign-in until the authenticator code is entered (POST /api/auth/two-factor).
+  const [pendingSecondFactor, setPendingSecondFactor] = useState<"face" | "sso" | "oauth" | null>(() => {
+    const tf = searchParams.get("twofactor");
+    return tf === "sso" || tf === "oauth" ? tf : null;
+  });
   const [lastLogin, setLastLogin] = useState<{ method: string; at: string } | null>(null);
   const [totpRequired, setTotpRequired] = useState(false);
   const [totpCode, setTotpCode] = useState("");
-  const [ssoMode, setSsoMode] = useState(false);
-  const [faceMode, setFaceMode] = useState(false);
   const [platformSettings, setPlatformSettings] = useState<{ enable_sso_login?: boolean }>({});
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
-
-  useEffect(() => {
-    const info = getLastLogin()
-    if (info) setLastLogin(info)
-      
-    fetch('/api/platform/settings')
-      .then(res => res.json())
-      .then(data => {
-        if (data.settings) setPlatformSettings(data.settings)
-      })
-      .catch(console.error)
-  }, [])
-
-  const formatLastLogin = (at: string) => {
-    const date = new Date(at)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
-    if (diffMins < 1) return 'just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-    return formatDate(date, undefined, { month: 'short', day: 'numeric' })
-  }
-
-  const loginMethodLabel = (method: string) =>
-    method === 'google' ? 'Google' : method === 'github' ? 'GitHub' : 'Email'
+  // Face sign-in: a fresh random challenge per attempt (remounts the camera),
+  // and the emailed-code step for a device this account hasn't trusted yet.
+  const [faceChallenge, setFaceChallenge] = useState<LivenessChallenge | null>(null);
+  const [faceAttempt, setFaceAttempt] = useState(0);
+  const [emailCodePending, setEmailCodePending] = useState(false);
+  const [emailCode, setEmailCode] = useState("");
+  const [emailCodeNotice, setEmailCodeNotice] = useState<string | null>(null);
 
   const { signInWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
 
+  useEffect(() => {
+    const info = getLastLogin();
+    if (info) setLastLogin(info);
+    fetch("/api/platform/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings) setPlatformSettings(data.settings);
+      })
+      .catch(console.error);
+  }, []);
+
+  const newFaceAttempt = () => {
+    setFaceChallenge(pickLivenessChallenge());
+    setFaceAttempt((n) => n + 1);
+  };
+
+  const goTo = (m: Mode) => {
+    setError(null);
+    setPendingSecondFactor(null);
+    setTotpCode("");
+    setEmailCodePending(false);
+    setEmailCode("");
+    setEmailCodeNotice(null);
+    if (m === "face") newFaceAttempt();
+    setMode(m);
+  };
+
+  async function handleSecondFactor(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await csrfFetch("/api/auth/two-factor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ totpToken: totpCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.expired) {
+          setPendingSecondFactor(null);
+          setTotpCode("");
+        }
+        throw new Error(data.error || t("auth.codeDidNotWork"));
+      }
+      router.push(safeRedirect(data.redirect || redirectTo));
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.codeDidNotWork"));
+      setLoading(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
       await signInWithEmail(email.trim().toLowerCase(), password, totpCode || undefined, turnstileToken || undefined);
       router.push(redirectTo);
@@ -91,465 +175,394 @@ function LoginInner() {
       // Fresh captcha for the retry (tokens are single-use).
       setTurnstileToken(null);
       setTurnstileResetKey((k) => k + 1);
-      if (err && typeof err === 'object' && 'twoFactorRequired' in err) {
+      if (err && typeof err === "object" && "twoFactorRequired" in err) {
         setTotpRequired(true);
-        setError('Enter your two-factor code');
+        setError(t("auth.enterTotpToFinish"));
       } else {
-        const msg = err instanceof Error ? err.message : "Invalid email or password";
-        setError(msg);
+        setError(err instanceof Error ? err.message : t("auth.badCredentials"));
       }
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleGoogleSignIn() {
+  async function handleOAuth(provider: "google" | "github") {
     setError(null);
     setLoading(true);
     try {
-      await signInWithGoogle();
+      await (provider === "google" ? signInWithGoogle() : signInWithGithub());
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      setError(msg);
+      if (err && typeof err === "object" && "twoFactorRequired" in err) {
+        setTotpCode("");
+        setPendingSecondFactor("oauth");
+        return;
+      }
+      const name = provider === "google" ? "Google" : "GitHub";
+      setError(err instanceof Error ? err.message : t("auth.oauthIncomplete", { provider: name }));
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleGithubSignIn() {
+  async function handleSso(e: React.FormEvent) {
+    e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await signInWithGithub();
-      router.push(redirectTo);
-      router.refresh();
+      const res = await csrfFetch("/api/auth/sso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), redirect: redirectTo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("auth.ssoNotSetUp"));
+      if (data.redirect_url) window.location.href = data.redirect_url;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "GitHub sign-in failed";
-      setError(msg);
-    } finally {
+      setError(err instanceof Error ? err.message : t("auth.ssoFailed"));
       setLoading(false);
     }
   }
 
-  async function handleFaceLogin(descriptor: Float32Array | null) {
+  async function handleFaceLogin(result: LivenessCapture) {
     setError(null);
-    setLoading(true);
-    if (!descriptor) {
-      setError("Face detection failed — please retry.");
-      setLoading(false);
+    if (!email) {
+      setError(t("auth.faceEnterEmailFirst"));
+      newFaceAttempt();
       return;
     }
+    setLoading(true);
     try {
-      if (!email) {
-        throw new Error("Please enter your email to use Face Login.");
-      }
-
       const res = await fetch("/api/auth/face-verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim().toLowerCase(),
-          descriptor: Array.from(descriptor)
-        })
+          descriptors: result.descriptors.map((d) => Array.from(d)),
+          liveness: { challenge: result.challenge, passed: result.passed },
+        }),
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Biometric login failed");
-      
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || t("auth.faceFailed"));
+      if (data.emailCodeRequired) {
+        setEmailCode("");
+        setEmailCodeNotice(null);
+        setEmailCodePending(true);
+        setLoading(false);
+        return;
+      }
+      if (data.twoFactorRequired) {
+        setTotpCode("");
+        setPendingSecondFactor("face");
+        setLoading(false);
+        return;
+      }
       router.push(redirectTo);
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.faceFailed"));
+      newFaceAttempt();
       setLoading(false);
     }
   }
 
+  async function handleEmailCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setEmailCodeNotice(null);
+    setLoading(true);
+    try {
+      const res = await csrfFetch("/api/auth/face-email-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: emailCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.expired) {
+          setEmailCodePending(false);
+          setEmailCode("");
+          newFaceAttempt();
+        }
+        throw new Error(data.error || t("auth.codeDidNotWork"));
+      }
+      if (data.twoFactorRequired) {
+        setEmailCodePending(false);
+        setTotpCode("");
+        setPendingSecondFactor("face");
+        setLoading(false);
+        return;
+      }
+      router.push(redirectTo);
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.codeDidNotWork"));
+      setLoading(false);
+    }
+  }
+
+  async function resendEmailCode() {
+    setError(null);
+    setEmailCodeNotice(null);
+    setLoading(true);
+    try {
+      const res = await csrfFetch("/api/auth/face-email-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resend: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.expired) {
+          setEmailCodePending(false);
+          newFaceAttempt();
+        }
+        throw new Error(data.error || t("auth.resendFailed"));
+      }
+      setEmailCode("");
+      setEmailCodeNotice(t("auth.newCodeSent"));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t("auth.resendFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const emailField = (
+    <Field
+      id="email"
+      label={mode === "sso" ? t("auth.workEmail") : t("auth.email")}
+      type="email"
+      placeholder={mode === "sso" ? "you@company.com" : "you@example.com"}
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      required
+      autoComplete="email"
+      autoFocus={!email}
+    />
+  );
+
   return (
-    <div className="min-h-screen w-full grid lg:grid-cols-[1.05fr_1fr] bg-background">
-      {/* Side branding */}
-      <aside className="relative hidden lg:flex flex-col justify-between p-12 bg-[#060912] border-r border-slate-800/80 overflow-hidden">
-        {/* Background Grid Mesh */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-15"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
-          }}
-        />
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[500px] rounded-full bg-gradient-radial from-teal-500/15 via-emerald-500/5 to-transparent blur-3xl" />
-
-        <div className="relative z-10 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/40 shadow-sm">
-              <Code2 className="h-5 w-5 text-teal-400" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">CodeSpectra</span>
-          </Link>
-          <Link href="/" className="text-xs text-slate-400 hover:text-white transition">← Back to home</Link>
-        </div>
-
-        <div className="relative z-10 space-y-8 max-w-lg">
-          <div className="inline-flex items-center gap-2 rounded-full border border-teal-800/60 bg-teal-950/80 px-3.5 py-1 text-xs font-mono font-semibold text-teal-400">
-            <Terminal className="h-3.5 w-3.5" />
-            DEVELOPER CONSOLE ACCESS
-          </div>
-          <h1 className="text-4xl xl:text-5xl font-black tracking-tight leading-[1.05] text-white">
-            Ship cleaner code.<br />
-            <span className="text-teal-400">Win the competition.</span>
-          </h1>
-          <p className="text-slate-300 text-base leading-relaxed">
-            AI-powered static analysis meets competitive coding challenges. Scan, fix, and compete — all in one workspace.
-          </p>
-          <div className="grid grid-cols-1 gap-3 text-sm">
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-                <Zap className="h-4 w-4" />
-              </span>
-              <span className="text-foreground/85">AI fix suggestions on every issue</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-                <Terminal className="h-4 w-4" />
-              </span>
-              <span className="text-foreground/85">40+ languages, real test cases, live judging</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-                <Code2 className="h-4 w-4" />
-              </span>
-              <span className="text-foreground/85">Quality gates that block bad pushes</span>
-            </div>
-          </div>
-          {/* Code preview card */}
-          <div className="relative rounded-xl border border-border bg-card/70 backdrop-blur p-4 shadow-2xl">
-            <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
-              <span className="h-2.5 w-2.5 rounded-full bg-primary/70" />
-              <span className="ml-3 text-xs text-muted-foreground font-mono">analysis.ts</span>
-            </div>
-            <pre className="pt-3 text-xs leading-relaxed font-mono text-foreground/85 overflow-hidden">
-              <span className="text-muted-foreground">// 1 bug, 2 smells found</span>
-              {"\n"}
-              <span className="text-primary">function</span> <span className="text-foreground">analyze</span>(<span className="text-muted-foreground">code</span>) {"{"}
-              {"\n"}
-              {"  "}<span className="text-primary">if</span> (code == null) {"{"}
-              {"\n"}
-              {"    "}<span className="text-foreground/60">// 🟢 use === instead</span>
-              {"\n"}
-              {"  }"}
-              {"\n"}
-              {"  "}<span className="text-primary">return</span> <span className="text-foreground">runQualityGate</span>(code)
-              {"\n"}
-              {"}"}
-            </pre>
+    <AuthShell
+      aside={
+        <div className="space-y-8">
+          <DeviceShowcase variant="candidate" compact className="mx-0 max-w-[360px]" />
+          <p className="cs-display max-w-[18ch] text-4xl">{t("auth.loginAsideHeadline")}</p>
+          <div className="space-y-6">
+            <AsideNote title={t("auth.asideAssessmentTitle")}>
+              {t("auth.asideAssessmentBody")}
+            </AsideNote>
+            <AsideNote title={t("auth.asideOrgTitle")}>
+              {platformSettings.enable_sso_login ? t("auth.asideOrgBodySso") : t("auth.asideOrgBody")}
+            </AsideNote>
           </div>
         </div>
-        <div className="relative flex items-center justify-between text-xs text-muted-foreground">
-          <span>&copy; 2026 CodeSpectra</span>
-          <div className="flex items-center gap-4">
-            <Link href="/privacy" className="hover:text-foreground transition">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground transition">Terms</Link>
-          </div>
-        </div>
-      </aside>
-
-      {/* Login form */}
-      <main className="flex items-center justify-center px-6 py-10 sm:px-12">
-        <div className="w-full max-w-md space-y-7">
-          {/* Mobile logo + back */}
-          <div className="lg:hidden flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Code2 className="h-5 w-5" />
-              </div>
-              <span className="text-lg font-semibold">CodeSpectra</span>
+      }
+    >
+      <AuthHeading title={mode === "sso" ? t("auth.signInWithSso") : mode === "face" ? t("auth.signInWithFace") : t("auth.signIn")}>
+        {mode === "password" ? (
+          <>
+            {t("auth.newToCodeSpectra")}{" "}
+            <Link href={`/auth/signup${redirectTo !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className="font-semibold text-cs-accent-text underline decoration-2 underline-offset-4">
+              {t("auth.createAccount")}
             </Link>
-            <Link href="/" className="text-xs text-muted-foreground hover:text-foreground">← Back to home</Link>
-          </div>
+          </>
+        ) : mode === "sso" ? (
+          t("auth.ssoHeadingHint")
+        ) : (
+          t("auth.faceHeadingHint")
+        )}
+      </AuthHeading>
 
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight">Sign in to your account</h2>
-            <p className="text-sm text-muted-foreground">
-              New to CodeSpectra?{" "}
-              <Link href="/auth/signup" className="font-medium text-primary hover:underline">Create an account</Link>
-            </p>
-          </div>
+      {notice && !error && (
+        <p role="status" className="mb-5 rounded-md border border-cs-grid px-4 py-3 text-[15px] text-cs-ink-soft">
+          {notice}
+        </p>
+      )}
+      {error && <FormError>{error}</FormError>}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full h-11 gap-2 relative overflow-visible"
-            >
-              {lastLogin?.method === 'google' && (
-                <div className="absolute -top-2.5 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-[10px] font-semibold px-2 rounded-full">
-                  Last used
-                </div>
-              )}
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Google
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleGithubSignIn}
-              disabled={loading}
-              className="w-full h-11 gap-2 relative overflow-visible"
-            >
-              {lastLogin?.method === 'github' && (
-                <div className="absolute -top-2.5 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-[10px] font-semibold px-2 rounded-full">
-                  Last used
-                </div>
-              )}
-              <Github className="w-5 h-5" />
-              GitHub
-            </Button>
-          </div>
+      {pendingSecondFactor && (
+        <form onSubmit={handleSecondFactor} className="space-y-5">
+          <p className="text-cs-ink-soft">
+            {pendingSecondFactor === "face"
+              ? t("auth.faceRecognised")
+              : pendingSecondFactor === "oauth"
+                ? t("auth.oauthConfirmed")
+                : t("auth.orgSignedIn")}{" "}
+            {t("auth.enterTotpToFinishShort")}
+          </p>
+          <Field
+            id="pending-totp-code"
+            label={t("auth.authenticatorCode")}
+            inputMode="numeric"
+            maxLength={6}
+            value={totpCode}
+            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            autoComplete="one-time-code"
+            autoFocus
+            required
+            className="text-center text-xl tracking-[0.4em] tabular-nums"
+          />
+          <PrimaryButton type="submit" loading={loading} disabled={totpCode.length !== 6}>
+            {t("auth.verifyAndSignIn")}
+          </PrimaryButton>
+        </form>
+      )}
 
-          {platformSettings.enable_sso_login && (
-            <Button
-              variant="outline"
-              onClick={() => { setSsoMode(true); setFaceMode(false); }}
-              className="w-full h-11 gap-2 relative overflow-visible"
-            >
-              {lastLogin?.method === 'sso' && (
-                <div className="absolute -top-2.5 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-[10px] font-semibold px-2 rounded-full">
-                  Last used
-                </div>
-              )}
-              <ShieldCheck className="w-4 h-4" />
-              Continue with SSO
-            </Button>
-          )}
-
-          <Button
-            variant="outline"
-            onClick={() => { setFaceMode(true); setSsoMode(false); }}
-            className="w-full h-11 gap-2 relative overflow-visible"
-          >
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            Face Login
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-wider">
-              <span className="bg-background px-3 text-muted-foreground">or sign in with email</span>
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 bg-destructive/10 text-destructive text-sm rounded-lg p-3">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-
-
-          <form onSubmit={onSubmit} className="space-y-4">
-            {faceMode ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="face_email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="face_email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-9 h-11"
-                      required
-                      autoComplete="email"
-                    />
-                  </div>
-                </div>
-                {email ? (
-                  <FaceCamera 
-                    mode="verify" 
-                    onCapture={handleFaceLogin}
-                    onError={(err) => setError(err.message)}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center">Please enter your email above first.</p>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full text-xs text-muted-foreground"
-                  onClick={() => setFaceMode(false)}
-                >
-                  Back to standard sign in
-                </Button>
-              </div>
-            ) : ssoMode ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sso_email">Work Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="sso_email"
-                      type="email"
-                      placeholder="you@company.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-9 h-11"
-                      required
-                      autoComplete="email"
-                    />
-                  </div>
-                </div>
-                <Button 
-                  type="button" 
-                  disabled={loading} 
-                  className="w-full h-11 group"
-                  onClick={async () => {
-                    setError(null)
-                    setLoading(true)
-                    try {
-                      const res = await fetch('/api/auth/sso', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: email.trim().toLowerCase() })
-                      })
-                      const data = await res.json()
-                      if (!res.ok) throw new Error(data.error || 'SSO failed')
-                      if (data.redirect_url) {
-                        window.location.href = data.redirect_url
-                      }
-                    } catch (e: any) {
-                      setError(e.message)
-                      setLoading(false)
-                    }
-                  }}
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Continue to Provider
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full text-xs text-muted-foreground"
-                  onClick={() => setSsoMode(false)}
-                >
-                  Back to standard sign in
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-9 h-11"
-                      required
-                      autoComplete="email"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
-                    <Link
-                      href="/auth/forgot-password"
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-9 pr-10 h-11"
-                      required
-                      autoComplete="current-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {totpRequired && (
-                  <div className="space-y-2">
-                    <Label htmlFor="totp-code">Two-factor code</Label>
-                    <Input
-                      id="totp-code"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={totpCode}
-                      onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                      placeholder="000000"
-                      className="h-11 text-center font-mono text-lg tracking-widest"
-                      autoComplete="one-time-code"
-                    />
-                  </div>
-                )}
-
-                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={keepSignedIn}
-                    onChange={(e) => setKeepSignedIn(e.target.checked)}
-                    className="h-4 w-4 rounded border-input accent-primary"
-                  />
-                  <span className="text-muted-foreground">Keep me signed in</span>
-                </label>
-
-                <Button type="submit" disabled={loading} className="w-full h-11 group">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Sign in
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
-                </Button>
-                <TurnstileWidget
-                  onVerify={(token) => setTurnstileToken(token)}
-                  resetKey={turnstileResetKey}
-                />
-              </>
+      {!pendingSecondFactor && mode === "password" && (
+        <>
+          <form onSubmit={onSubmit} className="space-y-5" noValidate={false}>
+            {emailField}
+            <PasswordField
+              id="password"
+              label={t("auth.password")}
+              placeholder={t("auth.passwordPlaceholder")}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              labelAction={
+                <Link href="/auth/forgot-password" className="text-sm font-medium text-cs-accent-text hover:underline">
+                  {t("auth.forgotPassword")}
+                </Link>
+              }
+            />
+            {totpRequired && (
+              <Field
+                id="totp-code"
+                label={t("auth.authenticatorCode")}
+                inputMode="numeric"
+                maxLength={6}
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                autoComplete="one-time-code"
+                autoFocus
+                className="text-center text-xl tracking-[0.4em] tabular-nums"
+              />
             )}
+            <PrimaryButton type="submit" loading={loading}>
+              {t("auth.signIn")}
+            </PrimaryButton>
+            <TurnstileWidget onVerify={(token) => setTurnstileToken(token)} resetKey={turnstileResetKey} />
           </form>
 
+          <Divider>{t("auth.or")}</Divider>
 
-          <p className="text-xs text-muted-foreground text-center">
-            By signing in you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-foreground">Terms</Link> and{" "}
-            <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+          <div className="grid grid-cols-2 gap-3">
+            <SecondaryButton onClick={() => handleOAuth("google")} disabled={loading}>
+              {lastLogin?.method === "google" && <LastUsedBadge />}
+              <GoogleIcon />
+              Google
+            </SecondaryButton>
+            <SecondaryButton onClick={() => handleOAuth("github")} disabled={loading}>
+              {lastLogin?.method === "github" && <LastUsedBadge />}
+              <Github className="h-5 w-5" />
+              GitHub
+            </SecondaryButton>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-3 text-[15px]">
+            {platformSettings.enable_sso_login && (
+              <button type="button" onClick={() => goTo("sso")} className="relative inline-flex items-center gap-2 font-medium text-cs-ink-soft hover:text-cs-ink">
+                <ShieldCheck className="h-4 w-4" aria-hidden />
+                {t("auth.useSso")}
+                {lastLogin?.method === "sso" && <span className="rounded-full bg-cs-mark px-2 text-xs font-semibold text-cs-accent-ink">{t("auth.lastUsed")}</span>}
+              </button>
+            )}
+            <button type="button" onClick={() => goTo("face")} className="inline-flex items-center gap-2 font-medium text-cs-ink-soft hover:text-cs-ink">
+              <ScanFace className="h-4 w-4" aria-hidden />
+              {t("auth.signInWithFace")}
+            </button>
+          </div>
+        </>
+      )}
+
+      {!pendingSecondFactor && mode === "sso" && (
+        <form onSubmit={handleSso} className="space-y-5">
+          {emailField}
+          <PrimaryButton type="submit" loading={loading}>
+            {t("auth.continueToOrg")}
+          </PrimaryButton>
+        </form>
+      )}
+
+      {!pendingSecondFactor && mode === "face" && emailCodePending && (
+        <form onSubmit={handleEmailCode} className="space-y-5">
+          <p className="text-cs-ink-soft">
+            {rich("auth.faceNewDeviceCode", { email: <span className="font-semibold text-cs-ink">{email.trim().toLowerCase()}</span> })}
+          </p>
+          {emailCodeNotice && (
+            <p role="status" className="rounded-md border border-cs-grid px-4 py-3 text-[15px] text-cs-ink-soft">
+              {emailCodeNotice}
+            </p>
+          )}
+          <Field
+            id="face-email-code"
+            label={t("auth.codeFromEmail")}
+            inputMode="numeric"
+            maxLength={6}
+            value={emailCode}
+            onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            autoComplete="one-time-code"
+            autoFocus
+            required
+            className="text-center text-xl tracking-[0.4em] tabular-nums"
+          />
+          <PrimaryButton type="submit" loading={loading} disabled={emailCode.length !== 6}>
+            {t("auth.verifyAndSignIn")}
+          </PrimaryButton>
+          <button
+            type="button"
+            onClick={() => void resendEmailCode()}
+            disabled={loading}
+            className="text-[15px] font-medium text-cs-ink-soft hover:text-cs-ink disabled:opacity-50"
+          >
+            {t("auth.sendNewCode")}
+          </button>
+          <p className="text-sm text-cs-ink-soft">{t("auth.rememberDevice")}</p>
+        </form>
+      )}
+
+      {!pendingSecondFactor && mode === "face" && !emailCodePending && (
+        <div className="space-y-5">
+          {emailField}
+          {email && faceChallenge ? (
+            <div className="overflow-hidden rounded-md border border-cs-grid">
+              <FaceCamera
+                key={faceAttempt}
+                mode="verify"
+                livenessChallenge={faceChallenge}
+                onCapture={() => {}}
+                onLivenessCapture={(r) => void handleFaceLogin(r)}
+                onError={(err) => setError(err.message)}
+              />
+            </div>
+          ) : (
+            <p className="text-cs-ink-soft">{t("auth.enterEmailForCamera")}</p>
+          )}
+          <p className="text-sm text-cs-ink-soft">
+            {t("auth.livenessHint")}
           </p>
         </div>
-      </main>
-    </div>
+      )}
+
+      {(mode !== "password" || pendingSecondFactor) && (
+        <button type="button" onClick={() => goTo("password")} className="mt-6 text-[15px] font-semibold text-cs-accent-text hover:underline">
+          {t("auth.usePasswordInstead")}
+        </button>
+      )}
+
+      <p className="mt-10 text-sm text-cs-ink-soft">
+        {rich("auth.agreeSignIn", {
+          terms: <Link href="/terms" className="underline hover:text-cs-ink">{t("auth.terms")}</Link>,
+          privacy: <Link href="/privacy" className="underline hover:text-cs-ink">{t("auth.privacyPolicy")}</Link>,
+        })}
+      </p>
+    </AuthShell>
   );
 }
 

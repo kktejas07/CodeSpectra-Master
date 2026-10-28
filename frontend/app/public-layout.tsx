@@ -1,18 +1,42 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Code2, CodeXml, ArrowRight, Menu, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { CodeXml } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
+import { useState, useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
+import { copyrightLine } from '@/lib/copyright'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
-import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
+import { LanguageSuggestBanner, PublicLanguageLinks, PublicLanguageMenu, useLocalizedHref } from '@/components/i18n/public-language'
+import dynamic from 'next/dynamic'
+
+// Decorative canvas animation below the fold: load it after hydration so it
+// never competes with the page's own content for the main thread (CWV).
+const FooterAnimatedBackdrop = dynamic(
+  () => import('@/components/landing/footer-animated-backdrop').then((m) => m.FooterAnimatedBackdrop),
+  { ssr: false },
+)
 import { FooterWordmark } from '@/components/landing/footer-wordmark'
+// Turnstile for the footer newsletter form — loaded only once someone starts typing.
+const TurnstileWidget = dynamic(() => import('@/components/auth/turnstile-widget').then((m) => m.TurnstileWidget), { ssr: false })
 
 export const DASHBOARD_HREF = '/dashboard'
+
+/** Footer columns: [href, label key]. Links to translated pages get the current language's prefix. */
+const FOOTER_COLUMNS = [
+  { title: 'public.footProduct', links: [['/features', 'public.navFeatures'], ['/pricing', 'public.navPricing'], ['/marketplace', 'public.navMarketplace'], ['/jobs', 'public.footJobBoard'], ['/hackathons', 'public.navHackathons'], ['/events', 'public.navEvents'], ['/companies', 'public.footInterviewPrep']] },
+  { title: 'public.footResources', links: [['/docs', 'public.footDocs'], ['/newsletter', 'public.footNewsletter'], ['/learn', 'public.navLearn'], ['/news', 'public.footTechNews'], ['/api-reference', 'public.footApi'], ['/support', 'public.footSupport'], ['/faq', 'public.footFaq']] },
+  // SEO-029: the community hubs need internal links (they were reachable only from the sitemap).
+  { title: 'public.footCommunity', links: [['/community', 'public.footForum'], ['/contests', 'public.footContests'], ['/certifications', 'public.footCertifications'], ['/leagues', 'public.footLeagues'], ['/mentors', 'public.footMentors']] },
+  { title: 'public.footCompany', links: [['/about', 'public.footAbout'], ['/contact', 'public.footContact'], ['/careers', 'public.footCareers'], ['/security', 'public.footSecurity'], ['/open-source', 'public.footOpenSource'], ['/editorial-policy', 'public.footEditorial']] },
+  { title: 'public.footLegal', links: [['/privacy', 'public.footPrivacy'], ['/terms', 'public.footTerms'], ['/cookies', 'public.footCookies'], ['/credits', 'public.footCredits']] },
+] as const
 
 export function PublicPageWrapper({
   children,
@@ -23,6 +47,65 @@ export function PublicPageWrapper({
   const addToast = useToast()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [subscribing, setSubscribing] = useState(false)
+  const [newsletterCaptchaOn, setNewsletterCaptchaOn] = useState(false)
+  const [newsletterCaptcha, setNewsletterCaptcha] = useState<string | null>(null)
+  const [newsletterCaptchaReset, setNewsletterCaptchaReset] = useState(0)
+  const pathname = usePathname()
+  // Public pages are English unless rendered under app/[lang] (Hindi / Telugu provider).
+  const { t } = useT()
+  const apiError = useApiError()
+  const lp = useLocalizedHref()
+  const headerRef = useRef<HTMLElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Close the mobile menu whenever the route changes (incl. back/forward).
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  // Mobile menu: lock page scroll, trap focus inside the header, Esc closes,
+  // and close when the viewport grows to the desktop nav.
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const header = headerRef.current
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusables = () =>
+      Array.from(
+        header?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [],
+      ).filter((el) => el.offsetParent !== null)
+    document.querySelector<HTMLElement>('#mobile-menu a[href]')?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMobileMenuOpen(false)
+        menuButtonRef.current?.focus()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const els = focusables()
+      if (!els.length) return
+      const first = els[0]
+      const last = els[els.length - 1]
+      if (e.shiftKey && (document.activeElement === first || !header?.contains(document.activeElement))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (document.activeElement === last || !header?.contains(document.activeElement))) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onMq = () => mq.matches && setMobileMenuOpen(false)
+    document.addEventListener('keydown', onKey)
+    mq.addEventListener('change', onMq)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.removeEventListener('keydown', onKey)
+      mq.removeEventListener('change', onMq)
+    }
+  }, [mobileMenuOpen])
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 60)
@@ -31,280 +114,167 @@ export function PublicPageWrapper({
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const navLinks = [
+    { href: lp('/features'), label: t('public.navFeatures') },
+    { href: '/hackathons', label: t('public.navHackathons') },
+    { href: '/jobs', label: t('public.navJobs') },
+    { href: lp('/events'), label: t('public.navEvents') },
+    { href: lp('/pricing'), label: t('public.navPricing') },
+    { href: lp('/marketplace'), label: t('public.navMarketplace') },
+    { href: lp('/learn'), label: t('public.navLearn') },
+    { href: lp('/news'), label: t('public.navNews') },
+    { href: lp('/digest'), label: t('public.navDigest') },
+    { href: '/docs', label: t('public.navDocs') },
+  ]
+  const footLink = 'text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200'
+
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Top Banner */}
-      <div className="relative z-50 bg-linear-to-r from-[#091e17] via-[#0b2923] to-[#121a29] text-slate-200 text-xs py-2 px-4 border-b border-teal-500/20 text-center flex items-center justify-center gap-2 overflow-hidden">
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#00c573_1px,transparent_1px)] bg-size-[16px_16px]" />
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 font-semibold text-[10px] border border-teal-500/30 uppercase tracking-wider">
-          <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
-          Builder's Day
-        </span>
-        <span className="hidden sm:inline text-slate-300">CodeSpectra's AI Developer Conference · October 26 · San Francisco</span>
-        <Link href="/events" className="inline-flex items-center gap-1 bg-slate-900/80 hover:bg-slate-800 text-teal-300 hover:text-white px-2.5 py-0.5 rounded-full text-[11px] font-medium border border-teal-500/30 transition-all hover:border-teal-400 hover:shadow-xs hover:shadow-teal-500/20 ml-1">
-          Get tickets <ArrowRight className="w-3 h-3 text-teal-400" />
-        </Link>
-      </div>
+    <div className="cs-brand min-h-screen flex flex-col">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-cs-sheet focus:px-4 focus:py-2">
+        {t('common.skipToContent')}
+      </a>
 
       {/* Navigation */}
-      <header className={cn(
-        'fixed left-0 right-0 z-50 transition-all duration-300 ease-out',
-        isScrolled ? 'top-3' : 'top-10'
-      )}>
-        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
-          <div className={cn(
-            'relative flex items-center justify-between gap-3 px-4 py-2.5 transition-all duration-300 rounded-full border',
-            isScrolled
-              ? 'bg-[#090d14]/85 backdrop-blur-xl border-slate-700/60 shadow-xl shadow-black/40 ring-1 ring-white/5'
-              : 'bg-[#090d14]/70 backdrop-blur-lg border-slate-800/80 shadow-lg shadow-black/20'
-          )}>
-            {/* Logo */}
-            <Link href="/" className="group relative z-10 flex min-w-0 shrink-0 items-center gap-2.5 transition-transform hover:scale-[1.02]">
-              <div className="relative flex items-center justify-center rounded-xl bg-linear-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 border border-teal-500/40 shadow-sm shadow-teal-500/20 group-hover:border-teal-400 transition-colors">
-                <svg className="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="nav-logo-grad" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#2dd4bf" />
-                      <stop offset="50%" stopColor="#00c573" />
-                      <stop offset="100%" stopColor="#38bdf8" />
-                    </linearGradient>
-                    <filter id="nav-logo-glow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="2" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                  </defs>
-                  <path d="M7 10L16 4L25 10V22L16 28L7 22V10Z" stroke="url(#nav-logo-grad)" strokeWidth="2" strokeLinejoin="round" />
-                  <path d="M16 4V28M7 10L25 22M7 22L25 10" stroke="url(#nav-logo-grad)" strokeWidth="1.2" strokeOpacity="0.6" />
-                  <circle cx="16" cy="16" r="3" fill="#00c573" filter="url(#nav-logo-glow)" />
-                </svg>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold tracking-tight text-white text-lg md:text-xl">
-                  CodeSpectra
-                </span>
-                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[11px] font-mono font-bold bg-teal-500/15 text-teal-400 border border-teal-500/30">
-                  AI
-                </span>
-              </div>
-            </Link>
+      <header
+        ref={headerRef}
+        className={cn(
+          'fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200',
+          // solid at all times: the hero below is white in both themes
+          isScrolled || mobileMenuOpen ? 'border-cs-grid bg-cs-paper/95 backdrop-blur-md' : 'border-cs-grid/60 bg-cs-paper',
+        )}
+      >
+        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href={lp('/')} className="flex shrink-0 items-center gap-2.5" aria-label={t('common.homeAria')}>
+            <BrandLogo />
+          </Link>
 
-            {/* Desktop Menu Links */}
-            <nav className="hidden md:flex items-center gap-1.5 lg:gap-3" aria-label="Primary">
+          <nav className="hidden items-center gap-0.5 lg:flex" aria-label={t('public.primaryNav')}>
+            {navLinks.map((l) => (
               <Link
-                href="/features"
-                className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
+                key={l.href}
+                href={l.href}
+                className="rounded-md px-2.5 py-2 text-[15px] font-medium text-cs-ink-soft transition-colors hover:text-cs-ink xl:px-3"
               >
-                Features
+                {l.label}
               </Link>
-              <Link
-                href="/hackathons"
-                className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
-              >
-                Hackathons
-              </Link>
-              <Link
-                href="/events"
-                className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
-              >
-                Events
-              </Link>
-              <Link
-                href="/pricing"
-                className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/blog"
-                className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
-              >
-                Blog
-              </Link>
-              <Link
-                href="/docs"
-                className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
-              >
-                Docs
-              </Link>
-            </nav>
+            ))}
+          </nav>
 
-            {/* Right Side Actions */}
-            <div className="relative z-10 flex shrink-0 items-center gap-2 sm:gap-3">
-              {/* Theme Switch */}
-              <div className="hidden sm:block">
-                <NavThemeSwitch compact />
-              </div>
-
-              {/* Auth / Dashboard CTA */}
-              <div className="flex items-center gap-2">
-                {hasSession ? (
-                  <Button size="sm" asChild className="gap-1.5 rounded-full bg-mint-pulse hover:bg-phosphor-green text-slate-950 font-bold px-4.5 py-2 text-xs sm:text-sm shadow-md shadow-mint-pulse/25 transition-all hover:scale-105">
-                    <Link href={DASHBOARD_HREF}>
-                      Dashboard
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <>
-                    <Link
-                      href="/auth/login"
-                      className="shrink-0 transition-colors hover:text-white text-xs sm:text-sm font-semibold text-slate-300 px-3 py-1.5 rounded-full hover:bg-slate-800/60"
-                    >
-                      Log in
-                    </Link>
-                    <Link
-                      href="/auth/signup"
-                      className="shrink-0 inline-flex items-center gap-1 rounded-full bg-linear-to-r from-mint-pulse to-[#2dd4bf] hover:from-phosphor-green hover:to-[#5eead4] text-slate-950 px-4.5 py-2 text-xs sm:text-sm font-bold transition-all shadow-md shadow-mint-pulse/25 hover:shadow-lg hover:shadow-mint-pulse/40 hover:scale-105"
-                    >
-                      Get started
-                      <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-                    </Link>
-                  </>
-                )}
-              </div>
-
-              {/* Mobile Menu Toggle Button */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="inline-flex items-center justify-center rounded-full p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 md:hidden transition-colors border border-slate-700/50"
-                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              >
-                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-              </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <PublicLanguageMenu className="hidden sm:block" />
+            <div className="hidden sm:block">
+              <NavThemeSwitch compact />
             </div>
+            {hasSession ? (
+              <Link
+                href={DASHBOARD_HREF}
+                className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
+              >
+                {t('public.dashboard')}
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/login" className="hidden rounded-md px-3 py-2 text-sm font-semibold text-cs-ink sm:inline-flex">
+                  {t('public.logIn')}
+                </Link>
+                <Link
+                  href={lp('/contact')}
+                  className="inline-flex h-10 items-center whitespace-nowrap rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
+                >
+                  {t('public.bookPilot')}
+                </Link>
+              </>
+            )}
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cs-ink lg:hidden"
+              aria-label={mobileMenuOpen ? t('public.closeMenu') : t('public.openMenu')}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
+            >
+              <AnimatedIcon name={mobileMenuOpen ? 'close' : 'menu'} size={20} />
+            </button>
           </div>
-
-          {/* Mobile Drawer Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden mt-2 p-4 bg-[#090d14]/95 backdrop-blur-2xl border border-slate-800 rounded-2xl shadow-2xl space-y-3 animate-in fade-in-50 slide-in-from-top-3 duration-200">
-              <div className="grid grid-cols-2 gap-2 text-sm font-medium">
-                <Link
-                  href="/features"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2.5 text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
-                >
-                  Features
-                </Link>
-                <Link
-                  href="/hackathons"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2.5 text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
-                >
-                  Hackathons
-                </Link>
-                <Link
-                  href="/events"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2.5 text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
-                >
-                  Events
-                </Link>
-                <Link
-                  href="/pricing"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2.5 text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
-                >
-                  Pricing
-                </Link>
-                <Link
-                  href="/docs"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-2 p-2.5 text-slate-300 hover:text-white hover:bg-slate-800/60 rounded-xl transition-colors"
-                >
-                  Docs
-                </Link>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 px-1">
-                <span className="text-xs text-slate-400 font-medium">Appearance</span>
-                <NavThemeSwitch />
-              </div>
-
-              <div className="pt-2">
-                {hasSession ? (
-                  <Button size="sm" asChild className="w-full gap-1.5 rounded-xl bg-mint-pulse hover:bg-phosphor-green text-slate-950 font-bold py-2">
-                    <Link href={DASHBOARD_HREF}>
-                      Go to dashboard
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild className="flex-1 rounded-xl border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800 hover:text-white">
-                      <Link href="/auth/login">Log in</Link>
-                    </Button>
-                    <Button size="sm" asChild className="flex-1 rounded-xl bg-linear-to-r from-mint-pulse to-[#2dd4bf] text-slate-950 font-bold shadow-md shadow-mint-pulse/20">
-                      <Link href="/auth/signup">Get started</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
-      </header>
 
-      {/* Content — pages handle their own width + padding */}
-      <main className="flex-1 pt-16">
+        {mobileMenuOpen && (
+          <div
+            id="mobile-menu"
+            className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-cs-grid bg-cs-paper px-4 pb-6 lg:hidden"
+          >
+            <nav className="flex flex-col py-2" aria-label={t('public.mobileNav')}>
+              {navLinks.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-current={pathname === l.href ? 'page' : undefined}
+                  className="border-b border-cs-grid py-3.5 text-lg font-medium aria-[current=page]:text-cs-accent"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+            <div className="flex items-center justify-between py-4">
+              <span className="text-sm text-cs-ink-soft">{t('public.appearance')}</span>
+              <NavThemeSwitch />
+            </div>
+            <PublicLanguageLinks className="pb-4" />
+            {!hasSession && (
+              <Link
+                href="/auth/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex h-12 items-center justify-center rounded-md border border-cs-ink/25 font-semibold"
+              >
+                {t('public.logIn')}
+              </Link>
+            )}
+          </div>
+        )}
+      </header>
+      {mobileMenuOpen && (
+        <div
+          aria-hidden
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-x-0 bottom-0 top-16 z-40 bg-black/40 backdrop-blur-[1px] lg:hidden"
+        />
+      )}
+
+      <main id="main" className="flex-1 pt-16">
+        <LanguageSuggestBanner />
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="relative overflow-hidden border-t border-border/40 bg-muted/15 py-20 dark:bg-muted/10 lg:py-24">
+      <footer className="relative overflow-hidden border-t border-cs-grid bg-cs-sheet py-16 lg:py-20">
         <FooterAnimatedBackdrop />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-8 md:gap-12 mb-12">
+        <div className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
-              <Link href="/" className="group flex items-center gap-2.5 mb-6">
-                <div className="flex items-center justify-center rounded-xl bg-linear-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 border border-teal-500/40 shadow-sm shadow-teal-500/20">
-                  <svg className="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M7 10L16 4L25 10V22L16 28L7 22V10Z" stroke="#2dd4bf" strokeWidth="2" strokeLinejoin="round" />
-                    <path d="M16 4V28M7 10L25 22M7 22L25 10" stroke="#00c573" strokeWidth="1.2" strokeOpacity="0.6" />
-                    <circle cx="16" cy="16" r="3" fill="#00c573" />
-                  </svg>
-                </div>
-                <span className="font-bold tracking-tight text-lg text-foreground">CodeSpectra</span>
+              <Link href={lp('/')} className="mb-5 flex items-center gap-2.5" aria-label={t('common.homeAria')}>
+                <BrandLogo />
               </Link>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                CodeSpectra helps you learn and improve: scan your code, fix issues with guidance and AI support, practice
-                challenges, take courses and assessments, train for interviews, earn certificates, and explore opportunities.
-              </p>
+              <p className="text-sm text-cs-ink-soft leading-relaxed">{t('public.footerBlurb')}</p>
+              <PublicLanguageLinks className="mt-5" />
             </div>
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Product</h4>
-              <ul className="space-y-4">
-                <li><Link href="/features" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Features</Link></li>
-                <li><Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Pricing</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Resources</h4>
-              <ul className="space-y-4">
-                <li><Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</Link></li>
-                <li><Link href="/newsletter" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Newsletter</Link></li>
-                <li><Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Blog</Link></li>
-                <li><Link href="/api-reference" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">API reference</Link></li>
-                <li><Link href="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Support</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Company</h4>
-              <ul className="space-y-4">
-                <li><Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">About</Link></li>
-                <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Contact</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Legal</h4>
-              <ul className="space-y-4">
-                <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Privacy</Link></li>
-                <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Terms</Link></li>
-                <li><Link href="/cookies" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Cookies</Link></li>
-              </ul>
-            </div>
+            {FOOTER_COLUMNS.map((col) => (
+              <div key={col.title}>
+                <h2 className="text-sm font-semibold text-cs-ink mb-4">{t(col.title)}</h2>
+                <ul className="space-y-3">
+                  {col.links.map(([href, label]) => (
+                    <li key={href}><Link href={lp(href)} className={footLink}>{t(label)}</Link></li>
+                  ))}
+                  {col.title === 'public.footLegal' && (
+                    <li><button type="button" data-cookie-settings className={footLink}>{t('public.cookieSettings')}</button></li>
+                  )}
+                </ul>
+              </div>
+            ))}
             <div className="col-span-2 md:col-span-1">
-              <h4 className="font-semibold text-foreground text-sm mb-6">Newsletter</h4>
-              <p className="text-sm text-muted-foreground mb-4">Subscribe to our newsletter to get the latest updates.</p>
+              <h2 className="text-sm font-semibold text-cs-ink mb-4">{t('public.footNewsletter')}</h2>
+              <p className="text-sm text-cs-ink-soft mb-4">{t('public.newsletterBlurb')}</p>
               <form 
                 className="space-y-2"
                 onSubmit={async (e) => {
@@ -313,28 +283,33 @@ export function PublicPageWrapper({
                   const formData = new FormData(form)
                   const email = ((formData.get('email') as string) || '').trim()
                   if (!email) return
-                  const btn = form.querySelector('button')
-                  if (btn) btn.disabled = true
+                  setSubscribing(true)
                   try {
                     const res = await csrfFetch('/api/newsletter/subscribe', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ email, source: 'footer' })
+                      body: JSON.stringify({ email, source: 'footer', turnstileToken: newsletterCaptcha || undefined })
                     })
-                    let errMsg = `Subscribe failed (${res.status})`
+                    let errMsg = t('public.subscribeFailedStatus', { status: res.status })
                     let already = false
+                    let needsConfirm = false
                     try {
-                      const data = (await res.json()) as { ok?: boolean; already_subscribed?: boolean; error?: string }
+                      const data = (await res.json()) as { ok?: boolean; already_subscribed?: boolean; confirmation_required?: boolean; error?: string }
                       if (data?.already_subscribed) already = true
-                      if (data?.error) errMsg = data.error
+                      if (data?.confirmation_required) needsConfirm = true
+                      if (data?.error) errMsg = apiError(data, errMsg)
                     } catch { /* non-JSON body — keep status message */ }
                     if (!res.ok) throw new Error(errMsg)
-                    addToast({ type: 'success', title: already ? 'Already subscribed!' : 'Subscribed successfully!' })
+                    if (needsConfirm) addToast({ type: 'info', title: t('public.checkEmail'), message: t('public.confirmResubscribe') })
+                    else addToast({ type: 'success', title: already ? t('public.alreadySubscribed') : t('public.subscribed') })
                     form.reset()
                   } catch (err) {
-                    addToast({ type: 'error', title: 'Failed to subscribe.', message: err instanceof Error ? err.message : undefined })
+                    addToast({ type: 'error', title: t('public.subscribeFailed'), message: err instanceof Error ? err.message : undefined })
                   } finally {
-                    if (btn) btn.disabled = false
+                    // Turnstile tokens are single-use.
+                    setNewsletterCaptcha(null)
+                    setNewsletterCaptchaReset((k) => k + 1)
+                    setSubscribing(false)
                   }
                 }}
               >
@@ -342,37 +317,63 @@ export function PublicPageWrapper({
                   type="email"
                   name="email"
                   required
-                  placeholder="Enter your email"
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary"
+                  placeholder={t('public.emailPlaceholder')}
+                  aria-label={t('public.emailLabel')}
+                  onFocus={() => setNewsletterCaptchaOn(true)}
+                  className="h-10 w-full rounded-md border border-cs-grid bg-cs-paper px-3 text-sm text-cs-ink placeholder:text-cs-ink-soft"
                 />
-                <Button type="submit" size="sm" className="w-full">
-                  Subscribe
-                </Button>
+                {newsletterCaptchaOn && <TurnstileWidget onVerify={setNewsletterCaptcha} resetKey={newsletterCaptchaReset} />}
+                <button
+                  type="submit"
+                  disabled={subscribing}
+                  aria-busy={subscribing}
+                  className="h-10 w-full rounded-md bg-cs-ink text-sm font-semibold text-cs-paper disabled:opacity-60"
+                >
+                  {subscribing ? t('public.subscribing') : t('public.subscribe')}
+                </button>
               </form>
             </div>
           </div>
-          <div className="flex flex-col gap-6 border-t border-border/40 pt-10 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">© 2026 CodeSpectra. All rights reserved.</p>
+          <div className="flex flex-col gap-6 border-t border-cs-grid pt-8 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-cs-ink-soft" suppressHydrationWarning>{t('public.copyright', { line: copyrightLine() })}</p>
             <div className="flex flex-wrap items-center gap-4 sm:justify-end">
-              <Link href="/status" className="flex items-center gap-2 rounded-full border border-border/50 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/80 transition-colors">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                All systems operational
+              <Link
+                href="/status"
+                className="flex items-center gap-2 rounded-full border border-cs-grid bg-cs-paper/60 px-3 py-1.5 text-xs text-cs-ink-soft transition-colors hover:text-cs-ink"
+              >
+                {/* Not a live claim: the status page reports the real state. */}
+                <span className="relative inline-flex h-2 w-2 shrink-0 rounded-full bg-[#2f5be7]" aria-hidden />
+                {t('public.systemStatus')}
               </Link>
-              <div className="flex items-center gap-5">
-                <Link href="/docs" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="Documentation">
-                  <Code2 className="h-5 w-5" />
-                </Link>
-              </div>
+              <Link href="/docs" className="text-cs-ink-soft transition-colors hover:text-cs-ink" aria-label={t('public.footDocs')}>
+                <CodeXml className="h-5 w-5" aria-hidden />
+              </Link>
             </div>
           </div>
 
-          {/* Giant gradient wordmark + domain — Arcade-style footer logo */}
+          {/* Giant gradient wordmark (royal blue via --primary in .cs-brand) */}
           <FooterWordmark />
         </div>
       </footer>
     </div>
+  )
+}
+
+/**
+ * CodeSpectra logo: a rounded tile holding the </> mark, then the wordmark.
+ * Same mark as /public/icon.svg (the favicon), in royal blue.
+ */
+export function BrandLogo({ className }: { className?: string }) {
+  return (
+    <span className={cn('flex items-center gap-3', className)}>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#2f5be7]/45 bg-[#2f5be7]/12 dark:border-[#5b84ff]/45 dark:bg-[#2f5be7]/20">
+        <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] text-[#2f5be7] dark:text-[#8aa8ff]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M8 7L3 12L8 17" />
+          <path d="M16 7L21 12L16 17" />
+          <path d="M14 4.5L10 19.5" />
+        </svg>
+      </span>
+      <span className="text-[1.3rem] font-bold tracking-tight">CodeSpectra</span>
+    </span>
   )
 }

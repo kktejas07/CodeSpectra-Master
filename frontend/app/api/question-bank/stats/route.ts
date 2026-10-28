@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAdmin } from '@/lib/route-auth'
 import { questionBank } from '@/lib/question-bank'
 import { BRANCHES, DEGREE_TYPES } from '@/lib/engineering-catalog'
 
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
-  const gate = await requireAuth()
+  // Bank docs carry answer keys and test cases — staff only (exams sample from here).
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const col = await questionBank()
@@ -52,6 +53,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (e) {
     console.error('[question-bank/stats] error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

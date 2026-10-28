@@ -1,5 +1,6 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -13,6 +14,10 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
+import { PageHeader } from '@/components/app/page-kit'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type CalEvent = {
   id: string
@@ -22,10 +27,36 @@ type CalEvent = {
   end?: string | null
   url?: string | null
   source?: string
+  /** Derived from a hackathon/codeathon registration — not deletable here. */
+  readOnly?: boolean
+}
+
+type Filter = 'all' | 'personal' | 'hackathon' | 'codeathon' | 'interview' | 'assessment' | 'booking' | 'event'
+const FILTERS = (t: Translator): Array<{ id: Filter; label: string }> => ([
+  { id: 'all', label: t('dash.all') },
+  { id: 'personal', label: t('dash.myEntries') },
+  { id: 'interview', label: t('dash.interviews') },
+  { id: 'assessment', label: t('dash.testDeadlines') },
+  { id: 'booking', label: t('dash.bookings') },
+  { id: 'event', label: t('dash.savedEvents') },
+  { id: 'hackathon', label: t('dash.hackathons') },
+  { id: 'codeathon', label: t('dash.codeathons') },
+])
+const DERIVED = new Set(['hackathon', 'codeathon', 'assessment', 'booking', 'event'])
+
+function matchesFilter(ev: CalEvent, f: Filter): boolean {
+  if (f === 'all') return true
+  // Interviews pinned at booking are personal entries with source 'interview' — they count as interviews.
+  if (f === 'personal') return !DERIVED.has(String(ev.source)) && ev.source !== 'interview'
+  return ev.source === f
 }
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+function localKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function daysInMonth(d: Date) {
@@ -33,6 +64,9 @@ function daysInMonth(d: Date) {
 }
 
 export default function CalendarPage() {
+  const apiError = useApiError()
+  const { formatDateTime } = useLocaleDates()
+  const { t, fmt } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()))
@@ -41,6 +75,7 @@ export default function CalendarPage() {
   const [title, setTitle] = useState('')
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
+  const [filter, setFilter] = useState<Filter>('all')
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
@@ -48,33 +83,38 @@ export default function CalendarPage() {
       const calendarTour: TourStep[] = [
         {
           target: '[data-tour="calendar-header"]',
-          title: 'Personal Study Calendar Hub',
-          description: 'Manage study sessions, deadlines, and course events in one place for your prep.',
+          title: t('dash.personalStudyCalendarHub'),
+          description: t('dash.manageStudySessionsDeadlinesAndCourse28d'),
           position: 'bottom',
         },
         {
           target: '[data-tour="calendar-grid"]',
-          title: 'Browse Events by Month',
-          description: 'Browse days with the arrow buttons to spot sessions and deadlines across months.',
+          title: t('dash.browseEventsByMonth'),
+          description: t('dash.browseDaysWithTheArrowButtonsb38'),
           position: 'right',
         },
         {
           target: '[data-tour="calendar-add"]',
-          title: 'Save Study Session Fast',
-          description: 'Where next: enter a title and date, Save on CodeSpectra, then track it in Upcoming.',
+          title: t('dash.saveStudySessionFast'),
+          description: t('dash.whereNextEnterATitleAnd985'),
           position: 'left',
         },
       ]
       autoPlayPageTour('calendar', calendarTour)}
   }, [gate.ready, startTour, setTourSeen])
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/user/calendar', { cache: 'no-store' })
+      if (!res.ok) throw new Error(t('dash.failedToLoadCalendarStatus', { status: res.status }))
       const json = await res.json()
       setItems(Array.isArray(json.items) ? json.items : [])
+      setLoadError(false)
     } catch {
-      addToast({ type: 'error', title: 'Could not load calendar' })
+      setLoadError(true)
+      addToast({ type: 'error', title: t('dash.couldNotLoadCalendar') })
     } finally {
       setLoading(false)
     }
@@ -84,16 +124,21 @@ export default function CalendarPage() {
     void load()
   }, [load])
 
+  const visible = useMemo(() => items.filter((ev) => matchesFilter(ev, filter)), [items, filter])
+
+  // Keyed by local date, matching the grid cells below.
   const byDay = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
-    for (const ev of items) {
-      const key = new Date(ev.start).toISOString().slice(0, 10)
+    for (const ev of visible) {
+      const d = new Date(ev.start)
+      if (!Number.isFinite(d.getTime())) continue
+      const key = localKey(d)
       const list = map.get(key) || []
       list.push(ev)
       map.set(key, list)
     }
     return map
-  }, [items])
+  }, [visible])
 
   const cells = useMemo(() => {
     const first = startOfMonth(cursor)
@@ -103,14 +148,14 @@ export default function CalendarPage() {
     for (let i = 0; i < pad; i++) out.push({ date: null, key: `pad-${i}` })
     for (let d = 1; d <= total; d++) {
       const date = new Date(cursor.getFullYear(), cursor.getMonth(), d)
-      out.push({ date, key: date.toISOString().slice(0, 10) })
+      out.push({ date, key: localKey(date) })
     }
     return out
   }, [cursor])
 
   const addEvent = async () => {
     if (!title.trim() || !when) {
-      addToast({ type: 'error', title: 'Title and date/time are required' })
+      addToast({ type: 'error', title: t('dash.titleAndDateTimeAreRequired') })
       return
     }
     setBusy(true)
@@ -125,13 +170,13 @@ export default function CalendarPage() {
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed')
+      if (!res.ok) throw new Error(apiError(json, t('dash.failed')))
       setTitle('')
       setWhen('')
       await load()
-      addToast({ type: 'success', title: 'Saved to CodeSpectra calendar' })
+      addToast({ type: 'success', title: t('dash.savedToCodespectraCalendar') })
     } catch (e: any) {
-      addToast({ type: 'error', title: e?.message || 'Could not add event' })
+      addToast({ type: 'error', title: e?.message || t('dash.couldNotAddEvent') })
     } finally {
       setBusy(false)
     }
@@ -144,39 +189,56 @@ export default function CalendarPage() {
 
   if (!gate.ready) return null
 
-  const monthLabel = cursor.toLocaleString(undefined, { month: 'long', year: 'numeric' })
+  const monthLabel = fmt.date(cursor, { month: 'long', year: 'numeric' })
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3" data-tour="calendar-header">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <CalendarDays className="h-7 w-7 text-primary" /> Calendar
-        </h1>
-        <p className="text-sm text-muted-foreground max-w-md">
-          Stay on CodeSpectra — events live here. Optional .ics / Google export remains available from courses if you want external sync.
-        </p>
+      <div data-tour="calendar-header">
+        <PageHeader
+          illustration="calendar"
+          className="mb-0"
+          icon={<CalendarDays aria-hidden />}
+          title={t('dash.calendar')}
+          description={t('dash.yourStudySessionsInterviewsTestDeadlineseb0')}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t('dash.filterCalendar')}>
+        {FILTERS(t).map((f) => (
+          <Button
+            key={f.id}
+            size="sm"
+            variant={filter === f.id ? 'default' : 'outline'}
+            aria-pressed={filter === f.id}
+            onClick={() => setFilter(f.id)}
+          >
+            {f.label}
+          </Button>
+        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <Card className="p-4 space-y-4" data-tour="calendar-grid">
+        <Card className="rounded-3xl border-border/70 p-4 space-y-4 sm:p-5" data-tour="calendar-grid">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              aria-label={t('dash.previousMonth')}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <p className="font-semibold">{monthLabel}</p>
+            <p className="font-semibold text-foreground">{monthLabel}</p>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              aria-label={t('dash.nextMonth')}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase text-muted-foreground">
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div key={d}>{d}</div>
             ))}
@@ -184,7 +246,7 @@ export default function CalendarPage() {
           {loading ? (
             <div className="grid grid-cols-7 gap-1">
               {Array.from({ length: 35 }).map((_, i) => (
-                <div key={i} className="min-h-18 rounded-md border border-border bg-card/50 p-1 animate-pulse" />
+                <div key={i} className="min-h-18 rounded-lg border border-border bg-card/50 p-1 animate-pulse motion-reduce:animate-none" />
               ))}
             </div>
           ) : (
@@ -194,16 +256,22 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={c.key}
-                    className={`min-h-18 rounded-md border p-1 text-left ${
-                      c.date ? 'border-border bg-card' : 'border-transparent'
+                    className={`min-h-18 rounded-lg border p-1 text-left ${
+                      c.date ? 'border-border/70 bg-card' : 'border-transparent'
                     }`}
                   >
                     {c.date && (
                       <>
-                        <p className="text-[11px] font-medium px-0.5">{c.date.getDate()}</p>
+                        <p className="text-[11px] font-medium tabular-nums text-foreground px-0.5">{c.date.getDate()}</p>
                         <div className="mt-0.5 space-y-0.5">
                           {dayEvents.slice(0, 2).map((ev) => (
-                            <p key={ev.id} className="truncate rounded bg-primary/15 px-1 text-[10px] text-primary">
+                            <p
+                              key={ev.id}
+                              title={ev.title}
+                              className={`truncate rounded px-1 text-[10px] ${
+                                ev.readOnly ? 'bg-cs-accent/15 text-cs-accent-text' : 'bg-primary/15 text-primary'
+                              }`}
+                            >
                               {ev.title}
                             </p>
                           ))}
@@ -221,53 +289,73 @@ export default function CalendarPage() {
         </Card>
 
         <div className="space-y-4">
-          <Card className="space-y-3 p-4" data-tour="calendar-add">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <Plus className="h-4 w-4" /> Add event
-            </h2>
+          <Card className="space-y-3 rounded-3xl border-border/70 p-5" data-tour="calendar-add">
+            <h2 className="text-lg flex items-center gap-2 font-semibold text-foreground">
+              <Plus className="h-4 w-4 text-primary" aria-hidden />{' '}{t('dash.addEvent')}</h2>
             <div className="space-y-2">
-              <Label>Title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Study session / deadline" />
+              <Label htmlFor="cal-title">{t('dash.title')}</Label>
+              <Input id="cal-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('dash.studySessionDeadline')} />
             </div>
             <div className="space-y-2">
-              <Label>When</Label>
-              <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+              <Label htmlFor="cal-when">{t('dash.when')}</Label>
+              <Input id="cal-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
             </div>
             <Button onClick={addEvent} disabled={busy} className="w-full">
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save on CodeSpectra
-            </Button>
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{t('dash.saveEvent')}</Button>
           </Card>
 
-          <Card className="space-y-3 p-4">
-            <h2 className="font-semibold">Upcoming</h2>
-            {items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No events yet. Add one here, or use “Add to calendar” on a course.
-              </p>
+          <Card className="space-y-3 rounded-3xl border-border/70 p-5">
+            <h2 className="text-lg font-semibold text-foreground">{t('dash.upcoming')}</h2>
+            {loadError && items.length === 0 ? (
+              <EmptyState
+                compact
+                illustration="error"
+                title={t('dash.couldntLoadYourCalendar')}
+                description={t('dash.checkYourConnectionAndTryAgain')}
+                actionLabel={t('common.tryAgain')}
+                onAction={() => void load()}
+              />
+            ) : visible.length === 0 ? (
+              <EmptyState
+                compact
+                illustration="calendar"
+                title={filter === 'all' ? t('dash.nothingScheduledYet') : t('dash.nothingHereForThisFilter')}
+                description={
+                  filter === 'all'
+                    ? t('dash.addAnEntryHereJoinA87b')
+                    : t('dash.tryAnotherFilterOrJoinAn73a')
+                }
+                actionLabel={filter === 'all' ? t('dash.browseEvents') : undefined}
+                actionHref={filter === 'all' ? '/dashboard/events' : undefined}
+              />
             ) : (
               <ul className="max-h-80 space-y-2 overflow-y-auto">
-                {items
+                {visible
                   .slice()
                   .sort((a, b) => +new Date(a.start) - +new Date(b.start))
                   .map((ev) => (
-                    <li key={ev.id} className="flex gap-2 rounded-lg border border-border p-2 text-sm">
+                    <li key={ev.id} className="flex gap-2 rounded-xl border border-border/70 p-2.5 text-sm">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{ev.title}</p>
-                        <p className="text-[11px] text-muted-foreground">{formatDateTime(ev.start)}</p>
+                        <p className="truncate font-medium text-foreground">{ev.title}</p>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">{formatDateTime(ev.start)}</p>
                         {ev.url && (
-                          <Link href={ev.url} className="text-[11px] text-primary hover:underline">
-                            Open →
-                          </Link>
+                          <Link href={ev.url} className="text-[11px] text-primary hover:underline">{t('dash.open')}</Link>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-destructive"
-                        onClick={() => void remove(ev.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {ev.readOnly ? (
+                        <span className="self-start rounded-full border border-border px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
+                          {ev.source}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rounded-md p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"
+                          onClick={() => void remove(ev.id)}
+                          aria-label={t('dash.deleteTitle', { title: ev.title })}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </li>
                   ))}
               </ul>

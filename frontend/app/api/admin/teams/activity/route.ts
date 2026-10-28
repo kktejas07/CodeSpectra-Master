@@ -14,7 +14,19 @@ export async function GET(req: NextRequest) {
     const weeks = Math.min(parseInt(searchParams.get('weeks') || '8'), 26)
     const now = new Date()
 
-    const teamMembers = await db.collection('team_members').find({}).toArray()
+    // Members come from the user collection (team_members had no writer, D32).
+    // tenant_admin: own organisation only; superadmin: ?tenantId= or their own.
+    const requested = searchParams.get('tenantId')
+    const tenantId = gate.user.role === 'superadmin' && requested && /^[A-Za-z0-9_-]{1,64}$/.test(requested)
+      ? requested
+      : gate.user.tenantId || null
+    const teamMembers = tenantId
+      ? await db.collection('user').find(
+          { $or: [{ tenantId }, { organizationId: tenantId }] },
+          { projection: { id: 1, _id: 1, name: 1, fullName: 1, email: 1 } },
+        ).limit(500).toArray()
+      : []
+    for (const m of teamMembers as any[]) m.id = String(m.id || m._id)
     const userIds = teamMembers.map((m: any) => m.user_id || m.userId || m.id).filter(Boolean)
 
     if (userIds.length === 0) {
@@ -50,7 +62,8 @@ export async function GET(req: NextRequest) {
         { $match: { ...matchStage, [dateField]: { $exists: true } } },
         {
           $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: `$${dateField}` } },
+            // Works for ISO strings and Dates alike.
+            _id: { $substrBytes: [{ $toString: `$${dateField}` }, 0, 10] },
             count: { $sum: 1 },
             users: { $addToSet: '$user_id' },
           }
@@ -63,10 +76,10 @@ export async function GET(req: NextRequest) {
     }
 
     const [scanMap, reviewMap, fixMap, submissionMap] = await Promise.all([
-      buildDateMap('scan_comments'),
+      buildDateMap('code_scans'),
       buildDateMap('code_review_comments'),
       buildDateMap('suggested_fixes'),
-      buildDateMap('submissions', 'submittedAt'),
+      buildDateMap('submissions'),
     ])
 
     const allDates = new Set<string>()
@@ -134,7 +147,7 @@ export async function GET(req: NextRequest) {
     const userStatsPipeline = async () => {
       const targetIds = userIds.slice(0, 20)
       const [scanStats, reviewStats, fixStats, submissionStats, userDocs] = await Promise.all([
-        db.collection('scan_comments').aggregate([
+        db.collection('code_scans').aggregate([
           { $match: { user_id: { $in: targetIds } } },
           { $group: { _id: '$user_id', count: { $sum: 1 } } },
         ]).toArray(),
@@ -150,10 +163,7 @@ export async function GET(req: NextRequest) {
           { $match: { user_id: { $in: targetIds } } },
           { $group: { _id: '$user_id', count: { $sum: 1 } } },
         ]).toArray(),
-        db.collection('user').find(
-          { id: { $in: targetIds } },
-          { projection: { id: 1, name: 1, email: 1 } },
-        ).toArray(),
+        Promise.resolve(teamMembers.filter((m: any) => targetIds.includes(m.id))),
       ])
 
       const counts: Record<string, { scans: number; reviews: number; fixes: number; submissions: number }> = {}
@@ -164,7 +174,7 @@ export async function GET(req: NextRequest) {
       for (const s of submissionStats) counts[s._id] = { ...counts[s._id], submissions: s.count }
 
       const userById: Record<string, { name: string; email: string }> = {}
-      for (const u of userDocs) userById[u.id as string] = { name: (u as any).name || String(u.id).slice(0, 8), email: (u as any).email || '' }
+      for (const u of userDocs as any[]) userById[u.id as string] = { name: u.fullName || u.name || String(u.id).slice(0, 8), email: u.email || '' }
 
       return targetIds
         .map((uid) => ({ userId: uid, name: userById[uid]?.name || uid.slice(0, 8), email: userById[uid]?.email || '', ...counts[uid], total: counts[uid].scans + counts[uid].reviews + counts[uid].fixes + counts[uid].submissions }))
@@ -175,7 +185,7 @@ export async function GET(req: NextRequest) {
     const recentActivityPipeline = async () => {
       const events: Array<{ ts: string; type: string; title: string; meta: string; detail: string; userId: string }> = []
 
-      const scans = await db.collection('scan_comments')
+      const scans = await db.collection('code_scans')
         .find({ user_id: { $in: userIds } })
         .sort({ created_at: -1 })
         .limit(5)
@@ -187,7 +197,7 @@ export async function GET(req: NextRequest) {
           ts: s.created_at as string,
           type: 'scan',
           title: 'Code scan completed',
-          meta: `${(user as any)?.name || 'Member'} · ${timeAgo(s.created_at as string)}`,
+          meta: `${(user as any)?.fullName || (user as any)?.name || 'Member'} · ${timeAgo(s.created_at as string)}`,
           detail: (s.file_path as string) || 'Repository scan',
           userId: s.user_id as string,
         })
@@ -205,7 +215,7 @@ export async function GET(req: NextRequest) {
           ts: r.created_at as string,
           type: 'review',
           title: 'Code review submitted',
-          meta: `${(user as any)?.name || 'Member'} · ${timeAgo(r.created_at as string)}`,
+          meta: `${(user as any)?.fullName || (user as any)?.name || 'Member'} · ${timeAgo(r.created_at as string)}`,
           detail: (r.file_path as string) || 'Code review',
           userId: r.user_id as string,
         })

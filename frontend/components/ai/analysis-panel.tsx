@@ -1,6 +1,7 @@
 'use client'
 
 import { Loader2, CheckCircle2, AlertCircle, Lightbulb } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface AnalysisPanelProps {
   analysis: Record<string, unknown> | null
@@ -9,12 +10,11 @@ interface AnalysisPanelProps {
 }
 
 export function AnalysisPanel({ analysis, loading, hasSubmitted }: AnalysisPanelProps) {
+  const { t } = useT()
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        AI analyzing your submission…
-      </div>
+        <Loader2 className="h-4 w-4 animate-spin" />{t('dash.aiAnalyzingYourSubmission')}</div>
     )
   }
 
@@ -22,17 +22,15 @@ export function AnalysisPanel({ analysis, loading, hasSubmitted }: AnalysisPanel
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
         <Lightbulb className="h-6 w-6 opacity-40" />
-        <p>Submit your code to get AI-powered analysis</p>
-        <p className="text-xs">Includes time complexity review, edge cases, and improvement suggestions</p>
+        <p>{t('dash.submitYourCodeToGetAi15b')}</p>
+        <p className="text-xs">{t('dash.includesTimeComplexityReviewEdgeCasesd2a')}</p>
       </div>
     )
   }
 
   if (!analysis) {
     return (
-      <div className="py-8 text-center text-sm text-muted-foreground">
-        Analysis will appear here after submission.
-      </div>
+      <div className="py-8 text-center text-sm text-muted-foreground">{t('dash.analysisWillAppearHereAfterSubmission')}</div>
     )
   }
 
@@ -50,25 +48,25 @@ export function AnalysisPanel({ analysis, loading, hasSubmitted }: AnalysisPanel
             <span className="text-lg font-bold text-primary">{score}</span>
           </div>
           <div>
-            <p className="font-medium text-foreground">Overall Score</p>
-            <p className="text-xs text-muted-foreground">Based on efficiency, readability, and correctness</p>
+            <p className="font-medium text-foreground">{t('dash.overallScore')}</p>
+            <p className="text-xs text-muted-foreground">{t('dash.basedOnEfficiencyReadabilityAndCorrectne')}</p>
           </div>
         </div>
       )}
 
       {complexity && (
         <div className="p-3 rounded-lg bg-muted/20 border border-border/40">
-          <p className="text-xs font-medium text-muted-foreground mb-1">Time Complexity</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1">{t('dash.timeComplexity')}</p>
           <p className="font-mono text-sm text-foreground">{complexity}</p>
         </div>
       )}
 
       {strengths && strengths.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Strengths</p>
+          <p className="text-xs font-medium text-green-700 dark:text-green-400">{t('dash.strengths')}</p>
           {strengths.map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-500" />
+              <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
               <span>{s}</span>
             </div>
           ))}
@@ -77,7 +75,7 @@ export function AnalysisPanel({ analysis, loading, hasSubmitted }: AnalysisPanel
 
       {issues && issues.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Areas to Improve</p>
+          <p className="text-xs font-medium text-amber-600 dark:text-amber-400">{t('dash.areasToImprove')}</p>
           {issues.map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
@@ -89,7 +87,7 @@ export function AnalysisPanel({ analysis, loading, hasSubmitted }: AnalysisPanel
 
       {suggestions && suggestions.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-primary">Suggestions</p>
+          <p className="text-xs font-medium text-primary">{t('dash.suggestions')}</p>
           {suggestions.map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
               <Lightbulb className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />

@@ -3,6 +3,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client'
 
 const shortcuts = [
   { category: 'Tools', items: [
@@ -39,6 +40,7 @@ interface ShortcutsOverlayProps {
 }
 
 export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
+  const { t } = useT()
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -65,12 +67,12 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Keyboard Shortcuts</h2>
+          <h2 className="text-sm font-semibold">{t('exam.keyboardShortcuts')}</h2>
           <button
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Close"
+            title={t('common.close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -79,7 +81,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {shortcuts.map((group) => (
             <div key={group.category}>
-              <h3 className="mb-2 text-[10px] font-medium uppercase text-muted-foreground">
+              <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
                 {group.category}
               </h3>
               <div className="flex flex-col gap-1">
@@ -96,9 +98,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
           ))}
         </div>
 
-        <div className="mt-4 border-t border-border/40 pt-3 text-center text-[10px] text-muted-foreground/50">
-          Press <kbd className="rounded border border-border/60 bg-muted px-1 py-0.5 font-mono">?</kbd> to toggle this overlay
-        </div>
+        <div className="mt-4 border-t border-border/40 pt-3 text-center text-[10px] text-muted-foreground/50">{t('exam.press')}{' '}<kbd className="rounded border border-border/60 bg-muted px-1 py-0.5 font-mono">?</kbd>{' '}{t('exam.toToggleThisOverlay')}</div>
       </div>
     </div>
   );

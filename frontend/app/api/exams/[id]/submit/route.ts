@@ -1,14 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { knowledgeOnSubmission } from '@/lib/rag/hooks'
 import { newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
+import { gradeInstant, traitScores } from '@/lib/grading-extended'
+import { attemptTimeState, checkExamEntry, checkIdentityForAttempt, extensionRequired, getExamDraft, identitySummary, recordExamAttempt, sectionsAtSubmit, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 
+import { toMediaRef } from '@/lib/identity-media'
+import { isAdaptiveExam } from '@/lib/adaptive-test'
+import { adaptiveSubmission, examAdaptiveLength, type AdaptiveState } from '@/lib/adaptive-test-server'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/** Identity captures: only small data:image URLs are kept (they are rendered in reviewer reports). */
+function photo(v: unknown): string | null {
+  return typeof v === 'string' && /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 2_000_000 ? v : null
+}
+
+/** Per-question time spent (ms): numbers only, bounded keys. */
+function timings(v: unknown): Record<string, number> {
+  const out: Record<string, number> = {}
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out
+  for (const [k, n] of Object.entries(v as Record<string, unknown>).slice(0, 500)) {
+    const ms = Number(n)
+    if (Number.isFinite(ms) && ms >= 0) out[k.slice(0, 128).replace(/[.$]/g, '_')] = Math.min(ms, 7 * 24 * 3600 * 1000)
+  }
+  return out
+}
 
 export async function POST(
   req: NextRequest,
@@ -21,6 +44,8 @@ export async function POST(
     idPhoto?: string
     facePhoto?: string
     inviteToken?: string
+    /** ?link= token from a DB-backed share link (assessment_links). */
+    linkToken?: string
     question_timings?: Record<string, number>
     total_time_ms?: number
     started_at?: string | null
@@ -28,7 +53,7 @@ export async function POST(
 
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   }
   const userId = gate.user.id
   const email = gate.user.email
@@ -37,46 +62,18 @@ export async function POST(
     const db = await getMongoDb()
 
     const inviteToken = body.inviteToken || req.headers.get('x-invite-token')
-
-    // If an invite token is provided, validate it and ensure the signed-in
-    // account owns it. The invite is marked used only AFTER the submission
-    // is saved (see below) — marking it before the save permanently locks
-    // the candidate out if anything later in this handler fails.
-    let inviteDoc: Record<string, unknown> | null = null
-    if (inviteToken) {
-      inviteDoc = (await db.collection('candidate_invites').findOne({ token: inviteToken })) as Record<string, unknown> | null
-      if (!inviteDoc) {
-        return NextResponse.json({ error: 'Invalid invitation token' }, { status: 403 })
-      }
-      if ((String(inviteDoc.email || '')).toLowerCase() !== (email || '').toLowerCase()) {
-        return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different account.' }, { status: 403 })
-      }
-      if (inviteDoc.status === 'used') {
-        // Recovery: a previous attempt may have marked the invite used but
-        // failed before saving. If no submission exists for this exam+email,
-        // allow the submit through instead of locking the candidate out.
-        const prior = await db.collection('exam_submissions').countDocuments({
-          exam_id: examId,
-          $or: [{ user_id: userId }, { email: String(inviteDoc.email || '') }],
-        })
-        if (!prior) {
-          console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: invite already used but no submission found — allowing recovery submit`)
-        } else {
-          return NextResponse.json({ error: 'This invitation has already been used' }, { status: 403 })
-        }
-      }
-    }
+    const linkToken = body.linkToken || req.headers.get('x-link-token')
 
     // IP blocking check (supports CIDR notation) — reuse shared matcher from
     // lib/db/security.ts instead of duplicating the bit-math inline.
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    const clientIp = clientIpOrEmpty(req)
     if (clientIp) {
       const blockedEntries = await db.collection('ip_blocklist').find({
         active: { $ne: false },
       }).toArray()
       for (const entry of blockedEntries) {
         if (isIpInCidr(clientIp, String(entry.ip))) {
-          return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
+          return NextResponse.json({ error: 'This IP address has been blocked.', code: 'exam_ip_blocked' }, { status: 403 })
         }
       }
     }
@@ -89,18 +86,40 @@ export async function POST(
       created_at: { $gte: new Date(Date.now() - 3600000).toISOString() }
     })
     if (recentSubmissions >= 3) {
-      return NextResponse.json({ error: 'Too many submission attempts. Please try again later.' }, { status: 429 })
+      return NextResponse.json({ error: 'Too many submission attempts. Please try again later.', code: 'exam_submit_rate' }, { status: 429 })
     }
 
     const exams = db.collection('exams')
     const exam = await exams.findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
-    // Availability-window enforcement: must SUBMIT by ends_at (UTC ISO).
-    const endsAt = (exam as { ends_at?: string | null }).ends_at
-    if (endsAt && new Date(endsAt).getTime() < Date.now()) {
-      return NextResponse.json({ error: 'Assessment window has closed' }, { status: 403 })
+    // Server-side entry gate (the page's checks are UX only): published,
+    // starts_at/ends_at window, invite-only (valid invite for this exam + account,
+    // or a valid ?link= token), and no retake. See lib/exam-access.ts.
+    // ignoreWindowClose: the attempt deadline below (capped at ends_at) is the limit here.
+    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken }, { ignoreWindowClose: true })
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+    const inviteDoc = access.invite
+
+    // Server-side timer: the attempt must have been started (POST ./start,
+    // which is the only place questions are handed out). Past the deadline +
+    // grace the browser's answers are ignored and the attempt is finalised
+    // from the draft the server saved before the deadline.
+    const draft = await getExamDraft(db, examId, userId)
+    const timeState = attemptTimeState(exam as Record<string, unknown>, draft, access.attemptNo)
+    if (timeState.status === 'not_started') {
+      return NextResponse.json({ error: 'Start the assessment before submitting.', code: 'exam_start_assessment_before_submit' }, { status: 409 })
     }
+    const late = timeState.status === 'expired'
+
+    // Identity check for this attempt (also required by start). If it is
+    // missing the page re-runs the check and submits again — the answers are
+    // kept in the draft and on the device.
+    const identity = await checkIdentityForAttempt(db, exam as Record<string, unknown>, userId, access.attemptNo)
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error, identity_required: true }, { status: identity.status })
+    }
+    const identityRecord = identity.record
 
     // Extension check: log if no hardware_port_audit event exists, but
     // don't block submission — the extension is a proctoring aid, not a
@@ -112,12 +131,19 @@ export async function POST(
       created_at: { $gte: new Date(Date.now() - 24 * 3600 * 1000).toISOString() },
     })
     const extensionDetected = auditEvents > 0
-    if (!extensionDetected) {
-      console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: no hardware_port_audit event — extension not detected`)
+    if (!extensionDetected && extensionRequired(exam as Record<string, unknown>)) {
+      // ponytail: strict mode gates the start page; the event itself is
+      // browser-reported, so it's a flag for reviewers, not a hard block.
+      console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: strict proctoring but no hardware_port_audit event`)
     }
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
-    const rawAnswers = body.answers || {}
+    const draftAnswers = draft && draft.answers && typeof draft.answers === 'object' ? draft.answers as Record<string, unknown> : {}
+    const bodyAnswers = body.answers && typeof body.answers === 'object' && !Array.isArray(body.answers) ? body.answers : {}
+    // Sectioned test: closed sections (time over / locked) keep the answers
+    // the server saved; the browser's copy only counts for the open section.
+    const sectioned = sectionsAtSubmit(exam as Record<string, unknown>, draft, bodyAnswers, timeState.deadline)
+    const rawAnswers = late ? draftAnswers : (sectioned ? sectioned.answers : bodyAnswers)
     // Injection/DoS guard: answers are stored verbatim in MongoDB, so cap
     // per-answer and total size (16MB doc limit). Content stays untouched —
     // it is inert text, never eval'd; code runs only in the Piston sandbox.
@@ -125,24 +151,40 @@ export async function POST(
     const MAX_TOTAL_ANSWER_CHARS = 1000000
     let totalChars = 0
     const answers: Record<string, string> = {}
+    // Only answers to this exam's questions are kept (no stray / operator keys).
+    const questionIds = new Set(questions.map((q: { id?: unknown }) => String(q.id)))
     for (const [k, v] of Object.entries(rawAnswers)) {
-      const s = String(v ?? '')
+      if (!questionIds.has(k)) continue
+      const s = Array.isArray(v) ? v.map((x) => String(x ?? '')).join(', ') : String(v ?? '')
       if (s.length > MAX_ANSWER_CHARS) {
-        return NextResponse.json({ error: `Answer too large (max ${MAX_ANSWER_CHARS} characters per question)` }, { status: 400 })
+        return NextResponse.json({ error: `Answer too large (max ${MAX_ANSWER_CHARS} characters per question)`, code: 'exam_answer_too_large_max', params: { max: MAX_ANSWER_CHARS } }, { status: 400 })
       }
       totalChars += s.length
       answers[k.slice(0, 128)] = s
     }
     if (totalChars > MAX_TOTAL_ANSWER_CHARS) {
-      return NextResponse.json({ error: 'Submission too large' }, { status: 400 })
+      return NextResponse.json({ error: 'Submission too large', code: 'exam_submission_too_large' }, { status: 400 })
     }
     let totalScore = 0
     let maxScore = 0
-    const details: Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review: boolean }> = []
+    const details: Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; graded_by?: string }> = []
 
     let hasPendingReview = false
 
-    for (const q of questions) {
+    // Adaptive test: each answer was graded when it came in (POST ./adaptive);
+    // the score weights difficulty (lib/adaptive-test.ts). The browser's answers are ignored.
+    const adaptiveRun = isAdaptiveExam(exam as Record<string, unknown>)
+      ? adaptiveSubmission(draft?.adaptive as AdaptiveState | undefined, examAdaptiveLength(exam as Record<string, unknown>))
+      : null
+    if (adaptiveRun) {
+      for (const k of Object.keys(answers)) delete answers[k]
+      Object.assign(answers, adaptiveRun.answers)
+      totalScore = adaptiveRun.score
+      maxScore = adaptiveRun.maxScore
+      details.push(...adaptiveRun.details)
+    }
+
+    for (const q of (adaptiveRun ? [] : questions)) {
       const points = q.points || q.score || 10
       const scored = isScoredType(q.type)
       if (scored) maxScore += points
@@ -150,11 +192,19 @@ export async function POST(
 
       let correct = false
       let pendingReview = false
+      // Wave 6: case study (sum of sub-scores) and typing test are marked now, with partial credit.
+      const instant = scored && userAnswer ? gradeInstant(q, userAnswer, points) : null
 
       if (!scored) {
         // Attitudinal scales (Likert/rating) are recorded but never graded and
         // never counted toward the max score.
         correct = false
+      } else if (instant) {
+        correct = instant.awarded > 0
+        if (instant.requires_human_review) {
+          pendingReview = true
+          hasPendingReview = true
+        }
       } else if (isDeterministicType(q.type)) {
         // All objective kinds (choice/multi/blanks/numeric/text/sequence/
         // pairs/matrix/table) go through one grader so submit and AI-grade
@@ -174,9 +224,19 @@ export async function POST(
         hasPendingReview = true
       }
 
-      if (correct && scored) totalScore += points
-      details.push({ qId: q.id, correct, points, answer: userAnswer, pending_review: pendingReview })
+      if (instant) totalScore += instant.awarded
+      else if (correct && scored) totalScore += points
+      details.push({
+        qId: q.id, correct, points, answer: userAnswer, pending_review: pendingReview,
+        ...(instant ? { awarded: instant.awarded, remarks: instant.feedback, requires_human_review: !!instant.requires_human_review, graded_by: 'auto' } : {}),
+      })
     }
+
+    // Identity photos: stored encrypted outside the submission (lib/identity-media.ts, A-011/A-042);
+    // the submission keeps a "media:<id>" reference only.
+    const mediaCtx = { examId, userId, tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null }
+    const idPhotoRef = await toMediaRef(typeof identityRecord?.id_photo === 'string' ? identityRecord.id_photo : photo(body.idPhoto), { ...mediaCtx, kind: 'id' })
+    const facePhotoRef = await toMediaRef(typeof identityRecord?.face_photo === 'string' ? identityRecord.face_photo : photo(body.facePhoto), { ...mediaCtx, kind: 'face' })
 
     // Save submission
     const submission = {
@@ -184,36 +244,79 @@ export async function POST(
       exam_id: examId,
       user_id: userId,
       email: email,
-      source: inviteToken ? 'invite' : 'public_link',
+      source: access.source === 'invite' ? 'invite' : 'public_link',
       extension_detected: extensionDetected,
       answers,
       score: totalScore,
       max_score: maxScore,
       has_pending_review: hasPendingReview,
-      auto_submitted: body.auto_submitted || false,
-      id_photo: body.idPhoto || null,
-      face_photo: body.facePhoto || null,
+      auto_submitted: late || body.auto_submitted === true,
+      // Past deadline + grace: answers are the server draft saved before the deadline.
+      late_submit: late,
+      // Photos come from the stored identity check (server-validated), not the submit body.
+      id_photo: idPhotoRef,
+      face_photo: facePhotoRef,
+      identity_check: identitySummary(identityRecord),
       details,
+      ...(adaptiveRun ? { adaptive: adaptiveRun.summary } : {}),
+      // Psychometric Likert items (trait + reverse key): per-trait scores, never in the pass mark.
+      ...(() => { const ts = traitScores(questions, answers); return ts.length ? { trait_scores: ts } : {} })(),
       device_info: { 
         ua: req.headers.get('user-agent') || '', 
         ...parseUserAgent(req.headers.get('user-agent') || ''), 
-        ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '',
+        ip: clientIpOrEmpty(req),
         geo: req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || null
       },
       // Timing data
-      question_timings: body.question_timings || {},
-      total_time_ms: body.total_time_ms || 0,
-      started_at: body.started_at || null,
+      question_timings: timings(body.question_timings),
+      // From the server start, never the client clock.
+      total_time_ms: Math.max(0, Math.min(
+        Date.now(),
+        timeState.deadline !== null ? timeState.deadline + EXAM_SUBMIT_GRACE_MS : Date.now(),
+      ) - Date.parse(timeState.startedAt)),
+      started_at: timeState.startedAt,
+      deadline: timeState.deadline !== null ? new Date(timeState.deadline).toISOString() : null,
+      // Sections as taken (so later edits to the test don't remap these scores) and their clocks.
+      ...(sectioned ? {
+        sections: sectioned.sections,
+        section_timings: Object.fromEntries(sectioned.sections.map((s) => [s.id, sectioned.state.sections[s.id] ?? {}])),
+      } : {}),
       submitted_at: nowIso(),
       created_at: nowIso(),
     }
-    await submissions.insertOne(submission)
+    // Atomic: a double submit (or two tabs) can't create two attempts — the
+    // second write hits the unique key / conditional replace and gets a 409.
+    const stored = await recordExamAttempt(db, access.current, submission, access.attemptNo)
+    if (!stored.ok) {
+      return NextResponse.json({ error: 'This attempt was already submitted.', code: 'exam_already_submitted' }, { status: 409 })
+    }
+    knowledgeOnSubmission(examId, userId, (exam as { tenant_id?: unknown }).tenant_id)
+    // Automation bus: receipts, auto-grading (coding tests + AI), workflows (lib/automation).
+    {
+      const tenantId = typeof exam.tenant_id === 'string' ? exam.tenant_id : null
+      const ev = { submission_id: submission.id, exam_id: examId, exam_title: exam.title ?? null, user_id: userId, email, score: totalScore, max_score: maxScore, has_pending_review: hasPendingReview, auto_submitted: submission.auto_submitted, late_submit: late }
+      void import('@/lib/automation/events').then(({ emit }) => {
+        void emit('exam.submitted', ev, { tenantId, idempotencyKey: `exam.submitted:${submission.id}` })
+        if (!hasPendingReview) void emit('exam.graded', { ...ev, percent: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0, graded_by: 'objective' }, { tenantId, idempotencyKey: `exam.graded:${submission.id}:${access.attemptNo}` })
+      }).catch((e) => console.error('[automation] emit failed:', e))
+    }
+    // Hiring pipeline: an auto-graded attempt is final now → record the assessment stage result;
+    // one waiting for manual grading is marked submitted (on time) and recorded once graded.
+    import('@/lib/ats/handlers/assessment')
+      .then(({ notifyAssessmentFinal }) => notifyAssessmentFinal({ id: submission.id, exam_id: examId, user_id: userId, email, score: totalScore, max_score: maxScore, has_pending_review: !!hasPendingReview }))
+      .catch((e) => console.error('[CodeSpectra] ats assessment hook:', e))
+    // The draft's answers belong to the attempt just stored; clear them so a
+    // retake starts empty (start also resets them for a new attempt_no).
+    await db.collection('exam_drafts').updateOne(
+      { exam_id: examId, user_id: userId, attempt_no: access.attemptNo },
+      { $set: { answers: {}, submitted_at: nowIso() } },
+    ).catch(() => {})
 
     // Mark the invite used only now that the submission is safely stored,
     // and link it to the submitting account so the results page can join
     // submissions to invites even when the invite was created with an
     // empty user_id (invited-link flow).
-    if (inviteToken) {
+    if (inviteDoc && inviteToken) {
       await db.collection('candidate_invites').updateOne(
         { token: inviteToken },
         { $set: { status: 'used', updatedAt: nowIso(), user_id: userId, email } }
@@ -222,7 +325,8 @@ export async function POST(
 
     // Award XP + real-time notification (invite-only candidates are real
     // accounts now that login is mandatory). Idempotent per submission.
-    if (maxScore > 0 && totalScore > 0) {
+    // XP only for the first attempt, so retakes can't farm it.
+    if (access.attemptNo === 1 && maxScore > 0 && totalScore > 0) {
       try {
         const { awardXpWithLevelUp } = await import('@/lib/xp-service')
         const { getXpRewards } = await import('@/lib/db/leaderboard')
@@ -240,15 +344,19 @@ export async function POST(
       }
     }
 
+    // Score and per-question correctness stay server-side until the organiser
+    // releases them (GET /api/exams/[id] returns them once score_released).
     return NextResponse.json({
-      score: totalScore,
-      total: maxScore,
-      has_pending_review: hasPendingReview,
-      details,
+      ok: true,
       submission_id: submission.id,
+      has_pending_review: hasPendingReview,
+      released: false,
+      attempt_no: access.attemptNo,
+      max_attempts: access.maxAttempts,
+      late_submit: late,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Submit failed'
+    const msg = 'Submit failed'
     console.error('[CodeSpectra] exam-submit:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

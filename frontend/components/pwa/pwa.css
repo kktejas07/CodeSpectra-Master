@@ -1,0 +1,33 @@
+/*
+ * Installed-app (PWA) layout: safe-area insets (viewport-fit=cover in
+ * app/layout.tsx) and the bottom navigation, which only appears when the app
+ * runs standalone on a small screen. Unlayered on purpose so it wins over the
+ * Tailwind utilities it adjusts.
+ */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.cs-bottom-nav,
+.cs-bottom-nav-spacer {
+  display: none;
+}
+
+.cs-pwa-float {
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+@media (display-mode: standalone) and (max-width: 1023.98px) {
+  .cs-bottom-nav {
+    display: flex;
+  }
+  .cs-bottom-nav-spacer {
+    display: block;
+    height: calc(4rem + env(safe-area-inset-bottom));
+  }
+  .cs-pwa-float,
+  [data-testid='ask-codespectra-launcher'] {
+    bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+}

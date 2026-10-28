@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Laptop, Palette, Cog, Bot, Rocket, Pencil, Lock } from 'lucide-react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -25,15 +25,15 @@ interface InterviewRoleSelectorProps {
 const INTERVIEW_ROLES: InterviewRole[] = [
   {
     id: 'software-engineer',
-    title: 'Software Engineer',
+    title: 'Software engineer',
     description: 'DSA, system design, coding patterns, and problem-solving',
-    skills: ['Algorithms', 'Data Structures', 'System Design'],
+    skills: ['Algorithms', 'Data structures', 'System design'],
     icon: Laptop,
     locked: false,
   },
   {
     id: 'frontend-developer',
-    title: 'Frontend Developer',
+    title: 'Frontend developer',
     description: 'React, Angular, Vue, and problem-solving',
     skills: ['React', 'CSS', 'JavaScript'],
     icon: Palette,
@@ -41,7 +41,7 @@ const INTERVIEW_ROLES: InterviewRole[] = [
   },
   {
     id: 'backend-developer',
-    title: 'Backend Developer',
+    title: 'Backend developer',
     description: 'Node, Python, Java, and problem-solving',
     skills: ['Node.js', 'Python', 'Java'],
     icon: Cog,
@@ -50,16 +50,16 @@ const INTERVIEW_ROLES: InterviewRole[] = [
   },
   {
     id: 'ai-engineer',
-    title: 'AI Engineer',
-    description: 'Machine Learning, Deep Learning, Generative AI, LLMs, and problem-solving',
-    skills: ['ML', 'Deep Learning', 'GenAI'],
+    title: 'AI engineer',
+    description: 'Machine learning, deep learning, generative AI, LLMs, and problem-solving',
+    skills: ['ML', 'Deep learning', 'GenAI'],
     icon: Bot,
     locked: true,
     prerequisite: 'software-engineer',
   },
   {
     id: 'forward-deployed',
-    title: 'Forward Deployed Engineer',
+    title: 'Forward deployed engineer',
     description: 'AWS, Azure, and problem-solving',
     skills: ['AWS', 'Azure', 'DevOps'],
     icon: Rocket,
@@ -68,7 +68,7 @@ const INTERVIEW_ROLES: InterviewRole[] = [
   },
   {
     id: 'custom-role',
-    title: '+ Custom Role',
+    title: 'Custom role',
     description: 'Paste a job description for a tailored interview',
     skills: ['Custom', 'Tailored'],
     icon: Pencil,
@@ -87,41 +87,41 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-foreground">Choose Your Mock Interview Experience</h2>
-        <p className="text-muted-foreground mt-2">
-          Start with popular ready-made roles or build your own based on a specific job description.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        illustration="interview"
+        title="Choose your mock interview"
+        description="Start with a ready-made role, or build your own from a specific job description."
+        className="mb-0"
+      />
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
         {INTERVIEW_ROLES.map((role) => {
           const isLocked = role.locked && !completedRoles.includes(role.prerequisite || '')
           const isCompleted = completedRoles.includes(role.id)
           const RoleIcon = role.icon
 
           return (
-            <Card
+            <Panel
               key={role.id}
-              className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
+              interactive={!isLocked}
+              className={`${
                 selectedRole === role.id ? 'ring-2 ring-primary' : ''
               } ${
-                isLocked ? 'opacity-60 pointer-events-none' : ''
+                isLocked ? 'opacity-60' : ''
               } ${
-                isCompleted ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20' : ''
+                isCompleted ? 'ring-2 ring-green-500/60 bg-green-50 dark:bg-green-950/40' : ''
               }`}
-              onClick={() => handleSelectRole(role.id, Boolean(isLocked))}
             >
               <div className="space-y-4">
                 {/* Header */}
                 <div className="flex items-start justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-primary">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
                     <RoleIcon className="h-6 w-6" strokeWidth={1.75} aria-hidden />
                   </div>
                   {isLocked && (
-                    <div className="p-2 bg-red-100 dark:bg-red-950/30 rounded-lg">
-                      <Lock className="w-4 h-4 text-red-600" />
+                    <div className="p-2 bg-muted rounded-lg">
+                      <Lock className="w-4 h-4 text-muted-foreground" aria-label="Locked" />
                     </div>
                   )}
                   {isCompleted && (
@@ -133,7 +133,7 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
 
                 {/* Title and Description */}
                 <div>
-                  <h3 className="font-bold text-lg text-foreground">{role.title}</h3>
+                  <h3 className="text-lg font-semibold text-foreground">{role.title}</h3>
                   <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
                 </div>
 
@@ -148,7 +148,7 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
 
                 {/* Lock Info */}
                 {isLocked && role.prerequisite && (
-                  <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-2 rounded">
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded-lg">
                     Complete {INTERVIEW_ROLES.find((r) => r.id === role.prerequisite)?.title} to unlock
                   </div>
                 )}
@@ -158,23 +158,17 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
                   className="w-full mt-2"
                   variant={selectedRole === role.id ? 'default' : 'outline'}
                   disabled={isLocked}
+                  onClick={() => handleSelectRole(role.id, Boolean(isLocked))}
+                  aria-label={isLocked ? `${role.title} (locked)` : `${isCompleted ? 'Retake' : 'Select'} ${role.title}`}
                 >
                   {isLocked ? 'Locked' : isCompleted ? 'Retake' : 'Select'}
                 </Button>
               </div>
-            </Card>
+            </Panel>
           )
         })}
       </div>
 
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1">
-          Cancel
-        </Button>
-        <Button className="flex-1" disabled={!selectedRole}>
-          Continue
-        </Button>
-      </div>
     </div>
   )
 }

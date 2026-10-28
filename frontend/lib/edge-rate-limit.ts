@@ -1,3 +1,5 @@
+import { clientIpFromRequest } from '@/lib/client-ip'
+
 /**
  * Edge-safe sliding-window rate limiter for middleware.
  * Best-effort per worker instance (same ceiling as the Node in-memory limiter) —
@@ -24,7 +26,19 @@ export function edgeRateLimit(key: string, maxHits: number, windowMs: number): {
 }
 
 export function edgeClientKey(request: Request): string {
-  const h = request.headers as Headers
-  const xf = h.get('x-forwarded-for')
-  return xf?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
+  return clientIpFromRequest(request)
 }
+
+/**
+ * Key for the global API limit. A signed-in person gets their own budget
+ * (verified by the session signature), so a campus or office sharing one public
+ * IP isn't throttled as one user during a placement drive. Anonymous traffic is
+ * keyed by IP. `uid` must come from a signature-verified session cookie.
+ */
+export function globalApiLimitKey(ip: string, uid: string | null): string {
+  return uid ? `api:u:${uid}` : `api:ip:${ip}`
+}
+
+/** Ceiling for all traffic from one IP (signed in or not): stops one host opening many accounts to dodge the per-person limit. */
+export const GLOBAL_API_PER_PERSON = 240
+export const GLOBAL_API_PER_IP = 6000

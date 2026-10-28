@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" fill="none" role="img"><title>Questions stacked by difficulty, worth 3, 4 and 5 points</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#5b84ff"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8"/><stop offset=".5" stop-color="#2f5be7"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
+  .surf{fill:#f8fafc;stroke:#64748b;stroke-opacity:.7}
+  .ln{stroke:#64748b;stroke-opacity:.6;fill:none}
+  .txt{fill:#64748b;opacity:.75}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+    .tag,.num,.row,.ev,.pass,.f{opacity:1!important}
+    .ck,.ok{stroke-dashoffset:0!important}
+    .gauge{stroke-dashoffset:36!important}
+    .pkt{offset-distance:50%}
+  }
+
+  .card{animation:hl 4.5s ease-in-out infinite}
+  .c2{animation-delay:1.5s}.c3{animation-delay:3s}
+  @keyframes hl{0%,100%{stroke:#64748b;stroke-opacity:.55;transform:none}12%,28%{stroke:#2f5be7;stroke-opacity:1;transform:translateX(4px)}40%{stroke:#64748b;stroke-opacity:.55;transform:none}}
+</style><g><rect class="card c1" x="24" y="18" width="112" height="24" rx="5" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/><rect x="32" y="27" width="44" height="6" rx="3" fill="#64748b" opacity=".45"/><rect x="100" y="23" width="28" height="14" rx="7" fill="#5b84ff" opacity=".95"/><text x="114" y="33.5" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" font-weight="700" fill="#fff">3</text></g><g><rect class="card c2" x="24" y="48" width="112" height="24" rx="5" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/><rect x="32" y="57" width="44" height="6" rx="3" fill="#64748b" opacity=".45"/><rect x="100" y="53" width="28" height="14" rx="7" fill="#3b82f6" opacity=".95"/><text x="114" y="63.5" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" font-weight="700" fill="#fff">4</text></g><g><rect class="card c3" x="24" y="78" width="112" height="24" rx="5" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/><rect x="32" y="87" width="44" height="6" rx="3" fill="#64748b" opacity=".45"/><rect x="100" y="83" width="28" height="14" rx="7" fill="#0ea5e9" opacity=".95"/><text x="114" y="93.5" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" font-weight="700" fill="#fff">5</text></g></svg>

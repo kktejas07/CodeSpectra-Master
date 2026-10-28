@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
+import { canAccessCollab } from '@/lib/collab-access'
 import { collabPresences, nowIso, newId } from '@/lib/db/collab'
 
 export const runtime = 'nodejs'
@@ -10,6 +11,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ session: s
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({})) as { cursor_line?: number; cursor_column?: number }
   const col = await collabPresences()
@@ -37,6 +39,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ session: s
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const fiveMinAgo = new Date(Date.now() - 300000).toISOString()
   const col = await collabPresences()

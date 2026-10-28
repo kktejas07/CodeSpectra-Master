@@ -1,155 +1,98 @@
 /**
- * Workflows CRUD (superadmin only).
- *   GET  /api/workflows         -> list
- *   POST /api/workflows         -> create
+ * Workflows (superadmin: platform + any organisation; tenant_admin: own organisation).
+ *   GET  /api/workflows[?tenant=platform|<id>]  -> { items, quota? }
+ *   POST /api/workflows { name, template_id?, tenant_id? (superadmin) } -> created (paused when from a template)
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
-import {
-  workflows,
-  newId,
-  nowIso,
-  type WorkflowDoc,
-} from '@/lib/db/leaderboard'
-import { getMongoDb } from '@/lib/mongodb'
+import { newId, nowIso, type WorkflowDoc } from '@/lib/db/leaderboard'
+import { builtinOverlaps, publicWorkflow, requireWorkflowAdmin, workflowScope } from '@/lib/automation/access'
+import { col } from '@/lib/automation/store'
+import { templateAvailableTo, templateById } from '@/lib/automation/templates'
+import { MAX_TENANT_WORKFLOWS, quotaUsage } from '@/lib/automation/quotas'
+import { OLD_SEED_NAMES, STARTER_WORKFLOWS } from '@/lib/automation/seeds'
+import { auditAdmin } from '@/lib/admin-audit'
+import { limitRequest } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-function id(): string { return crypto.randomUUID() }
-
-const SEED_WORKFLOWS: Array<Omit<WorkflowDoc, 'created_by' | 'created_at' | 'updated_at'>> = [
-  {
-    id: '', name: 'Welcome New User',
-    description: 'Sends a welcome email, creates a notification, and logs activity when a new user signs up.',
-    trigger: 'webhook', is_active: true,
-    nodes: [
-      { id: 't1', type: 'trigger.webhook', label: 'User Signup', config: { event: 'user.created' } },
-      { id: 'n1', type: 'http.request', label: 'Send Welcome Email', config: { url: '/api/email/welcome', method: 'POST', body: { template: 'welcome' } } },
-      { id: 'n2', type: 'mongo.find', label: 'Create Notification', config: { collection: 'notifications', filter: { type: 'welcome' } } },
-      { id: 'n3', type: 'log', label: 'Log Activity', config: { message: 'New user welcome workflow completed' } },
-    ],
-    edges: [{ from: 't1', to: 'n1' }, { from: 'n1', to: 'n2' }, { from: 'n2', to: 'n3' }],
-  },
-  {
-    id: '', name: 'Daily Digest',
-    description: 'Queries recent activity, generates a digest, and emails all users every morning at 9 AM.',
-    trigger: 'schedule', cron_expression: '0 9 * * *', is_active: true,
-    nodes: [
-      { id: 't1', type: 'trigger.schedule', label: 'Daily 9 AM', config: { cron: '0 9 * * *' } },
-      { id: 'n1', type: 'mongo.find', label: 'Query Recent Activity', config: { collection: 'submissions', filter: { created_at: { $gte: '{{ yesterday }}' } }, limit: 50 } },
-      { id: 'n2', type: 'ai.complete', label: 'Generate Digest', config: { system: 'You are a helpful assistant that summarizes daily coding activity.', prompt: 'Summarize the following activity into a concise daily digest.' } },
-      { id: 'n3', type: 'http.request', label: 'Send Digest Email', config: { url: '/api/email/digest', method: 'POST', body: { subject: 'Your Daily CodeSpectra Digest' } } },
-    ],
-    edges: [{ from: 't1', to: 'n1' }, { from: 'n1', to: 'n2' }, { from: 'n2', to: 'n3' }],
-  },
-  {
-    id: '', name: 'Exam Completion Handler',
-    description: 'Checks exam score, issues certificate on pass, awards XP, and sends congratulations email.',
-    trigger: 'webhook', is_active: true,
-    nodes: [
-      { id: 't1', type: 'trigger.webhook', label: 'Exam Submitted', config: { event: 'exam.submitted' } },
-      { id: 'n1', type: 'ai.complete', label: 'Check Score', config: { system: 'You are an exam grading assistant.', prompt: 'Evaluate the submission and determine if the score meets the passing threshold.' } },
-      { id: 'n2', type: 'mongo.find', label: 'Issue Certificate', config: { collection: 'certifications', filter: { exam_id: '{{ exam_id }}' } } },
-      { id: 'n3', type: 'log', label: 'Award XP', config: { message: 'Awarding XP for exam completion' } },
-      { id: 'n4', type: 'http.request', label: 'Send Congratulations', config: { url: '/api/email/congratulations', method: 'POST', body: { template: 'exam-passed' } } },
-    ],
-    edges: [{ from: 't1', to: 'n1' }, { from: 'n1', to: 'n2' }, { from: 'n2', to: 'n3' }, { from: 'n3', to: 'n4' }],
-  },
-  {
-    id: '', name: 'Hackathon Auto-Results',
-    description: 'Collects submissions, grades them, updates the leaderboard, releases results, and sends notifications.',
-    trigger: 'manual', is_active: true,
-    nodes: [
-      { id: 't1', type: 'trigger.manual', label: 'Start' },
-      { id: 'n1', type: 'mongo.find', label: 'Collect Submissions', config: { collection: 'hackathon_submissions', filter: { status: 'submitted' } } },
-      { id: 'n2', type: 'ai.complete', label: 'Grade Submissions', config: { system: 'You are a hackathon judge.', prompt: 'Grade the following submissions based on code quality, innovation, and completeness.' } },
-      { id: 'n3', type: 'http.request', label: 'Update Leaderboard', config: { url: '/api/hackathons/leaderboard/update', method: 'POST' } },
-      { id: 'n4', type: 'log', label: 'Release Results', config: { message: 'Hackathon results released' } },
-      { id: 'n5', type: 'http.request', label: 'Send Notifications', config: { url: '/api/notifications/broadcast', method: 'POST', body: { template: 'hackathon-results' } } },
-    ],
-    edges: [{ from: 't1', to: 'n1' }, { from: 'n1', to: 'n2' }, { from: 'n2', to: 'n3' }, { from: 'n3', to: 'n4' }, { from: 'n4', to: 'n5' }],
-  },
-  {
-    id: '', name: 'Stale Account Cleanup',
-    description: 'Finds inactive users over 30 days, sends re-engagement emails, and flags them for review.',
-    trigger: 'schedule', cron_expression: '0 0 * * 0', is_active: true,
-    nodes: [
-      { id: 't1', type: 'trigger.schedule', label: 'Weekly Sunday Midnight', config: { cron: '0 0 * * 0' } },
-      { id: 'n1', type: 'mongo.find', label: 'Query Inactive Users', config: { collection: 'users', filter: { last_login: { $lt: '{{ thirtyDaysAgo }}' } } } },
-      { id: 'n2', type: 'http.request', label: 'Send Re-engagement Email', config: { url: '/api/email/reengagement', method: 'POST', body: { template: 'we-miss-you' } } },
-      { id: 'n3', type: 'mongo.find', label: 'Flag for Review', config: { collection: 'users', filter: { status: 'inactive' } } },
-    ],
-    edges: [{ from: 't1', to: 'n1' }, { from: 'n1', to: 'n2' }, { from: 'n2', to: 'n3' }],
-  },
-]
-
-async function seedWorkflowsIfEmpty() {
+/** Seed the starter platform workflows once; upgrade untouched copies of the old broken seeds (A-014). */
+async function seedPlatformWorkflows(): Promise<void> {
   try {
-    const db = await getMongoDb()
-    const col = db.collection('workflows')
-    const count = await col.countDocuments()
-    if (count > 0) return
+    const c = await col<WorkflowDoc>('workflows')
     const ts = nowIso()
-    const docs: WorkflowDoc[] = SEED_WORKFLOWS.map((w) => ({
-      ...w,
-      id: id(),
-      created_by: 'system',
-      created_at: ts,
-      updated_at: ts,
-    }))
-    await col.insertMany(docs)
+    const count = await c.countDocuments({})
+    if (count === 0) {
+      await c.insertMany(STARTER_WORKFLOWS.map((s) => ({ ...s, id: newId(), version: 2 as const, nodes: [], edges: [], is_active: false, tenant_id: null, created_by: 'system', created_at: ts, updated_at: ts })))
+      return
+    }
+    const old = await c.find({ created_by: 'system', name: { $in: [...OLD_SEED_NAMES] }, steps: { $exists: false } }, { projection: { id: 1, name: 1 } }).toArray()
+    for (const o of old) {
+      const s = STARTER_WORKFLOWS.find((x) => x.name === o.name)
+      if (!s) continue
+      await c.updateOne({ id: o.id, steps: { $exists: false } }, { $set: { ...s, version: 2, nodes: [], edges: [], updated_at: ts } })
+    }
   } catch {
-    // seeding is best-effort; don't break the GET
+    /* seeding is best-effort */
   }
 }
 
-export async function GET() {
-  const gate = await requireSuperAdmin()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
-  }
-  await seedWorkflowsIfEmpty()
-  const col = await workflows()
-  const items = await col
-    .find({}, { projection: { _id: 0 } })
-    .sort({ created_at: -1 })
-    .toArray()
-  return NextResponse.json({ items })
+export async function GET(req: NextRequest) {
+  const g = await requireWorkflowAdmin()
+  if ('error' in g) return NextResponse.json({ error: g.error }, { status: g.status })
+  if (g.platform) await seedPlatformWorkflows()
+  const c = await col<WorkflowDoc>('workflows')
+  const items = (await c.find(workflowScope(g, req.nextUrl.searchParams.get('tenant')), { projection: { _id: 0 } }).sort({ created_at: -1 }).limit(500).toArray()) as WorkflowDoc[]
+  const overlaps = await builtinOverlaps(items)
+  return NextResponse.json({
+    items: items.map((w) => ({ ...publicWorkflow(w), ...(overlaps[w.id] ? { builtin_overlap: overlaps[w.id] } : {}) })),
+    scope: g.platform ? 'platform' : 'tenant',
+    ...(g.tenantId ? { quota: await quotaUsage(g.tenantId), max_workflows: MAX_TENANT_WORKFLOWS } : {}),
+  })
 }
 
 export async function POST(req: NextRequest) {
-  const gate = await requireSuperAdmin()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
-  }
-  let body: Partial<WorkflowDoc>
+  const g = await requireWorkflowAdmin()
+  if ('error' in g) return NextResponse.json({ error: g.error }, { status: g.status })
+  const limited = await limitRequest(req, 'workflows:create', g.user.id, 30, 60 * 60_000)
+  if (limited) return limited
+  let body: Record<string, unknown>
   try {
-    body = (await req.json()) as Partial<WorkflowDoc>
+    body = (await req.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
-  if (!body.name) return NextResponse.json({ error: 'name required' }, { status: 400 })
+  const name = String(body.name ?? '').trim()
+  const tpl = typeof body.template_id === 'string' ? templateById(body.template_id) : undefined
+  if (body.template_id && !tpl) return NextResponse.json({ error: 'Unknown template' }, { status: 400 })
+  const tenantTarget = !g.platform || (typeof body.tenant_id === 'string' && !!body.tenant_id)
+  // AUTO-001: platform-only data, or an event that never reaches organisations — it could never run for them.
+  if (tpl && !templateAvailableTo(tpl, !tenantTarget)) return NextResponse.json({ error: 'This template uses platform-wide data or events, so it can’t run for an organisation' }, { status: g.platform ? 400 : 403 })
+  if (!name && !tpl) return NextResponse.json({ error: 'name required' }, { status: 400 })
+  if (name.length > 120) return NextResponse.json({ error: 'Name is too long' }, { status: 400 })
 
-  const doc: WorkflowDoc = {
-    id: newId(),
-    name: body.name,
-    description: body.description || '',
-    trigger: body.trigger || 'manual',
-    is_active: body.is_active ?? true,
-    nodes: body.nodes || [
-      { id: 't1', type: 'trigger.manual', label: 'Start' },
-      { id: 'l1', type: 'log', label: 'Hello', config: { message: 'Hello from CodeSpectra!' } },
-    ],
-    edges: body.edges || [{ from: 't1', to: 'l1' }],
-    created_by: gate.user.id,
-    created_at: nowIso(),
-    updated_at: nowIso(),
+  const tenantId = g.platform ? (typeof body.tenant_id === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(body.tenant_id) ? body.tenant_id : null) : g.tenantId
+  const c = await col<WorkflowDoc>('workflows')
+  if (tenantId && (await c.countDocuments({ tenant_id: tenantId })) >= MAX_TENANT_WORKFLOWS) {
+    return NextResponse.json({ error: `Your organisation can keep up to ${MAX_TENANT_WORKFLOWS} workflows. Delete one first.` }, { status: 409 })
   }
-  const col = await workflows()
-  await col.insertOne(doc)
-  // Strip Mongo `_id` injected by insertOne to keep the response contract
-  // identical to GET (which projects `_id: 0`). Clients should key off `id`.
+  const ts = nowIso()
+  const doc: WorkflowDoc = tpl
+    ? {
+        id: newId(), name: name || tpl.name, description: tpl.description, trigger: tpl.trigger, cron_expression: tpl.cron_expression,
+        event_type: tpl.event_type ?? null, event_filter: tpl.event_filter ?? null, steps: structuredClone(tpl.steps), version: 2,
+        sample_payload: tpl.sample_payload, template_id: tpl.id, nodes: [], edges: [], is_active: false,
+        tenant_id: tenantId, created_by: g.user.id, created_at: ts, updated_at: ts,
+      }
+    : {
+        id: newId(), name, description: String(body.description ?? '').slice(0, 1000), trigger: 'manual', version: 2,
+        steps: [{ id: 'note_1', type: 'log', label: 'Write a note', config: { message: 'Hello from {{workflow.name}}' } }],
+        sample_payload: {}, nodes: [], edges: [], is_active: false,
+        tenant_id: tenantId, created_by: g.user.id, created_at: ts, updated_at: ts,
+      }
+  await c.insertOne(doc)
+  await auditAdmin(g.user, 'workflow.create', 'workflow', doc.id, `${doc.name}${tpl ? ` (template ${tpl.id})` : ''}`)
   const { _id: _ignored, ...clean } = doc as WorkflowDoc & { _id?: unknown }
   void _ignored
-  return NextResponse.json(clean, { status: 201 })
+  return NextResponse.json(publicWorkflow(clean as WorkflowDoc), { status: 201 })
 }

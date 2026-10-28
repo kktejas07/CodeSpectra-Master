@@ -8,6 +8,7 @@
  * scored consistently everywhere.
  */
 import { metaFor, resolveQuestionType, type GradingKind } from '@/lib/question-types'
+import { sanitizeExtendedQuestionFields } from '@/lib/question-extensions'
 
 /**
  * Legacy alias table kept for backward compatibility. New code should rely on
@@ -282,6 +283,8 @@ export function compareObjectiveAnswer(q: QuestionGradingSpec, userAnswer: strin
 export interface SanitizedTestCase {
   input: string
   output: string
+  /** Hidden from candidates (graded only). Absent = a visible sample. */
+  hidden?: true
 }
 const MAX_TEST_CASES = 10
 const MAX_TC_FIELD_CHARS = 2000
@@ -311,7 +314,9 @@ export function sanitizeTestCases(raw: unknown): SanitizedTestCase[] {
     const input = pick(rec.input ?? rec.stdin)
     const output = pick(rec.output ?? rec.expected ?? rec.expected_stdout ?? rec.expected_output)
     if (!input && !output) continue
-    out.push({ input, output })
+    // Only a literal boolean flag marks a case hidden (isSample:false is the older spelling).
+    const hidden = rec.hidden === true || rec.is_hidden === true || rec.isSample === false
+    out.push(hidden ? { input, output, hidden: true } : { input, output })
   }
   return out
 }
@@ -415,6 +420,9 @@ function sanitizeStructuredQuestionFields(q: Record<string, unknown>, clean: Rec
   if (language) clean.language = language
   const starter = qStr(q.starter_code ?? q.starterCode, 20000)
   if (starter) clean.starter_code = starter
+
+  // Wave 6 types (case study, typing, uploads, black box, traits, aptitude area).
+  sanitizeExtendedQuestionFields(q, clean)
 }
 
 export function sanitizeExamQuestion(raw: unknown): Record<string, unknown> {

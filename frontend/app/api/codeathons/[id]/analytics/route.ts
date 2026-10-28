@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { isTenantStaff } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: codeathonId } = await params
 
@@ -20,6 +21,10 @@ export async function GET(
     // Get codeathon
     const codeathon = await db.collection('codeathons').findOne({ id: codeathonId })
     if (!codeathon) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+    // Staff only: superadmin, or an admin of the codeathon's own tenant.
+    if (!isTenantStaff(user, codeathon as unknown as Record<string, unknown>)) {
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
+    }
 
     // Get submissions
     const submissions = await db.collection('codeathon_submissions')

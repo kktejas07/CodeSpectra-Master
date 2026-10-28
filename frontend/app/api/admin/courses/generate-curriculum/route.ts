@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin, gateErrorBody } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { courseIdFor } from '@/lib/courses/syllabus'
 import { buildCatalogCourse } from '@/lib/courses/build-course'
@@ -9,10 +9,8 @@ export const dynamic = 'force-dynamic'
 
 // DELETE - Remove a course
 export async function DELETE(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const { searchParams } = new URL(request.url)
@@ -34,7 +32,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Course deleted' })
   } catch (e) {
     console.error('[generate-curriculum] DELETE error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -44,10 +42,8 @@ export async function DELETE(request: NextRequest) {
  * Lessons get detailed scripts later in the video worker.
  */
 export async function POST(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requireSuperAdmin() // SEC-029: enforces admin 2FA
+  if ('error' in gate) return NextResponse.json(gateErrorBody(gate), { status: gate.status })
 
   try {
     const body = await request.json().catch(() => ({}))
@@ -94,6 +90,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (e) {
     console.error('[generate-curriculum] error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

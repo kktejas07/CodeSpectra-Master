@@ -1,10 +1,11 @@
-import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { getMongoDb } from '@/lib/mongodb'
-import { requireAdmin, requireSuperAdmin } from '@/lib/api-auth'
-import { getAdminAuthInstance } from '@/lib/firebase-admin'
-import { listAllUsers, getUserById } from '@/lib/db/admin'
+import { requireAdmin } from '@/lib/api-auth'
+import { listUsersPage, users, tenants } from '@/lib/db/admin'
+import { createCandidateInvite } from '@/lib/services/invites'
+import { passwordProblem, tenantScope } from '@/lib/auth-account'
+import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link'
+import { auditAdmin } from '@/lib/admin-audit'
 import { buildAdminUserRow, type ProfileRow } from '@/lib/admin-users'
 import { normalizeUserRole } from '@/lib/rbac'
 
@@ -17,17 +18,21 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // tenant_admins must only see users within their own tenant
-    const usersList = await listAllUsers(gate.user.role === 'tenant_admin' ? { tenantId: gate.user.tenantId ?? undefined } : undefined)
-
-    const search = req.nextUrl.searchParams.get('search')?.trim().toLowerCase()
-  const filtered = search
-    ? usersList.filter((u) => {
-        const name = ((u.fullName ?? u.name ?? '') as string).toLowerCase()
-        const email = (u.email || '').toLowerCase()
-        return name.includes(search) || email.includes(search)
-      })
-    : usersList
+    // tenant_admins see only their own tenant; no tenant ⇒ nothing (never "all").
+    const scope = tenantScope(gate.user)
+    if (scope.kind === 'none') return NextResponse.json({ users: [], total: 0, page: 1, has_more: false })
+    // CORE-019: search, paging and projection happen in MongoDB (was: every user doc, filtered in JS).
+    const sp = req.nextUrl.searchParams
+    const page = Math.max(1, Number(sp.get('page')) || 1)
+    const limit = Math.min(1000, Math.max(1, Number(sp.get('limit')) || 1000))
+    const ids = (sp.get('ids') || '').split(',').map((x) => x.trim()).filter((x) => /^[A-Za-z0-9_-]{1,128}$/.test(x))
+    const { rows: filtered, total } = await listUsersPage({
+      ...(scope.kind === 'tenant' ? { tenantId: scope.tenantId } : {}),
+      search: sp.get('search') || sp.get('q'),
+      ids: ids.length ? ids : null,
+      page,
+      limit,
+    })
 
   const rows = filtered.map((u) => {
       const profile: ProfileRow = {
@@ -69,10 +74,12 @@ export async function GET(req: NextRequest) {
       return row
     })
 
-    // Enrich with tenant names
-    const { tenants } = await import('@/lib/db/admin')
+    // Enrich with tenant names (only the caller's own for a tenant admin)
     const tenantCol = await tenants()
-    const tenantList = await tenantCol.find({}).toArray()
+    const tenantIds = [...new Set(rows.map((r) => (r as any).tenant_id).filter(Boolean))] as string[]
+    const tenantList = tenantIds.length
+      ? await tenantCol.find(scope.kind === 'tenant' ? { id: scope.tenantId } : { id: { $in: tenantIds } }, { projection: { _id: 0, id: 1, name: 1 } }).toArray()
+      : []
     const tenantNameById = new Map(tenantList.map((t) => [t.id, t.name]))
 
     for (const row of rows) {
@@ -80,32 +87,29 @@ export async function GET(req: NextRequest) {
       if (tid) (row as any).tenant_name = tenantNameById.get(tid) || tid
     }
 
-    return NextResponse.json({ users: rows })
+    return NextResponse.json({ users: rows, total, page, has_more: page * limit < total })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to list users'
+    const msg = 'Failed to list users'
     console.error('[CodeSpectra] admin/users GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
 
 /**
- * POST /api/admin/users — provision a new user (superadmin only).
- * Phase 4 migration: uses Better Auth's `signUpEmail` server API to create
- * the user (which handles password hashing + `account` linkage), then
- * upgrades the role/fullName via MongoDB.
+ * POST /api/admin/users — two jobs:
  *
- * Welcome-email delivery (previously via Resend/SendGrid in
- * `provisionAdminUser`) is deferred to a later phase.
+ * 1. **Provision** (superadmin, no `target_url` / `assigned_assessments`):
+ *    create an account. Refuses an email that already has one (never
+ *    overwrites). No password given ⇒ the person gets a set-password link.
+ * 2. **Assessment invite** (superadmin or tenant admin): create a single-use
+ *    candidate invite. Existing accounts are only *referenced* — password,
+ *    id, role and tenant are never touched. Unknown emails get no account:
+ *    the invite page sends them to sign up (signup attaches the invite).
  */
 export async function POST(request: Request) {
   const gate = await requireAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
-  }
-
-  const adminAuth = await getAdminAuthInstance()
-  if (!adminAuth) {
-    return NextResponse.json({ error: 'Firebase not configured' }, { status: 500 })
   }
 
   let body: {
@@ -126,191 +130,119 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const email = (body.email || '').trim().toLowerCase()
-  const full_name = (body.full_name || '').trim() || email.split('@')[0] || 'User'
-  // Privilege guard: only superadmins may provision elevated roles or assign an
-  // arbitrary tenant. Non-superadmin callers are scoped to plain users in their
-  // own tenant (caller-supplied role/tenantId are ignored, not honored).
-  let role = normalizeUserRole(body.role)
-  let tenantId = body.tenantId && body.tenantId !== '' ? body.tenantId : null
-  if (gate.user.role !== 'superadmin') {
-    role = 'user'
-    tenantId = gate.user.tenantId ?? null
-  }
-  const targetUrl = (body.target_url || '/assessment').trim()
-  const assignedAssessments: import('@/lib/db/admin').AssessmentStep[] =
-    Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0
-      ? body.assigned_assessments
-      : [
-          {
-            id: crypto.randomUUID(),
-            title: 'Assigned Assessment',
-            target_url: targetUrl,
-            type: (targetUrl.includes('cad')
-              ? 'cad'
-              : targetUrl.includes('identity')
-              ? 'identity'
-              : targetUrl.includes('problems')
-              ? 'coding'
-              : 'general') as any,
-            allowed_languages: body.allowed_languages || [],
-            status: 'pending',
-          },
-        ]
-  const allowedLanguages = Array.isArray(body.allowed_languages) ? body.allowed_languages : []
-
+  const email = (typeof body.email === 'string' ? body.email : '').trim().toLowerCase()
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
   }
+  const full_name = (typeof body.full_name === 'string' ? body.full_name : '').trim().slice(0, 120) || email.split('@')[0] || 'User'
 
+  const col = await users()
+  const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const existing = await col.findOne({ $or: [{ email }, { email: { $regex: `^${escaped}$`, $options: 'i' } }] } as never)
+
+  const isProvision = gate.user.role === 'superadmin' && body.target_url === undefined && body.assigned_assessments === undefined
+  if (isProvision) return provisionAccount(gate.user, body, email, full_name, existing)
+
+  // ── Assessment invite ──────────────────────────────────────────────────
+  // Logic shared with the admin agent: lib/services/invites createCandidateInvite.
   try {
-    let newUserId: string
-    let isExistingUser = false
-
-    // Try to find existing Firebase user first
-    try {
-      const existingUser = await adminAuth.getUserByEmail(email)
-      newUserId = existingUser.uid
-      isExistingUser = true
-    } catch {
-      // User doesn't exist in Firebase — create them
-      const password =
-        (body.password && body.password.length >= 8 ? body.password : undefined) ||
-        `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
-      const userRecord = await adminAuth.createUser({
-        email,
-        password,
-        displayName: full_name,
-      })
-      newUserId = userRecord.uid
-
-      const passwordHash = await bcrypt.hash(password, 10)
-      const db = await getMongoDb()
-      await db.collection('user').updateOne(
-        { email },
-        {
-          $set: {
-            id: newUserId,
-            email,
-            name: full_name,
-            fullName: full_name,
-            passwordHash,
-            role,
-            tenantId,
-            updatedAt: new Date(),
-          },
-          $setOnInsert: {
-            _id: newUserId,
-            createdAt: new Date(),
-          },
-        },
-        { upsert: true },
-      )
-
-      const { updateUserById } = await import('@/lib/db/admin')
-      await updateUserById(newUserId, { role, fullName: full_name, tenantId })
-    }
-
-    const { candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
-
-    // Expire old pending invites for same email + exam
-    const invitesCol = await candidateInvites()
-    await invitesCol.updateMany(
-      { email, target_url: targetUrl, status: 'pending' },
-      { $set: { status: 'expired', updated_at: nowIso() } }
-    )
-
-    // Generate single-use secure candidate invite link
-    const inviteId = newId()
-    const inviteToken = crypto.randomUUID()
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const inviteUrl = `${appUrl}/assessment/invite/${inviteToken}`
-
-    await invitesCol.insertOne({
-      id: inviteId,
-      token: inviteToken,
-      user_id: newUserId,
+    const r = await createCandidateInvite(gate.user, {
       email,
       full_name,
-      target_url: targetUrl,
-      assigned_assessments: assignedAssessments,
-      allowed_languages: allowedLanguages,
-      invited_by: gate.user.id,
-      status: 'pending',
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      created_at: nowIso(),
-      delivery_status: 'sending',
-    })
-
-    const created = isExistingUser ? await getUserById(newUserId) : null
-
-    // Send assessment invite email via Postal
-    let welcomeEmailSent = false
-    let delivery = 'candidate_invite_link'
-    try {
-      const { sendEmail } = await import('@/lib/send-email')
-      const { emailTemplates } = await import('@/lib/email-templates')
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
-      const template = emailTemplates.assessmentInvite({
-        candidateName: full_name,
-        examTitle: body.exam_title || 'Technical Assessment',
-        inviteUrl,
-        expiresIn: expiresStr,
-      })
-      const result = await sendEmail(email, template, body.cc_email)
-      welcomeEmailSent = result.success
-      delivery = result.provider
-
-      // Delivery lifecycle: sent (provider accepted) → delivered/opened via
-      // Postal webhook; failed when every provider throws. Never left on the
-      // initial 'sending' once we know the outcome.
-      await invitesCol.updateOne(
-        { id: inviteId },
-        {
-          $set: {
-            ...(result.postalMessageId ? { postal_message_id: result.postalMessageId } : {}),
-            delivery_status: result.success ? 'sent' : 'failed',
-            delivery_updated_at: new Date().toISOString(),
-            ...(result.success ? {} : { delivery_error: 'All email providers failed' }),
-          },
-        }
-      )
-    } catch {
-      // All providers failed — link still returned for manual copy
-      await invitesCol.updateOne(
-        { id: inviteId },
-        {
-          $set: {
-            delivery_status: 'failed',
-            delivery_updated_at: new Date().toISOString(),
-            delivery_error: 'All email providers failed',
-          },
-        }
-      ).catch(() => {})
-    }
-
-    return NextResponse.json({
-      user: {
-        id: newUserId,
-        email,
-        full_name,
-        role,
-        tenant_id: tenantId,
-        created_at: created?.createdAt instanceof Date
-          ? created.createdAt.toISOString()
-          : (created?.createdAt as unknown as string) ?? new Date().toISOString(),
-      },
-      invite_url: inviteUrl,
-      invite_token: inviteToken,
-      target_url: targetUrl,
-      welcomeEmailSent,
-      delivery,
-      is_existing_user: isExistingUser,
-    })
+      target_url: body.target_url,
+      exam_title: body.exam_title,
+      cc_email: body.cc_email,
+      assigned_assessments: body.assigned_assessments,
+      allowed_languages: body.allowed_languages,
+    }, existing as Record<string, unknown> | null)
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+    const { invite_id: _inviteId, ...payload } = r.data
+    void _inviteId
+    return NextResponse.json(payload)
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to create user'
+    const msg = 'Failed to create invite'
     console.error('[CodeSpectra] admin/users POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
+/** Superadmin "Add user": create a brand-new account (never overwrite one). */
+async function provisionAccount(
+  actor: { id: string; role: string },
+  body: { password?: string; role?: string; tenantId?: string | null },
+  email: string,
+  full_name: string,
+  existing: unknown,
+) {
+  if (existing) {
+    return NextResponse.json({ error: 'An account with this email already exists. Edit that user instead.' }, { status: 409 })
+  }
+  const role = normalizeUserRole(body.role)
+  let tenantId: string | null = typeof body.tenantId === 'string' && body.tenantId.trim() ? body.tenantId.trim() : null
+  let orgName = 'CodeSpectra'
+  if (tenantId) {
+    const t = await (await tenants()).findOne({ id: tenantId })
+    if (!t) return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
+    tenantId = t.id
+    orgName = t.name || orgName
+  }
+  // role-scope: the new account's role, not the caller's
+  if (role === 'tenant_admin' && !tenantId) {
+    return NextResponse.json({ error: 'An organization admin needs an organization.' }, { status: 400 })
+  }
+  const password = typeof body.password === 'string' && body.password ? body.password : ''
+  if (password) {
+    const problem = passwordProblem(password)
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 })
+  }
+
+  try {
+    const uid = crypto.randomUUID()
+    const now = new Date()
+    const col = await users()
+    await col.insertOne({
+      _id: uid,
+      id: uid,
+      email,
+      name: full_name,
+      fullName: full_name,
+      ...(password ? { passwordHash: await bcrypt.hash(password, 12) } : {}),
+      role,
+      tenantId,
+      emailVerified: false,
+      session_version: 1,
+      createdAt: now,
+      updatedAt: now,
+    } as never)
+
+    let emailSent = false
+    try {
+      const { sendEmail } = await import('@/lib/send-email')
+      // role-scope: label for the new account's role
+      const roleName = role === 'tenant_admin' ? 'Organization Admin' : role === 'superadmin' ? 'Superadmin' : role === 'judge' ? 'Judge' : 'Team Member'
+      if (password) {
+        const { emailTemplatesFor } = await import('@/lib/email-templates')
+        const { localeForEmail } = await import('@/lib/i18n/recipient')
+        const r = await sendEmail(email, emailTemplatesFor(await localeForEmail(email)).accountCredentials({ name: full_name, email, role: roleName, orgName }))
+        emailSent = !!r?.success
+      } else {
+        const hours = 72
+        const setupUrl = await issuePasswordSetupLink(uid, hours)
+        const r = await sendEmail(email, accountSetupEmail({ name: full_name, orgName, role: roleName, setupUrl, validHours: hours }))
+        emailSent = !!r?.success
+      }
+    } catch (e) {
+      console.error('[admin/users] provision email failed:', e)
+    }
+
+    await auditAdmin(actor, 'admin.user.create', 'user', `user/${uid}`, `email=${email} role=${role} tenant=${tenantId ?? '-'}`, role === 'user' ? 'info' : 'warning')
+    return NextResponse.json({
+      user: { id: uid, email, full_name, role, tenant_id: tenantId, created_at: now.toISOString() },
+      welcomeEmailSent: emailSent,
+      is_existing_user: false,
+    }, { status: 201 })
+  } catch (e) {
+    console.error('[CodeSpectra] admin/users provision:', e)
+    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
   }
 }

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { isValidElement, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { EmptyState, type EmptyStateVariant } from '@/components/ui/empty-state'
+import type { IllustrationName } from '@/components/illustrations/spot'
 import { Search, CheckSquare, Square, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   Select,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useT } from '@/lib/i18n/client'
 
 export interface DataTableColumn<T> {
   key: string
@@ -36,6 +38,17 @@ export interface FilterOption {
   value: string
 }
 
+export interface DataTableEmptyState {
+  title?: string
+  description?: string
+  actionLabel?: string
+  actionHref?: string
+  onAction?: () => void
+  variant?: EmptyStateVariant
+  /** Subject-specific spot illustration for the empty state. */
+  illustration?: IllustrationName
+}
+
 interface DataTableProps<T extends { id: string }> {
   columns: DataTableColumn<T>[]
   data: T[]
@@ -53,6 +66,14 @@ interface DataTableProps<T extends { id: string }> {
   pageSize?: number
   loading?: boolean
   emptyMessage?: string
+  /**
+   * Optional empty state. Pass `true` to render a compact EmptyState titled with
+   * `emptyMessage`, an object to customise it, or a node to render as-is.
+   * Omitted: the plain `emptyMessage` text row (previous behaviour).
+   */
+  emptyState?: boolean | React.ReactElement | DataTableEmptyState
+  /** Accessible label for the search input. Defaults to the placeholder. */
+  searchLabel?: string
 }
 
 export function DataTable<T extends { id: string }>({
@@ -66,7 +87,10 @@ export function DataTable<T extends { id: string }>({
   pageSize = 20,
   loading = false,
   emptyMessage = 'No records found',
+  emptyState,
+  searchLabel,
 }: DataTableProps<T>) {
+  const { t } = useT()
   const [search, setSearch] = useState('')
   const [filterValues, setFilterValues] = useState<Record<string, string>>(() => {
     if (!filters) return {}
@@ -147,9 +171,10 @@ export function DataTable<T extends { id: string }>({
         <div className="flex flex-wrap items-center gap-3">
           {searchKeys?.length ? (
             <div className="relative flex-1 min-w-50 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search aria-hidden className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
+                aria-label={searchLabel || searchPlaceholder}
                 className="pl-8 h-9 text-sm"
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
@@ -162,24 +187,24 @@ export function DataTable<T extends { id: string }>({
               value={filterValues[f.key] || 'all'}
               onValueChange={v => { setFilterValues(prev => ({ ...prev, [f.key]: v })); setPage(1) }}
             >
-              <SelectTrigger className="h-9 w-35 text-sm">
+              <SelectTrigger className="h-9 w-35 text-sm" aria-label={f.label}>
                 <SelectValue placeholder={f.label} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{f.label}: All</SelectItem>
+                <SelectItem value="all">{t('dash.labelAll', { label: f.label })}</SelectItem>
                 {f.options.map(o => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           ))}
-          <p className="text-xs text-muted-foreground ml-auto">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-muted-foreground ml-auto">{t('dash.countRecords', { count: filtered.length })}</p>
         </div>
       ) : null}
 
       {someSelected && bulkActions?.length ? (
         <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
-          <span className="text-sm font-medium">{selected.size} selected</span>
+          <span className="text-sm font-medium">{t('dash.sizeSelected', { size: selected.size })}</span>
           <div className="flex-1" />
           {bulkActions.map((action, i) => (
             <Button
@@ -206,7 +231,10 @@ export function DataTable<T extends { id: string }>({
                 {bulkActions?.length ? (
                   <th className="w-10 py-3 px-4">
                     <button
+                      type="button"
                       onClick={toggleSelectAll}
+                      aria-label={allSelected ? t('dash.deselectAllRowsOnThisPage') : t('dash.selectAllRowsOnThisPage')}
+                      aria-pressed={allSelected}
                       className="text-muted-foreground hover:text-foreground"
                     >
                       {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
@@ -217,7 +245,9 @@ export function DataTable<T extends { id: string }>({
                   <th key={col.key} className={`text-left py-3 px-4 font-semibold text-xs ${col.className || ''}`}>
                     {col.sortable ? (
                       <button
+                        type="button"
                         onClick={() => handleSort(col.key)}
+                        aria-label={t('dash.sortByHeaderValue', { header: col.header, value: sortConfig?.key === col.key ? (sortConfig.direction === 'asc' ? t('dash.sortedAscendingSuffix') : t('dash.sortedDescendingSuffix')) : '' })}
                         className="flex items-center gap-1 hover:text-foreground transition-colors group"
                       >
                         {col.header}
@@ -237,15 +267,25 @@ export function DataTable<T extends { id: string }>({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">
-                    Loading...
-                  </td>
+                  <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">{t('common.loading')}</td>
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">
-                    {emptyMessage}
-                  </td>
+                  {emptyState ? (
+                    <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)}>
+                      {emptyState === true ? (
+                        <EmptyState compact title={emptyMessage} />
+                      ) : isValidElement(emptyState) ? (
+                        emptyState
+                      ) : (
+                        <EmptyState compact {...emptyState} title={emptyState.title || emptyMessage} />
+                      )}
+                    </td>
+                  ) : (
+                    <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">
+                      {emptyMessage}
+                    </td>
+                  )}
                 </tr>
               ) : (
                 paginated.map(row => (
@@ -253,7 +293,10 @@ export function DataTable<T extends { id: string }>({
                     {bulkActions?.length ? (
                       <td className="py-3 px-4">
                         <button
+                          type="button"
                           onClick={() => toggleRow(row.id)}
+                          aria-label={selected.has(row.id) ? t('dash.deselectRow') : t('dash.selectRow')}
+                          aria-pressed={selected.has(row.id)}
                           className="text-muted-foreground hover:text-foreground"
                         >
                           {selected.has(row.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
@@ -275,15 +318,11 @@ export function DataTable<T extends { id: string }>({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Page {safePage} of {totalPages}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('dash.pageSafepageOfTotalpages', { safePage, totalPages })}</p>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
-              <ChevronLeft className="h-3 w-3 mr-1" />Prev
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
-              Next<ChevronRight className="h-3 w-3 ml-1" />
+              <ChevronLeft className="h-3 w-3 mr-1" />{t('dash.prev')}</Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>{t('common.next')}<ChevronRight className="h-3 w-3 ml-1" />
             </Button>
           </div>
         </div>

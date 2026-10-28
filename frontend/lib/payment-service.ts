@@ -16,10 +16,39 @@
  */
 
 import { isRazorpayConfigured, getRazorpay, getPublishableKeyId } from '@/lib/razorpay-server'
-import { isPhonePeConfiguredAsync, createPhonePeOrder, getPhonePeMerchantId } from '@/lib/phonepe-server'
-import { BILLING_PLANS, billingOrders, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
+import { isPhonePeConfiguredAsync, createPhonePePayment } from '@/lib/phonepe-server'
+import { getAppOrigin } from '@/lib/app-origin'
+import { billingOrders, billingSubscriptions, newId, nowIso, type BillingOrderDoc } from '@/lib/db/billing'
+import { activatePaidOrder, cancelAtPeriodEnd, orderPlanSnapshot, resolveBillingPlan, type ResolvedPlan } from '@/lib/billing-plans'
+import type { PlanInterval } from '@/lib/billing-plan-mode'
 
 export type PaymentProvider = 'razorpay' | 'stripe' | 'phonepe'
+
+/** A priced plan as resolved by lib/billing-plans.ts (amount after coupon). */
+export type CheckoutPlan = ResolvedPlan
+
+/** Expected checkout refusals with a user-safe message. */
+export class CheckoutError extends Error {
+  constructor(public code: 'unknown_plan' | 'free_plan' | 'contact_sales' | 'coupon_unavailable' | string, message: string) {
+    super(message)
+  }
+}
+
+/** Extra fields for the stored order (plan change, credit) and whether to force a one-off payment. */
+export interface OrderExtras {
+  fields?: Partial<BillingOrderDoc>
+  oneOff?: boolean
+}
+
+export interface CheckoutOptions {
+  /** INR / USD price list to charge from (lib/billing/plan-prices.ts). */
+  currency?: string | null
+  /** Plan change: charge this amount (minor units) instead of the list price. */
+  chargeOverride?: number
+  extras?: OrderExtras
+  /** Apply the buyer's account credit (referral rewards) to a prepaid order. Default true. */
+  useCredit?: boolean
+}
 
 export interface CheckoutResult {
   provider: PaymentProvider
@@ -29,9 +58,11 @@ export interface CheckoutResult {
   redirect_url?: string
   /** For embedded checkout (Razorpay) */
   key_id?: string
+  /** Razorpay subscription checkout (INR autopay). */
+  subscription_id?: string
   amount_paise: number
   currency: string
-  plan: (typeof BILLING_PLANS)[string]
+  plan: CheckoutPlan
 }
 
 export interface SubscriptionResult {
@@ -52,7 +83,7 @@ export interface PaymentMethod {
 
 export interface PaymentGatewayAdapter {
   name: PaymentProvider
-  createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult>
+  createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string, extras?: OrderExtras): Promise<CheckoutResult>
   getSubscription(userId: string): Promise<SubscriptionResult | null>
   cancelSubscription(userId: string): Promise<void>
   listPaymentMethods(userId: string, email: string): Promise<PaymentMethod[]>
@@ -60,174 +91,196 @@ export interface PaymentGatewayAdapter {
   detachPaymentMethod(userId: string, email: string, methodId: string): Promise<void>
 }
 
-// ─── Country → Gateway mapping ──────────────────────────────────────────────
+// ─── Gateway selection ──────────────────────────────────────────────────────
 
-const COUNTRY_GATEWAY: Record<string, PaymentProvider> = {
-  IN: 'phonepe',  // PhonePe first for India
-  US: 'stripe',
+/**
+ * Pure gateway preference for a checkout (D17). INR plans prefer the Indian
+ * gateways (PhonePe only when explicitly enabled — see lib/phonepe-server.ts),
+ * every other currency or a non-Indian buyer prefers Stripe. Falls back to any
+ * configured gateway that can take the currency (PhonePe is INR-only).
+ */
+export function gatewayPreference(currency: string, countryCode?: string | null, interval?: PlanInterval | null): PaymentProvider[] {
+  const cur = (currency || '').toUpperCase()
+  const country = (countryCode || '').toUpperCase()
+  if (cur !== 'INR') return ['stripe', 'razorpay']
+  // The PhonePe integration has no autopay mandates, so it only takes one-time
+  // purchases and yearly plans (paid upfront); monthly plans go to Razorpay.
+  const phonepe: PaymentProvider[] = interval === 'month' ? [] : ['phonepe']
+  if (country && country !== 'IN') return ['stripe', 'razorpay', ...phonepe]
+  return [...phonepe, 'razorpay', 'stripe']
 }
 
-const PROVIDER_ORDER: PaymentProvider[] = ['phonepe', 'razorpay', 'stripe']
+async function isConfigured(p: PaymentProvider): Promise<boolean> {
+  if (p === 'phonepe') return isPhonePeConfiguredAsync()
+  if (p === 'razorpay') return isRazorpayConfigured()
+  const { getStripeSecretKey } = await import('./stripe-adapter')
+  return !!(await getStripeSecretKey())
+}
+
+async function adapterFor(p: PaymentProvider): Promise<PaymentGatewayAdapter> {
+  if (p === 'phonepe') return new PhonePeAdapter()
+  if (p === 'razorpay') return new RazorpayAdapter()
+  const { StripeAdapter } = await import('./stripe-adapter')
+  return new StripeAdapter()
+}
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 export class PaymentService {
   private gateway: PaymentGatewayAdapter | null = null
 
-  /** Detect which provider is configured and return adapter */
+  /** First configured gateway (for saved-method listing). */
   private async getAdapter(): Promise<PaymentGatewayAdapter> {
     if (this.gateway) return this.gateway
-
-    // Try in order of preference
-    for (const provider of PROVIDER_ORDER) {
-      if (provider === 'phonepe' && await isPhonePeConfiguredAsync()) {
-        this.gateway = new PhonePeAdapter()
-        return this.gateway
-      }
-      if (provider === 'razorpay' && await isRazorpayConfigured()) {
-        this.gateway = new RazorpayAdapter()
+    for (const p of ['razorpay', 'stripe', 'phonepe'] as PaymentProvider[]) {
+      if (await isConfigured(p)) {
+        this.gateway = await adapterFor(p)
         return this.gateway
       }
     }
-
-    const stripeKey = process.env.STRIPE_SECRET_KEY
-    if (stripeKey) {
-      const { StripeAdapter } = await import('./stripe-adapter')
-      this.gateway = new StripeAdapter()
-      return this.gateway
-    }
-
     throw new Error('No payment provider configured. Set PHONEPE, RAZORPAY, or STRIPE credentials.')
   }
 
-  /** Select gateway based on user's country (2-letter code, e.g. 'IN', 'US') */
-  async getAdapterForCountry(countryCode?: string | null): Promise<PaymentGatewayAdapter> {
-    const preferred = countryCode ? COUNTRY_GATEWAY[countryCode.toUpperCase()] : null
-
-    if (preferred === 'phonepe' && await isPhonePeConfiguredAsync()) {
-      return new PhonePeAdapter()
+  /** Gateway for a checkout in `currency`, optionally for a buyer in `countryCode`. */
+  async getAdapterForCheckout(currency: string, countryCode?: string | null, interval?: PlanInterval | null): Promise<PaymentGatewayAdapter> {
+    for (const p of gatewayPreference(currency, countryCode, interval)) {
+      if (await isConfigured(p)) return adapterFor(p)
     }
-    if (preferred === 'razorpay') {
-      const configured = await isRazorpayConfigured()
-      if (configured) return new RazorpayAdapter()
-    }
-    if (preferred === 'stripe' && process.env.STRIPE_SECRET_KEY) {
-      const { StripeAdapter } = await import('./stripe-adapter')
-      return new StripeAdapter()
-    }
-
-    return this.getAdapter()
+    throw new Error('No payment provider configured. Set PHONEPE, RAZORPAY, or STRIPE credentials.')
   }
 
+  /** @deprecated use getAdapterForCheckout (kept for tests): INR for IN, else USD. */
+  async getAdapterForCountry(countryCode?: string | null): Promise<PaymentGatewayAdapter> {
+    const c = (countryCode || '').toUpperCase()
+    return this.getAdapterForCheckout(c && c !== 'IN' ? 'USD' : 'INR', c || null)
+  }
+
+  /**
+   * Create a checkout for exactly the plan asked for. Free and contact-sales
+   * plans never reach a gateway (see lib/billing-plan-mode.ts). The plan
+   * snapshot (id, name, kind, duration, amount) is stored on the order so the
+   * verified payment activates exactly that plan.
+   */
   async createCheckout(
     userId: string,
     email: string,
     planId: string,
     countryCode?: string | null,
     couponId?: string,
+    interval: PlanInterval = 'month',
+    opts: CheckoutOptions = {},
   ): Promise<CheckoutResult> {
-    // Map pricing-catalog plan IDs (free/pro/enterprise) to billing-plan keys
-    const PLAN_ID_MAP: Record<string, string> = {
-      free: 'pro_monthly', pro: 'pro_monthly', enterprise: 'pro_monthly',
+    const resolved = await resolveBillingPlan(planId, interval, opts.currency)
+    if (!resolved) throw new CheckoutError('unknown_plan', 'That plan is not available.')
+    if (resolved.mode === 'free') throw new CheckoutError('free_plan', 'The free plan does not need checkout.')
+    if (resolved.mode === 'contact_sales') throw new CheckoutError('contact_sales', 'Contact sales to set up this plan.')
+    let plan: CheckoutPlan = resolved
+    const extras: OrderExtras = { ...(opts.extras ?? {}), fields: { ...(opts.extras?.fields ?? {}) } }
+    if (opts.chargeOverride !== undefined) {
+      if (!Number.isInteger(opts.chargeOverride) || opts.chargeOverride < 0) throw new CheckoutError('unknown_plan', 'That plan is not available.')
+      plan = { ...plan, amount_paise: opts.chargeOverride }
+      extras.oneOff = true
     }
-    const resolvedPlanId = PLAN_ID_MAP[planId] || planId
-    let plan = BILLING_PLANS[resolvedPlanId]
-    if (!plan) {
-      try {
-        const { getMongoDb } = await import('@/lib/mongodb')
-        const db = await getMongoDb()
-        const dbPlan = await db.collection('plans').findOne({ $or: [{ plan: planId }, { id: planId }] })
-        if (dbPlan) {
-          let usd = 29
-          if (typeof dbPlan.price === 'number') usd = dbPlan.price
-          else if (typeof dbPlan.price === 'string') {
-            const m = dbPlan.price.match(/[\d.]+/)
-            if (m) usd = parseFloat(m[0])
-          }
-          const amount_paise = dbPlan.amount_paise || Math.round(usd * 83 * 100)
-          plan = {
-            id: planId,
-            name: dbPlan.name || planId,
-            amount_paise,
-            currency: dbPlan.currency || 'INR',
-            kind: 'subscription' as const,
-            duration_days: 30,
-            perks: Array.isArray(dbPlan.features) ? dbPlan.features.map((f: any) => typeof f === 'string' ? f : f.label || '') : [],
-          }
-        }
-      } catch (e) {
-        console.warn('[CodeSpectra] Could not look up dynamic plan from DB:', e)
-      }
-    }
-    if (!plan) throw new Error(`Unknown plan: ${resolvedPlanId}`)
 
     if (couponId) {
-      const { billingCoupons } = await import('@/lib/db/billing')
+      // Plan / first-purchase / per-person restrictions (lib/billing/coupon-eligibility.ts).
+      const { billingCoupons, userCouponRedemptions } = await import('@/lib/db/billing')
+      const { couponEligibility, COUPON_REFUSAL_MESSAGES } = await import('@/lib/billing/coupon-eligibility')
+      const c = await (await billingCoupons()).findOne({ id: couponId })
+      if (!c) throw new CheckoutError('coupon_unavailable', 'That coupon is no longer available.')
+      const verdict = couponEligibility(c, {
+        planId: plan.id,
+        userId,
+        userRedemptions: await userCouponRedemptions(couponId, userId),
+        hasPaidBefore: await hasPaidBefore(userId),
+      })
+      if (!verdict.ok) throw new CheckoutError(verdict.code, COUPON_REFUSAL_MESSAGES[verdict.code])
+    }
+
+    if (couponId) {
+      const { billingCoupons, reserveCouponUse } = await import('@/lib/db/billing')
       const { calculateDiscount } = await import('@/lib/coupon-service')
       const coupons = await billingCoupons()
       const coupon = await coupons.findOne({ id: couponId })
-      if (coupon) {
-        plan = { ...plan, amount_paise: calculateDiscount(plan.amount_paise, coupon) }
+      if (!coupon) throw new CheckoutError('coupon_unavailable', 'That coupon is no longer available.')
+      // CORE-018: a flat coupon only applies to orders in its own currency; seller coupons never apply to plans.
+      const { couponUsableFor } = await import('@/lib/billing/coupon-rules')
+      const usable = couponUsableFor(coupon, 'plans', plan.currency)
+      if (!usable.ok) throw new CheckoutError('coupon_unavailable', usable.error)
+      // Atomic: counts against max_uses now, one per user (D20).
+      if (!(await reserveCouponUse(couponId, userId))) {
+        throw new CheckoutError('coupon_unavailable', 'That coupon is no longer available.')
+      }
+      plan = { ...plan, amount_paise: calculateDiscount(plan.amount_paise, coupon, plan.currency) }
+    }
+
+    // Account credit (referral rewards): prepaid orders only; debited when the order is paid.
+    if (opts.useCredit !== false && plan.amount_paise > 0 && plan.kind !== 'one_time') {
+      const { availableCredit } = await import('@/lib/billing/credits')
+      // Credit is a bonus: a lookup failure just means none is applied.
+      const credit = Math.min(plan.amount_paise, await availableCredit(userId, plan.currency).catch(() => 0))
+      if (credit > 0) {
+        plan = { ...plan, amount_paise: plan.amount_paise - credit }
+        extras.fields = { ...extras.fields, credit_applied: credit }
+        extras.oneOff = true
       }
     }
 
-    if (plan.amount_paise === 0) {
-      // 100% discount, bypass gateway and immediately activate subscription
-      const { billingSubscriptions, billingOrders, nowIso, newId, recordCouponRedemption } = await import('@/lib/db/billing')
-      const subs = await billingSubscriptions()
-      const existing = await subs.findOne({ user_id: userId, status: 'active' })
-      const startsAt = nowIso()
-      const endsAt = new Date(Date.now() + (plan.duration_days || 30) * 86400000).toISOString()
+    // INR monthly / yearly at list price → Razorpay subscription (autopay), when enabled.
+    if (!couponId && !extras.oneOff && plan.amount_paise === resolved.amount_paise && (await isConfigured('razorpay'))) {
+      const { razorpayRecurringEligible, createRazorpaySubscriptionCheckout } = await import('@/lib/billing/razorpay-subscriptions')
+      const { getBillingSettings } = await import('@/lib/billing/settings')
+      const country = (countryCode || '').toUpperCase()
+      if (razorpayRecurringEligible(plan) && (!country || country === 'IN') && (await getBillingSettings()).razorpay_autopay) {
+        try {
+          const r = await createRazorpaySubscriptionCheckout(userId, plan)
+          return { provider: 'razorpay', gateway_id: r.subscription_id, subscription_id: r.subscription_id, key_id: r.key_id, amount_paise: plan.amount_paise, currency: plan.currency, plan }
+        } catch (e) {
+          // Subscriptions not enabled on the Razorpay account (or Razorpay down): sell the period prepaid instead.
+          console.error('[payment-service] Razorpay subscription unavailable, using a one-time order:', (e as Error)?.message)
+        }
+      }
+    }
 
-      const orders = await billingOrders()
-      const receipt = `${userId}_${resolvedPlanId}_${Date.now()}`
-      await orders.insertOne({
-        id: newId(),
+    if (plan.amount_paise <= 0) {
+      // 100% discount: no gateway. Claim the coupon reservation atomically so
+      // two parallel requests can't both activate, then record a paid
+      // zero-amount order and activate it.
+      const orderId = newId()
+      if (couponId) {
+        const { finalizeCouponRedemption } = await import('@/lib/db/billing')
+        if (!(await finalizeCouponRedemption(couponId, userId, orderId, plan.id))) {
+          throw new CheckoutError('coupon_unavailable', 'You have already used this coupon code.')
+        }
+      }
+      const order: BillingOrderDoc = {
+        id: orderId,
         user_id: userId,
         amount_paise: 0,
         currency: plan.currency,
-        plan_id: resolvedPlanId,
-        receipt,
+        ...orderPlanSnapshot(plan),
+        receipt: `${userId}_${plan.id}_${Date.now()}`,
         coupon_id: couponId,
-        status: 'paid', // immediately paid
+        ...(extras.fields ?? {}),
+        status: 'paid',
         created_at: nowIso(),
         updated_at: nowIso(),
-      })
-
-      if (existing) {
-        await subs.updateOne(
-          { _id: existing._id },
-          { $set: { plan_id: resolvedPlanId, ends_at: endsAt, updated_at: nowIso() } }
-        )
-      } else {
-        await subs.insertOne({
-          id: newId(),
-          user_id: userId,
-          plan_id: resolvedPlanId,
-          status: 'active',
-          started_at: startsAt,
-          ends_at: endsAt,
-          created_at: nowIso(),
-          updated_at: nowIso(),
-        } as any)
       }
-
-      if (couponId) {
-        await recordCouponRedemption(couponId, userId, undefined, resolvedPlanId).catch(() => {})
-      }
+      await (await billingOrders()).insertOne(order)
+      await activatePaidOrder(order)
 
       return {
         provider: 'stripe', // Placeholder
-        gateway_id: 'free_' + Date.now(),
+        gateway_id: 'free_' + order.id,
         redirect_url: '/dashboard/pricing?payment=free&status=success',
         amount_paise: 0,
         currency: plan.currency,
-        plan
+        plan,
       }
     }
 
-    const adapter = await this.getAdapterForCountry(countryCode)
-    return adapter.createCheckout(userId, email, resolvedPlanId, plan, couponId)
+    const adapter = await this.getAdapterForCheckout(plan.currency, countryCode, plan.kind === 'subscription' ? plan.interval : null)
+    return adapter.createCheckout(userId, email, plan.id, plan, couponId, extras)
   }
 
   async getSubscription(userId: string): Promise<SubscriptionResult | null> {
@@ -235,9 +288,9 @@ export class PaymentService {
     return adapter.getSubscription(userId)
   }
 
+  /** DB-only (no gateway needed), so it works for coupon-only users too. */
   async cancelSubscription(userId: string): Promise<void> {
-    const adapter = await this.getAdapter()
-    return adapter.cancelSubscription(userId)
+    await cancelAtPeriodEnd(userId)
   }
 
   async listPaymentMethods(userId: string, email: string): Promise<PaymentMethod[]> {
@@ -256,51 +309,47 @@ export class PaymentService {
 class PhonePeAdapter implements PaymentGatewayAdapter {
   name = 'phonepe' as const
 
-  async createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const callbackUrl = `${baseUrl}/api/billing/phonepe-callback`
-    const redirectUrl = `${baseUrl}/dashboard/billing?payment=phonepe&status=success`
-
+  // NEEDS A SANDBOX TEST (PhonePe PG v1) — see lib/phonepe-server.ts.
+  async createCheckout(userId: string, _email: string, planId: string, plan: CheckoutPlan, couponId?: string, extras?: OrderExtras): Promise<CheckoutResult> {
+    const baseUrl = getAppOrigin()
     const receipt = `${userId}_${planId}_${Date.now()}`
-
-    // Use a simple transaction ID format for PhonePe
-    const merchantTransactionId = `TXN_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-    const orderResponse = await createPhonePeOrder({
-      merchantTransactionId,
-      amount: plan.amount_paise,
-      userId,
-      email,
-      callbackUrl,
-      redirectUrl,
-    })
-
-    if (!orderResponse.success || !orderResponse.data?.instrumentResponse) {
-      throw new Error(orderResponse.message || 'PhonePe order creation failed')
-    }
-
-    // Desktop/web browsers can't open a phonepe:// intent — prefer the
-    // hosted redirect URL when PhonePe returns one.
-    const instrument = orderResponse.data.instrumentResponse
-    const payUrl = instrument.redirectUrl || instrument.intentUrl
-    if (!payUrl) {
-      throw new Error(orderResponse.message || 'PhonePe order creation failed')
-    }
+    // ≤35 chars, [A-Za-z0-9_-] (PhonePe merchantTransactionId rules).
+    const merchantTransactionId = `T${Date.now()}${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+    // Browser comes back here; the route re-checks status server-side.
+    const redirectUrl = `${baseUrl}/api/billing/phonepe-callback?txn=${merchantTransactionId}`
+    // S2S callback (checksum-verified).
+    const callbackUrl = `${baseUrl}/api/billing/phonepe-webhook`
 
     const orders = await billingOrders()
+    const orderId = newId()
     await orders.insertOne({
-      id: newId(),
+      id: orderId,
       user_id: userId,
       phonepe_transaction_id: merchantTransactionId,
       amount_paise: plan.amount_paise,
       currency: plan.currency,
-      plan_id: planId,
+      ...orderPlanSnapshot(plan),
       receipt,
       coupon_id: couponId,
+      ...(extras?.fields ?? {}),
       status: 'created',
       created_at: nowIso(),
       updated_at: nowIso(),
     })
+
+    let payUrl: string
+    try {
+      ;({ payUrl } = await createPhonePePayment({
+        merchantTransactionId,
+        amount: plan.amount_paise,
+        userId,
+        redirectUrl,
+        callbackUrl,
+      }))
+    } catch (e) {
+      await orders.updateOne({ id: orderId, status: 'created' }, { $set: { status: 'failed', updated_at: nowIso() } }).catch(() => {})
+      throw e
+    }
 
     return {
       provider: 'phonepe',
@@ -320,8 +369,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
   }
 
   async cancelSubscription(userId: string): Promise<void> {
-    const subs = await billingSubscriptions()
-    await subs.updateOne({ user_id: userId, status: 'active' }, { $set: { status: 'cancelled' } })
+    await cancelAtPeriodEnd(userId)
   }
 
   async listPaymentMethods(_userId: string, _email: string): Promise<PaymentMethod[]> {
@@ -338,7 +386,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
 class RazorpayAdapter implements PaymentGatewayAdapter {
   name = 'razorpay' as const
 
-  async createCheckout(userId: string, _email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult> {
+  async createCheckout(userId: string, _email: string, planId: string, plan: CheckoutPlan, couponId?: string, extras?: OrderExtras): Promise<CheckoutResult> {
     const rp = await getRazorpay()
     const receipt = `${userId}_${planId}_${Date.now()}`
     const order = await rp.orders.create({
@@ -355,9 +403,10 @@ class RazorpayAdapter implements PaymentGatewayAdapter {
       razorpay_order_id: order.id,
       amount_paise: plan.amount_paise,
       currency: plan.currency,
-      plan_id: planId,
+      ...orderPlanSnapshot(plan),
       receipt,
       coupon_id: couponId,
+      ...(extras?.fields ?? {}),
       status: 'created',
       created_at: nowIso(),
       updated_at: nowIso(),
@@ -382,8 +431,7 @@ class RazorpayAdapter implements PaymentGatewayAdapter {
   }
 
   async cancelSubscription(userId: string): Promise<void> {
-    const subs = await billingSubscriptions()
-    await subs.updateOne({ user_id: userId, status: 'active' }, { $set: { status: 'cancelled' } })
+    await cancelAtPeriodEnd(userId)
   }
 
   async listPaymentMethods(_userId: string, _email: string): Promise<PaymentMethod[]> {
@@ -396,3 +444,12 @@ class RazorpayAdapter implements PaymentGatewayAdapter {
 }
 
 export { RazorpayAdapter }
+
+/** Has the user ever paid for anything (first-purchase-only coupons)? */
+export async function hasPaidBefore(userId: string): Promise<boolean> {
+  const row = await (await billingOrders()).findOne(
+    { user_id: userId, status: { $in: ['paid', 'refunded'] }, amount_paise: { $gt: 0 } },
+    { projection: { _id: 1 } },
+  )
+  return !!row
+}

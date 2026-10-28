@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface ProviderKey {
   id: string
@@ -58,7 +59,7 @@ interface HealthRow {
 }
 
 const HEALTH_META: Record<HealthRow['status'], { label: string; dot: string; pill: string; hint: string }> = {
-  ok: { label: 'Working', dot: 'bg-emerald-500', pill: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', hint: 'Live probe succeeded' },
+  ok: { label: 'Working', dot: 'bg-green-500', pill: 'bg-green-500/10 text-green-700 border-green-500/20 dark:text-green-400', hint: 'Live probe succeeded' },
   rate_limited: { label: 'Rate limited', dot: 'bg-amber-500', pill: 'bg-amber-500/10 text-amber-600 border-amber-500/20', hint: 'Out of credits / throttled — waits out, then retries automatically' },
   bad_key: { label: 'Bad key', dot: 'bg-red-500', pill: 'bg-red-500/10 text-red-600 border-red-500/20', hint: 'Key rejected (401/403) — replace it in the API Keys tab' },
   dead_model: { label: 'Dead model', dot: 'bg-red-500', pill: 'bg-red-500/10 text-red-600 border-red-500/20', hint: 'Model retired/unknown — update the fallback chain model ID' },
@@ -303,13 +304,10 @@ export function LlmSettingsTabs() {
     const skipped: string[] = []
     const importedKeys: string[] = []
     try {
-      const XLSX = await import('xlsx')
+      const { readSpreadsheetRows } = await import('@/lib/xlsx-lite')
       for (const file of files) {
         const data = await file.arrayBuffer()
-        const workbook = XLSX.read(data, { type: 'array' })
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-        if (!firstSheet) continue
-        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { header: 1 })
+        const rows = readSpreadsheetRows(data)
       const providerMap: Record<string, string> = {
         'openai': 'openai_api_key', 'anthropic': 'anthropic_api_key', 'google gemini': 'gemini_api_key', 'gemini': 'gemini_api_key',
         'groq': 'groq_api_key', 'openrouter': 'openrouter_api_key', 'nvidia': 'nvidia_api_key', 'deepseek': 'deepseek_api_key',
@@ -347,9 +345,9 @@ export function LlmSettingsTabs() {
         } else skipped.push(`${providerName} (${file.name})`)
         }
       }
-      if (imported > 0) addToast({ type: 'success', title: `Imported ${imported} key${imported > 1 ? 's' : ''} from ${files.length} file${files.length > 1 ? 's' : ''}`, message: 'Click "Save Keys" to persist.' })
+      if (imported > 0) addToast({ type: 'success', title: `Imported ${imported} key${imported > 1 ? 's' : ''} from ${files.length} file${files.length > 1 ? 's' : ''}`, message: 'Click "Save keys" to persist.' })
       else addToast({ type: 'error', title: 'No matching providers found' })
-    } catch (err) { addToast({ type: 'error', title: 'Failed to parse file' }) }
+    } catch (err) { addToast({ type: 'error', title: 'Failed to parse file', message: err instanceof Error ? err.message : undefined }) }
     e.target.value = ''
   }, [addToast])
 
@@ -434,10 +432,10 @@ export function LlmSettingsTabs() {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="keys" className="flex items-center gap-2"><Key className="h-4 w-4" /> API Keys</TabsTrigger>
+      <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+        <TabsTrigger value="keys" className="flex items-center gap-2"><Key className="h-4 w-4" /> API keys</TabsTrigger>
         <TabsTrigger value="health" className="flex items-center gap-2"><Activity className="h-4 w-4" /> Health</TabsTrigger>
-        <TabsTrigger value="usage" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Usage Stats</TabsTrigger>
+        <TabsTrigger value="usage" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Usage stats</TabsTrigger>
         <TabsTrigger value="routing" className="flex items-center gap-2"><Zap className="h-4 w-4" /> Routing</TabsTrigger>
       </TabsList>
 
@@ -449,12 +447,12 @@ export function LlmSettingsTabs() {
         <Card className="p-4 flex flex-wrap items-center gap-3">
           <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border/60 bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm font-medium">
             <Upload className="h-4 w-4" /> Import from Excel/CSV
-            <input type="file" accept=".xlsx,.xls,.csv" multiple className="hidden" onChange={handleImport} />
+            <input type="file" accept=".xlsx,.csv" multiple className="hidden" onChange={handleImport} />
           </label>
           <div className="flex-1" />
           <Button onClick={saveKeys} disabled={saving}>
             {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Save className="mr-1 h-4 w-4" />}
-            Save Keys
+            Save keys
           </Button>
         </Card>
 
@@ -475,8 +473,8 @@ export function LlmSettingsTabs() {
                   const isExpanded = expandedProvider === p.id
                   const Icon = p.icon
                   return (
-                    <Card key={p.id} className={cn("p-4 transition-all cursor-pointer hover:border-primary/30", isExpanded && "border-primary/50 ring-1 ring-primary/20")} onClick={() => setExpandedProvider(isExpanded ? null : p.id)}>
-                      <div className="flex items-center gap-3">
+                    <Card key={p.id} className={cn("p-4 transition-all hover:border-primary/30", isExpanded && "border-primary/50 ring-1 ring-primary/20")}>
+                      <div className="flex cursor-pointer items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" role="button" tabIndex={0} aria-expanded={isExpanded} onClick={() => setExpandedProvider(isExpanded ? null : p.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedProvider(isExpanded ? null : p.id) } }}>
                         <div className={cn("p-2 rounded-lg", hasKey ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
                           <Icon className="h-5 w-5" />
                         </div>
@@ -491,7 +489,7 @@ export function LlmSettingsTabs() {
                             {saved?.has && (
                               <Badge
                                 variant="outline"
-                                className="text-[9px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                className="text-[9px] bg-green-500/10 text-green-700 border-green-500/20 dark:text-green-400"
                                 title={saved.masked ? `${saved.count || 1} key(s) stored: ${saved.masked}` : 'Stored in database'}
                               >
                                 Saved{saved.count > 1 ? ` · ${saved.count} keys` : ''}
@@ -510,12 +508,12 @@ export function LlmSettingsTabs() {
                       {isExpanded && (
                         <div className="mt-4 pt-4 border-t border-border/50 space-y-3" onClick={(e) => e.stopPropagation()}>
                           {saved?.has && (
-                            <div className="flex items-center gap-2 p-2 rounded-md bg-emerald-500/5 border border-emerald-500/20">
+                            <div className="flex items-center gap-2 p-2 rounded-md bg-green-500/5 border border-green-500/20">
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-mono truncate">{saved.masked || '••••••••'}</p>
                                 <p className="text-[10px] text-muted-foreground">Saved in database — used by AI features</p>
                               </div>
-                              <button onClick={() => clearSavedKeys(p.key, p.label)} className="text-destructive hover:text-destructive/80 p-1" title="Remove all saved keys for this provider">
+                              <button aria-label="Remove all saved keys for this provider" onClick={() => clearSavedKeys(p.key, p.label)} className="text-destructive hover:text-destructive/80 p-1" title="Remove all saved keys for this provider">
                                 <Trash2 className="h-3 w-3" />
                               </button>
                             </div>
@@ -543,14 +541,15 @@ export function LlmSettingsTabs() {
                                   }} className="text-muted-foreground hover:text-foreground p-1">
                                     {(visibleFields as any)[`${p.key}_${idx}`] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                   </button>
-                                  <button onClick={() => deleteKey(p.key, idx)} className="text-destructive hover:text-destructive/80 p-1">
+                                  <button onClick={() => deleteKey(p.key, idx)}
+                                    aria-label="Remove key" className="text-destructive hover:text-destructive/80 p-1">
                                     <Trash2 className="h-3 w-3" />
                                   </button>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-xs text-muted-foreground text-center py-2">{saved?.has ? 'No new keys — add one below, then Save Keys' : 'No keys configured'}</p>
+                            <p className="text-xs text-muted-foreground text-center py-2">{saved?.has ? 'No new keys — add one below, then Save keys' : 'No keys configured'}</p>
                           )}
                           <div className="flex gap-2">
                             <Input
@@ -559,7 +558,7 @@ export function LlmSettingsTabs() {
                               placeholder={p.placeholder}
                               className="flex-1 h-8 text-xs font-mono"
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                                if (isSubmitEnter(e) && (e.target as HTMLInputElement).value.trim()) {
                                   const val = (e.target as HTMLInputElement).value.trim()
                                   setSecretsDraft(d => {
                                     const existing = d[p.key] || ''
@@ -572,7 +571,7 @@ export function LlmSettingsTabs() {
                               }}
                             />
                             <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline shrink-0 self-center">
-                              Get Key →
+                              Get key →
                             </a>
                             {p.gateway && (
                               <Button
@@ -593,7 +592,7 @@ export function LlmSettingsTabs() {
                                     return { ...d, [p.key]: keys.join(', ') }
                                   })
                                   if (el) el.value = ''
-                                  addToast({ type: 'success', title: 'Key staged — click Save Keys to persist' })
+                                  addToast({ type: 'success', title: 'Key staged — click Save keys to persist' })
                                 }}
                               >
                                 Add
@@ -604,11 +603,11 @@ export function LlmSettingsTabs() {
                             <div className="space-y-2 rounded-md border border-border/40 bg-muted/20 p-3">
                               <p className="text-[10px] text-muted-foreground">
                                 Type the key above, press <kbd className="rounded bg-muted px-1 font-mono">Enter</kbd> or Add,
-                                then <strong>Save Keys</strong> — the key field alone never persists.
+                                then <strong>Save keys</strong> — the key field alone never persists.
                               </p>
                               <div className="grid gap-1.5">
                                 <Label className="text-[11px] text-muted-foreground">Gateway endpoint (OpenAI-compatible base URL)</Label>
-                                <Input
+                                <Input aria-label="Gateway endpoint (OpenAI-compatible base URL)"
                                   value={customEndpoint}
                                   onChange={(e) => setCustomEndpoint(e.target.value)}
                                   placeholder="https://api.apinex.bond/v1"
@@ -617,7 +616,7 @@ export function LlmSettingsTabs() {
                               </div>
                               <div className="grid gap-1.5">
                                 <Label className="text-[11px] text-muted-foreground">Default model</Label>
-                                <Input
+                                <Input aria-label="Default model"
                                   value={customModel}
                                   onChange={(e) => setCustomModel(e.target.value)}
                                   placeholder="e.g. provider/model-name"
@@ -655,7 +654,7 @@ export function LlmSettingsTabs() {
       <TabsContent value="usage" className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-sm font-semibold">Model Usage Statistics</h4>
+            <h4 className="text-sm font-semibold">Model usage statistics</h4>
             <p className="text-xs text-muted-foreground">Auto-refreshes every 60 seconds</p>
           </div>
           <Button variant="outline" size="sm" onClick={loadUsage}><RefreshCw className="h-4 w-4 mr-1" /> Refresh</Button>
@@ -663,7 +662,7 @@ export function LlmSettingsTabs() {
         {usageStats.length > 0 ? (
           <Card className="border rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs min-w-[760px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-3 font-medium">Model</th>
@@ -671,7 +670,7 @@ export function LlmSettingsTabs() {
                     <th className="text-right p-3 font-medium">Requests</th>
                     <th className="text-right p-3 font-medium">Tokens</th>
                     <th className="text-right p-3 font-medium">Cost</th>
-                    <th className="text-right p-3 font-medium">Avg Latency</th>
+                    <th className="text-right p-3 font-medium">Avg latency</th>
                     <th className="text-right p-3 font-medium">Success</th>
                   </tr>
                 </thead>
@@ -682,10 +681,10 @@ export function LlmSettingsTabs() {
                       <td className="p-3"><Badge variant="outline" className="text-[9px]">{s.provider}</Badge></td>
                       <td className="p-3 text-right font-medium">{s.requests.toLocaleString()}</td>
                       <td className="p-3 text-right">{s.tokens.toLocaleString()}</td>
-                      <td className="p-3 text-right font-mono text-emerald-500">${s.cost.toFixed(4)}</td>
+                      <td className="p-3 text-right font-mono tabular-nums text-foreground">${s.cost.toFixed(4)}</td>
                       <td className="p-3 text-right">{s.avgLatency}ms</td>
                       <td className="p-3 text-right">
-                        <span className={s.successRate >= 95 ? 'text-emerald-500 font-medium' : s.successRate >= 80 ? 'text-amber-500 font-medium' : 'text-red-500 font-medium'}>
+                        <span className={s.successRate >= 95 ? 'text-green-600 dark:text-green-400 font-medium' : s.successRate >= 80 ? 'text-amber-500 font-medium' : 'text-red-500 font-medium'}>
                           {s.successRate}%
                         </span>
                       </td>
@@ -710,7 +709,7 @@ export function LlmSettingsTabs() {
         <Card className="p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <h4 className="text-sm font-semibold">Provider Fallback Chain</h4>
+            <h4 className="text-sm font-semibold">Provider fallback chain</h4>
           </div>
           <p className="text-xs text-muted-foreground">When a provider fails or hits rate limits, the system automatically tries the next provider.</p>
           <div className="flex flex-wrap items-center gap-2">
@@ -722,7 +721,7 @@ export function LlmSettingsTabs() {
                     : "bg-muted border-border text-muted-foreground"
                 )}>
                   <span className="font-bold">{i + 1}</span> {p}
-                  {getKeyCount(PROVIDERS.find(pr => pr.label.includes(p))?.key || '') > 0 && <CheckCircle className="h-3 w-3 text-emerald-500" />}
+                  {getKeyCount(PROVIDERS.find(pr => pr.label.includes(p))?.key || '') > 0 && <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />}
                 </div>
                 {i < 6 && <span className="text-muted-foreground">→</span>}
               </div>
@@ -733,7 +732,7 @@ export function LlmSettingsTabs() {
         <Card className="p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
-            <h4 className="text-sm font-semibold">Round-Robin Rotation</h4>
+            <h4 className="text-sm font-semibold">Round-robin rotation</h4>
           </div>
           <p className="text-xs text-muted-foreground">When multiple keys are configured for a provider (comma-separated), the system rotates through them evenly to distribute load.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
@@ -757,13 +756,13 @@ export function LlmSettingsTabs() {
         <Card className="p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Info className="h-5 w-5 text-primary" />
-            <h4 className="text-sm font-semibold">How Routing Works</h4>
+            <h4 className="text-sm font-semibold">How routing works</h4>
           </div>
           <div className="text-xs text-muted-foreground space-y-2">
-            <p><strong>1. Round-Robin:</strong> Requests cycle through configured keys evenly.</p>
-            <p><strong>2. Rate Limit Detection:</strong> When a key hits 429, it's marked unavailable for 60 seconds.</p>
-            <p><strong>3. Provider Fallback:</strong> When all keys for a provider are exhausted, moves to the next provider in the chain.</p>
-            <p><strong>4. Auto-Recovery:</strong> Rate-limited keys automatically become available again after the cooldown period.</p>
+            <p><strong>1. Round-robin:</strong> Requests cycle through configured keys evenly.</p>
+            <p><strong>2. Rate-limit detection:</strong> When a key hits 429, it's marked unavailable for 60 seconds.</p>
+            <p><strong>3. Provider fallback:</strong> When all keys for a provider are exhausted, moves to the next provider in the chain.</p>
+            <p><strong>4. Auto-recovery:</strong> Rate-limited keys automatically become available again after the cooldown period.</p>
           </div>
         </Card>
       </TabsContent>
@@ -776,7 +775,7 @@ export function LlmSettingsTabs() {
           <div className="flex items-center gap-2 min-w-0">
             <span className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${
               health.results.length === 0 ? 'bg-muted-foreground'
-              : health.results.every(r => r.status === 'ok') ? 'bg-emerald-500'
+              : health.results.every(r => r.status === 'ok') ? 'bg-green-500'
               : health.results.some(r => r.status === 'ok') ? 'bg-amber-500' : 'bg-red-500'
             }`} />
             <div className="min-w-0">
@@ -844,7 +843,7 @@ export function LlmSettingsTabs() {
         )}
         <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
           Quotas: only OpenRouter exposes real credit usage via API (shown when available). Other vendors publish no quota endpoint,
-          so limits are tracked as observed traffic in Usage Stats. If every row is red, course generation and all AI features are down —
+          so limits are tracked as observed traffic in Usage stats. If every row is red, course generation and all AI features are down —
           fix the topmost failing provider first; the fallback chain tries them in this order.
         </p>
       </TabsContent>

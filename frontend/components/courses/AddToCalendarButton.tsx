@@ -1,12 +1,14 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useMemo, useState } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { Calendar, Download, ExternalLink, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { buildIcs, downloadIcs, googleCalendarUrl, type CalendarEvent } from '@/lib/calendar/ics'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 type Props = {
   courseTitle: string
@@ -28,7 +30,10 @@ export function AddToCalendarButton({
   className,
   variant = 'hero',
 }: Props) {
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const [open, setOpen] = useState(false)
+  const panelRef = useFocusTrap<HTMLDivElement>(open, () => setOpen(false))
 
   const options = useMemo(() => {
     if (dates?.length) return dates
@@ -40,15 +45,15 @@ export function AddToCalendarButton({
     return [
       {
         id: 'start',
-        label: 'Start learning',
+        label: t('learning.startLearning'),
         at: start.toISOString(),
-        description: `Begin ${courseTitle} on CodeSpectra`,
+        description: t('learning.beginCoursetitleOnCodespectra', { courseTitle }),
       },
       {
         id: 'checkin',
-        label: 'Weekly check-in',
+        label: t('learning.weeklyCheckIn'),
         at: week.toISOString(),
-        description: `Continue ${courseTitle} — review progress`,
+        description: t('learning.continueCoursetitleReviewProgress', { courseTitle }),
       },
     ]
   }, [dates, courseTitle])
@@ -92,7 +97,7 @@ export function AddToCalendarButton({
   const btnClass =
     variant === 'hero'
       ? cn(
-          'h-12 w-12 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-white/60 hover:border-white/40 hover:text-white transition-all',
+          'h-12 w-12 rounded-xl border border-white/30 bg-white/10 flex items-center justify-center text-white hover:border-white/60 hover:bg-white/15 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
           className,
         )
       : cn('h-9 w-9 rounded-full border', className)
@@ -101,34 +106,30 @@ export function AddToCalendarButton({
     <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button type="button" aria-label="Add to calendar" onClick={() => setOpen(true)} className={btnClass}>
+          <button type="button" aria-label={t('learning.addToCalendar')} onClick={() => setOpen(true)} className={btnClass}>
             <Calendar className="h-5 w-5" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom">
-          <p>Add to calendar</p>
+          <p>{t('learning.addToCalendar')}</p>
         </TooltipContent>
       </Tooltip>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button type="button" className="absolute inset-0 bg-black/50" aria-label="Close" onClick={() => setOpen(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4">
+          <button type="button" tabIndex={-1} className="absolute inset-0 bg-black/50" aria-label={t('common.close')} onClick={() => setOpen(false)} />
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="add-to-calendar-title" className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card text-foreground shadow-2xl p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-bold text-base">Select dates to add</h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Save on CodeSpectra (recommended), or optionally export .ics / Google.
-                </p>
+                <h3 id="add-to-calendar-title" className="font-bold text-base">{t('learning.selectDatesToAdd')}</h3>
+                <p className="text-xs text-muted-foreground mt-1">{t('learning.saveOnCodespectraRecommendedOrOptionallyf1f')}</p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <button aria-label={t('common.close')} type="button" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-800 dark:text-sky-200 text-xs p-3">
-              You can select the dates you want as calendar events.
-            </div>
+            <div className="rounded-xl bg-primary/10 border border-primary/20 text-foreground text-xs p-3">{t('learning.youCanSelectTheDatesYouf23')}</div>
 
             <ul className="space-y-3 max-h-60 overflow-y-auto">
               {options.map((o, i) => (
@@ -178,7 +179,7 @@ export function AddToCalendarButton({
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(payload),
                     })
-                    if (!res.ok) throw new Error('Failed to save')
+                    if (!res.ok) throw new Error(t('learning.failedToSave'))
                     setOpen(false)
                     window.location.href = '/dashboard/calendar'
                   } catch {
@@ -186,14 +187,11 @@ export function AddToCalendarButton({
                   }
                 }}
               >
-                <Calendar className="h-4 w-4 mr-2" /> Save to CodeSpectra Calendar
-              </Button>
+                <Calendar className="h-4 w-4 mr-2" />{' '}{t('learning.saveToCodespectraCalendar')}</Button>
               <Button variant="outline" className="w-full" disabled={selected.size === 0} onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" /> Download .ics (optional)
-              </Button>
+                <Download className="h-4 w-4 mr-2" />{' '}{t('learning.downloadIcsOptional')}</Button>
               <Button variant="ghost" className="w-full" disabled={selected.size === 0} onClick={handleGoogle}>
-                <ExternalLink className="h-4 w-4 mr-2" /> Open in Google Calendar
-              </Button>
+                <ExternalLink className="h-4 w-4 mr-2" />{' '}{t('learning.openInGoogleCalendar')}</Button>
             </div>
           </div>
         </div>

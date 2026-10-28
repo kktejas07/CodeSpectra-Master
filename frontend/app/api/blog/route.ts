@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml, safeHttpUrl } from '@/lib/safe-html'
 import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
 import {
   BLOG_CATEGORIES,
@@ -11,6 +12,8 @@ import {
   type BlogPostDoc,
 } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
+import { teamPublicPaths } from '@/lib/learn/team-queries'
+import { revalidateContent } from '@/lib/cache/revalidate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -54,10 +57,13 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    return NextResponse.json({ items: list, categories: BLOG_CATEGORIES, total: list.length })
+    // Where each post is public now: /learn/<slug> (team- prefix if a Learn post owns it) or /news/<slug>.
+    const paths = await teamPublicPaths(list).catch(() => new Map<string, string>())
+    const items = list.map((p) => ({ ...p, public_path: paths.get(p.slug) || `/learn/${encodeURIComponent(p.slug)}` }))
+    return NextResponse.json({ items, categories: BLOG_CATEGORIES, total: items.length })
   } catch (e) {
     console.error('[blog] GET list:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -72,7 +78,7 @@ export async function POST(req: NextRequest) {
     if (!title) return NextResponse.json({ error: 'title required' }, { status: 400 })
 
     const category = isBlogCategory(String(body.category || '')) ? body.category! : 'product'
-    const html = String(body.body || '')
+    const html = sanitizeArticleHtml(String(body.body || ''))
     const now = nowIso()
     const publish = body.publish === true || body.status === 'published'
     let slug = slugifyTitle(String(body.slug || title))
@@ -92,7 +98,9 @@ export async function POST(req: NextRequest) {
       author_name: String(body.author_name || user?.name || 'CodeSpectra').trim(),
       author_role: String(body.author_role || '').trim() || undefined,
       status: publish ? 'published' : 'draft',
-      source_urls: Array.isArray(body.source_urls) ? body.source_urls.map(String) : undefined,
+      source_urls: Array.isArray(body.source_urls)
+        ? body.source_urls.map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
+        : undefined,
       source_note: body.source_note ? String(body.source_note) : undefined,
       newsletter_campaign_id: body.newsletter_campaign_id
         ? String(body.newsletter_campaign_id)
@@ -105,6 +113,8 @@ export async function POST(req: NextRequest) {
     }
 
     await col.insertOne(doc)
+    // Team / news posts show on the ISR /learn and /news pages.
+    if (publish) await revalidateContent('news', doc.slug)
     
     // Notify superadmins if published
     if (publish) {
@@ -113,6 +123,8 @@ export async function POST(req: NextRequest) {
         type: 'content.post_published',
         title: 'Blog Post Published',
         message: `A new blog post "${doc.title}" has been published.`,
+        title_i18n: { key: 'admin.blog.title' },
+        message_i18n: { key: 'admin.blog.message', params: { title: String(doc.title) } },
         link: `/blog/${doc.slug}`,
       })
     }
@@ -120,6 +132,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ post: doc }, { status: 201 })
   } catch (e) {
     console.error('[blog] POST:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

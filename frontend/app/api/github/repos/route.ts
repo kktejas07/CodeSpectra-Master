@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[CodeSpectra] GitHub repos error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch repositories' },
+      { error: 'Failed to fetch repositories' },
       { status: 500 },
     )
   }

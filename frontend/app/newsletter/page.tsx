@@ -2,14 +2,22 @@ import { formatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { emailCampaigns } from '@/lib/db/email-campaigns'
-import { Mail, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { HeroIllustration, PageHero } from '@/components/landing/page-hero'
+import { EmptyState } from '@/components/ui/empty-state'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const seoRoute = publicRoute('/newsletter')!
+export const metadata = buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/newsletter' })
 
 export const dynamic = 'force-dynamic'
 
 /** Public newsletter archive — same chrome as marketing site (header + footer). */
 export default async function NewsletterIndexPage() {
-  const col = await emailCampaigns()
-  const list = await col
+  // A database hiccup shows a friendly retry state instead of the error page.
+  let loadFailed = false
+  const list = await emailCampaigns().then((col) => col
     .find({ status: { $in: ['completed', 'sending'] } })
     .sort({ completed_at: -1, created_at: -1 })
     .limit(40)
@@ -22,65 +30,78 @@ export default async function NewsletterIndexPage() {
       completed_at: 1,
       created_at: 1,
     })
-    .toArray()
+    .toArray())
+    .catch((e) => {
+      loadFailed = true
+      console.error('[newsletter] list failed:', (e as Error)?.message)
+      return []
+    })
 
   return (
     <PublicPageWrapper>
-      <div className="w-full min-w-0 px-4 py-10 sm:px-6 lg:px-10 xl:px-12">
-        <div className="mb-10 max-w-3xl">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-            Updates
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">Newsletters</h1>
-          <p className="mt-3 text-muted-foreground">
-            Recent product, campus, and community updates from CodeSpectra.
-          </p>
-        </div>
+      <PageHero
+        title="Newsletters"
+        lead="Recent product, campus, and community updates from CodeSpectra."
+        art={<HeroIllustration spot="inbox" />}
+      />
+      <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
 
-        {list.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
-            <Mail className="mx-auto mb-3 h-10 w-10 opacity-40" />
-            <p>No newsletters published yet.</p>
-          </div>
+        {loadFailed ? (
+          <EmptyState
+            illustration="error"
+            title="Newsletters didn’t load"
+            description="We couldn’t reach the archive just now. Refresh in a moment."
+            actionLabel="Try again"
+            actionHref="/newsletter"
+          />
+        ) : list.length === 0 ? (
+          <EmptyState
+            variant="notifications"
+            illustration="inbox"
+            title="No newsletters published yet"
+            description="In the meantime, Learn has the latest articles from the team."
+            actionLabel="Open Learn"
+            actionHref="/learn"
+          />
         ) : (
-          <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((c) => {
               const href = `/newsletter/${c.id || c.campaign_id}`
               return (
                 <li key={String(c.id || c.campaign_id)}>
                   <Link
                     href={href}
-                    className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
+                    className="group flex h-full min-w-0 flex-col overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 dark:shadow-none"
                   >
-                    <div className="aspect-[16/9] overflow-hidden bg-linear-to-br from-teal-600/20 via-emerald-500/10 to-cyan-500/20">
+                    <div className="aspect-[16/9] overflow-hidden bg-linear-to-br from-cs-accent/20 via-cs-teal/10 to-cs-cyan/20">
                       {c.hero_image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={c.hero_image}
                           alt=""
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
                         />
                       ) : (
                         <div className="flex h-full items-end p-4">
-                          <span className="rounded-full bg-background/80 px-3 py-1 text-[11px] font-semibold text-teal-700 backdrop-blur dark:text-teal-300">
+                          <span className="rounded-full bg-cs-sheet/85 px-3 py-1 text-xs font-semibold text-cs-accent-text backdrop-blur">
                             Newsletter
                           </span>
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-1 flex-col gap-2 p-4">
-                      <p className="line-clamp-2 text-base font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400">
+                    <div className="flex flex-1 flex-col gap-2 p-5">
+                      <p className="line-clamp-2 text-lg font-bold tracking-tight text-cs-ink group-hover:text-cs-accent-text">
                         {c.subject}
                       </p>
                       {c.intro ? (
-                        <p className="line-clamp-2 text-sm text-muted-foreground">{c.intro}</p>
+                        <p className="line-clamp-2 text-sm text-cs-ink-soft">{c.intro}</p>
                       ) : null}
-                      <p className="mt-auto flex items-center justify-between pt-2 text-[11px] text-muted-foreground">
+                      <p className="mt-auto flex items-center justify-between pt-2 text-xs text-cs-ink-soft">
                         <span>
                           {formatDate(String(c.completed_at || c.created_at))}
                         </span>
-                        <span className="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-teal-400">
-                          Read <ArrowRight className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1 font-semibold text-cs-accent-text">
+                          Read <ArrowRight className="h-3 w-3" aria-hidden />
                         </span>
                       </p>
                     </div>
@@ -91,13 +112,13 @@ export default async function NewsletterIndexPage() {
           </ul>
         )}
 
-        <p className="mt-10 flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <Link href="/blog" className="text-teal-600 hover:underline dark:text-teal-400">
-            ← Newsroom
+        <p className="mt-10 flex flex-wrap gap-4 text-sm text-cs-ink-soft">
+          <Link href="/learn" className="font-medium text-cs-accent-text hover:underline">
+            ← Learn
           </Link>
           <Link
             href="/dashboard/notifications"
-            className="text-teal-600 hover:underline dark:text-teal-400"
+            className="font-medium text-cs-accent-text hover:underline"
           >
             Open in dashboard
           </Link>

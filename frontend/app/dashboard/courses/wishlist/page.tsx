@@ -10,7 +10,10 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
+import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 type CourseCard = {
   id: string
@@ -24,18 +27,22 @@ type CourseCard = {
 }
 
 export default function CourseWishlistPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<CourseCard[]>([])
   const [ids, setIds] = useState<string[]>([])
+  const [loadError, setLoadError] = useState(false)
+  const addToast = useToast()
 
   const load = async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       const [wishRes, coursesRes] = await Promise.all([
-        fetch('/api/user/course-wishlist', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/courses', { credentials: 'include' }).then(r => r.json()),
+        fetch('/api/user/course-wishlist', { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() }),
+        fetch('/api/courses', { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() }),
       ])
       const wishIds: string[] = Array.isArray(wishRes?.data) ? wishRes.data.map(String) : []
       setIds(wishIds)
@@ -44,6 +51,7 @@ export default function CourseWishlistPage() {
       setCourses(all.filter(c => want.has(String(c.id))))
     } catch {
       setCourses([])
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -59,20 +67,20 @@ export default function CourseWishlistPage() {
       const wishlistTour: TourStep[] = [
         {
           target: '[data-tour="wishlist-header"]',
-          title: 'Saved Courses Watchlist',
-          description: 'This page stores courses you hearted so you can enroll later when ready.',
+          title: t('learning.savedCoursesWatchlist'),
+          description: t('learning.thisPageStoresCoursesYouHeartede91'),
           position: 'bottom',
         },
         {
           target: '[data-tour="wishlist-browse"]',
-          title: 'Browse Full Course Catalog',
-          description: 'Browse the course catalog to discover new courses worth saving.',
+          title: t('learning.browseFullCourseCatalog'),
+          description: t('learning.browseTheCourseCatalogToDiscoverf4d'),
           position: 'bottom',
         },
         {
           target: '[data-tour="wishlist-list"]',
-          title: 'Open or Remove Saved',
-          description: 'Tip: open a saved course to enroll, or tap the heart to remove it.',
+          title: t('learning.openOrRemoveSaved'),
+          description: t('learning.tipOpenASavedCourseToe54'),
           position: 'top',
         },
       ]
@@ -83,12 +91,15 @@ export default function CourseWishlistPage() {
     setCourses(prev => prev.filter(c => c.id !== courseId))
     setIds(prev => prev.filter(id => id !== courseId))
     try {
-      await csrfFetch('/api/user/course-wishlist', {
+      const res = await csrfFetch('/api/user/course-wishlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),
       })
+      if (!res.ok) throw new Error(String(res.status))
+      addToast({ type: 'success', title: t('learning.removedFromYourWishlist') })
     } catch {
+      addToast({ type: 'error', title: t('learning.couldntRemoveTheCourse'), message: t('learning.pleaseTryAgain') })
       void load()
     }
   }
@@ -104,60 +115,72 @@ export default function CourseWishlistPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex items-center justify-between gap-4" data-tour="wishlist-header">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Heart className="h-6 w-6 text-red-500 fill-red-500" /> Watchlist
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Courses you saved for later · {ids.length} saved
-          </p>
-        </div>
-        <Button variant="outline" asChild data-tour="wishlist-browse">
-          <Link href="/dashboard/courses">Browse courses</Link>
-        </Button>
+      <div data-tour="wishlist-header">
+        <PageHeader
+          illustration="bookmarks"
+          title={t('learning.wishlist')}
+          description={<>{t('learning.coursesYouSavedForLater')}{' '}<span className="tabular-nums">{ids.length}</span>{' '}{t('learning.saved')}</>}
+          icon={<Heart />}
+          className="mb-0"
+          actions={
+            <Button variant="outline" asChild data-tour="wishlist-browse">
+              <Link href="/dashboard/courses">{t('learning.browseCourses')}</Link>
+            </Button>
+          }
+        />
       </div>
 
       <div data-tour="wishlist-list">
-      {courses.length === 0 ? (
-        <EmptyState
-          variant="courses"
-          title="Your wishlist is empty"
-          description="Tap the heart on a course to save it here. Remove the last one and this empty state comes back."
-          actionLabel="Explore courses"
-          actionHref="/dashboard/courses"
-        />
+      {loadError ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title={t('learning.couldntLoadYourWishlist')}
+            description={t('learning.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
+            onAction={() => void load()}
+          />
+        </Panel>
+      ) : courses.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState
+            variant="courses"
+            title={t('learning.yourWishlistIsEmpty')}
+            description={t('learning.tapTheHeartOnAnyCourse75d')}
+            actionLabel={t('learning.exploreCourses')}
+            actionHref="/dashboard/courses"
+          />
+        </Panel>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <BentoGrid className="lg:grid-cols-3">
           {courses.map(c => (
-            <Card key={c.id} className="p-4 flex flex-col gap-3">
+            <Panel key={c.id} className="p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap gap-2 mb-2">
-                    {c.category && <Badge variant="secondary" className="text-[10px] uppercase">{c.category}</Badge>}
+                    {c.category && <Badge variant="secondary" className="text-[11px] capitalize">{c.category}</Badge>}
                     {c.level && <Badge variant="outline" className="text-[10px] capitalize">{c.level}</Badge>}
                   </div>
-                  <h2 className="font-semibold truncate">{c.title}</h2>
+                  <h2 className="text-lg font-semibold text-foreground truncate">{c.title}</h2>
                   <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{c.description}</p>
                 </div>
                 <button
                   type="button"
-                  aria-label="Remove from wishlist"
+                  aria-label={t('learning.removeFromWishlist')}
                   onClick={() => remove(c.id)}
-                  className="h-9 w-9 rounded-full border border-red-500/40 text-red-500 flex items-center justify-center shrink-0"
+                  className="h-10 w-10 rounded-full border border-red-500/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 transition-colors hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-primary"
                 >
-                  <Heart className="h-4 w-4 fill-red-500" />
+                  <Heart className="h-4 w-4 fill-red-500" aria-hidden />
                 </button>
               </div>
-              <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                <span>{c.sessions != null ? `${c.sessions} sessions` : '—'}</span>
-                <Link href={`/dashboard/courses/${c.id}`} className="text-primary font-medium inline-flex items-center gap-1 hover:underline">
-                  Open <ArrowRight className="h-3.5 w-3.5" />
+              <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/60">
+                <span>{c.sessions != null ? t('learning.sessionsSessions', { sessions: c.sessions }) : '—'}</span>
+                <Link href={`/dashboard/courses/${c.id}`} className="text-primary font-medium inline-flex items-center gap-1 hover:underline">{t('learning.open')}{' '}<ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
-            </Card>
+            </Panel>
           ))}
-        </div>
+        </BentoGrid>
       )}
       </div>
     </div>

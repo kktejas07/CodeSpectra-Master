@@ -30,6 +30,17 @@ export function docHref(doc: Pick<DocMeta, 'section' | 'slug'>): string {
   return doc.section === 'public' ? `/docs/${doc.slug}` : `/docs/user/${doc.slug}`
 }
 
+/**
+ * Relative markdown links between docs (`06-faq.md`, `./01-getting-started.md#x`,
+ * `../user/03-billing-guide.md`) → the served URL. Returns null for anything else.
+ */
+export function resolveDocLink(href: string, current: ServeSection): string | null {
+  const m = href.match(/^(?:\.\/)?(?:\.\.\/(public|user)\/)?(?:\d+-)?([\w-]+)\.md(#.*)?$/)
+  if (!m) return null
+  const section = (m[1] as ServeSection | undefined) ?? current
+  return docHref({ section, slug: m[2] }) + (m[3] ?? '')
+}
+
 /** Flat ordered list of docs from already-loaded sections. */
 export function flattenDocs(sections: DocSection[]): DocMeta[] {
   return sections.flatMap((s) => s.docs)

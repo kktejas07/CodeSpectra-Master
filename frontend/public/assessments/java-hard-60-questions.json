@@ -1,0 +1,771 @@
+[
+  {
+    "type": "mcq",
+    "score": 10,
+    "title": "volatile guarantees",
+    "prompt": "In the Java Memory Model, what does declaring a field `volatile` guarantee?",
+    "options": [
+      "Atomicity of compound operations such as `count++`",
+      "Visibility of writes to other threads and that the access is not reordered with respect to other memory operations",
+      "Mutual exclusion, so only one thread at a time may access the field",
+      "That reads/writes bypass CPU caches and always hit main memory"
+    ],
+    "answer": "Visibility of writes to other threads and that the access is not reordered with respect to other memory operations"
+  },
+  {
+    "type": "mcq",
+    "score": 10,
+    "title": "HashMap treeify threshold",
+    "prompt": "In OpenJDK `HashMap`, a bin is converted from a linked list into a red-black tree once it exceeds which threshold (when capacity is at least 64)?",
+    "options": [
+      "4",
+      "6",
+      "8",
+      "16"
+    ],
+    "answer": "8"
+  },
+  {
+    "type": "mcq",
+    "score": 10,
+    "title": "Erasure bridge methods",
+    "prompt": "Why does the Java compiler generate synthetic *bridge* methods when a class overrides a method declared with generic type parameters?",
+    "options": [
+      "To make the generic method callable via reflection",
+      "To preserve polymorphic dispatch after type erasure, since the erased parameter types differ from the subclass override",
+      "To reduce bytecode size by sharing implementations",
+      "To perform runtime type checks on generic arguments"
+    ],
+    "answer": "To preserve polymorphic dispatch after type erasure, since the erased parameter types differ from the subclass override"
+  },
+  {
+    "type": "multiple_response",
+    "score": 10,
+    "title": "final semantics",
+    "prompt": "Which of the following are guaranteed by the `final` keyword in Java? (Select all that apply)",
+    "options": [
+      "A final method cannot be overridden",
+      "A final class cannot be extended",
+      "A final variable/reference cannot be reassigned after initialization",
+      "A final array's elements cannot be modified after initialization"
+    ],
+    "answer": "A final method cannot be overridden, A final class cannot be extended, A final variable/reference cannot be reassigned after initialization"
+  },
+  {
+    "type": "multiple_response",
+    "score": 10,
+    "title": "CompletableFuture behaviour",
+    "prompt": "Which statements about `java.util.concurrent.CompletableFuture` are correct? (Select all that apply)",
+    "options": [
+      "`thenApply` may run on the thread that completes the future OR on the thread that registered the continuation (if already complete); `thenApplyAsync` uses a pool/executor",
+      "`thenCompose` flattens a returned CompletionStage into the chain",
+      "An exception thrown in the chain is always silently discarded",
+      "`allOf` completes normally only when every input stage completes normally"
+    ],
+    "answer": "`thenApply` may run on the thread that completes the future OR on the thread that registered the continuation (if it was already complete); `thenApplyAsync` uses a pool/executor, `thenCompose` flattens a returned CompletionStage into the chain, `allOf` completes normally only when every input stage completes normally"
+  },
+  {
+    "type": "multiple_response",
+    "score": 10,
+    "title": "ConcurrentHashMap atomicity",
+    "prompt": "Which of the following `ConcurrentHashMap` operations are atomic per-key? (Select all that apply)",
+    "options": [
+      "`putIfAbsent(k, v)`",
+      "`computeIfAbsent(k, fn)`",
+      "`size()`",
+      "`replace(k, oldV, newV)`"
+    ],
+    "answer": "`putIfAbsent(k, v)`, `computeIfAbsent(k, fn)`, `replace(k, oldV, newV)`"
+  },
+  {
+    "type": "true_false",
+    "score": 5,
+    "title": "String immutability and interning",
+    "prompt": "In Java, `String` is immutable, and `String` instances created from literals are interned in the string constant pool.",
+    "options": [
+      "True",
+      "False"
+    ],
+    "answer": "True"
+  },
+  {
+    "type": "true_false",
+    "score": 5,
+    "title": "System.gc determinism",
+    "prompt": "HotSpot garbage collectors guarantee that calling `System.gc()` performs a full collection immediately and deterministically.",
+    "options": [
+      "True",
+      "False"
+    ],
+    "answer": "False"
+  },
+  {
+    "type": "yes_no",
+    "score": 5,
+    "title": "synchronized instance lock",
+    "prompt": "Does marking an instance method `synchronized` acquire the monitor of the object instance (`this`)?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "answer": "Yes"
+  },
+  {
+    "type": "yes_no",
+    "score": 5,
+    "title": "records extending classes",
+    "prompt": "Can a Java `record` extend a non-abstract class other than `java.lang.Record`?",
+    "options": [
+      "Yes",
+      "No"
+    ],
+    "answer": "No"
+  },
+  {
+    "type": "fill_blanks",
+    "score": 10,
+    "title": "monitor bytecode",
+    "prompt": "The JVM bytecode instruction that acquires an object monitor is `___`.",
+    "answer": "monitorenter"
+  },
+  {
+    "type": "fill_blanks",
+    "score": 10,
+    "title": "ReentrantLock conditions",
+    "prompt": "To create a `Condition` bound to a `ReentrantLock`, you call `lock.___()`.",
+    "answer": "newCondition"
+  },
+  {
+    "type": "numeric",
+    "score": 10,
+    "title": "Integer cache upper bound",
+    "prompt": "For which inclusive upper bound does the `Integer` cache make `Integer.valueOf(x) == Integer.valueOf(x)` return `true` (so `a == b` for two autoboxed references in the default range)? Enter the number.",
+    "answer": "127",
+    "tolerance": 0
+  },
+  {
+    "type": "numeric",
+    "score": 10,
+    "title": "object header bytes",
+    "prompt": "On a 64-bit HotSpot JVM with compressed ordinary object pointers AND compressed class pointers enabled, how many bytes does an object header occupy (mark word + klass pointer), before any field data? Enter the byte count.",
+    "answer": "12",
+    "tolerance": 0
+  },
+  {
+    "type": "short_answer",
+    "score": 10,
+    "title": "HotSpot optimising compiler",
+    "prompt": "Which HotSpot just-in-time compiler is the server-side optimiser that uses a \"sea of nodes\" intermediate representation? Answer with the short name.",
+    "answer": "C2"
+  },
+  {
+    "type": "short_answer",
+    "score": 10,
+    "title": "Class token pattern",
+    "prompt": "Which Java 5 language feature enables the typesafe heterogeneous container pattern based on `Class<T>` tokens? One word.",
+    "answer": "generics"
+  },
+  {
+    "type": "matching",
+    "score": 10,
+    "title": "Functional interface methods",
+    "prompt": "Match each `java.util.function` interface to its single abstract method.",
+    "pairs": [
+      {
+        "left": "Supplier<T>",
+        "right": "get"
+      },
+      {
+        "left": "Consumer<T>",
+        "right": "accept"
+      },
+      {
+        "left": "Function<T,R>",
+        "right": "apply"
+      },
+      {
+        "left": "Predicate<T>",
+        "right": "test"
+      }
+    ]
+  },
+  {
+    "type": "matching",
+    "score": 10,
+    "title": "GC collectors",
+    "prompt": "Match each HotSpot garbage collector to its defining characteristic.",
+    "pairs": [
+      {
+        "left": "G1",
+        "right": "Region-based, concurrent, pause-target driven"
+      },
+      {
+        "left": "ZGC",
+        "right": "Concurrent, ultra-low-latency, coloured pointers"
+      },
+      {
+        "left": "Serial",
+        "right": "Single-threaded stop-the-world"
+      },
+      {
+        "left": "Parallel",
+        "right": "Multi-threaded stop-the-world throughput"
+      }
+    ]
+  },
+  {
+    "type": "ordering",
+    "score": 10,
+    "title": "JVM JIT pipeline order",
+    "prompt": "Put the stages of the HotSpot C2 JIT compilation pipeline in the correct order.",
+    "options": [
+      "Bytecode parsing and inlining",
+      "HIR construction (sea of nodes)",
+      "Global value numbering and optimisations",
+      "Register allocation",
+      "Machine code emission"
+    ],
+    "answer": "Bytecode parsing and inlining, HIR construction (sea of nodes), Global value numbering and optimisations, Register allocation, Machine code emission"
+  },
+  {
+    "type": "ordering",
+    "score": 10,
+    "title": "Class lifecycle order",
+    "prompt": "Put the phases of a class lifecycle in the JVM in the correct order (after the class is located and read).",
+    "options": [
+      "Loading",
+      "Linking",
+      "Initialization",
+      "Use",
+      "Unloading"
+    ],
+    "answer": "Loading, Linking, Initialization, Use, Unloading"
+  },
+  {
+    "type": "ranking",
+    "score": 10,
+    "title": "Average lookup cost ranking",
+    "prompt": "Rank these `java.util` collections from best (fastest) average-case lookup to worst.",
+    "options": [
+      "HashMap",
+      "TreeMap",
+      "LinkedList"
+    ],
+    "answer": "HashMap, TreeMap, LinkedList"
+  },
+  {
+    "type": "ranking",
+    "score": 10,
+    "title": "Exception specificity ranking",
+    "prompt": "Rank these Java types from most specific (narrowest) to least specific (broadest).",
+    "options": [
+      "ArrayIndexOutOfBoundsException",
+      "IndexOutOfBoundsException",
+      "RuntimeException",
+      "Exception"
+    ],
+    "answer": "ArrayIndexOutOfBoundsException, IndexOutOfBoundsException, RuntimeException, Exception"
+  },
+  {
+    "type": "matrix",
+    "score": 12,
+    "title": "Thread-safety of collection ops",
+    "prompt": "For each operation, mark whether the *standard* (non-concurrent) trailing type is thread-safe without external synchronization.",
+    "matrix": {
+      "columns": [
+        "Thread-safe",
+        "Not thread-safe"
+      ],
+      "rows": [
+        "Vector.add",
+        "ArrayList.add",
+        "ConcurrentHashMap.put",
+        "HashMap.get"
+      ]
+    },
+    "answer": "Thread-safe, Not thread-safe, Thread-safe, Not thread-safe"
+  },
+  {
+    "type": "matrix",
+    "score": 12,
+    "title": "String facts true/false",
+    "prompt": "Mark each statement about Java strings as True or False.",
+    "matrix": {
+      "columns": [
+        "True",
+        "False"
+      ],
+      "rows": [
+        "String instances are immutable",
+        "String literals are interned",
+        "String is safe to share across threads",
+        "StringBuilder is safe to share across threads"
+      ]
+    },
+    "answer": "True, True, True, False"
+  },
+  {
+    "type": "table_fill",
+    "score": 12,
+    "title": "Fill complexity classes",
+    "prompt": "Fill in the asymptotic complexity for each operation.",
+    "table": {
+      "columns": [
+        "Complexity"
+      ],
+      "rows": [
+        "HashMap.get average",
+        "HashMap.get worst (treeified bin)",
+        "ArrayList.get(index)",
+        "LinkedList.get(index)"
+      ]
+    },
+    "answer": "O(1), O(log n), O(1), O(n)"
+  },
+  {
+    "type": "table_fill",
+    "score": 12,
+    "title": "Fill JVM defaults",
+    "prompt": "Fill in the default value for each JVM/Java fact.",
+    "table": {
+      "columns": [
+        "Value"
+      ],
+      "rows": [
+        "Integer cache lower bound",
+        "Integer cache upper bound",
+        "Default HashMap initial capacity (a power of two)",
+        "Default HashMap load factor"
+      ]
+    },
+    "answer": "-128, 127, 16, 0.75"
+  },
+  {
+    "type": "hotspot",
+    "score": 10,
+    "title": "Hotspot: JIT component",
+    "prompt": "Click the Execution-Engine component that performs just-in-time compilation.",
+    "image_url": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22900%22%20height%3D%22450%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22%230b1220%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2217.5%22%20y%3D%2221%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EClass%20Loader%3C%2Ftext%3E%3Crect%20x%3D%2240%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2252.5%22%20y%3D%2221%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EHeap%3C%2Ftext%3E%3Crect%20x%3D%2270%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2282.5%22%20y%3D%2221%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EMetaspace%3C%2Ftext%3E%3Crect%20x%3D%225%22%20y%3D%2245%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2217.5%22%20y%3D%2256%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EJIT%20Compiler%3C%2Ftext%3E%3Crect%20x%3D%2240%22%20y%3D%2245%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2252.5%22%20y%3D%2256%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EGarbage%20Collector%3C%2Ftext%3E%3Crect%20x%3D%2270%22%20y%3D%2245%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2282.5%22%20y%3D%2256%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EInterpreter%3C%2Ftext%3E%3C%2Fsvg%3E",
+    "regions": [
+      {
+        "id": "heap",
+        "x": 40,
+        "y": 10,
+        "w": 25,
+        "h": 20,
+        "label": "Heap"
+      },
+      {
+        "id": "jit",
+        "x": 5,
+        "y": 45,
+        "w": 25,
+        "h": 20,
+        "label": "JIT Compiler"
+      },
+      {
+        "id": "interp",
+        "x": 70,
+        "y": 45,
+        "w": 25,
+        "h": 20,
+        "label": "Interpreter"
+      },
+      {
+        "id": "meta",
+        "x": 70,
+        "y": 10,
+        "w": 25,
+        "h": 20,
+        "label": "Metaspace"
+      }
+    ],
+    "answer": "jit"
+  },
+  {
+    "type": "hotspot",
+    "score": 10,
+    "title": "Hotspot: object allocation area",
+    "prompt": "Click the runtime data area where all objects and arrays are allocated.",
+    "image_url": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%20width%3D%22900%22%20height%3D%22450%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22%230b1220%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2217.5%22%20y%3D%2221%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EClass%20Loader%3C%2Ftext%3E%3Crect%20x%3D%2240%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2252.5%22%20y%3D%2221%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EHeap%3C%2Ftext%3E%3Crect%20x%3D%2270%22%20y%3D%2210%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2282.5%22%20y%3D%2221%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EMetaspace%3C%2Ftext%3E%3Crect%20x%3D%225%22%20y%3D%2245%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2217.5%22%20y%3D%2256%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EJIT%20Compiler%3C%2Ftext%3E%3Crect%20x%3D%2240%22%20y%3D%2245%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2252.5%22%20y%3D%2256%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EGarbage%20Collector%3C%2Ftext%3E%3Crect%20x%3D%2270%22%20y%3D%2245%22%20width%3D%2225%22%20height%3D%2220%22%20rx%3D%221.5%22%20fill%3D%22%231e293b%22%20stroke%3D%22%23475569%22%20stroke-width%3D%220.4%22%2F%3E%3Ctext%20x%3D%2282.5%22%20y%3D%2256%22%20fill%3D%22%23e2e8f0%22%20font-size%3D%223%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%3EInterpreter%3C%2Ftext%3E%3C%2Fsvg%3E",
+    "regions": [
+      {
+        "id": "heap",
+        "x": 40,
+        "y": 10,
+        "w": 25,
+        "h": 20,
+        "label": "Heap"
+      },
+      {
+        "id": "jit",
+        "x": 5,
+        "y": 45,
+        "w": 25,
+        "h": 20,
+        "label": "JIT Compiler"
+      },
+      {
+        "id": "interp",
+        "x": 70,
+        "y": 45,
+        "w": 25,
+        "h": 20,
+        "label": "Interpreter"
+      },
+      {
+        "id": "meta",
+        "x": 70,
+        "y": 10,
+        "w": 25,
+        "h": 20,
+        "label": "Metaspace"
+      }
+    ],
+    "answer": "heap"
+  },
+  {
+    "type": "drag_drop",
+    "score": 10,
+    "title": "Label Java concepts",
+    "prompt": "Assign each Java concept to its category.",
+    "pairs": [
+      {
+        "left": "JIT Compiler",
+        "right": "Execution Engine"
+      },
+      {
+        "left": "Field Initialization",
+        "right": "Class Initializer"
+      },
+      {
+        "left": "Metaspace",
+        "right": "Memory Area"
+      },
+      {
+        "left": "Compare-and-Set",
+        "right": "Concurrency Primitive"
+      }
+    ]
+  },
+  {
+    "type": "drag_drop",
+    "score": 10,
+    "title": "Label JDK tools",
+    "prompt": "Assign each JDK diagnostic tool to what it produces.",
+    "pairs": [
+      {
+        "left": "jmap",
+        "right": "Heap dump"
+      },
+      {
+        "left": "jstack",
+        "right": "Thread dump"
+      },
+      {
+        "left": "jstat",
+        "right": "GC / JIT statistics"
+      },
+      {
+        "left": "jcmd",
+        "right": "Diagnostic command set"
+      }
+    ]
+  },
+  {
+    "type": "likert",
+    "score": 0,
+    "title": "Confidence: deadlock diagnosis",
+    "prompt": "How confident are you diagnosing a Java deadlock from a thread dump?",
+    "scale": {
+      "min": 1,
+      "max": 5,
+      "minLabel": "Not confident",
+      "maxLabel": "Very confident"
+    }
+  },
+  {
+    "type": "rating",
+    "score": 0,
+    "title": "Rating: JMM difficulty",
+    "prompt": "Rate how difficult you found the Java Memory Model questions in this assessment.",
+    "scale": {
+      "min": 1,
+      "max": 5,
+      "minLabel": "Easy",
+      "maxLabel": "Very hard"
+    }
+  },
+  {
+    "type": "coding",
+    "score": 20,
+    "language": "java",
+    "title": "Median of two sorted arrays",
+    "prompt": "Implement `findMedianSortedArrays` in **O(log(min(n, m)))** time. The arrays are sorted; the combined length is >= 1.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static double findMedianSortedArrays(int[] a, int[] b) {\n        // TODO: O(log(min(n,m))) binary search on the shorter array\n        return 0.0;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt(), m = sc.nextInt();\n        int[] a = new int[n]; for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        int[] b = new int[m]; for (int i = 0; i < m; i++) b[i] = sc.nextInt();\n        System.out.println(findMedianSortedArrays(a, b));\n    }\n}",
+    "test_cases": [
+      {
+        "input": "2 2\n1 3\n2 4",
+        "output": "2.5"
+      },
+      {
+        "input": "2 1\n1 2\n3",
+        "output": "2.0"
+      },
+      {
+        "input": "1 1\n5\n6",
+        "output": "5.5"
+      }
+    ],
+    "answer": "Binary-search a partition of the shorter array so that every left-half element <= every right-half element; the median follows from the partition boundaries. O(log(min(n,m))) time, O(1) space."
+  },
+  {
+    "type": "coding",
+    "score": 20,
+    "language": "java",
+    "title": "Sliding window maximum",
+    "prompt": "Return the maximum of every contiguous window of size `k` in **O(n)** using a monotonic deque. Print the maxima separated by single spaces.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static int[] maxSlidingWindow(int[] nums, int k) {\n        // TODO: O(n) monotonic deque of indices\n        return new int[0];\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt(), k = sc.nextInt();\n        int[] nums = new int[n]; for (int i = 0; i < n; i++) nums[i] = sc.nextInt();\n        int[] r = maxSlidingWindow(nums, k);\n        StringBuilder sb = new StringBuilder();\n        for (int i = 0; i < r.length; i++) { if (i > 0) sb.append(' '); sb.append(r[i]); }\n        System.out.println(sb);\n    }\n}",
+    "test_cases": [
+      {
+        "input": "8 3\n1 3 -1 -3 5 3 6 7",
+        "output": "3 3 5 5 6 7"
+      },
+      {
+        "input": "5 1\n9 8 7 6 5",
+        "output": "9 8 7 6 5"
+      }
+    ],
+    "answer": "Maintain a deque of indices whose values are decreasing; pop from the back before inserting and drop indices outside the window from the front. O(n) total."
+  },
+  {
+    "type": "coding",
+    "score": 20,
+    "language": "java",
+    "title": "Trapping rain water",
+    "prompt": "Given an elevation map, compute how many units of water are trapped after raining. Use constant extra space (two pointers).",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static long trap(int[] h) {\n        // TODO: two-pointer approach, O(n) time O(1) space\n        return 0;\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt(); int[] h = new int[n];\n        for (int i = 0; i < n; i++) h[i] = sc.nextInt();\n        System.out.println(trap(h));\n    }\n}",
+    "test_cases": [
+      {
+        "input": "12\n0 1 0 2 1 0 1 3 2 1 2 1",
+        "output": "6"
+      },
+      {
+        "input": "6\n4 2 0 3 2 5",
+        "output": "9"
+      }
+    ],
+    "answer": "Two pointers with leftMax/rightMax: move the pointer with the smaller max, add max - height at that side. O(n) time, O(1) space."
+  },
+  {
+    "type": "coding",
+    "score": 20,
+    "language": "java",
+    "title": "LRU cache (O(1))",
+    "prompt": "Implement an LRU cache with **O(1)** `get` and `put`. On eviction remove the least-recently-used key. `get` on a missing key returns `-1`.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static class LRUCache {\n        LRUCache(int capacity) { /* TODO */ }\n        int get(int key) { return -1; }\n        void put(int key, int value) { }\n    }\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int cap = sc.nextInt();\n        LRUCache c = new LRUCache(cap);\n        StringBuilder sb = new StringBuilder();\n        while (sc.hasNext()) {\n            String op = sc.next();\n            if (op.equals(\"put\")) c.put(sc.nextInt(), sc.nextInt());\n            else if (op.equals(\"get\")) { if (sb.length() > 0) sb.append(' '); sb.append(c.get(sc.nextInt())); }\n        }\n        System.out.println(sb);\n    }\n}",
+    "test_cases": [
+      {
+        "input": "2\nput 1 1\nput 2 2\nget 1\nput 3 3\nget 2\nget 3\nput 4 4\nget 1\nget 3\nget 4",
+        "output": "1 -1 3 -1 3 4"
+      }
+    ],
+    "answer": "HashMap key->node plus a doubly linked list for recency; move to front on access, evict from tail on overflow. O(1) both operations."
+  },
+  {
+    "type": "debugging",
+    "score": 18,
+    "language": "java",
+    "title": "Debug: concurrent HashMap corruption",
+    "prompt": "This code is intended to count words concurrently but intermittently loses updates and can spin forever. Identify the root cause and the correct fix.",
+    "starter_code": "import java.util.*;\nimport java.util.concurrent.*;\npublic class Main {\n    static final Map<String, Integer> counts = new HashMap<>();\n    static void bump(String k) {\n        counts.merge(k, 1, Integer::sum);\n    }\n    public static void main(String[] args) throws Exception {\n        ExecutorService pool = Executors.newFixedThreadPool(8);\n        for (int i = 0; i < 100_000; i++) {\n            final String k = \"w\" + (i % 50);\n            pool.submit(() -> bump(k));\n        }\n        pool.shutdown();\n        pool.awaitTermination(1, TimeUnit.MINUTES);\n        System.out.println(counts.size());\n    }\n}",
+    "answer": "`HashMap` is not thread-safe: concurrent `merge` mutates the table without synchronisation, causing lost updates, corrupted bins, and possible infinite loops from concurrent resize. Fix: use `ConcurrentHashMap` (its `merge` is atomic per key), or guard all access with a lock."
+  },
+  {
+    "type": "debugging",
+    "score": 18,
+    "language": "java",
+    "title": "Debug: equals/hashCode contract",
+    "prompt": "Objects placed into a `HashSet` are sometimes treated as distinct even when they are logically equal. Find the bug and fix it.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static final class Point {\n        final int x, y;\n        Point(int x, int y) { this.x = x; this.y = y; }\n        @Override public boolean equals(Object o) {\n            if (!(o instanceof Point)) return false;\n            Point p = (Point) o;\n            return x == p.x && y == p.y;\n        }\n        // NOTE: no hashCode() override\n    }\n    public static void main(String[] args) {\n        Set<Point> s = new HashSet<>();\n        s.add(new Point(1, 2));\n        System.out.println(s.contains(new Point(1, 2)));\n    }\n}",
+    "answer": "`equals` is overridden but `hashCode` is not, violating the equals/hashCode contract: equal objects land in different buckets so `contains` returns false. Fix: override `hashCode()` consistently (e.g. `Objects.hash(x, y)`)."
+  },
+  {
+    "type": "debugging",
+    "score": 18,
+    "language": "java",
+    "title": "Debug: shared SimpleDateFormat",
+    "prompt": "A service occasionally formats dates incorrectly or throws `NumberFormatException` under load. Diagnose and fix.",
+    "starter_code": "import java.text.SimpleDateFormat;\nimport java.util.Date;\npublic class Main {\n    private static final SimpleDateFormat SDF = new SimpleDateFormat(\"yyyy-MM-dd\");\n    static String fmt(Date d) {\n        return SDF.format(d);\n    }\n    public static void main(String[] args) {\n        System.out.println(fmt(new Date(0)));\n    }\n}",
+    "answer": "`SimpleDateFormat` is not thread-safe; a shared static instance corrupts its internal calendar/parse state under concurrent use. Fix: use the immutable `java.time.format.DateTimeFormatter`, or a `ThreadLocal<SimpleDateFormat>`, or synchronise access."
+  },
+  {
+    "type": "code_completion",
+    "score": 18,
+    "language": "java",
+    "title": "Complete: bounded wildcard parameter",
+    "prompt": "Complete the method signature so it can sum any list of any `Number` subtype and return a double, while still allowing reads.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static double sum(/* TODO: parameter type */ nums) {\n        double s = 0;\n        for (Number n : nums) s += n.doubleValue();\n        return s;\n    }\n    public static void main(String[] args) {\n        List<Integer> ints = List.of(1, 2, 3);\n        List<Double> dbls = List.of(1.5, 2.5);\n        System.out.println(sum(ints) + \" \" + sum(dbls));\n    }\n}",
+    "answer": "`List<? extends Number> nums` — an upper-bounded wildcard. It accepts `List<Integer>` and `List<Double>` (covariance for producers) and still lets the body read elements as `Number`."
+  },
+  {
+    "type": "code_completion",
+    "score": 18,
+    "language": "java",
+    "title": "Complete: comparator chain",
+    "prompt": "Complete the sort so people are ordered by descending age, then by name ascending. Only the ordering expression is missing.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    static final class Person { final String name; final int age; Person(String n, int a){name=n;age=a;} public String name(){return name;} public int age(){return age;} }\n    public static void main(String[] args) {\n        List<Person> people = new ArrayList<>(List.of(new Person(\"bob\",30), new Person(\"amy\",30), new Person(\"cal\",25)));\n        people.sort(/* TODO: comparator chain */);\n        people.forEach(p -> System.out.print(p.name() + \" \"));\n    }\n}",
+    "answer": "`Comparator.comparingInt(Person::age).reversed().thenComparing(Person::name)` (or `Comparator.comparing(Person::age).reversed().thenComparing(Person::name)` with boxing)."
+  },
+  {
+    "type": "code_completion",
+    "score": 18,
+    "language": "java",
+    "title": "Complete: try-with-resources",
+    "prompt": "Complete the `main` so the reader is always closed, even on exceptions, without a `finally` block.",
+    "starter_code": "import java.io.*;\npublic class Main {\n    public static void main(String[] args) {\n        // TODO: open a BufferedReader on \"data.txt\" using try-with-resources and print the first line\n    }\n}",
+    "answer": "`try (BufferedReader in = new BufferedReader(new FileReader(\"data.txt\"))) { System.out.println(in.readLine()); } catch (IOException e) { e.printStackTrace(); }` — resources declared in the try are closed automatically in reverse order, even if the body throws."
+  },
+  {
+    "type": "output_prediction",
+    "score": 15,
+    "language": "java",
+    "title": "Predict: Integer cache",
+    "prompt": "What is printed?",
+    "starter_code": "public class Main {\n    public static void main(String[] args) {\n        Integer a = 127, b = 127, c = 128, d = 128;\n        System.out.println((a == b) + \" \" + (c == d));\n    }\n}",
+    "answer": "true false"
+  },
+  {
+    "type": "output_prediction",
+    "score": 15,
+    "language": "java",
+    "title": "Predict: floating point",
+    "prompt": "What exact text is printed?",
+    "starter_code": "public class Main {\n    public static void main(String[] args) {\n        System.out.println(0.1 + 0.2);\n    }\n}",
+    "answer": "0.30000000000000004"
+  },
+  {
+    "type": "output_prediction",
+    "score": 15,
+    "language": "java",
+    "title": "Predict: string interning",
+    "prompt": "What is printed?",
+    "starter_code": "public class Main {\n    public static void main(String[] args) {\n        String s1 = \"ja\" + \"va\";\n        String s2 = \"java\";\n        String s3 = new String(\"java\");\n        System.out.println((s1 == s2) + \" \" + (s2 == s3) + \" \" + (s2 == s3.intern()));\n    }\n}",
+    "answer": "true false true"
+  },
+  {
+    "type": "code_review",
+    "score": 18,
+    "language": "java",
+    "title": "Review: broken double-checked locking",
+    "prompt": "Review this lazy singleton and describe every correctness problem and the minimal fix.",
+    "starter_code": "public class Main {\n    private static Helper instance;\n    public static Helper get() {\n        if (instance == null) {\n            synchronized (Main.class) {\n                if (instance == null) {\n                    instance = new Helper();\n                }\n            }\n        }\n        return instance;\n    }\n    static final class Helper {}\n}",
+    "answer": "Double-checked locking is broken because `instance` is not `volatile`: a thread may read a non-null but partially-constructed object (publication via data race). Fix: declare `private static volatile Helper instance;` (or use an initialization-on-demand holder class / enum)."
+  },
+  {
+    "type": "code_review",
+    "score": 18,
+    "language": "java",
+    "title": "Review: swallowed InterruptedException",
+    "prompt": "Review this method for correctness, resource handling, and interruption policy.",
+    "starter_code": "import java.io.*;\npublic class Main {\n    static String read(String path) {\n        try {\n            FileInputStream in = new FileInputStream(path);\n            byte[] data = in.readAllBytes();\n            return new String(data);\n        } catch (Exception e) {\n            return null;\n        }\n    }\n}",
+    "answer": "Three problems: (1) the `FileInputStream` is never closed — a handle/descriptor leak; use try-with-resources. (2) Catching the broad `Exception` and returning `null` swallows all failures, hiding bugs and losing the cause. (3) `InterruptedException` (from `readAllBytes`) is swallowed without restoring the interrupt flag (`Thread.currentThread().interrupt()`), breaking cancellation."
+  },
+  {
+    "type": "code_review",
+    "score": 18,
+    "language": "java",
+    "title": "Review: Arrays.asList mutation",
+    "prompt": "Explain why this code throws at runtime and how to fix it so the list can grow.",
+    "starter_code": "import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        List<String> xs = Arrays.asList(\"a\", \"b\");\n        xs.add(\"c\");\n        System.out.println(xs);\n    }\n}",
+    "answer": "`Arrays.asList` returns a fixed-size list backed by the array; `add` throws `UnsupportedOperationException`. Also `set` writes through to the backing array. Fix: `new ArrayList<>(Arrays.asList(\"a\",\"b\"))` (or `List.of` then wrap) to get a resizable list."
+  },
+  {
+    "type": "sql",
+    "score": 18,
+    "title": "SQL: top-2 salary per department",
+    "prompt": "Given `employees(id, name, dept_id, salary)`, return each employee whose salary ranks in the top 2 within their department. Output `dept_id, name, salary` ordered by dept then salary desc. Write the query.",
+    "answer": "SELECT dept_id, name, salary FROM (SELECT e.*, DENSE_RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) rk FROM employees e) t WHERE rk <= 2 ORDER BY dept_id, salary DESC;"
+  },
+  {
+    "type": "sql",
+    "score": 18,
+    "title": "SQL: recursive org hierarchy",
+    "prompt": "Using PostgreSQL syntax, given `employees(id, name, manager_id)`, write a recursive CTE that lists each employee with their level (CEO = level 1) and their full path of names from the root.",
+    "answer": "WITH RECURSIVE org AS (SELECT id, name, manager_id, 1 AS lvl, name AS path FROM employees WHERE manager_id IS NULL UNION ALL SELECT e.id, e.name, e.manager_id, o.lvl + 1, o.path || '/' || e.name FROM employees e JOIN org o ON e.manager_id = o.id) SELECT * FROM org ORDER BY path;"
+  },
+  {
+    "type": "sql",
+    "score": 18,
+    "title": "SQL: employees earning more than their manager",
+    "prompt": "Given `employees(id, name, manager_id, salary)`, return the names of employees who earn strictly more than their direct manager.",
+    "answer": "SELECT e.name FROM employees e JOIN employees m ON e.manager_id = m.id WHERE e.salary > m.salary;"
+  },
+  {
+    "type": "regex_config",
+    "score": 15,
+    "title": "Regex: Java identifier",
+    "prompt": "Write a regular expression that matches a *valid Java simple identifier* (letter/underscore/$ start; letters/digits/underscore/$ after). Give the pattern only.",
+    "answer": "^[A-Za-z_$][A-Za-z0-9_$]*$"
+  },
+  {
+    "type": "regex_config",
+    "score": 15,
+    "title": "CLI: thread dump with jcmd",
+    "prompt": "Give the exact `jcmd` command (with `<pid>` as the placeholder) that prints a thread dump for a running JVM.",
+    "answer": "jcmd <pid> Thread.print"
+  },
+  {
+    "type": "refactoring",
+    "score": 18,
+    "language": "java",
+    "title": "Refactor: string building in a loop",
+    "prompt": "Refactor for efficiency and explain why the original is problematic at scale.",
+    "answer": "Use a `StringBuilder` (or `String.join`/`Collectors.joining`): `StringBuilder sb = new StringBuilder(); for (String s : items) sb.append(s).append(','); return sb.toString();`. The original `result += s` creates a new `String` and copies the accumulated characters every iteration, giving O(n^2) copying; `StringBuilder` is amortised O(n).",
+    "starter_code": "static String join(List<String> items) {\n    String result = \"\";\n    for (String s : items) {\n        result += s + \",\";\n    }\n    return result;\n}"
+  },
+  {
+    "type": "refactoring",
+    "score": 18,
+    "language": "java",
+    "title": "Refactor: over-broad synchronization",
+    "prompt": "Improve concurrency while preserving correctness. A getter/setter pair is marked `synchronized` but only a simple counter is guarded.",
+    "answer": "For a single independent counter, `synchronized` on every access is unnecessary contention: use `volatile` only if you do not need atomic read-modify-write, otherwise `java.util.concurrent.atomic.AtomicLong` (`incrementAndGet`) or a `LongAdder` for high contention. Replace the synchronized methods with an atomic field to remove the lock.",
+    "starter_code": "class Counter {\n    private long value;\n    synchronized long get() { return value; }\n    synchronized void inc() { value++; }\n}"
+  },
+  {
+    "type": "test_case_writing",
+    "score": 18,
+    "title": "Tests: divide()",
+    "prompt": "A utility `int divide(int a, int b)` returns `a / b`. Write a set of JUnit-style test cases (names + inputs + expected result/exception) that would catch common bugs.",
+    "answer": "Cover: normal (10/2=5), truncation toward zero for negatives (-7/2=-3), divide-by-zero (throws ArithmeticException), Integer.MIN_VALUE / -1 (overflows to Integer.MIN_VALUE — it does NOT throw; only division by zero throws), identity (x/1=x), self (x/x=1), and zero numerator (0/x=0)."
+  },
+  {
+    "type": "test_case_writing",
+    "score": 18,
+    "title": "Tests: bounded stack",
+    "prompt": "A `BoundedStack<T>` has `push`, `pop`, `peek`, `size`, and a fixed capacity. Write the edge-case test set.",
+    "answer": "Cover: push to capacity then push again → IllegalStateException; pop/peek on empty → NoSuchElementException; LIFO order with mixed types; peek does not remove (size unchanged); pop reduces size; interleaved push/pop; and a null-element policy if nulls are disallowed."
+  },
+  {
+    "type": "descriptive",
+    "score": 20,
+    "title": "Explain happens-before",
+    "prompt": "Explain the happens-before relationship in the Java Memory Model and why `volatile` is not a substitute for `synchronized` when updating compound state. Give a concrete failing example.",
+    "answer": "happens-before defines when one action's effects are guaranteed visible to another: program order, monitor unlock→lock, volatile write→read, thread start/join, and transitivity. A volatile write/read gives visibility + ordering for *that variable*, but compound actions like `count++` (read-modify-write) are still race-prone because two reads can interleave. Example: two threads doing `volatileCount++` lose updates; the fix is a lock or an atomic (e.g. `AtomicInteger.incrementAndGet`)."
+  },
+  {
+    "type": "descriptive",
+    "score": 20,
+    "title": "Explain class-loading delegation",
+    "prompt": "Describe the JVM class-loading delegation model (bootstrap → platform → application) and give a scenario where it causes surprising behaviour.",
+    "answer": "A class loader delegates to its parent first; only if the parent cannot load the class does the child attempt it. This guarantees core classes are not shadowed. Surprises: a class loaded by two different loaders is a *different* `Class` (so `instanceof` and static state diverge) — e.g. shared libraries in a container (Tomcat/OSGi) or reflection picking the wrong loader; and overriding `loadClass` without delegation can break `java.*` resolution or cause `ClassCastException` / `LinkageError`."
+  },
+  {
+    "type": "descriptive",
+    "score": 20,
+    "title": "Explain GC pause tuning",
+    "prompt": "A Java service shows multi-second stop-the-world pauses under load. Describe how you would diagnose it and which collector/JVM options you would consider, with trade-offs.",
+    "answer": "Diagnose first: enable GC logging (`-Xlog:gc*:file=gc.log:time,uptime`), read pause causes and frequency, and check heap vs live-set with a heap dump (`jmap`/`jcmd GC.heap_dump`). If pauses dominate and latency matters, move to a low-pause concurrent collector (G1 with a `-XX:MaxGCPauseMillis` target, or ZGC/Shenandoah for ultra-low pauses). Check for allocation pressure/full GCs driven by an under-sized heap or a leak (`-Xmx`, `-XX:+HeapDumpOnOutOfMemoryError`). Trade-offs: concurrent collectors use more CPU/memory and can lower throughput; a bigger heap lowers GC frequency but lengthens any stop-the-world pause."
+  }
+]

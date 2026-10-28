@@ -3,16 +3,16 @@ import { formatTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import {
   Loader2, ArrowLeft, Trophy, Users, Clock, Activity,
   CheckCircle, AlertCircle, Timer, FileText, Download, Shield,
   ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { usePageGuard } from '@/lib/use-page-guard'
+import { useRoleGate } from '@/lib/use-role-gate'
 
 interface Hackathon {
   id: string; name: string; slug: string
@@ -21,8 +21,8 @@ interface Hackathon {
 }
 
 interface Team {
-  id: string; name: string; slug: string; xp: number; level: number
-  members: Array<{ user_id: string; name: string; role: string }>
+  id: string; name: string; slug: string; xp: number; level: number; total?: number | null; rank?: number | null
+  members: Array<{ name: string; role: string }>
 }
 
 interface Submission {
@@ -58,7 +58,8 @@ function formatDuration(seconds: number): string {
 
 export default function HackathonReportPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
-  const gate = usePageGuard('user')
+  // Public once results are released; signed-in viewers also get their own activity.
+  const gate = useRoleGate()
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
 
@@ -73,42 +74,56 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
 
   const load = useCallback(async () => {
     try {
-      const hRes = await fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store' })
-      if (!hRes.ok) throw new Error('Event not found')
-      const hk = await hRes.json() as Hackathon
+      // Released results come from the public endpoint (works for any signed-in
+      // viewer, not just team members). Superadmins can still preview an
+      // unreleased event through the admin-scoped routes.
+      const pRes = await fetch(`/api/hackathons/${encodeURIComponent(slug)}/public-results`, { cache: 'no-store' })
+      if (!pRes.ok) throw new Error(pRes.status === 404 ? 'Event not found' : 'Could not load report')
+      const pub = await pRes.json() as {
+        hackathon: Hackathon; teams: Team[]; submissions: Submission[]; my_team_id: string | null
+      }
+      const hk = pub.hackathon
       setHackathon(hk)
 
-      if (!hk.results_released && gate.user?.role !== 'superadmin') {
+      const isSuper = gate.user?.role === 'superadmin'
+      if (!hk.results_released && !isSuper) {
         setError('Results not yet released')
         setLoading(false)
         return
       }
 
-      const [tRes, sRes, aRes] = await Promise.all([
-        fetch(`/api/hackathons/${slug}/teams`, { cache: 'no-store' }),
-        fetch(`/api/hackathons/${slug}/submissions`, { cache: 'no-store' }),
-        hasSession ? fetch(`/api/hackathons/${hk.id}/activity`, { cache: 'no-store' }).catch(() => null) : Promise.resolve(null),
-      ])
+      let teamList: Team[] = pub.teams || []
+      let subList: Submission[] = pub.submissions || []
+      let myTeamId = pub.my_team_id
+      if (!hk.results_released && isSuper) {
+        const [tRes, sRes] = await Promise.all([
+          fetch(`/api/hackathons/${slug}/teams`, { cache: 'no-store' }),
+          fetch(`/api/hackathons/${slug}/submissions`, { cache: 'no-store' }),
+        ])
+        if (tRes.ok) {
+          type AdminTeam = Omit<Team, 'members'> & { members: Array<{ user_id?: string; name: string; role: string }> }
+          const td = await tRes.json() as { items: AdminTeam[] }
+          teamList = td.items
+          myTeamId = td.items.find((t) => t.members.some((m) => m.user_id === hasSession))?.id ?? null
+        }
+        if (sRes.ok) subList = ((await sRes.json()) as { items: Submission[] }).items || []
+      }
 
-      if (tRes.ok) {
-        const td = await tRes.json() as { items: Team[] }
-        const sorted = td.items.sort((a, b) => b.xp - a.xp)
-        setTeams(sorted)
-        if (hasSession) {
-          const mine = sorted.find((t) => t.members.some(m => m.user_id === hasSession))
-          setMyTeam(mine || null)
+      // Public results arrive ranked on judged totals; keep that order.
+      const sorted = [...teamList]
+      setTeams(sorted)
+      setMyTeam(myTeamId ? sorted.find((t) => t.id === myTeamId) || null : null)
+      setSubmissions(subList)
+
+      if (hasSession) {
+        const aRes = await fetch(`/api/hackathons/${hk.id}/activity`, { cache: 'no-store' }).catch(() => null)
+        if (aRes?.ok) {
+          const ad = await aRes.json() as { activity: ActivityEvent[]; proctor: ProctorEvent[] }
+          setActivity(ad.activity || [])
+          setProctor(ad.proctor || [])
         }
       }
-      if (sRes.ok) {
-        const sd = await sRes.json() as { items: Submission[] }
-        setSubmissions(sd.items || [])
-      }
-      if (aRes?.ok) {
-        const ad = await aRes.json() as { activity: ActivityEvent[]; proctor: ProctorEvent[] }
-        setActivity(ad.activity || [])
-        setProctor(ad.proctor || [])
-      }
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load report') }
     finally { setLoading(false) }
   }, [slug, hasSession, gate.user?.role])
 
@@ -127,12 +142,12 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
   if (error) {
     return (
       <div className="p-8 text-center">
-        <AlertCircle className="h-10 w-10 text-yellow-500 mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2">Results Not Available</h1>
+        <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
+        <h1 className="text-xl font-semibold text-foreground mb-2">Results not available yet</h1>
         <p className="text-muted-foreground mb-4">{error}</p>
-        <Link href={`/hackathons/${slug}`} className="inline-block">
-          <Button variant="outline" className="gap-1"><ArrowLeft className="h-4 w-4" /> Back to Event</Button>
-        </Link>
+        <Button variant="outline" className="gap-1" asChild>
+          <Link href={`/hackathons/${slug}`} className="inline-block"><ArrowLeft className="h-4 w-4" /> Back to event</Link>
+        </Button>
       </div>
     )
   }
@@ -140,12 +155,12 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
   if (!myTeam) {
     return (
       <div className="p-8 text-center">
-        <AlertCircle className="h-10 w-10 text-yellow-500 mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2">No Team Found</h1>
+        <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
+        <h1 className="text-xl font-semibold text-foreground mb-2">No team found</h1>
         <p className="text-muted-foreground mb-4">You weren't part of a team in this event.</p>
-        <Link href={`/hackathons/${slug}`} className="inline-block">
-          <Button variant="outline">Back to Event</Button>
-        </Link>
+        <Button variant="outline" asChild>
+          <Link href={`/hackathons/${slug}`} className="inline-block">Back to event</Link>
+        </Button>
       </div>
     )
   }
@@ -200,44 +215,40 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href={`/hackathons/${slug}/results`}>
-              <Button variant="ghost" size="icon" title="Back"><ArrowLeft className="h-4 w-4" /></Button>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold">{hackathon.name} — Performance Report</h1>
-              <p className="text-sm text-muted-foreground">Your team's detailed breakdown</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportReport}>
-              <Download className="h-3.5 w-3.5" /> Export CSV
-            </Button>
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
+        <PageHeader
+          className="mb-0"
+          icon={<FileText />}
+          title={<>{hackathon.name} — performance report</>}
+          description="How your team did on each problem, with time taken and attempts."
+          actions={
+            <>
+              <Button variant="ghost" size="sm" className="gap-1.5" title="Back" aria-label="Back to results" asChild>
+                <Link href={`/hackathons/${slug}/results`}><ArrowLeft className="h-4 w-4" /> Results</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={exportReport}>
+                <Download className="h-3.5 w-3.5" /> Export CSV
+              </Button>
+            </>
+          }
+        />
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Rank', value: medal, icon: <Trophy className="h-4 w-4" /> },
-            { label: 'Total XP', value: myTeam.xp, icon: <Activity className="h-4 w-4" /> },
-            { label: 'Problems Solved', value: teamSubs.length, icon: <CheckCircle className="h-4 w-4" /> },
-            { label: 'Team Level', value: myTeam.level, icon: <Users className="h-4 w-4" /> },
+            { label: 'Points', value: typeof myTeam.total === 'number' ? myTeam.total : '–', icon: <Activity className="h-4 w-4" /> },
+            { label: 'Problems solved', value: teamSubs.length, icon: <CheckCircle className="h-4 w-4" /> },
+            { label: 'Team level', value: myTeam.level, icon: <Users className="h-4 w-4" /> },
           ].map(stat => (
-            <Card key={stat.label} className="p-4 text-center">
-              <div className="text-muted-foreground mb-1 flex justify-center">{stat.icon}</div>
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </Card>
+            <StatCard key={stat.label} label={stat.label} value={stat.value} icon={stat.icon} />
           ))}
         </div>
 
         {/* Per-problem breakdown */}
-        <Card className="p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Problem Breakdown
+        <Panel>
+          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" /> By problem
           </h2>
           <div className="space-y-3">
             {hackathon.tasks.map((task, i) => {
@@ -247,12 +258,12 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
               const pct = sub && sub.max_score > 0 ? Math.round((sub.score! / sub.max_score) * 100) : 0
 
               return (
-                <div key={task.problem_slug} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
+                <div key={task.problem_slug} className="border border-border rounded-2xl p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-mono w-4">#{i + 1}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums w-4">{i + 1}.</span>
                       <span className="font-semibold text-sm">{task.problem_title}</span>
-                      <Badge variant="outline" className="text-[10px] uppercase">{task.difficulty}</Badge>
+                      <Badge variant="outline" className="text-[10px] capitalize">{task.difficulty}</Badge>
                     </div>
                     <div className="flex items-center gap-3 text-xs">
                       {pActivity && (
@@ -267,7 +278,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
                           {pActivity.attempts} attempts
                         </span>
                       )}
-                      <span className={`font-bold ${solved ? 'text-green-600' : 'text-yellow-600'}`}>
+                      <span className={`font-bold tabular-nums ${solved ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
                         {sub ? `${sub.score}/${task.points}` : '—'}
                       </span>
                     </div>
@@ -277,14 +288,14 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-muted rounded-full h-1.5">
                           <div
-                            className="h-1.5 rounded-full transition-all"
+                            className="h-1.5 rounded-full transition-[width] duration-300 motion-reduce:transition-none"
                             style={{
                               width: `${pct}%`,
                               backgroundColor: solved ? '#22c55e' : '#d97706',
                             }}
                           />
                         </div>
-                        <span className="text-[10px] text-muted-foreground font-mono">{pct}%</span>
+                        <span className="text-[10px] text-muted-foreground tabular-nums">{pct}%</span>
                       </div>
                       <div className="flex gap-4 mt-1.5 text-[10px] text-muted-foreground">
                         {pActivity?.firstSubmit && (
@@ -300,13 +311,13 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
               )
             })}
           </div>
-        </Card>
+        </Panel>
 
         {/* Activity timeline */}
         {activity.length > 0 && (
-          <Card className="p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-              <Activity className="h-4 w-4" /> Activity Timeline
+          <Panel>
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" /> Activity
             </h2>
             <div className="space-y-1 max-h-64 overflow-y-auto">
               {activity.map((evt, i) => (
@@ -314,41 +325,41 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
                   <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
                   <span className="text-muted-foreground flex-1">{activityLabels[evt.type] || evt.type}</span>
                   {evt.problem_slug && <Badge variant="outline" className="text-[10px]">{evt.problem_slug}</Badge>}
-                  <span className="text-muted-foreground font-mono text-[10px]">
+                  <span className="text-muted-foreground tabular-nums text-[10px]">
                     {formatTime(evt.created_at)}
                   </span>
                 </div>
               ))}
             </div>
-          </Card>
+          </Panel>
         )}
 
         {/* Proctor summary */}
         {proctor.length > 0 && (
-          <Card className="p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-              <Shield className="h-4 w-4" /> Integrity Summary
+          <Panel>
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" /> Integrity summary
             </h2>
             <p className="text-xs text-muted-foreground mb-3">
               {proctor.length} event{proctor.length !== 1 ? 's' : ''} logged during the hackathon. This data is visible only to you.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {Object.entries(proctorCounts).map(([type, count]) => (
-                <div key={type} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2 text-xs">
+                <div key={type} className="flex items-center justify-between bg-muted rounded-xl px-3 py-2 text-xs">
                   <span className="text-muted-foreground capitalize">{type.replace(/_/g, ' ')}</span>
-                  <span className="font-bold font-mono">{count}</span>
+                  <span className="font-bold tabular-nums">{count}</span>
                 </div>
               ))}
             </div>
-          </Card>
+          </Panel>
         )}
 
         <div className="text-center">
-          <Link href={`/hackathons/${slug}/results`}>
-            <Button variant="outline" className="gap-1">
-              <Trophy className="h-4 w-4" /> View Full Leaderboard
-            </Button>
-          </Link>
+          <Button variant="outline" className="gap-1" asChild>
+            <Link href={`/hackathons/${slug}/results`}>
+              <Trophy className="h-4 w-4" /> View full leaderboard
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

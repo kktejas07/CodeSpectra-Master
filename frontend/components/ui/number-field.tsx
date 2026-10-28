@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 interface NumberFieldProps {
   label?: string
@@ -84,7 +85,7 @@ export function NumberField({
           onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (isSubmitEnter(e)) {
               commit((e.target as HTMLInputElement).value)
               ;(e.target as HTMLInputElement).blur()
             }

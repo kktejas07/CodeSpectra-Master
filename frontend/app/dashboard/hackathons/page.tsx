@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -16,6 +16,9 @@ import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
+import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -31,6 +34,7 @@ interface Team {
 }
 
 export default function UserHackathonsPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
@@ -39,14 +43,17 @@ export default function UserHackathonsPage() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
   const [myTeams, setMyTeams] = useState<Record<string, Team>>({})
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const load = useCallback(async () => {
+    setLoadError(false)
     try {
       const [hRes, tRes] = await Promise.all([
         fetch('/api/hackathons', { cache: 'no-store' }),
         hasSession ? fetch('/api/hackathons/my-teams', { cache: 'no-store' }).catch(() => null) : Promise.resolve(null),
       ])
-      const hData = hRes.ok ? await hRes.json() as { items: Hackathon[] } : { items: [] }
+      if (!hRes.ok) throw new Error(tr('compete.failedToLoadHackathonsStatus', { status: hRes.status }))
+      const hData = await hRes.json() as { items: Hackathon[] }
       setHackathons(hData.items || [])
 
       if (tRes?.ok) {
@@ -59,7 +66,7 @@ export default function UserHackathonsPage() {
         }
         setMyTeams(map)
       }
-    } catch { /* ignore */ }
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }, [hasSession])
 
@@ -73,20 +80,20 @@ export default function UserHackathonsPage() {
       const hackathonsTour: TourStep[] = [
         {
           target: '[data-tour="hackathons-header"]',
-          title: 'Join Team Hackathons',
-          description: 'Team coding events page where participants join teams and compete live.',
+          title: tr('compete.joinTeamHackathons'),
+          description: tr('compete.teamCodingEventsPageWhereParticipants9dc'),
           position: 'bottom',
         },
         {
           target: '[data-tour="hackathons-live"]',
-          title: 'Enter Live Workspaces',
-          description: 'Enter a live workspace, register your team, or view details.',
+          title: tr('compete.enterLiveWorkspaces'),
+          description: tr('compete.enterALiveWorkspaceRegisterYour3d4'),
           position: 'bottom',
         },
         {
           target: '[data-tour="hackathons-upcoming"]',
-          title: 'Tip Register Early',
-          description: 'Tip: open an upcoming card to register before it goes live.',
+          title: tr('compete.tipRegisterEarly'),
+          description: tr('compete.tipOpenAnUpcomingCardTo0d4'),
           position: 'bottom',
         },
       ]
@@ -123,35 +130,57 @@ export default function UserHackathonsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3" data-tour="hackathons-header">
-        <Trophy className="h-7 w-7 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Hackathons</h1>
-          <p className="text-sm text-muted-foreground">Join a team and compete in live coding events.</p>
-        </div>
+      <div data-tour="hackathons-header">
+        <AppBanner
+          eyebrow={tr('compete.hackathons')}
+          title={tr('compete.buildWithATeamCompeteLive')}
+          description={tr('compete.joinATeamSolveTheEvents84d')}
+          actions={
+            hasSession ? (
+              <>
+                <Link href="/dashboard/events" className={bannerBtnPrimary}>
+                  <CalendarDays className="h-4 w-4" aria-hidden />{' '}{tr('compete.myEvents')}</Link>
+                <Link href="/dashboard/codeathons" className={bannerBtnSecondary}>{tr('compete.codeathons')}{' '}<ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </>
+            ) : (
+              <Link href={`/auth/login?redirect=${encodeURIComponent('/dashboard/hackathons')}`} className={bannerBtnPrimary}>
+                <LogIn className="h-4 w-4" aria-hidden />{' '}{tr('compete.signInToJoinATeam')}</Link>
+            )
+          }
+          art={
+            <div className="flex flex-col items-end gap-3">
+              <BannerChip icon={<Trophy />} label={tr('compete.countLiveNow', { count: liveHackathons.length })} sub="Open for teams" />
+              <BannerChip icon={<Timer />} label={tr('compete.countUpcoming', { count: upcomingHackathons.length })} sub="Register early" className="mr-8" delay="0.6s" />
+            </div>
+          }
+        />
       </div>
 
-      {!hasSession && (
-        <Card className="rounded-xl border-primary/20 bg-primary/5 p-4">
-          <p className="text-sm">Sign in to join hackathon teams and compete.</p>
-          <Link href={`/auth/login?redirect=${encodeURIComponent('/dashboard/hackathons')}`}>
-            <Button className="mt-2 gap-1.5" size="sm"><LogIn className="h-3.5 w-3.5" /> Sign in</Button>
-          </Link>
-        </Card>
+      {loadError && hackathons.length === 0 && (
+        <EmptyState
+          illustration="error"
+          title={tr('compete.couldntLoadHackathons')}
+          description={tr('compete.checkYourConnectionAndTryAgain')}
+          actionLabel={tr('common.tryAgain')}
+          onAction={() => { setLoading(true); void load() }}
+        />
       )}
 
-      {liveHackathons.length === 0 && upcomingHackathons.length === 0 && (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          No hackathons available right now. Check back soon!
-        </Card>
+      {!loadError && liveHackathons.length === 0 && upcomingHackathons.length === 0 && (
+        <EmptyState scene="hackathon-team"
+          title={tr('compete.noHackathonsOpenRightNow')}
+          description={tr('compete.newEventsWillAppearHereAsef1')}
+          actionLabel={tr('compete.practiseProblems')}
+          actionHref="/dashboard/problems"
+        />
       )}
 
       {liveHackathons.length > 0 && (
         <section data-tour="hackathons-live">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" /> Live Now
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" aria-hidden />{' '}{tr('compete.liveNow')}</h2>
+          <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:gap-5">
             {liveHackathons.map((hk) => (
               <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
@@ -161,10 +190,8 @@ export default function UserHackathonsPage() {
 
       {upcomingHackathons.length > 0 && (
         <section data-tour="hackathons-upcoming">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Upcoming
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <h2 className="mb-3 text-lg font-semibold text-foreground">{tr('compete.upcoming')}</h2>
+          <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:gap-5">
             {upcomingHackathons.map((hk) => (
               <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
@@ -174,10 +201,8 @@ export default function UserHackathonsPage() {
 
       {closedHackathons.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Closed Events
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <h2 className="mb-3 text-lg font-semibold text-foreground">{tr('compete.closedEvents')}</h2>
+          <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:gap-5">
             {closedHackathons.slice(0, 6).map((hk) => (
               <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
@@ -189,6 +214,8 @@ export default function UserHackathonsPage() {
 }
 
 function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon; myTeam?: Team; hasSession: boolean; isSuperAdmin: boolean }) {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const starts = new Date(hk.starts_at)
   const ends = new Date(hk.ends_at)
   const now = Date.now()
@@ -197,60 +224,52 @@ function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon
   const locked = isClosed && !isSuperAdmin
 
   return (
-    <Card className="overflow-hidden rounded-xl border-border/60">
-      <div className="p-5 space-y-3">
+    <Card className="gap-0 overflow-hidden rounded-3xl py-0 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
+      <div className="space-y-3 p-6">
         <div className="flex items-start justify-between gap-2">
-          <Link href={`/hackathons/${hk.slug}`} className="text-lg font-semibold hover:underline">
+          <Link href={`/hackathons/${hk.slug}`} className="rounded text-lg font-semibold text-foreground hover:text-primary focus-visible:outline-2 focus-visible:outline-primary">
             {hk.name}
           </Link>
-          <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase shrink-0">
-            {isLive ? 'Live' : isClosed ? 'Closed' : 'Upcoming'}
+          <Badge variant={isLive ? 'default' : isClosed ? 'outline' : 'secondary'} className="shrink-0">
+            {isLive ? t('compete.live') : isClosed ? t('compete.closed') : t('compete.upcoming')}
           </Badge>
         </div>
 
         {hk.description && <p className="text-xs text-muted-foreground line-clamp-2">{hk.description}</p>}
 
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums text-muted-foreground">
           <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {formatDate(starts)}</span>
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {hk.timeout_minutes} min</span>
-          <span className="flex items-center gap-1"><ListChecks className="h-3 w-3" /> {hk.tasks?.length || 0} problems</span>
-          <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {hk.num_teams} teams</span>
+          <span className="flex items-center gap-1"><ListChecks className="h-3 w-3" /> {hk.tasks?.length || 0}{' '}{t('compete.problems')}</span>
+          <span className="flex items-center gap-1"><Users className="h-3 w-3" />{' '}{t('compete.numTeamsTeams', { num_teams: hk.num_teams })}</span>
           {!isClosed && !isLive && (
-            <span className="flex items-center gap-1 text-yellow-500">
-              <Timer className="h-3 w-3" /> Starts <Countdown targetIso={hk.starts_at} />
+            <span className="flex items-center gap-1 font-medium text-primary">
+              <Timer className="h-3 w-3" />{' '}{t('compete.starts')}{' '}<Countdown targetIso={hk.starts_at} />
             </span>
           )}
         </div>
 
-        <div className="flex gap-2 pt-1">
-          {locked ? (
-            <Button size="sm" variant="outline" disabled>
-              View details <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
-          ) : (
-            <Link href={`/hackathons/${hk.slug}`}>
-              <Button size="sm" variant="outline">
-                View details <ArrowRight className="ml-1 h-3 w-3" />
-              </Button>
+        <div className="flex flex-wrap gap-2 pt-1">
+          {/* Details stay readable after the event closes (the title links there too). */}
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/hackathons/${hk.slug}`}>{t('compete.viewDetails')}{' '}<ArrowRight className="ml-1 h-3 w-3" aria-hidden />
             </Link>
-          )}
+          </Button>
           {myTeam && (
             locked ? (
-              <Button size="sm" className="gap-1" disabled>
-                <Trophy className="h-3 w-3" /> Enter workspace
-              </Button>
+              <Button size="sm" className="gap-1" disabled title={t('compete.thisHackathonHasEnded')}>
+                <Trophy className="h-3 w-3" aria-hidden />{' '}{t('compete.workspaceClosed')}</Button>
             ) : (
-              <Link href={`/hackathons/${hk.slug}/workspace`}>
-                <Button size="sm" className="gap-1">
-                  <Trophy className="h-3 w-3" /> Enter workspace
-                </Button>
-              </Link>
+              <Button size="sm" className="gap-1" asChild>
+                <Link href={`/hackathons/${hk.slug}/workspace`}>
+                  <Trophy className="h-3 w-3" />{' '}{t('compete.enterWorkspace')}</Link>
+              </Button>
             )
           )}
           {hasSession && !myTeam && !isClosed && (
-            <Link href={`/hackathons/${hk.slug}`}>
-              <Button size="sm" variant="outline">Register</Button>
-            </Link>
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/hackathons/${hk.slug}`}>{t('compete.register')}</Link>
+            </Button>
           )}
         </div>
       </div>

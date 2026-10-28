@@ -1,0 +1,143 @@
+apply plugin: 'com.android.application'
+
+// ── Versioning ────────────────────────────────────────────────────────────
+// versionName comes from ../package.json ("version"); versionCode from the
+// CS_VERSION_CODE env var (CI passes the run number + an offset) so every
+// uploaded build is strictly increasing. Local builds fall back to 1.
+def pkgJson = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+def csVersionName = (System.getenv('CS_VERSION_NAME') ?: pkgJson.version).toString()
+def csVersionCode = (System.getenv('CS_VERSION_CODE') ?: '1').toInteger()
+
+// ── Build flavours: which site the shell loads ────────────────────────────
+// Keep in sync with scripts/flavor-configs.mjs (writes each flavour's
+// capacitor.config.json from these same URLs).
+def flavourHosts = [
+    dev    : (System.getenv('CS_DEV_URL') ?: 'https://dev.codespectra.ai'),
+    staging: (System.getenv('CS_STAGING_URL') ?: 'https://staging.codespectra.ai'),
+    prod   : 'https://codespectra.ai',
+]
+def hostOf = { String url -> new URI(url).host }
+
+// Play Integrity: Google Cloud project number linked in Play Console
+// (App integrity → Play Integrity API). 0 = let Play pick the linked project.
+def playCloudProjectNumber = (System.getenv('CS_PLAY_CLOUD_PROJECT_NUMBER') ?: '0')
+
+// ── Release signing from environment only. Never commit a keystore. ───────
+def ksPath = System.getenv('CS_KEYSTORE_PATH')
+def hasReleaseSigning = ksPath && file(ksPath).exists() &&
+    System.getenv('CS_KEYSTORE_PASSWORD') && System.getenv('CS_KEY_ALIAS') && System.getenv('CS_KEY_PASSWORD')
+
+android {
+    namespace = "ai.codespectra.app"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "ai.codespectra.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode csVersionCode
+        versionName csVersionName
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "long", "PLAY_CLOUD_PROJECT_NUMBER", "${playCloudProjectNumber}L"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    flavorDimensions += "env"
+    productFlavors {
+        dev {
+            dimension "env"
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+            resValue "string", "app_name", "CodeSpectra Dev"
+            resValue "string", "title_activity_main", "CodeSpectra Dev"
+            buildConfigField "String", "SERVER_URL", "\"${flavourHosts.dev}\""
+            manifestPlaceholders = [appLinkHost: hostOf(flavourHosts.dev)]
+        }
+        staging {
+            dimension "env"
+            applicationIdSuffix ".staging"
+            versionNameSuffix "-staging"
+            resValue "string", "app_name", "CodeSpectra Staging"
+            resValue "string", "title_activity_main", "CodeSpectra Staging"
+            buildConfigField "String", "SERVER_URL", "\"${flavourHosts.staging}\""
+            manifestPlaceholders = [appLinkHost: hostOf(flavourHosts.staging)]
+        }
+        prod {
+            dimension "env"
+            resValue "string", "app_name", "CodeSpectra"
+            resValue "string", "title_activity_main", "CodeSpectra"
+            buildConfigField "String", "SERVER_URL", "\"${flavourHosts.prod}\""
+            manifestPlaceholders = [appLinkHost: hostOf(flavourHosts.prod)]
+        }
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(ksPath)
+                storePassword System.getenv('CS_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('CS_KEY_ALIAS')
+                keyPassword System.getenv('CS_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Debug builds may be inspected from chrome://inspect.
+            buildConfigField "boolean", "WEBVIEW_DEBUG", "true"
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField "boolean", "WEBVIEW_DEBUG", "false"
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    implementation "com.google.android.play:integrity:$playIntegrityVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

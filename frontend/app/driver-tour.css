@@ -67,9 +67,13 @@
   color: hsl(var(--primary-foreground));
 }
 
+/* Keep the solid primary on hover/focus: a translucent primary over the dark
+ * card dropped the label below 4.5:1 (axe colour-contrast). Show state with a
+ * ring instead. */
 .cs-tour-popover .driver-popover-next-btn:hover,
 .cs-tour-popover .driver-popover-next-btn:focus {
-  background-color: hsl(var(--primary) / 0.9);
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.3);
 }
 
 /* Arrow: driver.js colors one border side per position — mirror that with
@@ -90,4 +94,22 @@
 /* Hint beacons use the brand color instead of driver.js red. */
 .driver-hint {
   --driver-hint-color: hsl(var(--primary));
+}
+
+/* Keyboard users need to see which tour button has focus (a11y CI check). */
+.cs-tour-popover .driver-popover-close-btn:focus-visible,
+.cs-tour-popover .driver-popover-footer-btn:focus-visible {
+  outline: 2px solid hsl(var(--ring, var(--primary)));
+  outline-offset: 2px;
+}
+
+/* Respect reduced motion: no overlay/popover fade (also lets axe measure the
+ * settled colours instead of a half-faded button). */
+@media (prefers-reduced-motion: reduce) {
+  .driver-fade .driver-overlay,
+  .driver-fade .driver-popover,
+  .driver-popover.cs-tour-popover {
+    animation: none !important;
+    transition: none !important;
+  }
 }

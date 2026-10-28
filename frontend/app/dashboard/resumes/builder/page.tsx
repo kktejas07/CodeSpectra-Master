@@ -1,107 +1,238 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { formatDate } from '@/lib/i18n/format'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { csrfFetch } from '@/lib/csrf-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { ArrowLeft, Save, Download, Sparkles, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, Save, Download, FileText, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon, Sparkles, Loader2 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT, activeLocale } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
+import { BUILDER_TEMPLATES, EMPTY_RESUME, type BuilderTemplate, type ResumeBuilderData } from '@/lib/resume/builder'
+import { downloadAtsPdf } from '@/lib/resume/pdf'
+import { AtsTemplate, ExtraSections, ExtrasPreview } from './extra-sections'
 
-// Basic Resume Data Structure
-interface ResumeData {
-  personal: {
-    fullName: string
-    email: string
-    phone: string
-    location: string
-    linkedin: string
-    portfolio: string
+// Résumé data: lib/resume/builder (shared with the API, PDF export and tests).
+type ResumeData = ResumeBuilderData
+const emptyData: ResumeData = EMPTY_RESUME
+
+// Drafts are saved to the account (/api/resumes/drafts). This browser copy is
+// only an offline fallback, used when the account copy can't be reached or is older.
+const DRAFT_KEY = 'codeSpectra_resumeDraft'
+
+type LocalDraft = { id?: string; name?: string; template?: TemplateKey; data?: ResumeData; saved_at?: string; synced?: boolean }
+
+function readLocalDraft(): LocalDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    return raw ? (JSON.parse(raw) as LocalDraft) : null
+  } catch {
+    return null
   }
-  summary: string
-  experience: { id: string; company: string; role: string; dates: string; description: string }[]
-  education: { id: string; institution: string; degree: string; dates: string }[]
-  skills: string
 }
 
-const emptyData: ResumeData = {
-  personal: { fullName: '', email: '', phone: '', location: '', linkedin: '', portfolio: '' },
-  summary: '',
-  experience: [],
-  education: [],
-  skills: ''
+function writeLocalDraft(d: LocalDraft) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)) } catch { /* storage blocked */ }
 }
 
-// Mock Profile Data for "Fetch From Profile"
-const profileData: ResumeData = {
-  personal: { fullName: 'Abhiram R', email: 'abhiram@example.com', phone: '+1 234-567-8900', location: 'San Francisco, CA', linkedin: 'linkedin.com/in/abhiram', portfolio: 'abhiram.dev' },
-  summary: 'Innovative and user-focused Product Designer with 5+ years of experience in designing intuitive and impactful digital products. Adept at user research, wireframing, prototyping, and collaborating with cross-functional teams to deliver high-quality user experiences.',
-  experience: [
-    { id: '1', company: 'TechNova', role: 'Product Designer', dates: 'Jan 2021 - Present', description: 'Led the redesign of the core SaaS platform, increasing user retention by 25%.\nConducted extensive user research and usability testing.\nCollaborated with PMs and engineers in agile sprints.' }
-  ],
-  education: [
-    { id: '1', institution: 'University of Design', degree: 'B.S. Interaction Design', dates: '2016 - 2020' }
-  ],
-  skills: 'Figma, Sketch, Adobe Creative Suite, HTML/CSS, React, User Research, Prototyping, Wireframing'
+type TemplateKey = BuilderTemplate
+
+/** Print just the resume sheet: copy it plus the page's styles into a hidden iframe. */
+function printElement(el: HTMLElement, title: string) {
+  const iframe = document.createElement('iframe')
+  iframe.setAttribute('aria-hidden', 'true')
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+  document.body.appendChild(iframe)
+  const doc = iframe.contentDocument
+  const win = iframe.contentWindow
+  if (!doc || !win) { iframe.remove(); return false }
+  const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+    .map(n => n.outerHTML).join('')
+  doc.open()
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/[<>&]/g, '')}</title>${styles}<style>@page{size:A4;margin:0}html,body{margin:0;background:#fff}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${el.outerHTML}</body></html>`)
+  doc.close()
+  const done = () => setTimeout(() => iframe.remove(), 1000)
+  setTimeout(() => {
+    win.focus()
+    win.print()
+    done()
+  }, 300)
+  return true
 }
 
 export default function ResumeBuilderPage() {
+  const apiError = useApiError()
+  const { t: tr, td } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const searchParams = useSearchParams()
   const source = searchParams.get('source')
+  // ?draft=<id> opens a specific saved draft (from the Resumes page).
+  const draftParam = searchParams.get('draft')
   const addToast = useToast()
 
   const [data, setData] = useState<ResumeData>(emptyData)
-  const [template, setTemplate] = useState<'modern' | 'minimal' | 'elegant' | 'professional' | 'creative'>('modern')
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
-  const [userCredits, setUserCredits] = useState<number | null>(null)
+  const [template, setTemplate] = useState<TemplateKey>('ats')
+  const [resumeName, setResumeName] = useState('Untitled resume')
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const [draftId, setDraftId] = useState<string | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [aiBusy, setAiBusy] = useState<string | null>(null)
+  const [prefilling, setPrefilling] = useState(false)
 
+  const applyDraft = (d: LocalDraft) => {
+    if (d.data) setData({ ...emptyData, ...d.data, personal: { ...emptyData.personal, ...d.data.personal }, projects: d.data.projects ?? [], certificates: d.data.certificates ?? [], achievements: d.data.achievements ?? [], targetRole: d.data.targetRole ?? '' })
+    if (d.name) setResumeName(d.name)
+    if (d.template) setTemplate(d.template)
+  }
+
+  // Load the latest draft from the account; fall back to this device's copy when offline
+  // or when the device has newer unsynced changes. Skipped when loading from the profile.
   useEffect(() => {
-    fetch('/api/user/ai-credits')
-      .then(res => res.json())
-      .then(data => {
-        if (data.balance !== undefined) {
-          setUserCredits(data.balance)
+    if (source === 'profile') return
+    // "Start blank" from the Resumes page: no draft loaded; Save draft creates a new one.
+    if (source === 'new' && !draftParam) return
+    let cancelled = false
+    const local = draftParam ? null : readLocalDraft()
+    const url = draftParam ? `/api/resumes/drafts?id=${encodeURIComponent(draftParam)}` : '/api/resumes/drafts'
+    fetch(url, { credentials: 'include' })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status))
+        return r.json() as Promise<{ draft: (LocalDraft & { id: string; updated_at: string }) | null }>
+      })
+      .then(({ draft }) => {
+        if (cancelled) return
+        const localNewer = !!local?.data && local.synced === false &&
+          (!draft || (local.saved_at || '') > (draft.updated_at || ''))
+        if (localNewer && local) {
+          applyDraft(local)
+          if (local.id) setDraftId(local.id)
+          addToast({ type: 'info', title: tr('career.loadedUnsavedChangesFromThisDevice'), message: tr('career.pressSaveDraftToStoreThembed') })
+        } else if (draft) {
+          applyDraft(draft)
+          setDraftId(draft.id)
+          setLastSavedAt(draft.updated_at)
         }
       })
-      .catch(console.error)
-  }, [])
+      .catch(() => {
+        if (cancelled || !local?.data) return
+        applyDraft(local)
+        if (local.id) setDraftId(local.id)
+        addToast({ type: 'info', title: tr('career.showingTheCopySavedOnThisc1e'), message: tr('career.weCouldNotReachYourAccount8dd') })
+      })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, draftParam])
+
+  const saveDraft = async () => {
+    setSavingDraft(true)
+    const savedAt = new Date().toISOString()
+    try {
+      const res = await csrfFetch('/api/resumes/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: draftId || undefined, name: resumeName, template, data }),
+      })
+      const j = await res.json().catch(() => null)
+      if (!res.ok || !j?.draft?.id) throw new Error(apiError(j, tr('career.couldNotSaveYourDraft')))
+      setDraftId(j.draft.id)
+      setLastSavedAt(j.draft.updated_at)
+      writeLocalDraft({ id: j.draft.id, name: resumeName, template, data, saved_at: j.draft.updated_at, synced: true })
+      addToast({ type: 'success', title: tr('career.draftSavedToYourAccount') })
+    } catch (e) {
+      writeLocalDraft({ id: draftId || undefined, name: resumeName, template, data, saved_at: savedAt, synced: false })
+      addToast({
+        type: 'error',
+        title: tr('career.savedOnThisDeviceOnly'),
+        message: tr('career.valueTrySaveDraftAgainWhenb57', { value: e instanceof Error ? e.message : 'Could not reach your account' }),
+      })
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  const askAi = async (target: 'summary' | 'bullets', experienceId?: string, projectId?: string) => {
+    setAiBusy(target === 'summary' ? 'summary' : projectId || experienceId || 'bullets')
+    try {
+      const res = await csrfFetch('/api/resumes/ai-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target, experienceId, projectId, data }),
+      })
+      const j = await res.json().catch(() => null)
+      if (!res.ok) {
+        addToast({ type: 'error', title: apiError(j, tr('career.aiWritingIsUnavailableRightNow')), ...(res.status === 402 ? { message: tr('career.topUpCreditsFromBillingOr63c') } : {}) })
+        return
+      }
+      if (target === 'summary' && typeof j?.summary === 'string') {
+        setData(prev => ({ ...prev, summary: j.summary }))
+      } else if (target === 'bullets' && Array.isArray(j?.bullets) && projectId) {
+        const text = (j.bullets as string[]).map(b => `• ${b}`).join('\n')
+        setData(prev => ({ ...prev, projects: prev.projects.map(p => p.id === projectId ? { ...p, description: text } : p) }))
+      } else if (target === 'bullets' && Array.isArray(j?.bullets) && experienceId) {
+        const text = (j.bullets as string[]).map(b => `• ${b}`).join('\n')
+        setData(prev => ({
+          ...prev,
+          experience: prev.experience.map(exp => exp.id === experienceId ? { ...exp, description: text } : exp),
+        }))
+      } else {
+        addToast({ type: 'error', title: tr('career.aiWritingIsUnavailableRightNow') })
+        return
+      }
+      addToast({
+        type: 'success',
+        title: target === 'summary' ? tr('career.summaryWritten') : tr('career.bulletsWritten'),
+        message: `Check it matches your real experience. ${typeof j.balance === 'number' ? `${j.balance} credits left.` : ''}`.trim(),
+      })
+    } catch {
+      addToast({ type: 'error', title: tr('career.aiWritingIsUnavailableRightNow'), message: tr('career.youWereNotCharged') })
+    } finally {
+      setAiBusy(null)
+    }
+  }
+
+  const downloadPdf = () => {
+    if (template === 'ats') {
+      void downloadAtsPdf(data, resumeName || 'Resume', {
+        summary: tr('career.professionalSummary'), experience: tr('career.experience'), projects: tr('career.rbProjects'), education: tr('career.education'),
+        skills: tr('career.skills'), certificates: tr('career.rbCertificates'), achievements: tr('career.rbAchievements'),
+      }).catch(() => addToast({ type: 'error', title: tr('career.rbPdfFailed') }))
+      return
+    }
+    if (!sheetRef.current || !printElement(sheetRef.current, resumeName || 'Resume')) {
+      window.print()
+      return
+    }
+    addToast({ type: 'info', title: tr('career.chooseSaveAsPdfInThe809') })
+  }
+
+  // ?source=profile: build from your profile + verified skill passport (server, /api/resumes/from-profile).
+  const fillFromPassport = async () => {
+    setPrefilling(true)
+    try {
+      const r = await fetch('/api/resumes/from-profile', { credentials: 'include', cache: 'no-store' })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || !j?.data) throw new Error(apiError(j, tr('career.rbPrefillFailed')))
+      applyDraft({ data: j.data as ResumeData })
+      if (j.data.targetRole) setResumeName(`${j.data.targetRole}`.slice(0, 120))
+      addToast({ type: 'success', title: tr('career.dataFetchedFromProfile'), message: tr('career.rbPrefillDone', { count: Number(j.verified_skills) || 0 }) })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : tr('career.rbPrefillFailed'), message: tr('career.fillInYourDetailsBelowOr0bd') })
+    } finally {
+      setPrefilling(false)
+    }
+  }
 
   useEffect(() => {
-    if (source === 'profile') {
-      try {
-        const saved = localStorage.getItem('codeSpectra_extendedProfile')
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          setData({
-            personal: { 
-              fullName: parsed.name || profileData.personal.fullName, 
-              email: parsed.email || profileData.personal.email, 
-              phone: parsed.phone || '', 
-              location: parsed.location || '', 
-              linkedin: parsed.links?.linkedin || '', 
-              portfolio: parsed.links?.portfolio || '' 
-            },
-            summary: parsed.about || '',
-            experience: parsed.experience || [],
-            education: parsed.education || [],
-            skills: parsed.skills || ''
-          })
-          addToast({ type: 'success', title: 'Data fetched from profile' })
-          return
-        }
-      } catch (e) {
-        console.error('Error parsing profile data', e)
-      }
-      // fallback
-      setData(profileData)
-      addToast({ type: 'success', title: 'Mock data fetched from profile' })
-    }
-  }, [source, addToast])
+    if (source === 'profile') void fillFromPassport()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source])
 
   const updatePersonal = (field: keyof ResumeData['personal'], value: string) => {
     setData(prev => ({ ...prev, personal: { ...prev.personal, [field]: value } }))
@@ -143,50 +274,19 @@ export default function ResumeBuilderPage() {
     setData(prev => ({ ...prev, education: prev.education.filter(edu => edu.id !== id) }))
   }
 
-  const generateWithAI = async () => {
-    if (!data.personal.fullName || (!data.experience[0]?.role && !data.skills)) {
-      addToast({ type: 'error', title: 'Provide at least a name and role/skills for AI generation' })
+  // Not AI: fills a starter summary from the role and skills you typed, so it
+  // costs no credits. Edit it to make it yours.
+  const startFromTemplate = () => {
+    if (!data.experience[0]?.role && !data.skills) {
+      addToast({ type: 'error', title: tr('career.addARoleOrSomeSkills7d0') })
       return
     }
-
-    if (userCredits === null || userCredits < 1) {
-      addToast({ type: 'error', title: 'Insufficient AI Credits. Upgrade to PRO to get more.' })
-      return
-    }
-    
-    setIsGeneratingAI(true)
-    
-    try {
-      const res = await csrfFetch('/api/user/ai-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 1 })
-      })
-      
-      const resData = await res.json()
-      if (!res.ok) {
-        addToast({ type: 'error', title: resData.error || 'Failed to deduct AI Credits' })
-        setIsGeneratingAI(false)
-        return
-      }
-      
-      setUserCredits(resData.balance)
-
-      // Mock API Call for actual AI generation
-      setTimeout(() => {
-        const role = data.experience[0]?.role || 'Professional'
-        setData(prev => ({
-          ...prev,
-          summary: `Highly motivated and results-driven ${role} with a proven track record of delivering innovative solutions. Skilled in ${prev.skills || 'various technologies'}, with a strong focus on collaboration, problem-solving, and driving continuous improvement to achieve organizational goals.`
-        }))
-        setIsGeneratingAI(false)
-        addToast({ type: 'success', title: 'AI Summary Generated! (1 credit deducted)' })
-      }, 1500)
-    } catch (e) {
-      console.error(e)
-      addToast({ type: 'error', title: 'Something went wrong.' })
-      setIsGeneratingAI(false)
-    }
+    const role = data.experience[0]?.role || 'professional'
+    setData(prev => ({
+      ...prev,
+      summary: tr('career.motivatedRoleWithExperienceDeliveringRel75a', { role, value: prev.skills || 'a range of tools' })
+    }))
+    addToast({ type: 'success', title: tr('career.starterSummaryAdded'), message: tr('career.editItToDescribeYourOwn06b') })
   }
 
   if (!gate.ready) return null
@@ -194,55 +294,82 @@ export default function ResumeBuilderPage() {
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background overflow-hidden -m-4 sm:-m-6 md:-m-8">
       {/* Header */}
-      <div className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0 z-10">
-        <div className="flex items-center gap-4">
+      <div className="min-h-16 border-b border-border bg-card flex flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6 shrink-0 z-10">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/resumes')} className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
-          </Button>
-          <div className="w-px h-6 bg-border mx-2" />
-          <Input defaultValue="Untitled Resume" className="border-transparent hover:border-border focus-visible:ring-0 shadow-none w-64 text-lg font-semibold px-2 h-9" />
+            <ArrowLeft className="w-4 h-4 mr-2" />{' '}{tr('common.back')}</Button>
+          <div className="hidden sm:block w-px h-6 bg-border mx-2" />
+          <Input value={resumeName} onChange={e => setResumeName(e.target.value)} aria-label={tr('career.resumeName')} className="border-transparent hover:border-border focus-visible:border-border shadow-none w-40 sm:w-64 text-base sm:text-lg font-semibold text-foreground px-2 h-9" />
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <Save className="w-4 h-4 mr-2" /> Save Draft
+          {lastSavedAt && (
+            <span className="hidden lg:inline text-xs text-muted-foreground tabular-nums">{tr('common.saved')}{' '}{formatDate(activeLocale(), lastSavedAt, { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void fillFromPassport()} disabled={prefilling} title={tr('career.rbFillFromPassportHint')}>
+            {prefilling ? <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" aria-hidden /> : <Sparkles className="w-4 h-4 mr-2" aria-hidden />}
+            {tr('career.rbFillFromPassport')}
           </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-            <Download className="w-4 h-4 mr-2" /> Download PDF
+          <Button variant="outline" size="sm" onClick={() => void saveDraft()} disabled={savingDraft}>
+            {savingDraft ? <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" aria-hidden /> : <Save className="w-4 h-4 mr-2" aria-hidden />}
+            {savingDraft ? tr('common.saving') : tr('career.saveDraft')}
           </Button>
+          <Button size="sm" onClick={downloadPdf}>
+            <Download className="w-4 h-4 mr-2" />{' '}{tr('career.downloadPdf')}</Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Editor Pane */}
-        <div className="w-[45%] lg:w-[40%] h-full overflow-y-auto border-r border-border bg-card p-6 custom-scrollbar">
+        <div className="w-full md:w-[45%] lg:w-[40%] h-1/2 md:h-full overflow-y-auto border-b md:border-b-0 md:border-r border-border bg-card p-4 sm:p-6 custom-scrollbar">
           <div className="space-y-8 pb-20">
             
+            {/* Target role: one saved version per role you apply for */}
+            <section className="space-y-2">
+              <Label htmlFor="rb-target-role">{tr('career.rbTargetRole')}</Label>
+              <Input id="rb-target-role" value={data.targetRole} maxLength={120} onChange={e => setData(prev => ({ ...prev, targetRole: e.target.value }))} placeholder={tr('career.rbTargetRolePlaceholder')} />
+              <p className="text-xs text-muted-foreground">{tr('career.rbVersionsHint')}</p>
+            </section>
+
             {/* Personal Details */}
             <section className="space-y-4">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">Personal Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label>Full Name</Label><Input value={data.personal.fullName} onChange={e => updatePersonal('fullName', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={data.personal.email} onChange={e => updatePersonal('email', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Phone</Label><Input value={data.personal.phone} onChange={e => updatePersonal('phone', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Location</Label><Input value={data.personal.location} onChange={e => updatePersonal('location', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>LinkedIn</Label><Input value={data.personal.linkedin} onChange={e => updatePersonal('linkedin', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Portfolio</Label><Input value={data.personal.portfolio} onChange={e => updatePersonal('portfolio', e.target.value)} /></div>
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">{tr('career.personalDetails')}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5"><Label>{tr('career.fullName')}</Label><Input aria-label={tr('career.fullName')} value={data.personal.fullName} onChange={e => updatePersonal('fullName', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Email</Label><Input aria-label="Email" type="email" value={data.personal.email} onChange={e => updatePersonal('email', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>{tr('career.phone')}</Label><Input aria-label={tr('career.phone')} value={data.personal.phone} onChange={e => updatePersonal('phone', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>{tr('career.location')}</Label><Input aria-label={tr('career.location')} value={data.personal.location} onChange={e => updatePersonal('location', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>LinkedIn</Label><Input aria-label="LinkedIn" value={data.personal.linkedin} onChange={e => updatePersonal('linkedin', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>{tr('career.portfolio')}</Label><Input aria-label={tr('career.portfolio')} value={data.personal.portfolio} onChange={e => updatePersonal('portfolio', e.target.value)} /></div>
               </div>
             </section>
 
             {/* Professional Summary */}
             <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground">Professional Summary</h3>
-                <Button variant="secondary" size="sm" onClick={generateWithAI} disabled={isGeneratingAI} className="bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50">
-                  {isGeneratingAI ? <Sparkles className="w-4 h-4 mr-2 animate-pulse" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  {isGeneratingAI ? 'Generating...' : 'AI Magic'}
-                </Button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-lg font-semibold text-foreground">{tr('career.professionalSummary')}</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={startFromTemplate}>
+                    <FileText className="w-4 h-4 mr-2" aria-hidden />{' '}{tr('career.startFromTemplate')}</Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void askAi('summary')}
+                    disabled={aiBusy !== null}
+                    className="bg-primary/10 text-primary hover:bg-primary/15"
+                    title={tr('career.uses1AiCreditChargedOnly923')}
+                  >
+                    {aiBusy === 'summary' ? <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" aria-hidden /> : <Sparkles className="w-4 h-4 mr-2" aria-hidden />}
+                    {aiBusy === 'summary' ? tr('career.writing') : tr('career.writeWithAi')}
+                  </Button>
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">{tr('career.writeWithAiUses1Credit30e')}</p>
               <Textarea 
+                aria-label={tr('career.professionalSummary')}
                 className="min-h-30" 
-                placeholder="Write a brief summary of your professional background..." 
+                placeholder={tr('career.writeABriefSummaryOfYourfa3')} 
                 value={data.summary} 
                 onChange={e => setData(prev => ({ ...prev, summary: e.target.value }))}
               />
@@ -251,77 +378,92 @@ export default function ResumeBuilderPage() {
             {/* Work Experience */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground">Work Experience</h3>
+                <h3 className="text-lg font-semibold text-foreground">{tr('career.workExperience')}</h3>
               </div>
               <div className="space-y-6">
                 {data.experience.map((exp, index) => (
-                  <div key={exp.id} className="p-4 rounded-xl border border-border bg-muted/20 relative group">
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeExperience(exp.id)}>
+                  <div key={exp.id} className="p-4 rounded-2xl border border-border bg-muted/20 relative group">
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeExperience(exp.id)} aria-label={tr('career.removeExperience')}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                    <div className="grid grid-cols-2 gap-4 mb-4 pr-8">
-                      <div className="space-y-1.5"><Label>Company</Label><Input value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Role</Label><Input value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} /></div>
-                      <div className="space-y-1.5 col-span-2"><Label>Dates</Label><Input placeholder="e.g. Jan 2020 - Present" value={exp.dates} onChange={e => updateExperience(exp.id, 'dates', e.target.value)} /></div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pr-8">
+                      <div className="space-y-1.5"><Label>{tr('career.company')}</Label><Input aria-label={tr('career.company')} value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label>{tr('career.role')}</Label><Input aria-label={tr('career.role')} value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} /></div>
+                      <div className="space-y-1.5 sm:col-span-2"><Label>{tr('career.dates')}</Label><Input aria-label={tr('career.dates')} placeholder={tr('career.eGJan2020Present')} value={exp.dates} onChange={e => updateExperience(exp.id, 'dates', e.target.value)} /></div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Description</Label>
-                      <Textarea value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} rows={3} placeholder="Describe your achievements..." />
+                      <div className="flex items-center justify-between gap-2">
+                        <Label>{tr('career.description')}</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-primary"
+                          disabled={aiBusy !== null || !(exp.role || exp.company)}
+                          onClick={() => void askAi('bullets', exp.id)}
+                          title={tr('career.uses1AiCreditChargedOnly923')}
+                        >
+                          {aiBusy === exp.id ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin motion-reduce:animate-none" aria-hidden /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" aria-hidden />}
+                          {aiBusy === exp.id ? tr('career.writing') : tr('career.writeBulletsWithAi')}
+                        </Button>
+                      </div>
+                      <Textarea aria-label={tr('career.description')} value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} rows={3} placeholder={tr('career.describeYourAchievements')} />
                     </div>
                   </div>
                 ))}
                 <Button variant="outline" className="w-full border-dashed" onClick={addExperience}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Experience
-                </Button>
+                  <Plus className="w-4 h-4 mr-2" />{' '}{tr('career.addExperience')}</Button>
               </div>
             </section>
 
             {/* Education */}
             <section className="space-y-4">
-              <h3 className="text-lg font-bold text-foreground">Education</h3>
+              <h3 className="text-lg font-semibold text-foreground">{tr('career.education')}</h3>
               <div className="space-y-4">
                 {data.education.map((edu, index) => (
-                  <div key={edu.id} className="p-4 rounded-xl border border-border bg-muted/20 relative group grid grid-cols-2 gap-4">
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeEducation(edu.id)}>
+                  <div key={edu.id} className="p-4 rounded-2xl border border-border bg-muted/20 relative group grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeEducation(edu.id)} aria-label={tr('career.removeEducation')}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                    <div className="space-y-1.5"><Label>Institution</Label><Input value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} /></div>
-                    <div className="space-y-1.5 pr-8"><Label>Degree</Label><Input value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} /></div>
-                    <div className="space-y-1.5 col-span-2"><Label>Dates</Label><Input value={edu.dates} onChange={e => updateEducation(edu.id, 'dates', e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label>{tr('career.institution')}</Label><Input aria-label={tr('career.institution')} value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} /></div>
+                    <div className="space-y-1.5 pr-8"><Label>{tr('career.degree')}</Label><Input aria-label={tr('career.degree')} value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label>{tr('career.dates')}</Label><Input aria-label={tr('career.dates')} value={edu.dates} onChange={e => updateEducation(edu.id, 'dates', e.target.value)} /></div>
                   </div>
                 ))}
                 <Button variant="outline" className="w-full border-dashed" onClick={addEducation}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Education
-                </Button>
+                  <Plus className="w-4 h-4 mr-2" />{' '}{tr('career.addEducation')}</Button>
               </div>
             </section>
 
             {/* Skills */}
             <section className="space-y-4">
-              <h3 className="text-lg font-bold text-foreground">Skills</h3>
+              <h3 className="text-lg font-semibold text-foreground">{tr('career.skills')}</h3>
               <Textarea 
+                aria-label={tr('career.skills')}
                 value={data.skills} 
                 onChange={e => setData(prev => ({ ...prev, skills: e.target.value }))}
-                placeholder="React, TypeScript, Node.js, Design..."
+                placeholder={tr('career.reactTypescriptNodeJsDesign')}
                 rows={3}
               />
             </section>
+
+            <ExtraSections data={data} setData={setData} aiBusy={aiBusy} onAiProject={(pid) => void askAi('bullets', undefined, pid)} />
           </div>
         </div>
 
         {/* Live Preview Pane */}
-        <div className="flex-1 bg-muted/30 dark:bg-muted/10 p-6 flex flex-col relative h-full overflow-hidden">
+        <div className="flex-1 bg-muted/30 dark:bg-muted/10 p-4 sm:p-6 flex flex-col relative min-h-0 md:h-full overflow-hidden">
           
           {/* Template Switcher */}
-          <div className="bg-card border border-border rounded-full px-2 py-2 flex items-center justify-center gap-2 mb-6 shadow-sm w-max">
-            {(['modern', 'minimal', 'elegant', 'professional', 'creative'] as const).map(t => (
+          <div className="bg-card border border-border rounded-full px-2 py-2 flex items-center gap-1 sm:gap-2 mb-6 shadow-sm max-w-full w-max overflow-x-auto">
+            {BUILDER_TEMPLATES.map(t => (
               <Button
                 key={t}
                 variant={template === t ? 'default' : 'ghost'}
-                className={`rounded-full px-6 h-8 text-sm capitalize ${template === t ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' : 'text-muted-foreground'}`}
+                className={`rounded-full px-4 sm:px-6 h-8 text-sm capitalize ${template === t ? 'shadow-md' : 'text-muted-foreground'}`}
+                aria-pressed={template === t}
                 onClick={() => setTemplate(t)}
               >
-                {t}
+                {td(`career.rbTemplate:${t}`, t)}
               </Button>
             ))}
           </div>
@@ -329,8 +471,11 @@ export default function ResumeBuilderPage() {
           {/* Resume Canvas Wrapper */}
           <div className="flex-1 overflow-y-auto custom-scrollbar flex justify-center pb-20">
             {/* The Resume A4 Paper */}
-            <div className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
+            <div ref={sheetRef} className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
               
+              {/* --- Template: ATS (single column, plain text, real-text PDF) --- */}
+              {template === 'ats' && <AtsTemplate data={data} />}
+
               {/* --- Template: Modern --- */}
               {template === 'modern' && (
                 <div className="flex min-h-282.75">
@@ -339,7 +484,7 @@ export default function ResumeBuilderPage() {
                     <div className="h-24 w-24 rounded-full bg-white/20 mb-6 flex items-center justify-center text-3xl font-bold border-2 border-white/30 overflow-hidden">
                       {((data.personal.fullName || '').charAt(0) || 'U')}
                     </div>
-                    <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">Contact</h2>
+                    <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">{tr('career.contact')}</h2>
                     <div className="space-y-3 text-sm text-slate-300 mb-8 wrap-break-word">
                       {data.personal.email && <div className="break-all">{data.personal.email}</div>}
                       {data.personal.phone && <div>{data.personal.phone}</div>}
@@ -348,7 +493,7 @@ export default function ResumeBuilderPage() {
                       {data.personal.portfolio && <div className="break-all">{data.personal.portfolio}</div>}
                     </div>
                     
-                    <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">Education</h2>
+                    <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">{tr('career.education')}</h2>
                     <div className="space-y-4 text-sm text-slate-300 mb-8">
                       {data.education.map(edu => (
                         <div key={edu.id}>
@@ -359,7 +504,7 @@ export default function ResumeBuilderPage() {
                       ))}
                     </div>
 
-                    <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">Skills</h2>
+                    <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">{tr('career.skills')}</h2>
                     <div className="text-sm text-slate-300 leading-relaxed">
                       {data.skills}
                     </div>
@@ -367,8 +512,8 @@ export default function ResumeBuilderPage() {
 
                   {/* Right Column */}
                   <div className="w-[65%] p-8 bg-white wrap-break-word">
-                    <h1 className="text-4xl font-black text-slate-800 mb-2 uppercase tracking-tight">{data.personal.fullName || 'Your Name'}</h1>
-                    <div className="text-lg text-blue-600 font-medium mb-6">{data.experience[0]?.role || 'Professional Title'}</div>
+                    <h1 className="text-4xl font-black text-slate-800 mb-2 uppercase tracking-tight">{data.personal.fullName || tr('career.yourName')}</h1>
+                    <div className="text-lg text-blue-600 font-medium mb-6">{data.experience[0]?.role || tr('career.professionalTitle')}</div>
                     
                     <div className="text-sm text-slate-600 leading-relaxed mb-8">
                       {data.summary || 'Summary...'}
@@ -377,9 +522,7 @@ export default function ResumeBuilderPage() {
                     <h2 className="text-lg font-bold uppercase text-slate-800 mb-4 border-b-2 border-slate-200 pb-2 flex items-center gap-2">
                       <div className="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center">
                         <Briefcase className="w-4 h-4" />
-                      </div>
-                      Work Experience
-                    </h2>
+                      </div>{tr('career.workExperience')}</h2>
                     
                     <div className="space-y-6">
                       {data.experience.map(exp => (
@@ -403,7 +546,7 @@ export default function ResumeBuilderPage() {
               {template === 'minimal' && (
                 <div className="p-12">
                   <div className="text-center mb-10">
-                    <h1 className="text-4xl font-light tracking-widest uppercase text-slate-900 mb-3">{data.personal.fullName || 'Your Name'}</h1>
+                    <h1 className="text-4xl font-light tracking-widest uppercase text-slate-900 mb-3">{data.personal.fullName || tr('career.yourName')}</h1>
                     <div className="text-sm text-slate-500 flex items-center justify-center gap-3 flex-wrap">
                       {data.personal.email && <span>{data.personal.email}</span>}
                       {data.personal.phone && <span>• {data.personal.phone}</span>}
@@ -427,12 +570,12 @@ export default function ResumeBuilderPage() {
                     {/* Experience section */}
                     {data.experience.length > 0 && (
                       <div>
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-200 pb-2">Experience</h2>
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-200 pb-2">{tr('career.experience')}</h2>
                         <div className="space-y-5">
                           {data.experience.map(exp => (
                             <div key={exp.id}>
                               <div className="flex justify-between items-baseline mb-1">
-                                <h3 className="font-bold text-slate-800">{exp.role} <span className="font-normal text-slate-500">at {exp.company}</span></h3>
+                                <h3 className="font-bold text-slate-800">{exp.role} <span className="font-normal text-slate-500">{tr('career.atCompany', { company: exp.company })}</span></h3>
                                 <span className="text-xs text-slate-400">{exp.dates}</span>
                               </div>
                               <div className="text-sm text-slate-600 whitespace-pre-wrap">
@@ -447,7 +590,7 @@ export default function ResumeBuilderPage() {
                     <div className="grid grid-cols-2 gap-8">
                       {data.education.length > 0 && (
                         <div>
-                          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-200 pb-2">Education</h2>
+                          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-200 pb-2">{tr('career.education')}</h2>
                           <div className="space-y-4">
                             {data.education.map(edu => (
                               <div key={edu.id}>
@@ -462,7 +605,7 @@ export default function ResumeBuilderPage() {
 
                       {data.skills && (
                         <div>
-                          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-200 pb-2">Skills</h2>
+                          <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-200 pb-2">{tr('career.skills')}</h2>
                           <div className="text-sm text-slate-600 leading-relaxed">
                             {data.skills}
                           </div>
@@ -475,11 +618,11 @@ export default function ResumeBuilderPage() {
 
               {/* --- Template: Elegant --- */}
               {template === 'elegant' && (
-                <div className="p-10 relative bg-snow">
+                <div className="p-10 relative bg-slate-50">
                   <div className="absolute top-0 left-0 w-2 h-full bg-[#1e40af]" />
                   <div className="pl-6">
-                    <h1 className="text-5xl font-serif text-[#1e40af] mb-2 tracking-wide">{data.personal.fullName || 'Your Name'}</h1>
-                    <div className="text-xl text-slate-600 font-serif italic mb-6">{data.experience[0]?.role || 'Professional'}</div>
+                    <h1 className="text-5xl font-serif text-[#1e40af] mb-2 tracking-wide">{data.personal.fullName || tr('career.yourName')}</h1>
+                    <div className="text-xl text-slate-600 font-serif italic mb-6">{data.experience[0]?.role || tr('career.professional')}</div>
                     
                     <div className="flex gap-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-8 bg-white p-4 rounded shadow-sm border border-slate-100">
                       {data.personal.email && <div>{data.personal.email}</div>}
@@ -489,17 +632,15 @@ export default function ResumeBuilderPage() {
 
                     <div className="mb-8 bg-white p-6 rounded shadow-sm border border-slate-100">
                       <h2 className="text-2xl font-serif text-[#1e40af] mb-3 flex items-center gap-2">
-                        <UserIcon className="w-5 h-5" /> Profile
-                      </h2>
+                        <UserIcon className="w-5 h-5" />{' '}{tr('career.profile')}</h2>
                       <div className="text-sm text-slate-700 leading-relaxed">
-                        {data.summary || 'Profile summary...'}
+                        {data.summary || tr('career.profileSummary')}
                       </div>
                     </div>
 
                     <div className="mb-8">
                       <h2 className="text-2xl font-serif text-[#1e40af] mb-6 flex items-center gap-2">
-                        <Briefcase className="w-5 h-5" /> Experience
-                      </h2>
+                        <Briefcase className="w-5 h-5" />{' '}{tr('career.experience')}</h2>
                       <div className="space-y-6">
                         {data.experience.map(exp => (
                           <div key={exp.id} className="relative pl-6 border-l-2 border-slate-200 ml-2">
@@ -522,8 +663,7 @@ export default function ResumeBuilderPage() {
                     <div className="grid grid-cols-2 gap-6">
                       <div className="bg-white p-6 rounded shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-serif text-[#1e40af] mb-4 flex items-center gap-2">
-                          <GraduationCap className="w-5 h-5" /> Education
-                        </h2>
+                          <GraduationCap className="w-5 h-5" />{' '}{tr('career.education')}</h2>
                         <div className="space-y-4">
                           {data.education.map(edu => (
                             <div key={edu.id}>
@@ -536,8 +676,7 @@ export default function ResumeBuilderPage() {
                       </div>
                       <div className="bg-white p-6 rounded shadow-sm border border-slate-100">
                         <h2 className="text-2xl font-serif text-[#1e40af] mb-4 flex items-center gap-2">
-                          <AwardIcon className="w-5 h-5" /> Expertise
-                        </h2>
+                          <AwardIcon className="w-5 h-5" />{' '}{tr('career.expertise')}</h2>
                         <div className="text-sm text-slate-700 leading-relaxed">
                           {data.skills}
                         </div>
@@ -551,8 +690,8 @@ export default function ResumeBuilderPage() {
               {template === 'professional' && (
                 <div className="p-10 font-sans text-slate-800">
                   <div className="border-b-4 border-slate-800 pb-6 mb-8 text-center">
-                    <h1 className="text-4xl font-bold uppercase tracking-widest text-slate-900 mb-2">{data.personal.fullName || 'Your Name'}</h1>
-                    <div className="text-lg text-slate-600 font-medium tracking-wide mb-4">{data.experience[0]?.role || 'Professional Title'}</div>
+                    <h1 className="text-4xl font-bold uppercase tracking-widest text-slate-900 mb-2">{data.personal.fullName || tr('career.yourName')}</h1>
+                    <div className="text-lg text-slate-600 font-medium tracking-wide mb-4">{data.experience[0]?.role || tr('career.professionalTitle')}</div>
                     <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-medium text-slate-500">
                       {data.personal.email && <span>{data.personal.email}</span>}
                       {data.personal.phone && <span>| {data.personal.phone}</span>}
@@ -564,12 +703,12 @@ export default function ResumeBuilderPage() {
                   <div className="grid grid-cols-12 gap-8">
                     <div className="col-span-8 space-y-8">
                       <section>
-                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Professional Summary</h2>
+                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">{tr('career.professionalSummary')}</h2>
                         <p className="text-sm leading-relaxed text-slate-700">{data.summary}</p>
                       </section>
 
                       <section>
-                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Experience</h2>
+                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">{tr('career.experience')}</h2>
                         <div className="space-y-6">
                           {data.experience.map(exp => (
                             <div key={exp.id}>
@@ -587,7 +726,7 @@ export default function ResumeBuilderPage() {
 
                     <div className="col-span-4 space-y-8 pl-8 border-l border-slate-200">
                       <section>
-                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Education</h2>
+                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">{tr('career.education')}</h2>
                         <div className="space-y-4">
                           {data.education.map(edu => (
                             <div key={edu.id}>
@@ -600,7 +739,7 @@ export default function ResumeBuilderPage() {
                       </section>
 
                       <section>
-                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Core Skills</h2>
+                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">{tr('career.coreSkills')}</h2>
                         <p className="text-sm leading-relaxed text-slate-700">{data.skills}</p>
                       </section>
                     </div>
@@ -616,12 +755,12 @@ export default function ResumeBuilderPage() {
                       <div className="w-32 h-32 bg-white rounded-full mb-8 border-4 border-white/30 flex items-center justify-center overflow-hidden shadow-xl">
                         <span className="text-5xl font-black text-[#ff6b6b]">{((data.personal.fullName || '').charAt(0) || 'U')}</span>
                       </div>
-                      <h1 className="text-4xl font-black leading-none mb-2">{data.personal.fullName || 'Your Name'}</h1>
-                      <div className="text-lg font-medium text-white/90 mb-10">{data.experience[0]?.role || 'Professional'}</div>
+                      <h1 className="text-4xl font-black leading-none mb-2">{data.personal.fullName || tr('career.yourName')}</h1>
+                      <div className="text-lg font-medium text-white/90 mb-10">{data.experience[0]?.role || tr('career.professional')}</div>
 
                       <div className="space-y-6">
                         <div>
-                          <h2 className="text-sm font-bold uppercase tracking-widest text-white/70 mb-2">Contact Info</h2>
+                          <h2 className="text-sm font-bold uppercase tracking-widest text-white/70 mb-2">{tr('career.contactInfo')}</h2>
                           <div className="space-y-2 text-sm font-medium">
                             <div>{data.personal.email}</div>
                             <div>{data.personal.phone}</div>
@@ -631,7 +770,7 @@ export default function ResumeBuilderPage() {
                         </div>
 
                         <div>
-                          <h2 className="text-sm font-bold uppercase tracking-widest text-white/70 mb-2">Education</h2>
+                          <h2 className="text-sm font-bold uppercase tracking-widest text-white/70 mb-2">{tr('career.education')}</h2>
                           <div className="space-y-4 text-sm">
                             {data.education.map(edu => (
                               <div key={edu.id}>
@@ -649,13 +788,13 @@ export default function ResumeBuilderPage() {
                   <div className="w-[60%] p-10 py-16 text-slate-800 wrap-break-word">
                     <div className="mb-12 relative">
                       <div className="absolute -left-10 top-2 w-8 h-1 bg-[#ff6b6b]" />
-                      <h2 className="text-2xl font-black uppercase tracking-widest mb-4">Profile</h2>
+                      <h2 className="text-2xl font-black uppercase tracking-widest mb-4">{tr('career.profile')}</h2>
                       <p className="text-sm leading-relaxed font-medium text-slate-600 whitespace-pre-wrap">{data.summary}</p>
                     </div>
 
                     <div className="mb-12 relative">
                       <div className="absolute -left-10 top-2 w-8 h-1 bg-[#ff6b6b]" />
-                      <h2 className="text-2xl font-black uppercase tracking-widest mb-6">Experience</h2>
+                      <h2 className="text-2xl font-black uppercase tracking-widest mb-6">{tr('career.experience')}</h2>
                       <div className="space-y-8">
                         {data.experience.map(exp => (
                           <div key={exp.id}>
@@ -673,13 +812,14 @@ export default function ResumeBuilderPage() {
 
                     <div className="relative">
                       <div className="absolute -left-10 top-2 w-8 h-1 bg-[#ff6b6b]" />
-                      <h2 className="text-2xl font-black uppercase tracking-widest mb-4">Expertise</h2>
+                      <h2 className="text-2xl font-black uppercase tracking-widest mb-4">{tr('career.expertise')}</h2>
                       <p className="text-sm leading-relaxed font-medium text-slate-600">{data.skills}</p>
                     </div>
                   </div>
                 </div>
               )}
 
+              {template !== 'ats' && <ExtrasPreview data={data} />}
             </div>
           </div>
         </div>

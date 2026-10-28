@@ -19,6 +19,8 @@ import {
   CheckCircle, XCircle, ChevronRight,
 } from 'lucide-react'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Illustration } from '@/components/illustrations/spot'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ExamQuestion {
   id: string
@@ -50,6 +54,8 @@ interface ExamDoc {
 }
 
 export default function ExamPage() {
+  const apiError = useApiError()
+  const { t } = useT()
   const params = useParams()
   const router = useRouter()
   const gate = usePageGuard()
@@ -69,20 +75,20 @@ export default function ExamPage() {
       const assessmentDetailTour: TourStep[] = [
         {
           target: '[data-tour="assessment-detail-header"]',
-          title: 'Timed Test For Candidates',
-          description: 'This page runs a timed assessment for candidates to answer and submit.',
+          title: t('practice.timedTestForCandidates'),
+          description: t('practice.thisPageRunsATimedAssessmentc29'),
           position: 'bottom',
         },
         {
           target: '[data-tour="assessment-detail-nav"]',
-          title: 'Move Between Questions',
-          description: 'Click Next, Previous, or a number to jump questions and submit last.',
+          title: t('practice.moveBetweenQuestions'),
+          description: t('practice.clickNextPreviousOrANumber230'),
           position: 'top',
         },
         {
           target: '[data-tour="assessment-detail-question"]',
-          title: 'Drafts Save Automatically Here',
-          description: 'Pro tip: answers draft to this device, so finish all questions before submitting.',
+          title: t('practice.draftsSaveAutomatically'),
+          description: t('practice.proTipAnswersDraftToThis434'),
           position: 'top',
         },
       ]
@@ -91,6 +97,8 @@ export default function ExamPage() {
 
   const [exam, setExam] = useState<ExamDoc | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [currentQ, setCurrentQ] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
@@ -98,11 +106,34 @@ export default function ExamPage() {
   const [submitting, setSubmitting] = useState(false)
   const [results, setResults] = useState<{ score: number; total: number; details: Array<{ qId: string; correct: boolean; points: number; answer?: string }> } | null>(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [certificateUrl, setCertificateUrl] = useState<string | null>(null)
   const [extVerified, setExtVerified] = useState(false)
 
+  // Show "View certificate" only when a real certificate exists for this attempt.
   useEffect(() => {
+    if (!submitted || !results) return
+    let cancelled = false
+    const submissionId = (results as { id?: unknown; submission_id?: unknown }).id
+      ?? (results as { submission_id?: unknown }).submission_id
+    fetch('/api/user/assessments', { credentials: 'include', cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled || !json || !Array.isArray(json.attempts)) return
+        const rows = json.attempts as Array<{ id?: string; exam_id?: string; certificate_url?: string }>
+        const match = typeof submissionId === 'string' && submissionId
+          ? rows.find((a) => a.id === submissionId)
+          : rows.find((a) => a.exam_id === examId && a.certificate_url)
+        setCertificateUrl(match?.certificate_url || null)
+      })
+      .catch(() => { if (!cancelled) setCertificateUrl(null) })
+    return () => { cancelled = true }
+  }, [submitted, results, examId])
+
+  useEffect(() => {
+    setLoading(true)
+    setLoadFailed(false)
     fetch(`/api/exams/${examId}`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok && r.status >= 500) throw new Error(String(r.status)); return r.json() })
       .then(data => {
         if (data && !data.error) {
           const qList = Array.isArray(data.questionList) ? data.questionList : (Array.isArray(data.questions) ? data.questions : [])
@@ -120,23 +151,16 @@ export default function ExamPage() {
             setResults(data.submission)
             setSubmitted(true)
           } else {
-            // Restore draft answers from local storage
-            if (typeof window !== 'undefined') {
-              try {
-                const draft = localStorage.getItem(`codespectra_exam_draft_${examId}`)
-                if (draft) {
-                  setAnswers(JSON.parse(draft))
-                }
-              } catch (e) {
-                console.error('Failed to load draft:', e)
-              }
-            }
+            // Results-only page. Taking the test always goes through the main
+            // runner, which carries the invite/link token the server requires.
+            router.replace(`/assessment/${examId}${typeof window !== 'undefined' ? window.location.search : ''}`)
+            return
           }
         }
       })
-      .catch(() => {})
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false))
-  }, [examId])
+  }, [examId, router, reloadKey])
 
   useEffect(() => {
     if (exam && Object.keys(answers).length > 0 && !submitted) {
@@ -174,7 +198,7 @@ export default function ExamPage() {
         body: JSON.stringify({ answers: serialized, auto_submitted: autoSubmitted }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Submit failed')
+      if (!res.ok) throw new Error(apiError(data, t('practice.submitFailed')))
       setResults(data)
       setSubmitted(true)
       if (typeof window !== 'undefined') {
@@ -208,7 +232,20 @@ export default function ExamPage() {
       </div>
     </div>
   )
-  if (!exam) return <div className="p-8 text-center text-muted-foreground">Assessment not found.</div>
+  if (!exam && loadFailed) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <EmptyState illustration="error" title={t('practice.couldntLoadThisAssessment')} description={t('practice.checkYourConnectionAndTryAgain')} actionLabel={t('common.tryAgain')} onAction={() => setReloadKey((k) => k + 1)} />
+      </div>
+    )
+  }
+  if (!exam) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <EmptyState illustration="assessment" title={t('practice.assessmentNotFound')} description={t('practice.thisTestMayHaveBeenRemovedabc')} actionLabel={t('practice.goToAssessments')} actionHref="/dashboard/assessments" />
+      </div>
+    )
+  }
 
   const isLowTime = timeRemaining <= 60 && timeRemaining > 0
   const question = exam.questions[currentQ]
@@ -219,23 +256,16 @@ export default function ExamPage() {
 
     if (!isReleased) {
       return (
-        <div className="p-6 mt-10">
-          <Card className="p-8 text-center border-primary/20 space-y-6 shadow-xl bg-card/60 backdrop-blur">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-500 animate-pulse">
-              <CheckCircle className="h-8 w-8" />
-            </div>
+        <div className="mx-auto mt-10 max-w-xl p-6">
+          <Card className="rounded-3xl border-border/70 p-8 text-center space-y-6">
+            <Illustration name="success" className="mx-auto w-40" />
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">Assessment Submitted</h1>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Thank you for completing the assessment. Your answers have been successfully recorded and submitted.
-              </p>
+              <h1 className="text-2xl font-bold tracking-tight">{t('practice.assessmentSubmitted')}</h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">{t('practice.thanksForFinishingYourAnswersHavee53')}</p>
             </div>
-            <div className="border-t border-border/60 pt-4 text-xs text-muted-foreground">
-              Your results are currently under review. The administrator will release your scores shortly.
-            </div>
+            <div className="border-t border-border/60 pt-4 text-xs text-muted-foreground">{t('practice.yourResultsAreBeingReviewedYoull380')}</div>
             <Button onClick={() => router.push('/dashboard/assessments')} className="w-full gap-2 mt-2">
-              <ArrowLeft className="h-4 w-4" /> Back to Assessments
-            </Button>
+              <ArrowLeft className="h-4 w-4" />{' '}{t('practice.backToAssessments')}</Button>
           </Card>
         </div>
       )
@@ -244,23 +274,21 @@ export default function ExamPage() {
     // If released, display premium, clean results list
     return (
       <div className="p-6 space-y-8">
-        <Card className="p-8 text-center space-y-4 bg-card/60 backdrop-blur border-primary/10 shadow-lg">
-          <h1 className="text-3xl font-bold tracking-tight">Assessment Results</h1>
+        <Card className="relative overflow-hidden rounded-3xl border-0 bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] p-8 text-center text-white space-y-4 shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
+          <h1 className="text-3xl font-bold tracking-tight">{t('practice.assessmentResults')}</h1>
           <div className="flex justify-center items-baseline gap-1">
-            <span className="text-6xl font-extrabold text-primary">{results.score}</span>
-            <span className="text-2xl text-muted-foreground">/ {results.total}</span>
+            <span className="text-6xl font-extrabold tabular-nums">{results.score}</span>
+            <span className="text-2xl tabular-nums text-white/75">/ {results.total}</span>
           </div>
-          <p className="text-sm font-medium text-muted-foreground">
-            {results.score / results.total >= 0.7 
-              ? '🎉 Outstanding! You passed the benchmark.' 
-              : 'Keep practicing to improve your score!'}
+          <p className="text-sm font-medium text-white/85">
+            {((results as { passed?: boolean | null }).passed ?? (results.score / results.total >= 0.7))
+              ? t('practice.greatWorkYouPassed')
+              : t('practice.keepPracticingToImproveYourScore')}
           </p>
         </Card>
 
         <div className="space-y-4">
-          <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-2">
-            Detailed Breakdown & Learning
-          </h3>
+          <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-2">{t('practice.questionByQuestionBreakdown')}</h3>
           {(results.details || []).map((d, i) => {
             const questionData = exam.questions.find(q => q.id === d.qId)
             const title = questionData?.question || `Question ${i + 1}`
@@ -268,26 +296,26 @@ export default function ExamPage() {
             const maxPoints = questionData?.points || 10
             
             // Get correct answer value
-            const correctAnswer = questionData ? ((questionData as any).answer || (questionData as any).correct_answer || 'N/A') : 'N/A'
+            // Sent by the server only after scores are released.
+            const correctAnswer = (d as any).correct_answer || 'N/A'
             const selectedAnswer = d.answer || '(No answer provided)'
 
             return (
               <Card 
                 key={d.qId} 
-                className={`p-5 rounded-2xl border transition-all duration-300 bg-card/40 backdrop-blur hover:bg-card/60 shadow-sm ${
+                className={`p-5 rounded-2xl border transition-colors duration-200 ${
                   d.correct ? 'border-green-500/20 hover:border-green-500/40' : 'border-red-500/20 hover:border-red-500/40'
                 }`}
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">                  {/* Column 1: Question details */}
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Question {i + 1}
+                      <span className="text-xs font-semibold text-muted-foreground">{t('practice.question')}{' '}{i + 1}
                       </span>
                       <Badge variant="secondary" className="text-[10px] py-0.5 px-2">
                         {typeLabel}
                       </Badge>
-                      <Badge variant={d.correct ? 'default' : 'destructive'} className="text-[10px] py-0.5 px-2 font-mono">
+                      <Badge variant={d.correct ? 'default' : 'destructive'} className="text-[10px] py-0.5 px-2 tabular-nums">
                         {d.correct ? `+${d.points}` : '0'} / {maxPoints} pts
                       </Badge>
                     </div>
@@ -316,9 +344,7 @@ export default function ExamPage() {
 
                   {/* Column 2: Your Answer */}
                   <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground block">
-                      Your Selected Answer:
-                    </span>
+                    <span className="text-xs font-semibold text-muted-foreground block">{t('practice.yourAnswer')}</span>
                     <div className={`p-3 rounded-xl border text-sm font-medium ${
                       d.correct 
                         ? 'bg-green-500/5 border-green-500/20 text-green-600 dark:text-green-400' 
@@ -330,8 +356,8 @@ export default function ExamPage() {
                         ) : (
                           <XCircle className="h-4 w-4 text-red-500 shrink-0" />
                         )}
-                        <span className="text-xs uppercase font-bold tracking-wider">
-                          {d.correct ? 'Correct' : 'Incorrect'}
+                        <span className="text-xs font-bold">
+                          {d.correct ? t('practice.correct') : t('practice.incorrect')}
                         </span>
                       </div>
                       <div className="font-mono text-xs wrap-break-word whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg">
@@ -342,15 +368,11 @@ export default function ExamPage() {
 
                   {/* Column 3: Correct Answer */}
                   <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground block">
-                      Correct Answer / Solution:
-                    </span>
+                    <span className="text-xs font-semibold text-muted-foreground block">{t('practice.correctAnswer')}</span>
                     <div className="p-3 rounded-xl border border-green-500/20 bg-green-500/5 text-green-600 dark:text-green-400 text-sm font-medium">
                       <div className="flex items-center gap-2 mb-1">
                         <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                        <span className="text-xs uppercase font-bold tracking-wider">
-                          Official Answer
-                        </span>
+                        <span className="text-xs font-bold">{t('practice.expectedAnswer')}</span>
                       </div>
                       <div className="font-mono text-xs wrap-break-word whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg text-green-600 dark:text-green-300 font-semibold">
                         {correctAnswer}
@@ -362,8 +384,7 @@ export default function ExamPage() {
                 {(d as any).remarks ? (
                   <div className="mt-4 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 block mb-1 flex items-center gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Evaluator Feedback
-                    </span>
+                      <AlertTriangle className="h-3.5 w-3.5" />{' '}{t('practice.reviewerFeedback')}</span>
                     <div className="text-sm text-foreground whitespace-pre-wrap wrap-break-word">{String((d as any).remarks)}</div>
                   </div>
                 ) : null}
@@ -374,11 +395,9 @@ export default function ExamPage() {
 
         <div className="flex gap-4">
           <Button onClick={() => router.push('/dashboard/assessments')} className="flex-1 gap-2" variant="outline">
-            <ArrowLeft className="h-4 w-4" /> Back to Assessments
-          </Button>
-          {results.score / results.total >= 0.7 && (
-            <Button onClick={() => router.push(`/certificate-preview/${examId}`)} className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-               View Certificate <ChevronRight className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" />{' '}{t('practice.backToAssessments')}</Button>
+          {certificateUrl && (
+            <Button onClick={() => router.push(certificateUrl)} className="flex-1 gap-2">{t('practice.viewCertificate')}{' '}<ChevronRight className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -387,7 +406,7 @@ export default function ExamPage() {
   }
 
   return (
-    <ExtensionGate onVerified={() => setExtVerified(true)}>
+    <ExtensionGate bypass={(exam as { proctoring_mode?: string }).proctoring_mode !== 'strict'} onVerified={() => setExtVerified(true)}>
     <>
       <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       <ProctorMonitor
@@ -405,18 +424,18 @@ export default function ExamPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0" data-tour="assessment-detail-header">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/assessments')}>
+          <Button variant="ghost" size="sm" aria-label={t('practice.backToAssessments')} onClick={() => router.push('/dashboard/assessments')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="font-semibold truncate">{exam.title}</h1>
+          <h1 className="text-base font-semibold truncate">{exam.title}</h1>
           <Badge variant="outline">{currentQ + 1}/{exam.questions.length}</Badge>
         </div>
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-          timeRemaining === 0 ? 'bg-red-500/20 text-red-400 animate-pulse' :
-          isLowTime ? 'bg-red-500/10 text-red-400' : 'bg-muted'
+          timeRemaining === 0 ? 'bg-red-500/20 text-red-600 dark:text-red-400 animate-pulse motion-reduce:animate-none' :
+          isLowTime ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-muted'
         }`}>
           <Clock className="h-4 w-4" />
-          <span className="text-sm font-mono font-medium">{formatTime(timeRemaining)}</span>
+          <span className="text-sm font-mono font-medium tabular-nums">{formatTime(timeRemaining)}</span>
           {isLowTime && <AlertTriangle className="h-4 w-4" />}
         </div>
       </header>
@@ -424,11 +443,11 @@ export default function ExamPage() {
       <div className="flex-1 overflow-auto p-6">
         {question && (
           <div className="space-y-6">
-            <Card className="p-6 space-y-4" data-tour="assessment-detail-question">
+            <Card className="rounded-3xl border-border/70 p-6 space-y-4" data-tour="assessment-detail-question">
               <div className="flex items-center gap-2">
                 <Badge>{question.type}</Badge>
-                <Badge variant="outline">{question.points} pts</Badge>
-                <Badge variant="outline">{question.time_limit_seconds}s limit</Badge>
+                <Badge variant="outline">{t('practice.pointsPts', { points: question.points })}</Badge>
+                <Badge variant="outline">{t('practice.timeLimitSecondsSLimit', { time_limit_seconds: question.time_limit_seconds })}</Badge>
               </div>
               <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg">
                 <h2 className="text-xl font-bold mb-3">{question.question}</h2>
@@ -452,6 +471,7 @@ export default function ExamPage() {
 
               <QuestionAnswerInput
                 question={{
+                  ...(question as any),
                   id: question.id,
                   type: question.type,
                   prompt: question.prompt || question.question,
@@ -479,19 +499,14 @@ export default function ExamPage() {
                   variant="outline"
                   disabled={currentQ === 0}
                   onClick={() => setCurrentQ(q => q - 1)}
-                >
-                  Previous
-                </Button>
+                >{t('common.previous')}</Button>
 
                 {currentQ < exam.questions.length - 1 ? (
-                  <Button onClick={() => setCurrentQ(q => q + 1)}>
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  <Button onClick={() => setCurrentQ(q => q + 1)}>{t('common.next')}{' '}<ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 ) : (
                   <Button onClick={() => setShowSubmitConfirm(true)} disabled={submitting}>
-                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    Submit Assessment
-                  </Button>
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}{t('practice.submitAssessment')}</Button>
                 )}
               </div>
 
@@ -500,6 +515,7 @@ export default function ExamPage() {
                   <button
                     key={i}
                     onClick={() => setCurrentQ(i)}
+                    aria-label={t('practice.goToQuestionValue', { value: i + 1 })}
                     className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
                       i === currentQ ? 'bg-primary text-primary-foreground shadow-sm scale-115' :
                       answers[exam.questions[i].id] ? 'bg-primary/20 text-primary hover:bg-primary/30' :
@@ -519,19 +535,15 @@ export default function ExamPage() {
     <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
-          <AlertDialogDescription>
-            You cannot return to the assessment once submitted. Please verify all your answers before submitting.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{t('practice.areYouSureYouWantTo83a')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('practice.youCannotReturnToTheAssessmentce4')}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
             setShowSubmitConfirm(false)
             await handleSubmit(false)
-          }}>
-            Submit
-          </AlertDialogAction>
+          }}>{t('common.submit')}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

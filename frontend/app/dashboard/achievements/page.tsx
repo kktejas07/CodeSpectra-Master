@@ -12,6 +12,9 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { ContributionGraph } from '@/components/gamification/contribution-graph'
 import { SkillBadges } from '@/components/gamification/skill-badges'
+import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Achievement {
   id: number
@@ -28,6 +31,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 }
 
 export default function AchievementsPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -36,21 +40,25 @@ export default function AchievementsPage() {
   const [level, setLevel] = useState(1)
   const [solved, setSolved] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const { lockedFeatures } = useLockedFeatures()
   const badgesLocked = lockedFeatures.includes('achievements:badges')
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/achievements')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => {
         if (json.data) setAchievements(json.data)
         if (typeof json.xp === 'number') setXp(json.xp)
         if (typeof json.level === 'number') setLevel(json.level)
         if (json.stats && typeof json.stats.solved === 'number') setSolved(json.stats.solved)
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -58,32 +66,32 @@ export default function AchievementsPage() {
       const achievementsTour: TourStep[] = [
         {
           target: '[data-tour="achievements-header"]',
-          title: 'Your Achievements Overview',
-          description: 'This page shows your earned achievements, skill badges, and progress for all learners.',
+          title: t('dash.yourAchievementsOverview'),
+          description: t('dash.thisPageShowsYourEarnedAchievements2a9'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-stats"]',
-          title: 'Track Level and XP',
-          description: 'Track your level, XP, earned achievements, and solved problems at a glance.',
+          title: t('dash.trackLevelAndXp'),
+          description: t('dash.trackYourLevelXpEarnedAchievements9de'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-graph"]',
-          title: 'Review Activity Streaks',
-          description: 'Review your contribution graph to spot activity streaks and gaps over time.',
+          title: t('dash.reviewActivityStreaks'),
+          description: t('dash.reviewYourContributionGraphToSpotb24'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-badges"]',
-          title: 'Earn Skill Badges',
-          description: 'Earn skill badges as you master technologies tracked in the SkillBadges section.',
+          title: t('dash.earnSkillBadges'),
+          description: t('dash.earnSkillBadgesAsYouMasterae9'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-tabs"]',
-          title: 'Browse Every Achievement',
-          description: 'Pro tip: open each achievement card to check progress counts and finish remaining tasks first.',
+          title: t('dash.browseEveryAchievement'),
+          description: t('dash.proTipOpenEachAchievementCard9ec'),
           position: 'bottom',
         },
       ]
@@ -104,85 +112,84 @@ export default function AchievementsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2" data-tour="achievements-header">
-          <Trophy className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Achievements & Badges</h1>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Showcase your platform achievements and earned skill badges.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+      <div data-tour="achievements-header">
+        <PageHeader
+          illustration="leaderboard"
+          title={t('dash.achievementsAndBadges')}
+          description={t('dash.yourLevelXpAndTheAchievementsc64')}
+          icon={<Trophy />}
+          className="mb-0"
+        />
       </div>
 
-      {achievements.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <Trophy className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No achievements yet. Start completing challenges to earn them.</p>
-        </Card>
+      {loadError && achievements.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title={t('dash.couldntLoadAchievements')}
+            description={t('dash.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
+      ) : achievements.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState illustration="leaderboard"
+            title={t('dash.noAchievementsYet')}
+            description={t('dash.solveProblemsAndFinishChallengesTo211')}
+            actionLabel={t('dash.goToProblems')}
+            actionHref="/dashboard/problems"
+          />
+        </Panel>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="achievements-stats">
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">Lvl {level}</p>
-              <p className="text-xs text-muted-foreground">Your level</p>
-            </Card>
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">{xp} XP</p>
-              <p className="text-xs text-muted-foreground">Total XP earned</p>
-            </Card>
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">{earnedCount}/{achievements.length}</p>
-              <p className="text-xs text-muted-foreground">Achievements earned</p>
-            </Card>
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">{solved}</p>
-              <p className="text-xs text-muted-foreground">Problems solved</p>
-            </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="achievements-stats">
+            <StatCard label={t('dash.yourLevel')} value={`Level ${level}`} icon={<Zap />} />
+            <StatCard label={t('dash.totalXp')} value={`${xp} XP`} icon={<Flame />} />
+            <StatCard label={t('dash.achievements')} value={`${earnedCount}/${achievements.length}`} icon={<Trophy />} />
+            <StatCard label={t('dash.problemsSolved')} value={solved} icon={<Code2 />} />
           </div>
 
           <div data-tour="achievements-graph"><ContributionGraph /></div>
           <div data-tour="achievements-badges"><SkillBadges /></div>
           <div data-tour="achievements-tabs"><Tabs defaultValue="achievements">
             <TabsList>
-              <TabsTrigger value="achievements">Achievements</TabsTrigger>
-              {!badgesLocked && <TabsTrigger value="badges">Badges</TabsTrigger>}
+              <TabsTrigger value="achievements">{t('dash.achievements')}</TabsTrigger>
+              {!badgesLocked && <TabsTrigger value="badges">{t('dash.badges')}</TabsTrigger>}
             </TabsList>
             <TabsContent value="achievements">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <BentoGrid className="lg:grid-cols-3">
                 {achievements.map(a => {
                   const Icon = ICON_MAP[a.icon] || Trophy
                   return (
-                    <Card key={a.id} className={`border-border/60 p-5 ${!a.earned ? 'opacity-50' : ''}`}>
+                    <Panel key={a.id} className={`p-5 ${!a.earned ? 'opacity-60' : ''}`}>
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
                           <Icon className="h-5 w-5" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground">{a.name}</h3>
+                          <h3 className="text-base font-semibold text-foreground">{a.name}</h3>
                           <p className="text-xs text-muted-foreground">{a.description}</p>
                         </div>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted">
-                        <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${Math.round((a.progress / a.total) * 100)}%` }} />
+                      <div className="h-1.5 w-full rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={a.total} aria-valuenow={a.progress} aria-label={t('dash.nameProgress', { name: a.name })}>
+                        <div className="h-1.5 rounded-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${a.total ? Math.round((a.progress / a.total) * 100) : 0}%` }} />
                       </div>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{a.progress}/{a.total}</p>
-                    </Card>
+                      <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">{a.progress}/{a.total}</p>
+                    </Panel>
                   )
                 })}
-              </div>
+              </BentoGrid>
             </TabsContent>
             {!badgesLocked && <TabsContent value="badges">
               {userBadges.length > 0 ? (
-                <div>Badges: {userBadges.join(', ')}</div>
+                <div className="flex flex-wrap gap-2">
+                  {userBadges.map(b => (
+                    <span key={b} className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium capitalize text-primary">{b.replace(/-/g, ' ')}</span>
+                  ))}
+                </div>
               ) : (
-                <p className="py-10 text-center text-sm text-muted-foreground">No badges earned yet.</p>
+                <EmptyState illustration="leaderboard" title={t('dash.noBadgesYet')} description={t('dash.solveProblemsToEarnYourFirst146')} actionLabel={t('dash.goToProblems')} actionHref="/dashboard/problems" className="border-0 bg-transparent" />
               )}
             </TabsContent>}
           </Tabs>

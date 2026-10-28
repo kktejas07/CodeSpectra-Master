@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 
+// Theme-token tone (royal blue `primary`), the same for every track. Older
+// seeded docs may carry per-colour classes (e.g. emerald); GET normalises them.
+const TONE = 'border-primary/30 bg-primary/5'
+
 const SEED_TRACKS = [
-  { id: 'python', name: 'Python', description: 'Core syntax, data structures, OOP, decorators, async, pytest.', topics: ['Strings', 'Lists', 'Dicts', 'OOP', 'Iterators', 'Asyncio'], tone: 'border-emerald-500/30 bg-emerald-500/5', badge: 'Most popular' },
-  { id: 'javascript', name: 'JavaScript / TypeScript', description: 'ES2024+, closures, async/await, Node.js patterns, types.', topics: ['Closures', 'Promises', 'Map/Set', 'TS generics', 'Event loop'], tone: 'border-amber-500/30 bg-amber-500/5' },
-  { id: 'dsa', name: 'DSA — Data Structures & Algorithms', description: 'Arrays, Trees, Graphs, DP, Greedy, Two-pointer, Tries.', topics: ['Arrays', 'Trees', 'Graphs', 'DP', 'Greedy', 'Bit manipulation'], tone: 'border-primary/30 bg-primary/5', badge: 'Interview core' },
-  { id: 'react', name: 'React', description: 'Hooks, Suspense, RSC, state management, performance.', topics: ['Hooks', 'Context', 'RSC', 'Forms', 'Performance'], tone: 'border-cyan-500/30 bg-cyan-500/5' },
-  { id: 'node', name: 'Node.js & Backend', description: 'Express/Fastify, streams, auth, queues, observability.', topics: ['HTTP', 'Streams', 'Auth', 'Queues', 'Caching'], tone: 'border-green-500/30 bg-green-500/5' },
-  { id: 'sql', name: 'SQL', description: 'Joins, window functions, query plans, optimization.', topics: ['SELECT', 'JOINs', 'Window fns', 'CTEs', 'Indexes'], tone: 'border-fuchsia-500/30 bg-fuchsia-500/5' },
-  { id: 'java', name: 'Java', description: 'Collections, streams, concurrency, JVM tuning, Spring.', topics: ['Collections', 'Streams', 'Concurrency', 'JVM', 'Generics'], tone: 'border-orange-500/30 bg-orange-500/5' },
-  { id: 'cpp', name: 'C++', description: 'STL, move semantics, templates, memory, performance.', topics: ['STL', 'Templates', 'Move semantics', 'Smart pointers', 'CRTP'], tone: 'border-rose-500/30 bg-rose-500/5' },
-  { id: 'system_design', name: 'System Design', description: 'Scalability, caching, sharding, queues, consistency, design patterns.', topics: ['Sharding', 'Caching', 'Queues', 'Consistency', 'Rate limits'], tone: 'border-indigo-500/30 bg-indigo-500/5', badge: 'Senior+' },
+  { id: 'python', name: 'Python', description: 'Core syntax, data structures, OOP, decorators, async, pytest.', topics: ['Strings', 'Lists', 'Dicts', 'OOP', 'Iterators', 'Asyncio'], tone: TONE, badge: 'Most popular' },
+  { id: 'javascript', name: 'JavaScript / TypeScript', description: 'ES2024+, closures, async/await, Node.js patterns, types.', topics: ['Closures', 'Promises', 'Map/Set', 'TS generics', 'Event loop'], tone: TONE },
+  { id: 'dsa', name: 'DSA — Data Structures & Algorithms', description: 'Arrays, Trees, Graphs, DP, Greedy, Two-pointer, Tries.', topics: ['Arrays', 'Trees', 'Graphs', 'DP', 'Greedy', 'Bit manipulation'], tone: TONE, badge: 'Interview core' },
+  { id: 'react', name: 'React', description: 'Hooks, Suspense, RSC, state management, performance.', topics: ['Hooks', 'Context', 'RSC', 'Forms', 'Performance'], tone: TONE },
+  { id: 'node', name: 'Node.js & Backend', description: 'Express/Fastify, streams, auth, queues, observability.', topics: ['HTTP', 'Streams', 'Auth', 'Queues', 'Caching'], tone: TONE },
+  { id: 'sql', name: 'SQL', description: 'Joins, window functions, query plans, optimization.', topics: ['SELECT', 'JOINs', 'Window fns', 'CTEs', 'Indexes'], tone: TONE },
+  { id: 'java', name: 'Java', description: 'Collections, streams, concurrency, JVM tuning, Spring.', topics: ['Collections', 'Streams', 'Concurrency', 'JVM', 'Generics'], tone: TONE },
+  { id: 'cpp', name: 'C++', description: 'STL, move semantics, templates, memory, performance.', topics: ['STL', 'Templates', 'Move semantics', 'Smart pointers', 'CRTP'], tone: TONE },
+  { id: 'system_design', name: 'System design', description: 'Scalability, caching, sharding, queues, consistency, design patterns.', topics: ['Sharding', 'Caching', 'Queues', 'Consistency', 'Rate limits'], tone: TONE, badge: 'Senior+' },
 ]
 
 export async function GET() {
@@ -21,7 +25,7 @@ export async function GET() {
     if (count === 0) {
       await col.insertMany(SEED_TRACKS.map(t => ({ ...t, created_at: new Date().toISOString() })))
     }
-    const data = await col.find({}).toArray()
+    const data = (await col.find({}).toArray()).map((t) => ({ ...t, tone: TONE }))
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

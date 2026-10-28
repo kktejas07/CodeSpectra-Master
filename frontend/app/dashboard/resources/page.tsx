@@ -7,61 +7,70 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader, Panel, Section, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-const LINK_RESOURCES = [
+const LINK_RESOURCES = (t: Translator) => ([
   {
-    title: 'Platform documentation',
-    description: 'Getting started, product overview, API, and user guides.',
+    title: t('learning.platformDocumentation'),
+    description: t('learning.gettingStartedProductOverviewApiAnd436'),
     href: '/docs',
     tag: 'Docs',
     icon: BookOpen,
     minutes: 10,
   },
   {
-    title: 'User handbook',
-    description: 'Day-to-day workflows inside the dashboard.',
+    title: t('learning.userHandbook'),
+    description: t('learning.dayToDayWorkflowsInsideThe31a'),
     href: '/docs/user/dashboard-guide',
     tag: 'Guide',
     icon: GraduationCap,
     minutes: 12,
   },
   {
-    title: 'Resume builder',
-    description: 'Craft a standout resume in minutes.',
+    title: t('learning.resumeBuilder'),
+    description: t('learning.craftAStandoutResumeInMinutes'),
     href: '/dashboard/resumes',
     tag: 'Tool',
     icon: FileText,
     minutes: 8,
   },
   {
-    title: 'Security & privacy',
-    description: 'How CodeSpectra protects assessments and personal data.',
+    title: t('learning.securityPrivacy'),
+    description: t('learning.howCodespectraProtectsAssessmentsAndPers9aa'),
     href: '/security',
     tag: 'Policy',
     icon: Shield,
     minutes: 6,
   },
   {
-    title: 'Newsroom / Articles',
-    description: 'Long-form updates and career Signals.',
+    title: t('learning.newsroomArticles'),
+    description: t('learning.longFormUpdatesAndCareerSignals'),
     href: '/dashboard/articles',
     tag: 'Editorial',
     icon: Library,
     minutes: 5,
   },
-]
+])
 
 export default function ResourcesPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const [ebooks, setEbooks] = useState<EbookCardData[]>([])
   const [loadingEbooks, setLoadingEbooks] = useState(true)
+  const [ebooksError, setEbooksError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoadingEbooks(true)
+    setEbooksError(false)
     fetch('/api/resources/ebooks', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) =>
         setEbooks(
           (d.items || []).map((e: Record<string, unknown>) => ({
@@ -78,9 +87,9 @@ export default function ResourcesPage() {
           })),
         ),
       )
-      .catch(() => setEbooks([]))
+      .catch(() => { setEbooks([]); setEbooksError(true) })
       .finally(() => setLoadingEbooks(false))
-  }, [gate.ready])
+  }, [gate.ready, reloadKey])
 
   if (!gate.ready) {
     return (
@@ -97,29 +106,36 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="w-full space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Explore Resources</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pocket ebooks and career essentials — original CodeSpectra guides you can flip through.
-        </p>
+    <div className="w-full space-y-8">
+      <div className="relative isolate">
+        <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+        <PageHeader
+          illustration="courses"
+          className="mb-0"
+          icon={<Library aria-hidden />}
+          title={t('learning.exploreResources')}
+          description={t('learning.pocketEbooksAndCareerEssentialsOriginal2d7')}
+        />
       </div>
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold">Ebooks</h2>
-          <p className="text-sm text-muted-foreground">Unstop-style flipbooks. Tap a cover to read.</p>
-        </div>
+      <Section title={t('learning.ebooks')} description={t('learning.flipThroughPocketGuidesTapAaa6')}>
         {loadingEbooks ? (
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading ebooks…
-          </div>
-        ) : ebooks.length === 0 ? (
+            <Loader2 className="h-4 w-4 animate-spin" />{' '}{t('learning.loadingEbooks')}</div>
+        ) : ebooksError ? (
           <EmptyState
+            illustration="error"
+            title={t('learning.couldntLoadEbooks')}
+            description={t('learning.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
+            onAction={() => setReloadKey((k) => k + 1)}
+          />
+        ) : ebooks.length === 0 ? (
+          <EmptyState illustration="courses"
             variant="default"
-            title="No published ebooks yet"
-            description="New pocket guides will show up here when published. Check back soon."
-            actionLabel="Browse docs"
+            title={t('learning.noPublishedEbooksYet')}
+            description={t('learning.newPocketGuidesWillShowUpe72')}
+            actionLabel={t('learning.browseDocs')}
             actionHref="/docs"
           />
         ) : (
@@ -129,33 +145,32 @@ export default function ResourcesPage() {
             ))}
           </div>
         )}
-      </section>
+      </Section>
 
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">More resources</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {LINK_RESOURCES.map((r) => {
+      <Section title={t('learning.moreResources')}>
+        <BentoGrid className="lg:grid-cols-3">
+          {LINK_RESOURCES(t).map((r) => {
             const Icon = r.icon
             return (
               <Link key={r.href} href={r.href}>
-                <Card className="flex h-full flex-col gap-3 p-4 transition-colors hover:border-primary/40 hover:bg-muted/30">
+                <Panel interactive className="flex h-full flex-col gap-3 p-5">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" aria-hidden />
                     </span>
                     <Badge variant="secondary">{r.tag}</Badge>
                   </div>
                   <div>
-                    <p className="font-medium">{r.title}</p>
+                    <p className="font-medium text-foreground">{r.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{r.description}</p>
                   </div>
-                  <p className="mt-auto text-xs text-muted-foreground">~{r.minutes} min</p>
-                </Card>
+                  <p className="mt-auto text-xs tabular-nums text-muted-foreground">~{r.minutes} min</p>
+                </Panel>
               </Link>
             )
           })}
-        </div>
-      </section>
+        </BentoGrid>
+      </Section>
     </div>
   )
 }

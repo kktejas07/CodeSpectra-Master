@@ -18,6 +18,10 @@
 import { notifications, newId, nowIso } from '@/lib/db/admin'
 import type { NotificationDoc } from '@/lib/db/admin'
 import type { Document, Filter } from 'mongodb'
+import type { Locale } from '@/lib/i18n/config'
+import { hasOutboundKey, outboundT, renderOutbound, type OutboundText } from '@/lib/i18n/outbound'
+import type { MessageClass } from '@/lib/messaging/budget-rules'
+import type { MessageBudget } from '@/lib/messaging/budget'
 
 // ─── All platform notification types ────────────────────────────────────────
 
@@ -52,22 +56,23 @@ export const NOTIFICATION_TYPES = {
   'interview.feedback_ready': { category: 'interview', icon: 'bar-chart', default_title: 'Feedback Ready', default_link: '/dashboard/interviews' },
 
   // Code Quality
-  'scan.completed': { category: 'code', icon: 'search', default_title: 'Scan Complete', default_link: '/dashboard/projects' },
-  'scan.critical_issue': { category: 'code', icon: 'alert-triangle', default_title: 'Critical Issue Found', default_link: '/dashboard/projects' },
-  'scan.quality_gate_passed': { category: 'code', icon: 'check-circle', default_title: 'Quality Gate Passed', default_link: '/dashboard/projects' },
-  'scan.quality_gate_failed': { category: 'code', icon: 'x-circle', default_title: 'Quality Gate Failed', default_link: '/dashboard/projects' },
-  'scan.dependency_vuln': { category: 'code', icon: 'shield', default_title: 'Vulnerability Found', default_link: '/dashboard/projects' },
-  'scan.secret_detected': { category: 'code', icon: 'key', default_title: 'Secret Detected', default_link: '/dashboard/projects' },
+  'scan.completed': { category: 'code', icon: 'search', default_title: 'Scan Complete', default_link: '/dashboard/scanner' },
+  'scan.critical_issue': { category: 'code', icon: 'alert-triangle', default_title: 'Critical Issue Found', default_link: '/dashboard/scanner' },
+  'scan.quality_gate_passed': { category: 'code', icon: 'check-circle', default_title: 'Quality Gate Passed', default_link: '/dashboard/scanner' },
+  'scan.quality_gate_failed': { category: 'code', icon: 'x-circle', default_title: 'Quality Gate Failed', default_link: '/dashboard/scanner' },
+  'scan.dependency_vuln': { category: 'code', icon: 'shield', default_title: 'Vulnerability Found', default_link: '/dashboard/scanner' },
+  'scan.secret_detected': { category: 'code', icon: 'key', default_title: 'Secret Detected', default_link: '/dashboard/scanner' },
 
   // Reviews
-  'review.requested': { category: 'code', icon: 'message-square', default_title: 'Review Requested', default_link: '/dashboard/projects' },
-  'review.completed': { category: 'code', icon: 'check-circle', default_title: 'Review Completed', default_link: '/dashboard/projects' },
-  'review.comment_added': { category: 'code', icon: 'message-circle', default_title: 'New Comment', default_link: '/dashboard/projects' },
+  'review.requested': { category: 'code', icon: 'message-square', default_title: 'Review Requested', default_link: '/dashboard/scanner' },
+  'review.completed': { category: 'code', icon: 'check-circle', default_title: 'Review Completed', default_link: '/dashboard/scanner' },
+  'review.comment_added': { category: 'code', icon: 'message-circle', default_title: 'New Comment', default_link: '/dashboard/scanner' },
 
-  // Team & Organization
-  'team.invite': { category: 'team', icon: 'user-plus', default_title: 'Team Invitation', default_link: '/dashboard/team' },
-  'team.joined': { category: 'team', icon: 'users', default_title: 'Joined Team', default_link: '/dashboard/team' },
-  'org.invite': { category: 'team', icon: 'building', default_title: 'Organization Invitation', default_link: '/dashboard/team' },
+  // Team & Organization — there is no member-facing /dashboard/team page; invite
+  // senders should pass the /dashboard/team/invites/[token] link explicitly.
+  'team.invite': { category: 'team', icon: 'user-plus', default_title: 'Team Invitation', default_link: '/dashboard/notifications' },
+  'team.joined': { category: 'team', icon: 'users', default_title: 'Joined Team', default_link: '/dashboard' },
+  'org.invite': { category: 'team', icon: 'building', default_title: 'Organization Invitation', default_link: '/dashboard/notifications' },
 
   // Certifications
   'certification.earned': { category: 'learning', icon: 'award', default_title: 'Certification Earned', default_link: '/dashboard/certifications' },
@@ -85,15 +90,121 @@ export const NOTIFICATION_TYPES = {
   'system.feedback_received': { category: 'system', icon: 'flag', default_title: 'Feedback Received', default_link: '/dashboard/admin/feedback' },
   'content.course_generated': { category: 'learning', icon: 'book-open', default_title: 'Course Generated', default_link: '/dashboard/admin/courses' },
   'content.post_published': { category: 'system', icon: 'file-text', default_title: 'Blog Post Published', default_link: '/dashboard/admin/blog' },
+
+  // Marketplace — seller / admin (lib/marketplace/seller-notify.ts)
+  'mkt.new_order': { category: 'marketplace', icon: 'shopping-bag', default_title: 'New order', default_link: '/dashboard/seller?tab=orders' },
+  'mkt.low_stock': { category: 'marketplace', icon: 'package', default_title: 'Low stock', default_link: '/dashboard/seller?tab=products' },
+  'mkt.payout_paid': { category: 'marketplace', icon: 'banknote', default_title: 'Payout sent', default_link: '/dashboard/seller?tab=payouts' },
+  'mkt.payout_failed': { category: 'marketplace', icon: 'alert-circle', default_title: 'Payout failed', default_link: '/dashboard/seller?tab=payouts' },
+  'mkt.product_approved': { category: 'marketplace', icon: 'check-circle', default_title: 'Product approved', default_link: '/dashboard/seller?tab=products' },
+  'mkt.product_rejected': { category: 'marketplace', icon: 'x-circle', default_title: 'Product needs changes', default_link: '/dashboard/seller?tab=products' },
+  'mkt.seller_status': { category: 'marketplace', icon: 'store', default_title: 'Seller account update', default_link: '/dashboard/seller' },
+  'mkt.refund_processed': { category: 'marketplace', icon: 'rotate-ccw', default_title: 'Refund processed', default_link: '/dashboard/seller?tab=returns' },
+  'mkt.seller_application': { category: 'marketplace', icon: 'store', default_title: 'New seller application', default_link: '/dashboard/admin/marketplace?tab=sellers' },
+  'mkt.refund_requested': { category: 'marketplace', icon: 'rotate-ccw', default_title: 'Refund request', default_link: '/dashboard/admin/marketplace?tab=refunds' },
+  'mkt.payout_requested': { category: 'marketplace', icon: 'banknote', default_title: 'Payout requested', default_link: '/dashboard/admin/marketplace?tab=payouts' },
+
+  // Assistants, agent loops and nudges (wave 15)
+  'placement.nudge': { category: 'learning', icon: 'graduation-cap', default_title: 'From your placement team', default_link: '/dashboard/study-plan' },
+  'placement.practice_assigned': { category: 'learning', icon: 'clipboard-list', default_title: 'Practice assigned', default_link: '/dashboard/company-tests' },
+  'placement.report_ready': { category: 'learning', icon: 'file-text', default_title: 'Placement report ready', default_link: '/dashboard/placement' },
+  'placement.weekly_report': { category: 'learning', icon: 'file-text', default_title: 'Weekly placement report', default_link: '/dashboard/placement' },
+  'mentor.booking.created': { category: 'marketplace', icon: 'calendar', default_title: 'Mentor session booked', default_link: '/dashboard/sessions' },
+  'mentor.session_booked': { category: 'marketplace', icon: 'calendar', default_title: 'Mentor session booked', default_link: '/dashboard/sessions' },
+  'mentor.session_rescheduled': { category: 'marketplace', icon: 'calendar', default_title: 'Mentor session rescheduled', default_link: '/dashboard/sessions' },
+  'mentor.session_followup': { category: 'marketplace', icon: 'message-circle', default_title: 'How was your session?', default_link: '/dashboard/sessions' },
+  'mentor.feedback': { category: 'marketplace', icon: 'star', default_title: 'Rate your mentor session', default_link: '/dashboard/sessions' },
+  'mentor.no_show': { category: 'marketplace', icon: 'alert-circle', default_title: 'Session missed', default_link: '/dashboard/sessions' },
+  'onboarding_tips': { category: 'account', icon: 'lightbulb', default_title: 'Getting started', default_link: '/dashboard' },
+  'onboarding_verify': { category: 'account', icon: 'mail-check', default_title: 'Verify your account', default_link: '/dashboard/settings' },
+  'assistant.onboarding_step': { category: 'system', icon: 'list-checks', default_title: 'Next setup step', default_link: '/dashboard/admin/onboarding' },
+  'assistant.revenue_proposals': { category: 'system', icon: 'trending-up', default_title: 'Revenue proposals ready', default_link: '/dashboard/admin/agent' },
+  'agent_loop.insight': { category: 'system', icon: 'line-chart', default_title: 'Weekly insight', default_link: '/dashboard/admin/agent-loops' },
+  'agent_loop.run_finished': { category: 'system', icon: 'bot', default_title: 'Agent loop finished', default_link: '/dashboard/admin/agent-loops' },
+  'hiring_agent.proposals': { category: 'system', icon: 'users', default_title: 'Hiring proposals ready', default_link: '/dashboard/admin/hiring-agents' },
+
+  // Reminders and nudges (wave 15 + older reminders, AUTO-105)
+  'streak.saver': { category: 'learning', icon: 'flame', default_title: 'Keep your streak alive', default_link: '/dashboard/arena' },
+  newsletter: { category: 'system', icon: 'mail', default_title: 'Newsletter', default_link: '/newsletter' },
+  'study_plan.reminder': { category: 'learning', icon: 'calendar-check', default_title: "Today's study plan", default_link: '/dashboard/study-plan' },
+  'drive.reminder': { category: 'assessment', icon: 'clock', default_title: 'Hiring drive reminder', default_link: '/dashboard/assessments' },
+  'drive.no_show': { category: 'assessment', icon: 'alert-circle', default_title: 'You missed a hiring drive', default_link: '/dashboard/assessments' },
+  'assessment.reminder': { category: 'assessment', icon: 'clock', default_title: 'Test invite closing soon', default_link: '/dashboard/assessments' },
+  'pro_cert.expiring': { category: 'learning', icon: 'clock', default_title: 'Certification expiring', default_link: '/dashboard/certifications' },
+  'cohort.reminder': { category: 'learning', icon: 'alert-circle', default_title: 'Catch up with your cohort', default_link: '/dashboard/cohorts' },
+  'cohort.staff': { category: 'learning', icon: 'users', default_title: 'Learners who need help', default_link: '/dashboard/cohorts' },
+  'talent.invite': { category: 'hiring', icon: 'briefcase', default_title: 'An employer invited you', default_link: '/dashboard/passport#invites' },
+  'talent.update': { category: 'hiring', icon: 'award', default_title: 'Talent update', default_link: '/dashboard/hiring/talent' },
+  'hiring.nudge': { category: 'hiring', icon: 'clock', default_title: 'Hiring follow-up', default_link: '/dashboard/hiring' },
+  'ats.bgv': { category: 'hiring', icon: 'shield-check', default_title: 'Background check update', default_link: '/dashboard/hiring' },
+  'billing.plan_expiring': { category: 'billing', icon: 'credit-card', default_title: 'Your plan ends soon', default_link: '/dashboard/billing' },
+  'billing.licence_expiring': { category: 'billing', icon: 'key-round', default_title: 'Licence renewal due', default_link: '/dashboard/admin/licences' },
+  'billing.renewal_reminder': { category: 'billing', icon: 'credit-card', default_title: 'Your plan ends soon', default_link: '/dashboard/billing' },
+  'billing.upgrade_offer': { category: 'billing', icon: 'trending-up', default_title: 'Room to grow on your plan', default_link: '/pricing' },
+  'billing.winback_offer': { category: 'billing', icon: 'gift', default_title: 'An offer to come back', default_link: '/pricing' },
+  'automation.message': { category: 'general', icon: 'bell', default_title: 'Notification', default_link: '' },
 } as const
 
+/**
+ * Message class of a notification type for the shared per-person budget
+ * (AUTO-094, lib/messaging/budget.ts). Types listed here are capped when sent
+ * with notify() directly; everything else (receipts, security, results,
+ * invitations, things a person asked for) bypasses the cap. Senders can pass
+ * `budget` to override or add a topic/object dedupe key.
+ */
+export const NOTIFICATION_BUDGET_CLASS: Readonly<Record<string, MessageClass>> = {
+  'streak.saver': 'engagement',
+  // A reminder at the hour the learner picked: their own schedule, never capped (AUTO-108).
+  'study_plan.reminder': 'subscribed',
+  'onboarding_tips': 'engagement',
+  'placement.nudge': 'engagement',
+  'cohort.reminder': 'engagement',
+  'mentor.session_followup': 'engagement',
+  'mentor.feedback': 'engagement',
+  'talent.invite': 'transactional',
+  'billing.upgrade_offer': 'marketing',
+  'billing.winback_offer': 'marketing',
+  newsletter: 'marketing',
+  'automation.message': 'engagement',
+  'certification.expiring': 'deadline',
+  'pro_cert.expiring': 'deadline',
+  'billing.plan_expiring': 'deadline',
+  'billing.renewal_reminder': 'deadline',
+  'drive.reminder': 'deadline',
+  'assessment.reminder': 'deadline',
+  'hackathon.ending_soon': 'deadline',
+}
+
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
+
+/**
+ * Mail category of a notification's email (AUTO-112). Marketing-class types
+ * (win-back / upgrade offers) are promotional: sent as 'engagement' so they
+ * carry the unsubscribe link + one-click headers and honour unsubscribe-all,
+ * even though they live in the billing category. Other billing / security
+ * notices can't be unsubscribed from; everything else is 'transactional'.
+ */
+export function notificationMailCategory(type: string, category: string): 'security' | 'billing' | 'engagement' | 'transactional' {
+  if (NOTIFICATION_BUDGET_CLASS[type] === 'marketing') return 'engagement'
+  return category === 'security' ? 'security' : category === 'billing' ? 'billing' : 'transactional'
+}
 
 interface NotifyInput {
   user_id: string
   type: string
   title?: string
   message?: string
+  /**
+   * Translatable title / message (keys in lib/i18n/messages/<locale>/notify.json),
+   * rendered in the recipient's interface language and stored as plain text
+   * like `title` / `message` (so existing rows keep showing). Several message
+   * parts are joined with a space. A key missing from the catalog falls back
+   * to `title` / `message`.
+   */
+  title_i18n?: OutboundText
+  message_i18n?: OutboundText | OutboundText[]
+  /** Recipient language when the caller already knows it (skips the profile lookup). */
+  locale?: Locale
   link?: string
   icon?: string
   metadata?: Record<string, unknown>
@@ -101,10 +212,27 @@ interface NotifyInput {
   send_email?: boolean
   /** Skip the FCM push fan-out for this notification. */
   skip_push?: boolean
-  /** Send WhatsApp notification (if configured and user has phone). */
+  /**
+   * Also send WhatsApp — only to users who agreed to WhatsApp messages, through
+   * the official Meta Cloud API with an approved template (lib/whatsapp-send;
+   * the unofficial gateway only when a superadmin explicitly enabled it).
+   */
   send_whatsapp?: boolean
-  /** WhatsApp phone number override (if not in user profile). */
-  whatsapp_phone?: string
+  /**
+   * Bypass the user's quiet hours for email/push/WhatsApp. Defaults to true
+   * for `security` notifications, false otherwise (deferred to window end).
+   */
+  urgent?: boolean
+  /**
+   * Shared per-person messaging budget (AUTO-094). Default: the type's class in
+   * NOTIFICATION_BUDGET_CLASS (capped types are held when the person is at
+   * their cap — notify returns null); types not listed aren't capped. Pass a
+   * topic + object to send the same thing once whichever sender fires first.
+   * `false` only when the caller already admitted it (deliverNudge).
+   */
+  budget?: MessageBudget | false
+  /** Called when the budget held the message (notify then returns null) — lets the sender undo its own claim and retry (AUTO-109). */
+  on_held?: (outcome: 'capped' | 'duplicate') => void
 }
 
 /**
@@ -112,14 +240,27 @@ interface NotifyInput {
  * icon, timestamps, etc.). Returns the created notification or null on error.
  */
 export async function notify(input: NotifyInput): Promise<NotificationDoc | null> {
+  let admit: { commit: () => Promise<void>; release: () => Promise<void> } | null = null
   try {
     const typeInfo = NOTIFICATION_TYPES[input.type as NotificationType]
+    const budget = input.budget === false ? null : input.budget ?? (NOTIFICATION_BUDGET_CLASS[input.type] ? { class: NOTIFICATION_BUDGET_CLASS[input.type], source: input.type } : null)
+    if (budget) {
+      const { admitMessage } = await import('@/lib/messaging/budget')
+      const a = await admitMessage({ userId: input.user_id }, budget)
+      if (!a.ok) {
+        try { input.on_held?.(a.outcome) } catch { /* caller's hook never breaks notify */ }
+        return null
+      }
+      admit = a
+    }
     const col = await notifications()
+    const locale = await recipientLocale(input)
+    const text = notificationText(input, locale)
     const doc: NotificationDoc = {
       id: newId(),
       user_id: input.user_id,
-      title: input.title || typeInfo?.default_title || 'Notification',
-      message: input.message || '',
+      title: text.title,
+      message: text.message,
       type: input.type,
       is_read: false,
       link: input.link || typeInfo?.default_link || '',
@@ -129,86 +270,121 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
       created_at: nowIso(),
     }
     await col.insertOne(doc)
+    if (admit) await admit.commit()
+    admit = null
 
-    // Real-time FCM push (fire-and-forget, best effort)
-    if (!input.skip_push) {
-      try {
-        const { sendPushToUser } = await import('@/lib/push-notifications')
-        void sendPushToUser(input.user_id, {
-          title: doc.title,
-          body: doc.message,
-          link: doc.link || undefined,
-          data: {
-            type: doc.type,
-            category: String(doc.category),
-            icon: String(doc.icon),
-            ...Object.fromEntries(
-              Object.entries(doc.metadata || {}).map(([k, v]) => [k, String(v)]),
-            ),
-          },
-        })
-      } catch { /* push is optional */ }
-    }
-
-    // Optional email delivery
-    if (input.send_email) {
-      try {
-        const { getMongoDb } = await import('@/lib/mongodb')
-        const db = await getMongoDb()
-        const pref = await db.collection('notification_preferences').findOne({
-          user_id: input.user_id,
-          type: input.type,
-        })
-        if (!pref || pref.enabled !== false) {
-          const user = await db.collection('user').findOne(
-            { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
-            { projection: { email: 1 } },
-          )
-          if (user?.email) {
-            const { sendEmail } = await import('@/lib/send-email')
-            await sendEmail(String(user.email), {
-              subject: doc.title,
-              html: `<div style="font-family:sans-serif;padding:24px;max-width:480px">
-                <h2 style="margin:0 0 8px">${doc.title}</h2>
-                <p style="color:#4b5563;margin:0 0 16px">${doc.message}</p>
-                ${doc.link ? `<a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${doc.link}" style="display:inline-block;background:#6366f1;color:white;padding:8px 16px;border-radius:6px;text-decoration:none">View</a>` : ''}
-                <p style="color:#9ca3af;font-size:12px;margin-top:24px">CodeSpectra Notification</p>
-              </div>`,
-            })
-          }
-        }
-      } catch { /* email is optional */ }
-    }
-
-    // Optional WhatsApp delivery
-    if (input.send_whatsapp || input.whatsapp_phone) {
-      try {
-        const { isWhatsAppConfigured, sendWhatsAppText, normalizePhone } = await import('@/lib/whatsapp')
-        if (await isWhatsAppConfigured()) {
-          let phone = input.whatsapp_phone || ''
-          if (!phone) {
-            const { getMongoDb } = await import('@/lib/mongodb')
-            const db = await getMongoDb()
-            const user = await db.collection('user').findOne(
-              { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
-              { projection: { phone: 1, phone_number: 1, whatsapp: 1 } },
-            )
-            phone = String(user?.phone || user?.phone_number || user?.whatsapp || '')
-          }
-          if (phone) {
-            const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-            let text = `*${doc.title}*\n\n${doc.message}`
-            if (doc.link) text += `\n\n${base}${doc.link}`
-            void sendWhatsAppText(phone, text) // fire-and-forget
-          }
-        }
-      } catch { /* whatsapp is optional */ }
-    }
+    // Out-of-app delivery (push / email / WhatsApp). Built up front, then sent
+    // now or deferred to the end of the user's quiet hours (see
+    // lib/notifications-delivery.ts). Fire-and-forget so callers never block.
+    void deliverOutOfApp(input, doc, locale)
 
     return doc
   } catch (e) {
+    if (admit) await admit.release().catch(() => {})
     console.error('[notifications] Failed: notifications', e)
     return null
+  }
+}
+
+/** The recipient's saved interface language (English when unset or the lookup fails). */
+async function recipientLocale(input: Pick<NotifyInput, 'user_id' | 'locale'>): Promise<Locale> {
+  if (input.locale) return input.locale
+  const { localeForUser } = await import('@/lib/i18n/recipient')
+  return localeForUser(input.user_id)
+}
+
+const keyOk = (t: OutboundText | undefined) => !!t && hasOutboundKey('notify', t.key)
+
+/**
+ * Pure: the stored title / message for a notification in `locale`.
+ * English keeps the caller's own text when given (unchanged from before);
+ * other languages use the keys when they exist. Then the caller's text, the
+ * type's default title (translated), "Notification".
+ */
+export function notificationText(input: Pick<NotifyInput, 'type' | 'title' | 'message' | 'title_i18n' | 'message_i18n'>, locale: Locale): { title: string; message: string } {
+  const typeInfo = NOTIFICATION_TYPES[input.type as NotificationType]
+  const t = outboundT('notify', locale)
+  const typeTitle = typeInfo ? (hasOutboundKey('notify', `type.${input.type}`) ? t(`type.${input.type}`) : typeInfo.default_title) : undefined
+  const useKeys = (given: string | undefined) => locale !== 'en' || !given
+  const title = keyOk(input.title_i18n) && useKeys(input.title) ? renderOutbound('notify', locale, input.title_i18n!) : input.title || typeTitle || t('fallbackTitle')
+  const parts = input.message_i18n ? (Array.isArray(input.message_i18n) ? input.message_i18n : [input.message_i18n]) : []
+  const message = parts.length && parts.every(keyOk) && useKeys(input.message) ? renderOutbound('notify', locale, parts) : input.message || ''
+  return { title, message }
+}
+
+const esc = (v: unknown) =>
+  String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc, locale: Locale): Promise<void> {
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const { deliverOrDefer } = await import('@/lib/notifications-delivery')
+    type Payload = import('@/lib/notifications-delivery').DeliveryPayload
+    const payload: Payload = {}
+    const wantsEmail = !!input.send_email
+    const wantsWhatsApp = !!input.send_whatsapp
+    const db = wantsEmail || wantsWhatsApp ? await getMongoDb() : null
+    const user = db && wantsEmail
+      ? await db.collection('user').findOne(
+          { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
+          { projection: { email: 1 } },
+        )
+      : null
+    const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+    if (!input.skip_push) {
+      payload.push = {
+        title: doc.title,
+        body: doc.message,
+        link: doc.link || undefined,
+        data: {
+          type: doc.type,
+          notification_id: doc.id,
+          category: String(doc.category),
+          icon: String(doc.icon),
+          ...Object.fromEntries(Object.entries(doc.metadata || {}).map(([k, v]) => [k, String(v)])),
+        },
+      }
+    }
+
+    if (wantsEmail && db && user?.email) {
+      // Honour both the per-type opt-out and the email channel switch.
+      const [typePref, channelPref] = await Promise.all([
+        db.collection('notification_preferences').findOne({ user_id: input.user_id, type: input.type }),
+        db.collection('notification_preferences').findOne({ user_id: input.user_id, type: 'email' }),
+      ])
+      if (typePref?.enabled !== false && channelPref?.enabled !== false) {
+        const et = outboundT('email', locale)
+        payload.email = {
+          to: String(user.email),
+          locale,
+          // Unsubscribes are honoured and the link added (AUTO-052); billing/security can't be unsubscribed from,
+          // promotional offers can (AUTO-112).
+          category: notificationMailCategory(doc.type, String(doc.category)),
+          subject: doc.title,
+          html: `<div lang="${locale}" style="font-family:sans-serif;padding:24px;max-width:480px">
+                <h2 style="margin:0 0 8px">${esc(doc.title)}</h2>
+                <p style="color:#4b5563;margin:0 0 16px">${esc(doc.message)}</p>
+                ${doc.link ? `<a href="${esc(base + doc.link)}" style="display:inline-block;background:#6366f1;color:white;padding:8px 16px;border-radius:6px;text-decoration:none">${esc(et('notify.view'))}</a>` : ''}
+                <p style="color:#9ca3af;font-size:12px;margin-top:24px">${esc(et('notify.footer'))}</p>
+              </div>`,
+        }
+      }
+    }
+
+    if (wantsWhatsApp && db) {
+      // Consent, opt-outs and the channel are checked when it is sent (lib/whatsapp-send).
+      // Here: the per-type switch only.
+      const typePref = await db.collection('notification_preferences').findOne({ user_id: input.user_id, type: input.type }, { projection: { enabled: 1, whatsapp: 1 } })
+      if (typePref?.enabled !== false && typePref?.whatsapp !== false) {
+        payload.whatsapp = { title: doc.title, text: doc.message, link: doc.link ? `${base}${doc.link}` : '', locale }
+      }
+    }
+
+    const urgent = input.urgent ?? doc.category === 'security'
+    await deliverOrDefer(input.user_id, payload, { urgent, notificationId: doc.id })
+  } catch (e) {
+    console.error('[notifications] out-of-app delivery failed:', e)
   }
 }
 
@@ -265,13 +441,12 @@ export async function notifySubmissionStatusChange(
   newStatus: string,
   rejectionReason?: string,
 ) {
-  const statusMessages: Record<string, string> = {
-    under_review: 'Your submission is now under review',
-    review_completed: 'Your submission review is complete',
-    accepted: 'Your submission has been accepted!',
-    rejected: `Your submission was not selected${rejectionReason ? `: ${rejectionReason}` : ''}`,
-    released: 'Your score has been released!',
-  }
+  const known = ['under_review', 'review_completed', 'accepted', 'released'] as const
+  const messageKey: OutboundText = (known as readonly string[]).includes(newStatus)
+    ? { key: `submission.${newStatus}` }
+    : newStatus === 'rejected'
+      ? (rejectionReason ? { key: 'submission.rejectedReason', params: { reason: rejectionReason } } : { key: 'submission.rejected' })
+      : { key: 'submission.other', params: { status: newStatus } }
 
   const statusTypes: Record<string, string> = {
     under_review: 'hackathon.submission_status',
@@ -281,15 +456,14 @@ export async function notifySubmissionStatusChange(
     released: 'hackathon.results',
   }
 
-  const message = statusMessages[newStatus] || `Submission status updated to ${newStatus}`
   const type = statusTypes[newStatus] || 'hackathon.submission_status'
 
   for (const member of teamMembers) {
     await notify({
       user_id: member.user_id,
       type: type as any,
-      title: `${hackathonName} — ${problemSlug}`,
-      message,
+      title_i18n: { key: 'submission.title', params: { event: hackathonName, problem: problemSlug } },
+      message_i18n: messageKey,
       link: `/dashboard/events/${hackathonId}`,
       metadata: {
         hackathon_id: hackathonId,

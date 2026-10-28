@@ -1,9 +1,13 @@
-import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailLongDate, emailTemplatesFor } from '@/lib/email-templates'
+import { localeForRecipient } from '@/lib/i18n/recipient'
+import { inviteIsForExam } from '@/lib/exam-access'
+
+/** A resent link that had run out gets this much more time. */
+const RESEND_EXTEND_MS = 7 * 24 * 3600 * 1000
 
 export async function POST(
   request: Request,
@@ -28,15 +32,34 @@ export async function POST(
     const exam = owned.doc
 
     const invite = await db.collection('candidate_invites').findOne({ id: inviteId })
-    if (!invite) {
-      return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
+    // The invite must belong to this (tenant-checked) exam.
+    if (!invite || !inviteIsForExam(invite as Record<string, unknown>, examId)) {
+      return NextResponse.json({ error: 'Invite not found', code: 'talent_invite_not_found' }, { status: 404 })
+    }
+    if (invite.status === 'revoked' || invite.status === 'used') {
+      return NextResponse.json({ error: invite.status === 'used' ? 'This candidate has already used the invite.' : 'This invite was withdrawn. Send a new invite instead.' }, { status: 409 })
+    }
+    if (exam.ends_at && new Date(String(exam.ends_at)).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'This assessment is closed. Extend its deadline first.' }, { status: 409 })
+    }
+
+    // An expired link would arrive dead: give it more time before mailing it.
+    let expiresAt = new Date(invite.expires_at)
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+      expiresAt = new Date(Date.now() + RESEND_EXTEND_MS)
+      await db.collection('candidate_invites').updateOne(
+        { id: inviteId },
+        { $set: { expires_at: expiresAt.toISOString(), status: 'pending', updated_at: new Date().toISOString() }, $unset: { expired_reason: '' } },
+      )
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const inviteUrl = `${appUrl}/assessment/invite/${invite.token}`
 
-    const expiresAt = new Date(invite.expires_at)
-    const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+    // In the candidate's language (their account's setting when the email has one; else English).
+    const locale = await localeForRecipient({ userId: typeof invite.user_id === 'string' ? invite.user_id : null, email: invite.email })
+    const expiresStr = emailLongDate(expiresAt, locale)
+    const emailTemplates = emailTemplatesFor(locale)
 
     const template = isReminder
       ? emailTemplates.assessmentReminder({
@@ -62,6 +85,10 @@ export async function POST(
       )
     }
 
+    if (!result.success) {
+      return NextResponse.json({ error: 'The email could not be sent. Try again later.', success: false }, { status: 502 })
+    }
+
     return NextResponse.json({
       success: result.success,
       provider: result.provider,
@@ -69,7 +96,7 @@ export async function POST(
       postalMessageId: result.postalMessageId,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to resend invite'
+    const msg = 'Failed to resend invite'
     console.error('[CodeSpectra] admin/exams/[id]/invites/[inviteId]/resend POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

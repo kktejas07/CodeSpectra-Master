@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { executeOnce } from '@/lib/piston'
+import { limitRequest } from '@/lib/rate-limit'
+
+const MAX_CASES = 20
+const MAX_SOURCE = 50_000
 
 export const dynamic = 'force-dynamic'
 
@@ -15,19 +19,34 @@ export async function POST(request: NextRequest) {
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
+  const limited = await limitRequest(request, 'execute-code', gate.user.id, 30, 60_000)
+  if (limited) return limited
   try {
     const body = await request.json()
     const { language, source, test_cases, stdin } = body
 
-    if (!language || !source) {
+    if (typeof language !== 'string' || typeof source !== 'string' || !language || !source) {
       return NextResponse.json(
         { success: false, error: 'language and source are required' },
         { status: 400 }
       )
     }
+    if (source.length > MAX_SOURCE) {
+      return NextResponse.json({ success: false, error: 'source too large (50KB max)' }, { status: 400 })
+    }
+    if (test_cases !== undefined && !Array.isArray(test_cases)) {
+      return NextResponse.json({ success: false, error: 'test_cases must be an array' }, { status: 400 })
+    }
+    if (Array.isArray(test_cases) && test_cases.length > MAX_CASES) {
+      return NextResponse.json({ success: false, error: `At most ${MAX_CASES} test cases per run`, code: 'run_max_cases', params: { max: MAX_CASES } }, { status: 400 })
+    }
 
-    const cases: TestCase[] = test_cases || []
-    const singleStdin = stdin || ''
+    const cases: TestCase[] = (test_cases || []).map((tc: any) => ({
+      input: String(tc?.input ?? '').slice(0, 10_000),
+      output: String(tc?.output ?? '').slice(0, 10_000),
+      isSample: tc?.isSample,
+    }))
+    const singleStdin = typeof stdin === 'string' ? stdin.slice(0, 10_000) : ''
 
     // If test cases provided, run each one
     if (cases.length > 0) {
@@ -87,8 +106,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, result })
   } catch (error: any) {
+    console.error('[execute-code]', error)
     return NextResponse.json(
-      { success: false, error: error?.message || 'Execution failed' },
+      { success: false, error: 'Execution failed' },
       { status: 500 }
     )
   }

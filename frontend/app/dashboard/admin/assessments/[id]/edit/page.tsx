@@ -12,6 +12,7 @@ import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Panel } from '@/components/app/page-kit'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
@@ -19,6 +20,13 @@ import { canonicalType, metaFor, QUESTION_TYPES } from '@/lib/question-types'
 import { CODE_LANGUAGES } from '@/lib/code-languages'
 import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { SectionsEditor } from '@/components/assessment/SectionsEditor'
+import { AdaptiveSettingsCard } from '@/components/assessment/AdaptiveSettingsCard'
+import { AccommodationsCard } from '@/components/assessment/AccommodationsCard'
+import { ExtendedQuestionEditor } from '@/components/assessment/ExtendedQuestionEditor'
+import { EXTENDED_FIELD_RESET, extendedDefaultsForType, extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
+import type { ExamSection } from '@/lib/exam-sections'
+import { useAdminT } from '@/lib/i18n/admin'
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   mcq: <List className="h-3 w-3 mr-1" />,
@@ -32,7 +40,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 const typeIcon = (t: string) => TYPE_ICONS[t] || <List className="h-3 w-3 mr-1" />
 const typeLabel = (t: string) => metaFor(t).label
 
-interface Question {
+interface Question extends ExtendedQuestionFields {
   id: string
   type: QuestionType
   title: string
@@ -40,8 +48,8 @@ interface Question {
   options?: string[]
   answer?: string
   score: number
-  /** Coding only: stdin → expected stdout pairs the grader executes. */
-  test_cases?: { input: string; output: string }[]
+  /** Coding only: stdin → expected stdout pairs the grader executes. Hidden ones are graded but never shown to candidates. */
+  test_cases?: { input: string; output: string; hidden?: boolean }[]
   /** Numeric: accepted absolute tolerance. */
   tolerance?: number
   /** Matching / labeling left→right pairs. */
@@ -66,6 +74,7 @@ function defaultsForType(type: QuestionType): Partial<Question> {
     options: undefined, answer: undefined, pairs: undefined, matrix: undefined, table: undefined,
     scale: undefined, image_url: undefined, regions: undefined, tolerance: undefined,
     language: undefined, starter_code: undefined, test_cases: undefined,
+    ...EXTENDED_FIELD_RESET, ...extendedDefaultsForType(type),
   }
   switch (type) {
     case 'true_false': return { ...base, options: ['True', 'False'] }
@@ -91,12 +100,14 @@ function defaultsForType(type: QuestionType): Partial<Question> {
     case 'sql':
     case 'regex_config':
     case 'refactoring':
-    case 'test_case_writing': return { ...base, language: 'python', test_cases: [] }
+    case 'test_case_writing':
+    case 'theory_to_code':
+    case 'reverse_coding': return { ...base, language: 'python', test_cases: [] }
     default: return base
   }
 }
 
-interface BankQuestionRow {
+interface BankQuestionRow extends ExtendedQuestionFields {
   id: string
   title: string
   question: string
@@ -112,7 +123,7 @@ interface BankQuestionRow {
   industry?: string
   tags?: string[]
   source: string
-  test_cases?: { input: string; output: string }[]
+  test_cases?: { input: string; output: string; hidden?: boolean }[]
   tolerance?: number
   pairs?: { left: string; right: string }[]
   matrix?: { rows: string[]; columns: string[] }
@@ -136,6 +147,12 @@ interface Exam {
   require_token_links?: boolean | null
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  no_camera_policy?: 'block' | 'allow_flag' | null
+  allow_retake?: boolean
+  max_attempts?: number
+  passing_score?: number | null
+  issue_certificates?: boolean | null
+  auto_release_scores?: boolean | null
   questions: number
   questionList: Question[]
   published: boolean
@@ -143,6 +160,13 @@ interface Exam {
   degree_type?: string
   branch?: string
   screening_type?: string
+  /** strict = the Device Audit extension is required to start; standard = recommended only. */
+  proctoring_mode?: 'standard' | 'strict'
+  /** cad = file-upload CAD task at /assessment/[id]/cad. */
+  kind?: 'standard' | 'cad'
+  cad_points?: number
+  /** Ordered test sections (lib/exam-sections.ts); absent = one implicit section. */
+  sections?: ExamSection[]
 }
 
 /** Map one imported JSON item into the exam's Question shape. */
@@ -168,6 +192,7 @@ function mapImportItem(item: any, i: number): Question {
     regions: Array.isArray(item.regions) ? item.regions : undefined,
     language: item.language || undefined,
     starter_code: item.starter_code || undefined,
+    ...extendedFieldsOf(item && typeof item === 'object' ? item : {}),
   }
 }
 
@@ -283,6 +308,7 @@ const emptyQuestion = (): Question => ({
 })
 
 export default function ExamReviewPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('tenant_admin')
   // Platform timezone (Settings → General). All exam window times are displayed
   // and entered in this tz; they are stored as UTC ISO.
@@ -323,19 +349,28 @@ export default function ExamReviewPage() {
   const [metaRequireTokenLinks, setMetaRequireTokenLinks] = useState(false)
   const [metaRequireId, setMetaRequireId] = useState(true)
   const [metaRequireFace, setMetaRequireFace] = useState(true)
+  const [metaNoCamera, setMetaNoCamera] = useState<'block' | 'allow_flag'>('allow_flag')
+  const [metaAllowRetake, setMetaAllowRetake] = useState(false)
+  const [metaMaxAttempts, setMetaMaxAttempts] = useState(1)
+  const [metaPassingScore, setMetaPassingScore] = useState(40)
+  const [metaIssueCertificates, setMetaIssueCertificates] = useState(true)
+  const [metaAutoRelease, setMetaAutoRelease] = useState(false)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
   const [metaScreeningType, setMetaScreeningType] = useState('mixed')
+  const [metaProctoringMode, setMetaProctoringMode] = useState<'standard' | 'strict'>('standard')
+  const [metaKind, setMetaKind] = useState<'standard' | 'cad'>('standard')
+  const [metaCadPoints, setMetaCadPoints] = useState(100)
   const [savingMeta, setSavingMeta] = useState(false)
 
   const fetchExam = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/exams', { credentials: 'include' })
-      const json = await res.json()
-      const found = json.data?.find((e: Exam) => e.id === params.id)
-      if (found) {
+      // Staff get the full document (answer keys, hidden tests) from the single-exam route.
+      const res = await fetch(`/api/exams/${encodeURIComponent(String(params.id))}`, { credentials: 'include' })
+      const found = res.ok ? await res.json() as Exam & Record<string, any> : null
+      if (found && found.id) {
         found.questionList = found.questionList || []
         setExam(found)
         setMetaTitle(found.title || '')
@@ -349,10 +384,20 @@ export default function ExamReviewPage() {
         // Missing/null = true (strict, backward-compat for pre-flag assessments).
         setMetaRequireId((found as { require_id_verification?: boolean | null }).require_id_verification !== false)
         setMetaRequireFace((found as { require_face_capture?: boolean | null }).require_face_capture !== false)
+        setMetaNoCamera((found as { no_camera_policy?: string | null }).no_camera_policy === 'block' ? 'block' : 'allow_flag')
+        setMetaAllowRetake(found.allow_retake === true)
+        setMetaMaxAttempts(found.allow_retake === true ? Math.max(1, Number(found.max_attempts) || 2) : 1)
         setMetaCertTemplate(found.cert_template || 'classic')
+        // Exams saved before the pass mark was editable release at 40% (see the release routes).
+        setMetaPassingScore(Number.isFinite(Number(found.passing_score)) && found.passing_score !== null ? Number(found.passing_score) : 40)
+        setMetaIssueCertificates(found.issue_certificates !== false)
+        setMetaAutoRelease(found.auto_release_scores === true)
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
         setMetaScreeningType(found.screening_type || 'mixed')
+        setMetaProctoringMode(found.proctoring_mode === 'strict' ? 'strict' : 'standard')
+        setMetaKind(found.kind === 'cad' ? 'cad' : 'standard')
+        setMetaCadPoints(Number(found.cad_points) >= 1 ? Number(found.cad_points) : 100)
       } else {
         addToast({ type: 'error', title: 'Assessment not found' })
         router.push('/dashboard/admin/assessments')
@@ -368,17 +413,29 @@ export default function ExamReviewPage() {
     if (params.id) fetchExam()
   }, [params.id])
 
-  const saveExam = async (updatedList: Question[]) => {
-    if (!exam) return
+  /**
+   * Persist the question list. On any failure (403/500/network) the local
+   * list is rolled back to `previous` and false is returned, so callers never
+   * show a success toast for a change that wasn't saved.
+   */
+  const saveExam = async (updatedList: Question[], previous?: Question[]): Promise<boolean> => {
+    if (!exam) return false
     try {
-      await csrfFetch('/api/exams', {
+      const res = await csrfFetch('/api/exams', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ id: exam.id, questionList: updatedList, questions: updatedList.length, title: exam.title, subject: exam.subject, level: exam.level, duration: exam.duration })
       })
-    } catch {
-      addToast({ type: 'error', title: 'Failed to save exam' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error || '')
+      }
+      return true
+    } catch (e) {
+      if (previous) setExam((cur) => (cur ? { ...cur, questionList: previous } : cur))
+      addToast({ type: 'error', title: 'Failed to save the assessment', message: e instanceof Error && e.message ? e.message : 'Your change was not saved.' })
+      return false
     }
   }
 
@@ -393,7 +450,7 @@ export default function ExamReviewPage() {
     }
     setSavingMeta(true)
     try {
-      await csrfFetch('/api/exams', {
+      const metaRes = await csrfFetch('/api/exams', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -409,13 +466,23 @@ export default function ExamReviewPage() {
           require_token_links: metaRequireTokenLinks,
           require_id_verification: metaRequireId,
           require_face_capture: metaRequireFace,
+          no_camera_policy: metaNoCamera,
+          allow_retake: metaAllowRetake,
+          max_attempts: metaAllowRetake ? metaMaxAttempts : 1,
           cert_template: metaCertTemplate,
+          passing_score: metaPassingScore,
+          issue_certificates: metaIssueCertificates,
+          auto_release_scores: metaAutoRelease,
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
+          proctoring_mode: metaProctoringMode,
+          kind: metaKind,
+          ...(metaKind === 'cad' ? { cad_points: metaCadPoints } : {}),
         })
       })
-      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
+      if (!metaRes.ok) throw new Error('update failed')
+      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, no_camera_policy: metaNoCamera, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, auto_release_scores: metaAutoRelease, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType, proctoring_mode: metaProctoringMode, kind: metaKind, cad_points: metaCadPoints })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -427,17 +494,17 @@ export default function ExamReviewPage() {
 
   const handleDeleteQuestion = async (qId: string) => {
     if (!exam) return
-    const newQuestions = exam.questionList.filter(q => q.id !== qId)
+    const previous = exam.questionList
+    const newQuestions = previous.filter(q => q.id !== qId)
     setExam({ ...exam, questionList: newQuestions })
-    await saveExam(newQuestions)
-    addToast({ type: 'success', title: 'Question removed' })
+    if (await saveExam(newQuestions, previous)) addToast({ type: 'success', title: 'Question removed' })
   }
 
   const handleRegenerateQuestion = async (qId: string) => {
     if (!exam) return
     setRegeneratingId(qId)
     try {
-      const res = await fetch('/api/ai/generate-problem', {
+      const res = await csrfFetch('/api/ai/generate-problem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -448,10 +515,21 @@ export default function ExamReviewPage() {
           language_hint: (exam.techStack || [])[0]?.toLowerCase() || 'python',
         }),
       })
-      const data = await res.json()
-      const newQuestions = exam.questionList.map(q => {
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.problem) throw new Error(data.error || '')
+      const p = data.problem as Record<string, unknown>
+      const lang = ((exam.techStack || [])[0]?.toLowerCase() || 'python')
+      const starters = p.starter_code && typeof p.starter_code === 'object' ? p.starter_code as Record<string, unknown> : {}
+      const starter = String(starters[lang] ?? Object.values(starters)[0] ?? '')
+      // Keep the generated tests so the question stays auto-gradable;
+      // non-sample cases are hidden from candidates.
+      const cases = (Array.isArray(p.test_cases) ? p.test_cases : [])
+        .map((tc) => tc as Record<string, unknown>)
+        .map((tc) => ({ input: String(tc.stdin ?? tc.input ?? ''), output: String(tc.expected_stdout ?? tc.output ?? ''), ...(tc.is_sample === true ? {} : { hidden: true }) }))
+        .filter((tc) => tc.input || tc.output)
+      const previous = exam.questionList
+      const newQuestions = previous.map(q => {
         if (q.id === qId) {
-          const p = data.problem || {}
           return {
             ...q,
             title: String(p.title || q.title),
@@ -459,14 +537,16 @@ export default function ExamReviewPage() {
             type: 'coding' as const,
             options: undefined,
             answer: undefined,
-            score: 10,
+            score: q.score || 10,
+            language: lang,
+            ...(starter ? { starter_code: starter } : {}),
+            test_cases: cases.length ? cases : q.test_cases,
           }
         }
         return q
       })
       setExam({ ...exam, questionList: newQuestions })
-      await saveExam(newQuestions)
-      addToast({ type: 'success', title: 'Question regenerated!' })
+      if (await saveExam(newQuestions, previous)) addToast({ type: 'success', title: 'Question regenerated' })
     } catch {
       addToast({ type: 'error', title: 'AI regeneration failed' })
     } finally {
@@ -538,20 +618,22 @@ export default function ExamReviewPage() {
         regions: r.regions,
         language: r.language,
         starter_code: r.starter_code,
+        ...extendedFieldsOf(r as unknown as Record<string, unknown>),
       }))
     if (newQuestions.length === 0) {
       addToast({ type: 'error', title: 'All selected questions are already in this exam' })
       return
     }
-    const updated = [...exam.questionList, ...newQuestions]
+    const previous = exam.questionList
+    const updated = [...previous, ...newQuestions]
     setExam({ ...exam, questionList: updated })
-    await saveExam(updated)
+    if (!(await saveExam(updated, previous))) return
     setBankSelected(new Set())
     setBankModal(false)
     addToast({ type: 'success', title: `Added ${newQuestions.length} question${newQuestions.length !== 1 ? 's' : ''} from bank` })
   }
 
-  const saveQuestion = () => {
+  const saveQuestion = async () => {
     if (!editingQuestion || !exam) return
     if (!editingQuestion.title || !editingQuestion.prompt) {
       addToast({ type: 'error', title: 'Title and prompt are required' })
@@ -572,12 +654,14 @@ export default function ExamReviewPage() {
     if (editingQuestion.type === 'ordering' || editingQuestion.type === 'ranking') {
       editingQuestion.answer = (editingQuestion.options || []).map(o => o.trim()).filter(Boolean).join(', ')
     }
-    const exists = exam.questionList.find(q => q.id === editingQuestion.id)
+    const previous = exam.questionList
+    const exists = previous.find(q => q.id === editingQuestion.id)
     const newQuestions = exists
-      ? exam.questionList.map(q => q.id === editingQuestion.id ? editingQuestion : q)
-      : [...exam.questionList, editingQuestion]
+      ? previous.map(q => q.id === editingQuestion.id ? editingQuestion : q)
+      : [...previous, editingQuestion]
     setExam({ ...exam, questionList: newQuestions })
-    saveExam(newQuestions)
+    // Keep the dialog open on failure so the edit isn't lost.
+    if (!(await saveExam(newQuestions, previous))) return
     setQuestionModal(false)
     addToast({ type: 'success', title: exists ? 'Question updated' : 'Question added' })
   }
@@ -586,7 +670,7 @@ export default function ExamReviewPage() {
     if (!exam) return
     setPublishing(true)
     try {
-      await csrfFetch('/api/exams', {
+      const res = await csrfFetch('/api/exams', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -601,10 +685,14 @@ export default function ExamReviewPage() {
           published: true 
         })
       })
-      addToast({ type: 'success', title: 'Assessment Published!' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error || '')
+      }
+      addToast({ type: 'success', title: 'Assessment published' })
       router.push('/dashboard/admin/assessments')
-    } catch {
-      addToast({ type: 'error', title: 'Failed to publish assessment' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Failed to publish assessment', message: e instanceof Error && e.message ? e.message : undefined })
     } finally {
       setPublishing(false)
     }
@@ -619,7 +707,7 @@ export default function ExamReviewPage() {
           <SkeletonText lines={1} />
           <SkeletonText lines={2} />
         </div>
-        <div className="bg-card border rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-border/70 rounded-3xl p-6 space-y-4">
           <SkeletonText lines={1} />
           <SkeletonList count={3} />
         </div>
@@ -631,11 +719,11 @@ export default function ExamReviewPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
-            <ArrowLeft className="h-4 w-4" /> Back to Assessments
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <button type="button" className="mb-2 flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push('/dashboard/admin/assessments')}>
+            <ArrowLeft className="h-4 w-4" /> {ta('assessForm.backToAssessments')}
+          </button>
           {editingMeta ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
@@ -643,43 +731,43 @@ export default function ExamReviewPage() {
                   value={metaTitle}
                   onChange={(e) => setMetaTitle(e.target.value)}
                   className="text-2xl font-bold h-auto py-1 min-w-50 max-w-[400px]"
-                  placeholder="Assessment Title"
+                  placeholder={ta('assessForm.assessmentTitle')}
                 />
                 <Button size="sm" onClick={saveExamMeta} disabled={savingMeta}>
                   {savingMeta ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                  Save
+                  {ta('assessForm.save')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setEditingMeta(false)}>
-                  <X className="h-4 w-4 mr-1" /> Cancel
+                  <X className="h-4 w-4 mr-1" /> {ta('assessForm.cancel')}
                 </Button>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Role:</Label>
-                  <Input
+                  <Input aria-label={ta('assessForm.role')}
                     value={metaSubject}
                     onChange={(e) => setMetaSubject(e.target.value)}
                     className="h-8 w-32 text-sm"
-                    placeholder="e.g. Frontend"
+                    placeholder={ta('assessForm.eGFrontend')}
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Level:</Label>
                   <Select value={metaLevel} onValueChange={setMetaLevel}>
-                    <SelectTrigger className="h-8 w-32 text-sm">
-                      <SelectValue placeholder="Select" />
+                    <SelectTrigger aria-label={ta('assessForm.level')} className="h-8 w-32 text-sm">
+                      <SelectValue placeholder={ta('assessForm.select')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Beginner">Beginner</SelectItem>
-                      <SelectItem value="Intermediate">Intermediate</SelectItem>
-                      <SelectItem value="Advanced">Advanced</SelectItem>
-                      <SelectItem value="Expert">Expert</SelectItem>
+                      <SelectItem value="Beginner">{ta('assessForm.beginner')}</SelectItem>
+                      <SelectItem value="Intermediate">{ta('assessForm.intermediate')}</SelectItem>
+                      <SelectItem value="Advanced">{ta('assessForm.advanced')}</SelectItem>
+                      <SelectItem value="Expert">{ta('assessForm.expert')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Duration (mins):</Label>
-                  <Input
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.durationMins')}</Label>
+                  <Input aria-label={ta('assessForm.durationMins2')}
                     type="number"
                     value={metaDuration}
                     onChange={(e) => setMetaDuration(parseInt(e.target.value) || 30)}
@@ -688,72 +776,177 @@ export default function ExamReviewPage() {
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Available from:</Label>
-                  <Input
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.availableFrom')}</Label>
+                  <Input aria-label={ta('assessForm.availableFrom2')}
                     type="datetime-local"
                     value={metaStartsAt}
                     onChange={(e) => setMetaStartsAt(e.target.value)}
                     className="h-8 w-44 text-sm"
-                    title="Candidates can start from this UTC time (empty = open)"
+                    title={ta('assessForm.candidatesCanStartFromThisUtc')}
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Submit by:</Label>
-                  <Input
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.submitBy')}</Label>
+                  <Input aria-label={ta('assessForm.submitBy2')}
                     type="datetime-local"
                     value={metaEndsAt}
                     onChange={(e) => setMetaEndsAt(e.target.value)}
                     className="h-8 w-44 text-sm"
-                    title="Candidates must submit by this UTC time (empty = no deadline)"
+                    title={ta('assessForm.candidatesMustSubmitByThisUtc')}
                   />
                 </div>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Disable legacy ?share=true URLs — entry requires token links or invites">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.disableLegacyShareTrueUrlsEntry')}>
                   <input
                     type="checkbox"
                     checked={metaRequireTokenLinks}
                     onChange={(e) => setMetaRequireTokenLinks(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Require personal links</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.requirePersonalLinks')}</span>
                 </label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the Government-ID capture/OCR step">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.offCandidatesSkipTheGovernmentId')}>
                   <input
                     type="checkbox"
                     checked={metaRequireId}
                     onChange={(e) => setMetaRequireId(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Require ID</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.requireId')}</span>
                 </label>
-                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the live-face capture/verify step">
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.offCandidatesSkipTheLiveFace')}>
                   <input
                     type="checkbox"
                     checked={metaRequireFace}
                     onChange={(e) => setMetaRequireFace(e.target.checked)}
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
-                  <span className="text-muted-foreground whitespace-nowrap">Require face</span>
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.requireFace')}</span>
+                </label>
+                {(metaRequireId || metaRequireFace) && (
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="meta-no-camera" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.ifTheCandidateHasNoCamera')}</Label>
+                    <select
+                      id="meta-no-camera"
+                      value={metaNoCamera}
+                      onChange={(e) => setMetaNoCamera(e.target.value === 'block' ? 'block' : 'allow_flag')}
+                      className="h-8 rounded-md border border-border/60 bg-background px-2 py-1 text-xs"
+                      title={ta('assessForm.allowTheCandidateUploadsAnId')}
+                    >
+                      <option value="allow_flag">{ta('assessForm.allowAndFlagForReview')}</option>
+                      <option value="block">{ta('assessForm.blockTheTest')}</option>
+                    </select>
+                  </div>
+                )}
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.candidatesCanSubmitAgainResultsKeep')}>
+                  <input
+                    type="checkbox"
+                    checked={metaAllowRetake}
+                    onChange={(e) => {
+                      setMetaAllowRetake(e.target.checked)
+                      if (e.target.checked && metaMaxAttempts < 2) setMetaMaxAttempts(2)
+                    }}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.allowRetakes')}</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.strictCandidatesMustInstallTheDevice')}>
+                  <input
+                    type="checkbox"
+                    checked={metaProctoringMode === 'strict'}
+                    onChange={(e) => setMetaProctoringMode(e.target.checked ? 'strict' : 'standard')}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.strictProctoringExtensionRequired')}</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.cadTaskCandidatesUploadANative')}>
+                  <input
+                    type="checkbox"
+                    checked={metaKind === 'cad'}
+                    onChange={(e) => setMetaKind(e.target.checked ? 'cad' : 'standard')}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.cadTask')}</span>
+                </label>
+                {metaKind === 'cad' && (
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="meta-cad-points" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.cadPoints')}</Label>
+                    <Input
+                      id="meta-cad-points"
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={metaCadPoints}
+                      onChange={(e) => setMetaCadPoints(Math.min(1000, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="h-8 w-20 text-sm"
+                    />
+                  </div>
+                )}
+                {metaAllowRetake && (
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="meta-max-attempts" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.maxAttempts')}</Label>
+                    <Input
+                      id="meta-max-attempts"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={metaMaxAttempts}
+                      onChange={(e) => setMetaMaxAttempts(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="h-8 w-16 text-sm"
+                      title={ta('assessForm.totalAttemptsPerCandidateIncludingThe')}
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="meta-passing-score" className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.passMark')}</Label>
+                  <Input
+                    id="meta-passing-score"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={metaPassingScore}
+                    onChange={(e) => setMetaPassingScore(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="h-8 w-16 text-sm"
+                    title={ta('assessForm.releasedScoresAtOrAboveThis')}
+                  />
+                </div>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.candidatesWhoPassGetAVerifiable')}>
+                  <input
+                    type="checkbox"
+                    checked={metaIssueCertificates}
+                    onChange={(e) => setMetaIssueCertificates(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.issueCertificates')}</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title={ta('assessForm.eachCandidateSeesTheirScoreAs')}>
+                  <input
+                    type="checkbox"
+                    checked={metaAutoRelease}
+                    onChange={(e) => setMetaAutoRelease(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">{ta('assessForm.releaseScoresAutomaticallyWhenGradingFin')}</span>
                 </label>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Cert Template:</Label>
-                  <select
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{ta('assessForm.certificateTemplate')}</Label>
+                  <select aria-label={ta('assessForm.certificateTemplate2')}
                     value={metaCertTemplate}
                     onChange={(e) => setMetaCertTemplate(e.target.value)}
                     className="h-8 rounded-md border border-border/60 bg-background px-2 py-1 text-xs"
                   >
-                    <option value="classic">Classic</option>
-                    <option value="modern">Modern</option>
-                    <option value="minimal">Minimal</option>
+                    <option value="classic">{ta('assessForm.classic')}</option>
+                    <option value="modern">{ta('assessForm.modern')}</option>
+                    <option value="minimal">{ta('assessForm.minimal')}</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Degree:</Label>
                   <Select value={metaDegreeType || 'any'} onValueChange={v => setMetaDegreeType(v === 'any' ? '' : v)}>
-                    <SelectTrigger className="h-8 w-32 text-sm">
-                      <SelectValue placeholder="Any degree" />
+                    <SelectTrigger aria-label={ta('assessForm.degree')} className="h-8 w-32 text-sm">
+                      <SelectValue placeholder={ta('assessForm.anyDegree')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any degree</SelectItem>
+                      <SelectItem value="any">{ta('assessForm.anyDegree')}</SelectItem>
                       {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -761,11 +954,11 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Branch:</Label>
                   <Select value={metaBranch || 'any'} onValueChange={v => setMetaBranch(v === 'any' ? '' : v)}>
-                    <SelectTrigger className="h-8 w-36 text-sm">
-                      <SelectValue placeholder="General" />
+                    <SelectTrigger aria-label={ta('assessForm.branch')} className="h-8 w-36 text-sm">
+                      <SelectValue placeholder={ta('assessForm.general')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">General / all</SelectItem>
+                      <SelectItem value="any">{ta('assessForm.generalAll')}</SelectItem>
                       {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -773,7 +966,7 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Screening:</Label>
                   <Select value={metaScreeningType} onValueChange={setMetaScreeningType}>
-                    <SelectTrigger className="h-8 w-36 text-sm">
+                    <SelectTrigger aria-label={ta('assessForm.screening')} className="h-8 w-36 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -785,19 +978,20 @@ export default function ExamReviewPage() {
             </div>
           ) : (
             <>
-              <h1 className="text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl font-bold tracking-tight text-balance text-foreground sm:text-[1.75rem]">
                 {exam.title}
-                <Button variant="ghost" size="sm" className="ml-2 h-7 w-7 p-0" onClick={() => setEditingMeta(true)} title="Edit exam details">
+                <Button variant="ghost" size="sm" className="ml-2 h-7 w-7 p-0" onClick={() => setEditingMeta(true)} title={ta('assessForm.editExamDetails')} aria-label={ta('assessForm.editAssessmentDetails')}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </h1>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {exam.subject && <Badge variant="outline">{exam.subject}</Badge>}
                 {exam.degree_type && <Badge variant="outline">{DEGREE_TYPES.find(d => d.id === exam.degree_type)?.label || exam.degree_type}</Badge>}
                 {exam.branch && <Badge variant="outline">{BRANCHES.find(b => b.id === exam.branch)?.short || exam.branch}</Badge>}
                 {exam.screening_type && <Badge variant="outline">{SCREENING_TYPES.find(s => s.id === exam.screening_type)?.short || exam.screening_type}</Badge>}
                 <Badge variant="outline">{exam.level || 'N/A'}</Badge>
-                <Badge variant="outline">{exam.duration} mins</Badge>
+                <Badge variant="outline">{ta('assessForm.mins', { duration: exam.duration })}</Badge>
+                {exam.allow_retake && <Badge variant="outline">{ta('assessForm.upTo')} {Number(exam.max_attempts) || 2} {ta('assessForm.attempts')}</Badge>}
                 <Badge variant={exam.published ? 'default' : 'secondary'}>
                   {exam.published ? 'Published' : 'Draft'}
                 </Badge>
@@ -805,24 +999,39 @@ export default function ExamReviewPage() {
             </>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as Draft</Button>
-          <Button onClick={handlePublish} disabled={publishing} className="bg-green-600 hover:bg-green-700 text-white">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>{ta('assessForm.saveAsDraft')}</Button>
+          <Button onClick={handlePublish} disabled={publishing}>
             {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-            Publish Assessment
+            {ta('assessForm.publishAssessment')}
           </Button>
         </div>
       </div>
 
-      <div className="bg-card border rounded-lg p-6 space-y-6">
-        <div className="flex items-center justify-between">
+      {exam.kind !== 'cad' && <AdaptiveSettingsCard examId={exam.id} />}
+
+      {/* Extended-time accommodations per candidate (applied server-side to every timer). */}
+      <AccommodationsCard examId={exam.id} />
+
+      {exam.kind !== 'cad' && exam.questionList.length > 0 && (
+        <SectionsEditor
+          examId={exam.id}
+          questions={exam.questionList}
+          initial={exam.sections}
+          durationMinutes={Number(exam.duration) || 0}
+          onSaved={(secs) => setExam((cur) => (cur ? { ...cur, sections: secs } : cur))}
+        />
+      )}
+
+      <Panel className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold mb-1">Questions ({exam.questionList.length})</h2>
+            <h2 className="text-lg font-semibold mb-1">{ta('assessForm.questions')} <span className="tabular-nums text-muted-foreground">({exam.questionList.length})</span></h2>
             <p className="text-muted-foreground text-sm">
-              Review the questions for this assessment. You can add, edit, or remove questions.
+              {ta('assessForm.reviewTheQuestionsForThisAssessment')}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {selectedIds.size > 0 && (
               <Button variant="destructive" size="sm" disabled={deletingSelected} onClick={async () => {
                 setDeletingSelected(true)
@@ -834,7 +1043,7 @@ export default function ExamReviewPage() {
                 addToast({ type: 'success', title: `${selectedIds.size} questions removed` })
               }} className="gap-2">
                 {deletingSelected ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                Delete {selectedIds.size}
+                {ta('assessForm.delete')} {selectedIds.size}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => {
@@ -845,23 +1054,23 @@ export default function ExamReviewPage() {
               }
             }} className="gap-2">
               <CheckSquare className="h-4 w-4" />
-              {selectedIds.size === exam.questionList.length ? 'Deselect All' : 'Select All'}
+              {selectedIds.size === exam.questionList.length ? 'Deselect all' : 'Select all'}
             </Button>
             <Button variant="outline" onClick={() => { setImportText(''); setImportedPreview(null); setImportModal(true) }} className="gap-2">
-              <Upload className="h-4 w-4" /> Import
+              <Upload className="h-4 w-4" /> {ta('assessForm.import')}
             </Button>
             <Button variant="outline" onClick={openBankModal} className="gap-2">
-              <Database className="h-4 w-4" /> Pull from Bank
+              <Database className="h-4 w-4" /> {ta('assessForm.pullFromBank')}
             </Button>
             <Button onClick={openAddQuestion} className="gap-2">
-              <Plus className="h-4 w-4" /> Add Question
+              <Plus className="h-4 w-4" /> {ta('assessForm.addQuestion')}
             </Button>
           </div>
         </div>
 
         <div className="space-y-4">
           {exam.questionList.map((q, idx) => (
-            <div key={q.id} className={`border rounded-md p-4 bg-muted/20 relative group transition-colors ${selectedIds.has(q.id) ? 'border-primary ring-1 ring-primary/30' : ''}`}>
+            <div key={q.id} className={`border border-border/70 rounded-2xl p-4 bg-muted/20 relative group transition-colors ${selectedIds.has(q.id) ? 'border-primary ring-1 ring-primary/30' : ''}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 mb-2">
                   <button onClick={() => {
@@ -869,7 +1078,7 @@ export default function ExamReviewPage() {
                     if (next.has(q.id)) next.delete(q.id)
                     else next.add(q.id)
                     setSelectedIds(next)
-                  }} className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedIds.has(q.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 hover:border-muted-foreground/60'}`}>
+                  }} aria-label={selectedIds.has(q.id) ? `Deselect question ${idx + 1}` : `Select question ${idx + 1}`} aria-pressed={selectedIds.has(q.id)} className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedIds.has(q.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 hover:border-muted-foreground/60'}`}>
                     {selectedIds.has(q.id) && <CheckSquare className="w-3.5 h-3.5" />}
                   </button>
                   <Badge variant="outline" className="bg-background">
@@ -877,16 +1086,16 @@ export default function ExamReviewPage() {
                     {typeLabel(q.type)}
                   </Badge>
                   <span className="text-sm font-medium text-muted-foreground">Q{idx + 1}</span>
-                  <span className="text-xs text-muted-foreground">({q.score} pts)</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">{ta('assessForm.pts', { score: q.score })}</span>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)} className="h-8">
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                  <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)} className="h-8" aria-label={ta('assessForm.editQuestion')}>
                     <Edit3 className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleRegenerateQuestion(q.id)} disabled={regeneratingId === q.id} className="h-8">
+                  <Button size="sm" variant="ghost" onClick={() => handleRegenerateQuestion(q.id)} disabled={regeneratingId === q.id} className="h-8" aria-label={ta('assessForm.regenerateQuestion')}>
                     {regeneratingId === q.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteQuestion(q.id)} className="h-8 text-destructive hover:bg-destructive/10">
+                  <Button size="sm" variant="ghost" onClick={() => handleDeleteQuestion(q.id)} className="h-8 text-destructive hover:bg-destructive/10" aria-label={ta('assessForm.deleteQuestion')}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -904,14 +1113,14 @@ export default function ExamReviewPage() {
                         ? (q.answer || '').split(',').map(s => s.trim()).includes(opt)
                         : opt === q.answer
                     return (
-                      <div key={i} className={`p-2 border rounded text-sm ${isCorrect ? 'bg-primary/10 border-primary/30 font-medium' : 'bg-background'}`}>
+                      <div key={i} className={`p-2 border rounded-lg text-sm ${isCorrect ? 'bg-primary/10 border-primary/30 font-medium' : 'bg-background'}`}>
                         <span className={q.type === 'multiple_response' ? 'flex items-center gap-2' : ''}>
                           {isSeq && <span className="text-xs text-muted-foreground mr-2">{i + 1}.</span>}
                           {q.type === 'multiple_response' && (
                             <CheckSquare className={`h-3.5 w-3.5 ${isCorrect ? 'text-primary' : 'text-muted-foreground'}`} />
                           )}
                           {opt}
-                          {isCorrect && !isSeq && <span className="text-xs text-primary ml-2">({q.type === 'multiple_response' ? 'Correct' : 'Correct Answer'})</span>}
+                          {isCorrect && !isSeq && <span className="text-xs text-primary ml-2">({q.type === 'multiple_response' ? 'Correct' : 'Correct answer'})</span>}
                         </span>
                       </div>
                     )
@@ -923,57 +1132,54 @@ export default function ExamReviewPage() {
                   {q.type === 'numeric' && <p>Answer: {q.answer || '—'}{q.tolerance ? ` (±${q.tolerance})` : ''}</p>}
                   {q.type === 'short_answer' && <p>Answer: {q.answer || '—'}</p>}
                   {q.pairs && q.pairs.length > 0 && <p>{q.pairs.length} pair(s): {q.pairs.map(p => `${p.left}→${p.right}`).join(', ')}</p>}
-                  {q.matrix && <p>Matrix: {q.matrix.rows.length} row(s) × {q.matrix.columns.length} column(s)</p>}
-                  {q.table && <p>Table: {q.table.rows.length} row(s)</p>}
-                  {q.image_url && <p>Hotspot image: {q.image_url}</p>}
+                  {q.matrix && <p>{ta('assessForm.matrixRowSColumnS', { length: q.matrix.rows.length, length2: q.matrix.columns.length })}</p>}
+                  {q.table && <p>{ta('assessForm.tableRowS', { length: q.table.rows.length })}</p>}
+                  {q.image_url && <p>{ta('assessForm.hotspotImage', { image_url: q.image_url })}</p>}
                   {q.scale && <p>Scale: {q.scale.min}–{q.scale.max}{q.scale.minLabel || q.scale.maxLabel ? ` (${q.scale.minLabel || ''}…${q.scale.maxLabel || ''})` : ''}</p>}
-                  {q.answer && metaFor(q.type).group !== 'objective' && <p className="line-clamp-2">Model answer: {q.answer}</p>}
+                  {q.answer && metaFor(q.type).group !== 'objective' && <p className="line-clamp-2">{ta('assessForm.modelAnswer', { answer: q.answer })}</p>}
                 </div>
               )}
             </div>
           ))}
           {exam.questionList.length === 0 && (
-            <div className="text-center py-12 border border-dashed rounded-lg text-muted-foreground">
-              No questions yet. Click "Add Question" to create one manually.
+            <div className="text-center py-12 border border-dashed rounded-2xl text-sm text-muted-foreground">
+              {ta('assessForm.noQuestionsYetClickAddQuestion')}
             </div>
           )}
           {/* ponytail: the API strips questionList for non-admin sessions, so
               exam.questions > 0 with an empty list means a stale/forbidden
               session — not an empty exam. Say so instead of misleading. */}
           {exam.questionList.length === 0 && (exam.questions || 0) > 0 && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
-              <p className="font-medium text-amber-700 dark:text-amber-400">
-                Expected {exam.questions} questions, but the server sent none.
-              </p>
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+              <p className="font-medium text-amber-700 dark:text-amber-400">{ta('assessForm.expectedQuestionsButTheServerSent', { questions: exam.questions })}</p>
               <p className="mt-1 text-muted-foreground">
-                This usually means your session lost admin rights. Try reloading — if it
-                persists, sign out and sign back in, then reopen this page.
+                {ta('assessForm.thisUsuallyMeansYourSessionLost')}
               </p>
               <div className="mt-3 flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => void fetchExam()}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Retry
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> {ta('assessForm.retry')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => router.push('/auth/login')}>
-                  Sign in again
+                  {ta('assessForm.signInAgain')}
                 </Button>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </Panel>
 
       <Dialog open={importModal} onOpenChange={setImportModal}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import Questions</DialogTitle>
+            <DialogTitle>{ta('assessForm.importQuestions')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Paste JSON, CSV, or plain text</Label>
+              <Label>{ta('assessForm.pasteJsonCsvOrPlainText')}</Label>
               <p className="text-xs text-muted-foreground">
                 <strong>JSON:</strong> [{'{type, title, prompt, options[], answer, score}'}]<br />
-                <strong>CSV:</strong> type,title,prompt,options,answer,score (options pipe-delimited, header required)<br />
-                <strong>Plain text:</strong> blank-line separated blocks become descriptive questions
+                <strong>CSV:</strong> {ta('assessForm.typeTitlePromptOptionsAnswerScore')}<br />
+                <strong>{ta('assessForm.plainText')}</strong> {ta('assessForm.blankLineSeparatedBlocksBecomeDescriptiv')}
               </p>
               <div className="max-h-[400px] overflow-y-auto border rounded-md">
                 <Textarea
@@ -983,7 +1189,7 @@ export default function ExamReviewPage() {
                     setImportedPreview(null)
                   }}
                   rows={20}
-                  placeholder='Paste JSON, CSV, or text here...'
+                  placeholder={ta('assessForm.pasteJsonCsvOrTextHere')}
                   className="font-mono text-sm min-h-[300px] border-0 focus-visible:ring-0 rounded-none"
                 />
               </div>
@@ -1008,13 +1214,13 @@ export default function ExamReviewPage() {
                 a.href = url; a.download = 'sample-questions.json'; a.click()
                 URL.revokeObjectURL(url)
               }} className="gap-2">
-                <Download className="h-4 w-4" /> Sample
+                <Download className="h-4 w-4" /> {ta('assessForm.sample')}
               </Button>
               <Button variant="outline" onClick={() => {
                 const fileInput = document.getElementById('import-file-input')
                 if (fileInput) fileInput.click()
               }} className="gap-2">
-                <Upload className="h-4 w-4" /> Upload File (.csv, .json, .txt)
+                <Upload className="h-4 w-4" /> {ta('assessForm.uploadFileCsvJsonTxt')}
               </Button>
               <input
                 id="import-file-input"
@@ -1036,12 +1242,12 @@ export default function ExamReviewPage() {
                   addToast({ type: 'error', title: result.errors[0] || 'No questions found' })
                 }
               }} disabled={!importText.trim()}>
-                Preview
+                {ta('assessForm.preview')}
               </Button>
             </div>
             {importedPreview && (
               <div className="border rounded-md p-3 bg-muted/20 space-y-2">
-                <p className="text-sm font-medium">{importedPreview.length} question{importedPreview.length !== 1 ? 's' : ''} parsed</p>
+                <p className="text-sm font-medium">{importedPreview.length} {ta('assessForm.question')}{importedPreview.length !== 1 ? 's' : ''} {ta('assessForm.parsed')}</p>
                 <div className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">
                   {importedPreview.map((q, i) => (
                     <div key={q.id} className="flex gap-2">
@@ -1055,7 +1261,7 @@ export default function ExamReviewPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportModal(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setImportModal(false)}>{ta('assessForm.cancel')}</Button>
             <Button disabled={!importedPreview || importedPreview.length === 0} onClick={async () => {
               if (!importedPreview || !exam) return
               const newQuestions = [...exam.questionList, ...importedPreview]
@@ -1066,7 +1272,7 @@ export default function ExamReviewPage() {
               setImportText('')
               addToast({ type: 'success', title: `${importedPreview.length} questions imported` })
             }}>
-              <Upload className="h-4 w-4 mr-2" /> Import {importedPreview?.length || 0} Questions
+              <Upload className="h-4 w-4 mr-2" /> {ta('assessForm.import')} {importedPreview?.length || 0} {ta('assessForm.questions')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1077,42 +1283,42 @@ export default function ExamReviewPage() {
         <DialogContent className="sm:max-w-200 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-primary" /> Pull from Question Bank
+              <Database className="h-4 w-4 text-primary" /> {ta('assessForm.pullFromQuestionBank')}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Input
-                placeholder="Search bank questions..."
+              <Input aria-label={ta('assessForm.searchBankQuestions')}
+                placeholder={ta('assessForm.searchBankQuestions2')}
                 value={bankQ}
                 onChange={(e) => setBankQ(e.target.value)}
                 className="h-9 flex-1 min-w-[180px] text-sm"
               />
               <Select value={bankBranch || 'all'} onValueChange={v => { setBankBranch(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByBranch')} className="h-9 w-[150px] text-sm"><SelectValue placeholder={ta('assessForm.allBranches')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All branches</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allBranches')}</SelectItem>
                   {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.short}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankLevel || 'all'} onValueChange={v => { setBankLevel(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[110px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByLevel')} className="h-9 w-[110px] text-sm"><SelectValue placeholder={ta('assessForm.allLevels')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All levels</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allLevels')}</SelectItem>
                   {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankType || 'all'} onValueChange={v => { setBankType(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByType')} className="h-9 w-[120px] text-sm"><SelectValue placeholder={ta('assessForm.allTypes')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allTypes')}</SelectItem>
                   {BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankIndustry || 'all'} onValueChange={v => { setBankIndustry(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
+                <SelectTrigger aria-label={ta('assessForm.filterByIndustry')} className="h-9 w-[130px] text-sm"><SelectValue placeholder={ta('assessForm.allIndustries')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All industries</SelectItem>
+                  <SelectItem value="all">{ta('assessForm.allIndustries')}</SelectItem>
                   {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -1120,11 +1326,11 @@ export default function ExamReviewPage() {
 
             {bankLoading ? (
               <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading bank questions...
+                <Loader2 className="h-4 w-4 animate-spin" /> {ta('assessForm.loadingBankQuestions')}
               </div>
             ) : bankRows.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm border border-dashed rounded-lg">
-                No bank questions match. Try clearing filters.
+                {ta('assessForm.noBankQuestionsMatchTryClearing')}
               </div>
             ) : (
               <div className="max-h-[400px] overflow-y-auto border rounded-md">
@@ -1144,9 +1350,9 @@ export default function ExamReviewPage() {
                           className="h-4 w-4"
                         />
                       </th>
-                      <th className="text-left py-2 px-3 font-semibold text-xs">Question</th>
-                      <th className="text-left py-2 px-3 font-semibold text-xs">Type</th>
-                      <th className="text-left py-2 px-3 font-semibold text-xs">Difficulty</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">{ta('assessForm.question2')}</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">{ta('assessForm.type')}</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">{ta('assessForm.difficulty')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1179,17 +1385,17 @@ export default function ExamReviewPage() {
             )}
 
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{bankTotal} question{bankTotal !== 1 ? 's' : ''} · {bankSelected.size} selected</span>
+              <span>{bankTotal} {ta('assessForm.question')}{bankTotal !== 1 ? 's' : ''} · {bankSelected.size} {ta('assessForm.selected')}</span>
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage <= 1} onClick={() => setBankPage(p => p - 1)}>Prev</Button>
-                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage * 20 >= bankTotal} onClick={() => setBankPage(p => p + 1)}>Next</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage <= 1} onClick={() => setBankPage(p => p - 1)}>{ta('assessForm.prev')}</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage * 20 >= bankTotal} onClick={() => setBankPage(p => p + 1)}>{ta('assessForm.next')}</Button>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBankModal(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setBankModal(false)}>{ta('assessForm.cancel')}</Button>
             <Button disabled={bankSelected.size === 0} onClick={addSelectedFromBank} className="gap-2">
-              <Database className="h-4 w-4" /> Add {bankSelected.size || 0} Selected
+              <Database className="h-4 w-4" /> {ta('assessForm.add')} {bankSelected.size || 0} {ta('assessForm.selected2')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1198,7 +1404,7 @@ export default function ExamReviewPage() {
       <Dialog open={questionModal} onOpenChange={setQuestionModal}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{exam.questionList.find(q => q.id === editingQuestion?.id) ? 'Edit Question' : 'Add Question'}</DialogTitle>
+            <DialogTitle>{exam.questionList.find(q => q.id === editingQuestion?.id) ? 'Edit question' : 'Add question'}</DialogTitle>
           </DialogHeader>
           {editingQuestion && (() => {
             const t = editingQuestion.type
@@ -1209,9 +1415,9 @@ export default function ExamReviewPage() {
             return (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Question Type</Label>
+                <Label>{ta('assessForm.questionType')}</Label>
                 <Select value={t} onValueChange={(v) => setQ({ ...defaultsForType(v as QuestionType), type: v as QuestionType })}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label={ta('assessForm.questionType')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1222,12 +1428,12 @@ export default function ExamReviewPage() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="q-title">Title</Label>
-                <Input id="q-title" value={editingQuestion.title} onChange={(e) => setQ({ title: e.target.value })} placeholder="e.g. Java Exception Handling" />
+                <Label htmlFor="q-title">{ta('assessForm.title')}</Label>
+                <Input id="q-title" value={editingQuestion.title} onChange={(e) => setQ({ title: e.target.value })} placeholder={ta('assessForm.eGJavaExceptionHandling')} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="q-prompt">Prompt / Description</Label>
-                <Textarea id="q-prompt" value={editingQuestion.prompt} onChange={(e) => setQ({ prompt: e.target.value })} rows={4} placeholder="Describe the question or coding task..." />
+                <Label htmlFor="q-prompt">{ta('assessForm.promptDescription')}</Label>
+                <Textarea id="q-prompt" value={editingQuestion.prompt} onChange={(e) => setQ({ prompt: e.target.value })} rows={4} placeholder={ta('assessForm.describeTheQuestionOrCodingTask')} />
               </div>
 
               {meta.hasOptions && (
@@ -1274,8 +1480,8 @@ export default function ExamReviewPage() {
                           }}
                           placeholder={isSeq ? `Item ${i + 1}` : `Option ${i + 1}`}
                         />
-                        <Button
-                          variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove"
+                        <Button aria-label={ta('assessForm.remove')}
+                          variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.remove')}
                           onClick={() => {
                             const newOpts = (editingQuestion.options || []).filter((_, j) => j !== i)
                             setQ({ options: newOpts, answer: isSeq ? newOpts.map(s => s.trim()).filter(Boolean).join(', ') : editingQuestion.answer })
@@ -1290,7 +1496,7 @@ export default function ExamReviewPage() {
                     variant="outline" size="sm" className="w-fit gap-1"
                     onClick={() => setQ({ options: [...(editingQuestion.options || []), ''] })}
                   >
-                    <Plus className="h-3.5 w-3.5" /> Add {isSeq ? 'item' : 'option'}
+                    <Plus className="h-3.5 w-3.5" /> {ta('assessForm.add')} {isSeq ? 'item' : 'option'}
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     {isSeq
@@ -1304,17 +1510,17 @@ export default function ExamReviewPage() {
 
               {t === 'numeric' && (
                 <div className="grid gap-2">
-                  <Label>Correct numeric answer</Label>
-                  <Input value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. 42" />
-                  <Label htmlFor="q-tolerance">Accepted tolerance (±, 0 = exact)</Label>
+                  <Label>{ta('assessForm.correctNumericAnswer')}</Label>
+                  <Input aria-label={ta('assessForm.correctNumericAnswer')} value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. 42" />
+                  <Label htmlFor="q-tolerance">{ta('assessForm.acceptedTolerance0Exact')}</Label>
                   <Input id="q-tolerance" type="number" min="0" step="any" value={editingQuestion.tolerance ?? 0} onChange={(e) => setQ({ tolerance: parseFloat(e.target.value) || 0 })} />
                 </div>
               )}
 
               {t === 'short_answer' && (
                 <div className="grid gap-2">
-                  <Label>Correct answer <span className="text-muted-foreground font-normal">(matched case/space-insensitive)</span></Label>
-                  <Input value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. Binary Search" />
+                  <Label>{ta('assessForm.correctAnswer')} <span className="text-muted-foreground font-normal">{ta('assessForm.matchedCaseSpaceInsensitive')}</span></Label>
+                  <Input aria-label={ta('assessForm.correctAnswerMatchedCaseSpaceInsensitive')} value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder={ta('assessForm.eGBinarySearch')} />
                 </div>
               )}
 
@@ -1326,13 +1532,13 @@ export default function ExamReviewPage() {
                       <Input value={p.left} placeholder={`Item ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], left: e.target.value }; setQ({ pairs: next }) }} />
                       <span className="text-muted-foreground">→</span>
                       <Input value={p.right} placeholder={`Match ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], right: e.target.value }; setQ({ pairs: next }) }} />
-                      <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove" onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
+                      <Button aria-label={ta('assessForm.remove')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.remove')} onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                   <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ pairs: [...(editingQuestion.pairs || []), { left: '', right: '' }] })}>
-                    <Plus className="h-3.5 w-3.5" /> Add pair
+                    <Plus className="h-3.5 w-3.5" /> {ta('assessForm.addPair')}
                   </Button>
                 </div>
               )}
@@ -1342,37 +1548,37 @@ export default function ExamReviewPage() {
                 const ans = (editingQuestion.answer || '').split(',').map(s => s.trim())
                 return (
                   <div className="grid gap-3">
-                    <Label>Columns</Label>
+                    <Label>{ta('assessForm.columns')}</Label>
                     <div className="flex flex-wrap gap-2">
                       {m.columns.map((c, i) => (
                         <div key={i} className="flex items-center gap-1">
                           <Input className="w-32" value={c} onChange={(e) => { const cols = [...m.columns]; cols[i] = e.target.value; setQ({ matrix: { ...m, columns: cols } }) }} />
-                          <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove column" onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
+                          <Button aria-label={ta('assessForm.removeColumn')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeColumn')} onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
                       <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ matrix: { ...m, columns: [...m.columns, ''] } })}>
-                        <Plus className="h-3.5 w-3.5" /> Column
+                        <Plus className="h-3.5 w-3.5" /> {ta('assessForm.column')}
                       </Button>
                     </div>
-                    <Label>Rows (choose the correct column per row)</Label>
+                    <Label>{ta('assessForm.rowsChooseTheCorrectColumnPer')}</Label>
                     {m.rows.map((r, ri) => (
                       <div key={ri} className="flex items-center gap-2">
                         <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...m.rows]; rows[ri] = e.target.value; setQ({ matrix: { ...m, rows } }) }} />
                         <Select value={ans[ri] || ''} onValueChange={(v) => { const next = [...ans]; next[ri] = v; setQ({ answer: next.map(s => s || '').join(', ') }) }}>
-                          <SelectTrigger className="w-40"><SelectValue placeholder="Correct" /></SelectTrigger>
+                          <SelectTrigger className="w-40"><SelectValue placeholder={ta('assessForm.correct')} /></SelectTrigger>
                           <SelectContent>
                             {m.columns.filter(Boolean).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ matrix: { ...m, rows: m.rows.filter((_, j) => j !== ri) } })}>
+                        <Button aria-label={ta('assessForm.removeRow')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeRow')} onClick={() => setQ({ matrix: { ...m, rows: m.rows.filter((_, j) => j !== ri) } })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                     <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ matrix: { ...m, rows: [...m.rows, ''] } })}>
-                      <Plus className="h-3.5 w-3.5" /> Row
+                      <Plus className="h-3.5 w-3.5" /> {ta('assessForm.row')}
                     </Button>
                   </div>
                 )
@@ -1383,18 +1589,18 @@ export default function ExamReviewPage() {
                 const ans = (editingQuestion.answer || '').split(',').map(s => s.trim())
                 return (
                   <div className="grid gap-3">
-                    <Label>Rows (label + correct value)</Label>
+                    <Label>{ta('assessForm.rowsLabelCorrectValue')}</Label>
                     {tb.rows.map((r, ri) => (
                       <div key={ri} className="flex items-center gap-2">
                         <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...tb.rows]; rows[ri] = e.target.value; setQ({ table: { ...tb, rows } }) }} />
-                        <Input value={ans[ri] || ''} placeholder="Correct value" onChange={(e) => { const next = [...ans]; next[ri] = e.target.value; setQ({ answer: next.map(s => s || '').join(', ') }) }} />
-                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
+                        <Input value={ans[ri] || ''} placeholder={ta('assessForm.correctValue')} onChange={(e) => { const next = [...ans]; next[ri] = e.target.value; setQ({ answer: next.map(s => s || '').join(', ') }) }} />
+                        <Button aria-label={ta('assessForm.removeRow')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeRow')} onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                     <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ table: { ...tb, rows: [...tb.rows, ''] } })}>
-                      <Plus className="h-3.5 w-3.5" /> Row
+                      <Plus className="h-3.5 w-3.5" /> {ta('assessForm.row')}
                     </Button>
                   </div>
                 )
@@ -1402,71 +1608,71 @@ export default function ExamReviewPage() {
 
               {t === 'hotspot' && (
                 <div className="grid gap-3">
-                  <Label>Image URL</Label>
-                  <Input value={editingQuestion.image_url || ''} onChange={(e) => setQ({ image_url: e.target.value })} placeholder="https://..." />
-                  <Label>Regions <span className="text-muted-foreground font-normal">(percentages 0-100; radio = correct region)</span></Label>
+                  <Label>{ta('assessForm.imageUrl')}</Label>
+                  <Input aria-label={ta('assessForm.imageUrl')} value={editingQuestion.image_url || ''} onChange={(e) => setQ({ image_url: e.target.value })} placeholder="https://..." />
+                  <Label>{ta('assessForm.regions')} <span className="text-muted-foreground font-normal">{ta('assessForm.percentages0100RadioCorrectRegion')}</span></Label>
                   {(editingQuestion.regions || []).map((r, i) => (
                     <div key={r.id} className="flex items-center gap-2">
                       <input type="radio" name="hotspot-correct" checked={editingQuestion.answer === r.id} onChange={() => setQ({ answer: r.id })} className="h-4 w-4" />
-                      <Input className="w-32" value={r.label || ''} placeholder="Label" onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], label: e.target.value }; setQ({ regions: next }) }} />
+                      <Input className="w-32" value={r.label || ''} placeholder={ta('assessForm.label')} onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], label: e.target.value }; setQ({ regions: next }) }} />
                       {(['x', 'y', 'w', 'h'] as const).map((k) => (
                         <Input key={k} type="number" className="w-20" value={r[k]} title={k} onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], [k]: parseFloat(e.target.value) || 0 }; setQ({ regions: next }) }} />
                       ))}
-                      <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove region" onClick={() => setQ({ regions: (editingQuestion.regions || []).filter((_, j) => j !== i) })}>
+                      <Button aria-label={ta('assessForm.removeRegion')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeRegion')} onClick={() => setQ({ regions: (editingQuestion.regions || []).filter((_, j) => j !== i) })}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
                   <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ regions: [...(editingQuestion.regions || []), { id: `r${(editingQuestion.regions || []).length + 1}`, x: 10, y: 10, w: 15, h: 15, label: '' }] })}>
-                    <Plus className="h-3.5 w-3.5" /> Region
+                    <Plus className="h-3.5 w-3.5" /> {ta('assessForm.region')}
                   </Button>
                 </div>
               )}
 
               {(t === 'likert' || t === 'rating') && (
                 <div className="grid gap-2">
-                  <Label>Scale bounds</Label>
+                  <Label>{ta('assessForm.scaleBounds')}</Label>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Min</span>
+                    <span className="text-xs text-muted-foreground">{ta('assessForm.min')}</span>
                     <Input type="number" className="w-20" value={editingQuestion.scale?.min ?? 1} onChange={(e) => setQ({ scale: { min: parseInt(e.target.value) || 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: editingQuestion.scale?.maxLabel } })} />
-                    <span className="text-xs text-muted-foreground">Max</span>
+                    <span className="text-xs text-muted-foreground">{ta('assessForm.max')}</span>
                     <Input type="number" className="w-20" value={editingQuestion.scale?.max ?? 5} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: parseInt(e.target.value) || 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: editingQuestion.scale?.maxLabel } })} />
-                    <Input className="w-40" placeholder="Min label" value={editingQuestion.scale?.minLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: e.target.value, maxLabel: editingQuestion.scale?.maxLabel } })} />
-                    <Input className="w-40" placeholder="Max label" value={editingQuestion.scale?.maxLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: e.target.value } })} />
+                    <Input className="w-40" placeholder={ta('assessForm.minLabel')} value={editingQuestion.scale?.minLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: e.target.value, maxLabel: editingQuestion.scale?.maxLabel } })} />
+                    <Input className="w-40" placeholder={ta('assessForm.maxLabel')} value={editingQuestion.scale?.maxLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: e.target.value } })} />
                   </div>
-                  <p className="text-xs text-muted-foreground">Not scored — for surveys / attitudinal questions.</p>
+                  <p className="text-xs text-muted-foreground">{ta('assessForm.notScoredForSurveysAttitudinalQuestions')}</p>
                 </div>
               )}
 
               {meta.group === 'coding' && (
                 <>
                   <div className="grid gap-2">
-                    <Label>Language</Label>
+                    <Label>{ta('assessForm.language')}</Label>
                     <Select value={editingQuestion.language || 'python'} onValueChange={(v) => setQ({ language: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label={ta('assessForm.language')}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {CODE_LANGUAGES.map((l) => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="q-starter">Starter code <span className="text-muted-foreground font-normal">(optional — shown in the editor)</span></Label>
-                    <Textarea id="q-starter" value={editingQuestion.starter_code || ''} onChange={(e) => setQ({ starter_code: e.target.value })} rows={4} className="font-mono text-xs" placeholder="Function signature / scaffolding the candidate starts from..." />
+                    <Label htmlFor="q-starter">{ta('assessForm.starterCode')} <span className="text-muted-foreground font-normal">{ta('assessForm.optionalShownInTheEditor')}</span></Label>
+                    <Textarea id="q-starter" value={editingQuestion.starter_code || ''} onChange={(e) => setQ({ starter_code: e.target.value })} rows={4} className="font-mono text-xs" placeholder={ta('assessForm.functionSignatureScaffoldingTheCandidate')} />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="q-model-answer">Model Answer / Rubric</Label>
+                    <Label htmlFor="q-model-answer">{ta('assessForm.modelAnswerRubric')}</Label>
                     <Textarea
                       id="q-model-answer"
                       value={editingQuestion.answer || ''}
                       onChange={(e) => setQ({ answer: e.target.value })}
                       rows={5}
-                      placeholder="Expected solution or key patterns to look for..."
+                      placeholder={ta('assessForm.expectedSolutionOrKeyPatternsTo')}
                       className="font-mono text-xs"
                     />
-                    <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
+                    <p className="text-xs text-muted-foreground">{ta('assessForm.shownToTheReviewerSideBy')}</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Hidden Test Cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
+                    <Label>{ta('assessForm.testCases')} <span className="text-muted-foreground font-normal">{ta('assessForm.stdinExpectedStdoutAllRunFor')}</span></Label>
                     {(editingQuestion.test_cases || []).map((tc, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <Input
@@ -1481,37 +1687,47 @@ export default function ExamReviewPage() {
                           placeholder={`expected stdout ${i + 1}`}
                           className="font-mono text-xs"
                         />
-                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove test case" onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
+                        <label className="flex h-9 shrink-0 items-center gap-1.5 text-xs text-muted-foreground cursor-pointer" title={ta('assessForm.hiddenCasesAreGradedButNever')}>
+                          <input
+                            type="checkbox"
+                            checked={tc.hidden === true}
+                            onChange={(e) => { const next = [...(editingQuestion.test_cases || [])]; next[i] = { ...next[i], hidden: e.target.checked || undefined }; setQ({ test_cases: next }) }}
+                            className="h-4 w-4 rounded border-input accent-primary"
+                          />
+                          {ta('assessForm.hidden')}
+                        </label>
+                        <Button aria-label={ta('assessForm.removeTestCase')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeTestCase')} onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                     {(editingQuestion.test_cases || []).length < 10 && (
-                      <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '' }] })}>
-                        <Plus className="h-3.5 w-3.5" /> Add test case
+                      <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '', hidden: true }] })}>
+                        <Plus className="h-3.5 w-3.5" /> {ta('assessForm.addTestCase')}
                       </Button>
                     )}
-                    <p className="text-xs text-muted-foreground">Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total).</p>
+                    <p className="text-xs text-muted-foreground">{ta('assessForm.withoutTestCasesTheCodeIs')}</p>
                   </div>
                 </>
               )}
 
               {t === 'descriptive' && (
                 <div className="grid gap-2">
-                  <Label htmlFor="q-model-answer">Model Answer / Rubric</Label>
+                  <Label htmlFor="q-model-answer">{ta('assessForm.modelAnswerRubric')}</Label>
                   <Textarea
                     id="q-model-answer"
                     value={editingQuestion.answer || ''}
                     onChange={(e) => setQ({ answer: e.target.value })}
                     rows={5}
-                    placeholder="Write the ideal answer or grading rubric / key points..."
+                    placeholder={ta('assessForm.writeTheIdealAnswerOrGrading')}
                     className="font-mono text-xs"
                   />
-                  <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
+                  <p className="text-xs text-muted-foreground">{ta('assessForm.shownToTheReviewerSideBy')}</p>
                 </div>
               )}
+              <ExtendedQuestionEditor question={editingQuestion} onChange={(patch) => setQ(patch as Partial<Question>)} />
               <div className="grid gap-2">
-                <Label htmlFor="q-score">Score (points)</Label>
+                <Label htmlFor="q-score">{ta('assessForm.scorePoints')}</Label>
                 <Input id="q-score" type="number" min="0" value={editingQuestion.score} onChange={(e) => setQ({ score: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
@@ -1519,9 +1735,9 @@ export default function ExamReviewPage() {
           })()}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setQuestionModal(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setQuestionModal(false)}>{ta('assessForm.cancel')}</Button>
             <Button onClick={saveQuestion}>
-              <Save className="h-4 w-4 mr-2" /> Save Question
+              <Save className="h-4 w-4 mr-2" /> {ta('assessForm.saveQuestion')}
             </Button>
           </DialogFooter>
         </DialogContent>

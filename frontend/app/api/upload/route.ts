@@ -7,12 +7,9 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { randomUUID } from 'node:crypto'
 import DOMPurify from 'isomorphic-dompurify'
+import { imageExtensionMatches, sniffImageMime } from '@/lib/upload-sniff'
 
-const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
-const BACKEND_URL = process.env.INTERNAL_BACKEND_URL
-  || ((process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production')
-    ? PROD_BACKEND
-    : 'http://localhost:8001')
+import { internalBackendUrl } from '@/lib/ai/internal-backend-url'
 
 async function getInternalSecret(): Promise<string> {
   const fromEnv = process.env.INTERNAL_BACKEND_SECRET?.trim() || ''
@@ -38,22 +35,28 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      return NextResponse.json({ error: 'No file provided', code: 'upload_no_file' }, { status: 400 })
     }
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP, SVG' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP, SVG', code: 'upload_image_type' }, { status: 400 })
     }
 
     // Max 5MB
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large. Max 5MB' }, { status: 400 })
+      return NextResponse.json({ error: 'File too large. Max 5MB', code: 'upload_too_large_5mb' }, { status: 400 })
     }
 
     let bytes = await file.arrayBuffer()
-    let finalType = file.type
+    // Trust the bytes, not the browser's Content-Type: the content must be the
+    // declared image type and the extension must match it.
+    const sniffed = sniffImageMime(new Uint8Array(bytes), { allowSvg: true })
+    if (!sniffed || sniffed !== file.type || !imageExtensionMatches(file.name || '', sniffed)) {
+      return NextResponse.json({ error: 'The file content does not match its type. Upload a real JPEG, PNG, GIF, WebP or SVG image.', code: 'upload_image_mismatch' }, { status: 400 })
+    }
+    let finalType: string = sniffed
 
     if (finalType === 'image/svg+xml') {
       const rawText = Buffer.from(bytes).toString('utf-8')
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
     // Virus scan via ClamAV (backend /internal/security/scan) before persisting.
     try {
       const secret = await getInternalSecret()
-      const scanRes = await fetch(`${BACKEND_URL}/internal/security/scan`, {
+      const scanRes = await fetch(`${internalBackendUrl()}/internal/security/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,7 +95,7 @@ export async function POST(req: NextRequest) {
       const msg = scanErr instanceof Error ? scanErr.message : String(scanErr)
       console.error('[upload] virus scan error:', msg)
       return NextResponse.json(
-        { error: 'Security scanner is currently offline. Please try again later.' },
+        { error: 'Security scanner is currently offline. Please try again later.', code: 'upload_scanner_offline' },
         { status: 503 },
       )
     }
@@ -116,6 +119,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, url: dataUrl, id })
   } catch (e) {
     console.error('[upload] error:', e)
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Upload failed', code: 'upload_failed' }, { status: 500 })
   }
 }

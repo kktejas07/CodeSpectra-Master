@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { ChevronRight, ChevronDown, FileIcon, FolderIcon, Code2, GitBranch, Loader } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   analyzeCode,
   getFileContent,
@@ -12,6 +13,7 @@ import {
   type GitHubRepoListItem,
   type FileContent,
 } from '@/lib/github-service'
+import { useT } from '@/lib/i18n/client'
 
 function guessLanguageFromPath(filePath: string): string {
   const ext = (filePath.split('.').pop() || '').toLowerCase()
@@ -51,6 +53,7 @@ export function RepositoryBrowser({
   scanBusy,
   onScanBusyChange,
 }: RepositoryBrowserProps) {
+  const { t } = useT()
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepoListItem | null>(null)
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
@@ -58,6 +61,9 @@ export function RepositoryBrowser({
   const [repos, setRepos] = useState<GitHubRepoListItem[]>([])
   const [loadingRepos, setLoadingRepos] = useState(true)
   const [repoError, setRepoError] = useState<string | null>(null)
+  const [repoReloadKey, setRepoReloadKey] = useState(0)
+  const [fileTreeError, setFileTreeError] = useState(false)
+  const [fileScanError, setFileScanError] = useState<{ file: FileNode; repo: GitHubRepoListItem; message: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -72,12 +78,12 @@ export function RepositoryBrowser({
           } else {
             setRepos(list.repositories || [])
             if (list.repositories?.length === 0) {
-              setRepoError('No repositories returned — connect GitHub or ensure you have accessible repos.')
+              setRepoError(t('tools.noRepositoriesReturnedConnectGithubOr198'))
             }
           }
         }
       } catch {
-        if (!cancelled) setRepoError('Could not load repositories.')
+        if (!cancelled) setRepoError(t('tools.couldNotLoadRepositories'))
       } finally {
         if (!cancelled) setLoadingRepos(false)
       }
@@ -85,7 +91,7 @@ export function RepositoryBrowser({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [repoReloadKey])
 
   const toggleFolder = (path: string) => {
     const newSet = new Set(expandedFolders)
@@ -101,12 +107,14 @@ export function RepositoryBrowser({
     async (file: FileNode, repo: GitHubRepoListItem) => {
       if (!onGitHubScanResult || !repo.owner?.login) return
       onScanBusyChange?.(true)
+      setFileScanError(null)
       try {
         const owner = repo.owner.login
         const name = repo.name
         const fc = await getFileContent(owner, name, file.path)
         if (fc?.error || typeof fc?.content !== 'string') {
           console.error('[CodeSpectra] file content:', fc?.error)
+          setFileScanError({ file, repo, message: t('tools.couldntReadPathFromGithub', { path: file.path }) })
           return
         }
         const lang = guessLanguageFromPath(file.path)
@@ -119,12 +127,16 @@ export function RepositoryBrowser({
         })
         if (result?.error) {
           console.error('[CodeSpectra] analyze from GitHub:', result.error)
+          setFileScanError({ file, repo, message: t('tools.couldntScanPath', { path: file.path }) })
           return
         }
         onGitHubScanResult({
           ...(result as Record<string, unknown>),
           scanned_code: fc.content,
         })
+      } catch (e) {
+        console.error('[CodeSpectra] GitHub file scan:', e)
+        setFileScanError({ file, repo, message: t('tools.couldntScanPath', { path: file.path }) })
       } finally {
         onScanBusyChange?.(false)
       }
@@ -137,6 +149,7 @@ export function RepositoryBrowser({
     onSelectRepository?.(repo)
 
     setIsLoadingFiles(true)
+    setFileTreeError(false)
     try {
       if (!repo.owner?.login) {
         setFileTree([])
@@ -147,12 +160,15 @@ export function RepositoryBrowser({
         setFileTree(files as FileNode[])
       } else if ((files as any)?.success === false) {
         setFileTree([])
+        setFileTreeError(true)
         console.error((files as any).error)
       } else {
         setFileTree([])
       }
     } catch (error) {
       console.error('[CodeSpectra] Failed to load file tree:', error)
+      setFileTree([])
+      setFileTreeError(true)
     } finally {
       setIsLoadingFiles(false)
     }
@@ -164,7 +180,7 @@ export function RepositoryBrowser({
 
     return (
       <div key={file.path}>
-        <div
+        <div role="button" tabIndex={0} aria-expanded={isFolder ? isExpanded : undefined} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
           className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent"
           style={{ paddingLeft: `${depth * 16 + 12}px` }}
           onClick={() => {
@@ -177,16 +193,10 @@ export function RepositoryBrowser({
           }}
         >
           {isFolder && (
-            <button
-              type="button"
-              className="rounded p-0 hover:bg-background"
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleFolder(file.path)
-              }}
-            >
+            // The whole row toggles the folder; the chevron is only a visual cue.
+            <span aria-hidden className="rounded p-0">
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </button>
+            </span>
           )}
           {!isFolder && <span className="w-4" />}
 
@@ -215,20 +225,20 @@ export function RepositoryBrowser({
       {!selectedRepo && (
         <div className="space-y-4">
           <h3 className="flex items-center gap-2 font-semibold text-foreground">
-            <Code2 className="h-5 w-5" />
-            Select repository
-          </h3>
-          <p className="text-sm text-foreground/60">
-            Pick a repo, then open a file to scan it. Scans are saved when you are signed in (same history as manual
-            mode).
-          </p>
+            <Code2 className="h-5 w-5" />{t('tools.selectRepository')}</h3>
+          <p className="text-sm text-muted-foreground">{t('tools.pickARepoThenOpenA001')}</p>
           {loadingRepos ? (
             <div className="flex items-center gap-2 py-6 text-muted-foreground">
-              <Loader className="h-5 w-5 animate-spin" />
-              Loading repositories…
-            </div>
+              <Loader className="h-5 w-5 animate-spin" />{t('tools.loadingRepositories')}</div>
           ) : repoError ? (
-            <p className="text-sm text-destructive">{repoError}</p>
+            <EmptyState
+              compact
+              illustration="error"
+              title={t('tools.couldntLoadRepositories')}
+              description={repoError}
+              actionLabel={t('common.tryAgain')}
+              onAction={() => setRepoReloadKey((k) => k + 1)}
+            />
           ) : (
             <div className="grid max-h-80 gap-2 overflow-y-auto sm:grid-cols-2">
               {repos.map((repo) => (
@@ -251,14 +261,14 @@ export function RepositoryBrowser({
       )}
 
       {selectedRepo && (
-        <Card className="space-y-4 border border-border bg-card/30 p-4">
+        <Card className="space-y-4 p-4">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-primary" />
                 <h4 className="font-semibold text-foreground">{selectedRepo.name}</h4>
               </div>
-              <p className="text-xs text-foreground/60">{selectedRepo.full_name}</p>
+              <p className="text-xs text-muted-foreground">{selectedRepo.full_name}</p>
             </div>
             <Button
               variant="outline"
@@ -268,28 +278,42 @@ export function RepositoryBrowser({
                 setFileTree([])
                 setExpandedFolders(new Set())
               }}
-            >
-              Change
-            </Button>
+            >{t('tools.change')}</Button>
           </div>
 
           {scanBusy ? (
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader className="h-3.5 w-3.5 animate-spin" />
-              Running scan…
-            </p>
+              <Loader className="h-3.5 w-3.5 animate-spin" />{t('tools.runningScan')}</p>
+          ) : fileScanError ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2" role="alert">
+              <p className="text-xs text-destructive">{fileScanError.message}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void runGitHubFileScan(fileScanError.file, fileScanError.repo)}
+              >{t('common.tryAgain')}</Button>
+            </div>
           ) : null}
 
           {isLoadingFiles ? (
             <div className="flex items-center justify-center py-8">
               <Loader className="h-5 w-5 animate-spin text-primary" />
             </div>
+          ) : fileTreeError ? (
+            <EmptyState
+              compact
+              illustration="error"
+              title={t('tools.couldntLoadThisRepositorysFiles')}
+              description={t('tools.checkThatGithubIsStillConnected4ce')}
+              actionLabel={t('common.tryAgain')}
+              onAction={() => void handleSelectRepository(selectedRepo)}
+            />
           ) : (
             <div className="max-h-96 space-y-1 overflow-y-auto">
               {fileTree.length > 0 ? (
                 fileTree.map((file) => <FileTreeItem key={file.path} file={file} />)
               ) : (
-                <p className="py-4 text-sm text-foreground/60">No files found</p>
+                <p className="py-4 text-sm text-muted-foreground">{t('tools.noFilesFound')}</p>
               )}
             </div>
           )}

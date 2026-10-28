@@ -1,59 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { interviewSessions } from '@/lib/db/interviews'
-import { AccessToken } from 'livekit-server-sdk'
+import { livekitConfig, mintLivekitToken, LIVEKIT_NOT_CONFIGURED } from '@/lib/ats/interviews/livekit'
+import { interviewRole } from '@/lib/interview-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-const isProd = process.env.NODE_ENV === 'production'
-const API_KEY = process.env.LIVEKIT_API_KEY || (isProd ? '' : 'devkey')
-const API_SECRET = process.env.LIVEKIT_API_SECRET || (isProd ? '' : 'dev-secret-match-compose')
-const LIVEKIT_URL = process.env.LIVEKIT_URL || (isProd ? '' : 'ws://localhost:7880')
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { id } = await ctx.params
-  const body = await req.json().catch(() => ({})) as { identity?: string; name?: string }
-
-  if (!body.identity) {
-    return NextResponse.json({ error: 'identity required' }, { status: 400 })
-  }
+  const body = await req.json().catch(() => ({})) as { name?: string }
 
   const col = await interviewSessions()
   const session = await col.findOne({ id })
   if (!session) return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
 
-  const userId = gate.user.id
-  const role = gate.user.role
-  const isParticipant = session.interviewer_id === userId || session.candidate_id === userId
-  if (!isParticipant && role !== 'superadmin' && role !== 'tenant_admin') {
+  // Participants, superadmin, or a tenant_admin of this session's tenant only.
+  if (!interviewRole(gate.user, session as unknown as Record<string, unknown>)) {
     return NextResponse.json({ error: 'Not authorized to join this interview' }, { status: 403 })
   }
 
-  if (!API_KEY || !API_SECRET || !LIVEKIT_URL) {
-    return NextResponse.json(
-      { error: 'LiveKit is not configured. Set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET in the environment.' },
-      { status: 503 }
-    )
-  }
+  // Admin → Settings → Hiring integrations first, then env, then dev defaults.
+  const cfg = await livekitConfig()
+  if (!cfg) return NextResponse.json({ error: LIVEKIT_NOT_CONFIGURED }, { status: 503 })
 
   const roomName = `interview-${id}`
-  const at = new AccessToken(API_KEY, API_SECRET, {
-    identity: body.identity,
-    name: body.name,
-    ttl: 7200,
-  })
-  at.addGrant({
-    roomJoin: true,
-    room: roomName,
-    canPublish: true,
-    canSubscribe: true,
-  })
+  // Identity is the signed-in account, never the request body (no impersonation in the room).
+  const displayName = (gate.user.fullName || gate.user.name || (typeof body.name === 'string' ? body.name : '') || gate.user.email || 'Participant').slice(0, 100)
+  const token = await mintLivekitToken(cfg, roomName, gate.user.id, displayName, 7200)
 
-  const token = await at.toJwt()
-
-  return NextResponse.json({ token, url: LIVEKIT_URL })
+  return NextResponse.json({ token, url: cfg.url })
 }

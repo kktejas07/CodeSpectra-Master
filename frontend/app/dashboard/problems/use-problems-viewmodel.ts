@@ -10,6 +10,9 @@ export interface ProblemSummary {
   title: string
   difficulty: 'easy' | 'medium' | 'hard'
   topics: string[]
+  /** In a problem pack this viewer hasn't unlocked (server-computed). */
+  locked?: boolean
+  unlock_pack?: { id: string; name: string } | null
 }
 
 /** Map the 4-level UI enum to the 3-level DB/API values. */

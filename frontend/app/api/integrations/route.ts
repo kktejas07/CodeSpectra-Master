@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json(list)
   } catch (error) {
     console.error('[CodeSpectra] Integrations fetch error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -40,6 +40,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(doc)
   } catch (error) {
     console.error('[CodeSpectra] Integration creation error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

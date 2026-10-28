@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
-import { normalizeBankQuestion, questionBank, bankContentHash, type BankQuestionDoc } from '@/lib/question-bank'
+import { normalizeBankQuestion, questionBank, bankContentHash, existingBankKeys, withBankKeys, type BankQuestionDoc } from '@/lib/question-bank'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 export const runtime = 'nodejs'
 
@@ -47,30 +48,33 @@ export async function POST(request: NextRequest) {
       items = parseCsv(text)
     }
     if (items.length === 0) return NextResponse.json({ error: 'No questions found to import' }, { status: 400 })
-    if (items.length > MAX_ITEMS) return NextResponse.json({ error: `Max ${MAX_ITEMS} per import` }, { status: 400 })
+    if (items.length > MAX_ITEMS) return NextResponse.json({ error: `Max ${MAX_ITEMS} per import`, code: 'qb_import_max', params: { max: MAX_ITEMS } }, { status: 400 })
 
     const col = await questionBank()
-    const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
-    const seen = new Set(existing.map((d: any) => bankContentHash(d)))
+    // CORE-031: only the incoming questions are checked against the bank (indexed $in).
+    const normalized = items.map((it) => normalizeBankQuestion(it))
+    const seen = (await existingBankKeys(col, normalized.filter(Boolean).map((d) => bankContentHash(d!)), [])).hashes
     const source = items.length >= 50 ? 'import' : 'manual'
 
     const toInsert: BankQuestionDoc[] = []
     let skipped = 0
     const errors: string[] = []
     for (let i = 0; i < items.length; i++) {
-      const doc = normalizeBankQuestion(items[i])
+      const doc = normalized[i]
       if (!doc) { skipped++; continue }
       doc.source = source
+      doc.review_status = 'draft' // imported keys are checked before exams can sample them
       const hash = bankContentHash(doc)
       if (seen.has(hash)) { skipped++; continue }
       seen.add(hash)
-      toInsert.push(doc)
+      toInsert.push(withBankKeys(doc))
     }
 
     if (toInsert.length === 0) {
       return NextResponse.json({ inserted: 0, skipped, errors, message: 'No new questions (all duplicates)' })
     }
     await col.insertMany(toInsert)
+    knowledgeOnLibraryChange('question', toInsert.map((q) => q.id))
     return NextResponse.json({ inserted: toInsert.length, skipped, errors })
   } catch (e) {
     console.error('[question-bank/import] error:', e)

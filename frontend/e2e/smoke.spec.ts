@@ -5,7 +5,7 @@ const PUBLIC_PAGES = [
   { path: '/', name: 'Home' },
   { path: '/pricing', name: 'Pricing' },
   { path: '/docs', name: 'Docs' },
-  { path: '/blog', name: 'Blog' },
+  { path: '/learn', name: 'Learn' },
   { path: '/status', name: 'Status' },
   { path: '/companies', name: 'Companies' },
 ];

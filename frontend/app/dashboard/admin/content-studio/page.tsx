@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { sanitizeArticleHtml } from '@/lib/safe-html'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,17 +44,22 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useConfirm } from '@/lib/confirm-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
+import { isSubmitEnter } from '@/lib/keyboard'
 
 type Tab = 'newsroom' | 'signals'
 
 type Post = {
   id: string
   slug: string
+  /** Public URL from /api/blog (/learn/<slug> or /news/<slug>). */
+  public_path?: string
   title: string
   excerpt: string
   body: string
@@ -91,26 +97,27 @@ export default function ContentStudioPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Zap className="h-6 w-6 text-teal-600" /> Content Studio
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Create original content or pull from RSS feeds. All posts publish to{' '}
-            <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
-              /blog
+      <PageHeader
+        illustration="courses"
+        icon={<Zap />}
+        title="Content studio"
+        description={
+          <>
+            Write original posts or turn RSS feeds into drafts for review. Everything publishes to{' '}
+            <Link href="/learn?source=team" className="text-primary hover:underline" target="_blank">
+              /learn
             </Link>
-          </p>
-        </div>
-      </div>
+            .
+          </>
+        }
+        className="mb-0"
+      />
 
       {/* Tab Switcher */}
-      <div className="flex gap-1 rounded-lg border border-border/60 bg-muted/30 p-1 w-fit">
+      <div className="flex gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 w-fit">
         <button
           onClick={() => setTab('newsroom')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             tab === 'newsroom'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
@@ -122,7 +129,7 @@ export default function ContentStudioPage() {
         </button>
         <button
           onClick={() => setTab('signals')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             tab === 'signals'
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
@@ -146,6 +153,7 @@ export default function ContentStudioPage() {
 function NewsroomTab() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const confirmDialog = useConfirm()
   const [items, setItems] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -320,7 +328,7 @@ function NewsroomTab() {
   }
 
   const remove = async (slug: string) => {
-    if (!confirm('Delete this post?')) return
+    if (!(await confirmDialog({ title: 'Delete this post?', description: 'The post is removed from the blog. This cannot be undone.', confirmText: 'Delete', destructive: true }))) return
     const res = await csrfFetch(`/api/blog/${encodeURIComponent(slug)}`, { method: 'DELETE' })
     if (!res.ok) {
       addToast({ type: 'error', title: 'Delete failed' })
@@ -333,16 +341,16 @@ function NewsroomTab() {
   return (
     <div className="space-y-6">
       {/* Auto-Generate Draft Card */}
-      <Card className="p-5 border border-teal-500/20 bg-gradient-to-br from-teal-500/5 to-emerald-500/5">
+      <Panel className="p-5 border-primary/20 bg-primary/5">
         <div className="flex items-start gap-4">
-          <div className="p-3 rounded-xl bg-teal-500/10">
-            <Zap className="h-6 w-6 text-teal-600" />
+          <div className="p-3 rounded-xl bg-primary/10 text-primary">
+            <Zap className="h-6 w-6" />
           </div>
           <div className="flex-1 space-y-3">
             <div>
-              <h3 className="font-semibold text-lg">Auto-Generate Draft</h3>
+              <h3 className="font-semibold text-lg">Generate a draft</h3>
               <p className="text-sm text-muted-foreground">
-                Enter a topic or paste a title → system auto-searches web, rewrites title (no DMCA), generates unique post, saves as draft.
+                Enter a topic or paste a headline. We research it on the web, write an original post with a fresh title and save it as a draft for you to review.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -350,11 +358,12 @@ function NewsroomTab() {
                 value={autoTopic}
                 onChange={(e) => setAutoTopic(e.target.value)}
                 placeholder="e.g. Model Cascade making LLM classification cheaper"
-                className="flex-1 min-w-[300px]"
-                onKeyDown={(e) => e.key === 'Enter' && autoGenerateDraft()}
+                className="flex-1 min-w-0 sm:min-w-[300px]"
+                aria-label="Draft topic"
+                onKeyDown={(e) => isSubmitEnter(e) && autoGenerateDraft()}
               />
               <Select value={autoCategory} onValueChange={(v) => setAutoCategory(v as BlogCategoryId)}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger aria-label="Draft category" className="w-[140px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -366,32 +375,31 @@ function NewsroomTab() {
               <Button
                 onClick={autoGenerateDraft}
                 disabled={autoGenerating || !autoTopic.trim()}
-                className="bg-teal-600 hover:bg-teal-700"
               >
                 {autoGenerating ? (
                   <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                 ) : (
                   <Sparkles className="mr-1 h-4 w-4" />
                 )}
-                {autoGenerating ? 'Generating...' : 'Generate Draft'}
+                {autoGenerating ? 'Generating...' : 'Generate draft'}
               </Button>
             </div>
             {autoGenerating && (
-              <p className="text-xs text-muted-foreground animate-pulse">
-                Searching web → extracting facts → writing unique post → saving as draft...
+              <p className="text-xs text-muted-foreground motion-safe:animate-pulse">
+                Researching the topic, writing the post and saving it as a draft...
               </p>
             )}
           </div>
         </div>
-      </Card>
+      </Panel>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Newspaper className="h-5 w-5 text-teal-600" /> Newsroom
+            <Newspaper className="h-5 w-5 text-primary" /> Newsroom
           </h2>
           <p className="text-sm text-muted-foreground">
-            Or create manually with AI-powered multi-pass writing.
+            Or write a post yourself, with AI help for the draft and cover image.
           </p>
         </div>
         <Button onClick={() => {
@@ -407,16 +415,16 @@ function NewsroomTab() {
       </div>
 
       {showForm && (
-        <Card className="space-y-4 p-5">
+        <Panel className="space-y-4 p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+              <Input aria-label="Title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
             </div>
             <div className="space-y-1.5">
               <Label>Category</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as BlogCategoryId)}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -428,11 +436,11 @@ function NewsroomTab() {
             </div>
             <div className="space-y-1.5">
               <Label>Author</Label>
-              <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+              <Input aria-label="Author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Excerpt</Label>
-              <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
+              <Textarea aria-label="Excerpt" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Cover image</Label>
@@ -451,22 +459,22 @@ function NewsroomTab() {
                   {aiSlug === '__form' ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-4 w-4 text-teal-500" />
+                    <Sparkles className="mr-1 h-4 w-4 text-primary" />
                   )}
                   Generate
                 </Button>
               </div>
               {coverImage ? (
-                <img src={coverImage} alt="Cover preview" className="mt-1 h-32 w-full rounded-md border object-cover" />
+                <img src={coverImage} alt="Cover preview" className="mt-1 h-32 w-full rounded-xl border border-border object-cover" />
               ) : null}
             </div>
             <div className="space-y-1.5 sm:col-span-2 mt-4 pt-4 border-t">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <Label className="text-base flex items-center gap-2">
-                    <Globe className="h-4 w-4" /> Live Web Research
+                    <Globe className="h-4 w-4 text-primary" /> Live web research
                   </Label>
-                  <p className="text-sm text-muted-foreground">Deep research: scrapes full articles, extracts facts, writes with source attribution.</p>
+                  <p className="text-sm text-muted-foreground">Reads full source articles, pulls out the facts and credits each source in the draft.</p>
                 </div>
                 <Switch checked={doResearch} onCheckedChange={setDoResearch} />
               </div>
@@ -484,9 +492,9 @@ function NewsroomTab() {
                   {aiSlug === '__body' ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                    <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                   )}
-                  {aiSlug === '__body' && doResearch ? 'Researching & Drafting...' : 'AI Draft'}
+                  {aiSlug === '__body' && doResearch ? 'Researching and drafting...' : 'AI draft'}
                 </Button>
               </div>
               <RichTextEditor
@@ -500,7 +508,7 @@ function NewsroomTab() {
           <div className="flex flex-wrap gap-2">
             <Button disabled={saving} onClick={() => void savePost(true)}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              {editingSlug ? 'Update & Publish' : 'Publish'}
+              {editingSlug ? 'Update and publish' : 'Publish'}
             </Button>
             <Button variant="outline" disabled={saving} onClick={() => void savePost(false)}>
               Save draft
@@ -516,22 +524,22 @@ function NewsroomTab() {
               Cancel
             </Button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">No posts yet.</Card>
+        <EmptyState illustration="courses" title="No posts yet" description="Select New post or generate a draft above to get started." />
       ) : (
         <div className="space-y-2">
           {items.map((p) => (
-            <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
+            <Panel key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl p-4">
               <div className="flex flex-1 min-w-0 items-start sm:items-center gap-4">
                 {p.cover_image ? (
-                  <img src={p.cover_image} alt="" className="h-14 w-24 shrink-0 rounded-md border object-cover" />
+                  <img src={p.cover_image} alt="" className="h-14 w-24 shrink-0 rounded-lg border border-border object-cover" />
                 ) : (
-                  <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-md border bg-muted/40">
+                  <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40">
                     <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
                   </div>
                 )}
@@ -539,29 +547,29 @@ function NewsroomTab() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-medium">{p.title}</p>
                     <Badge variant="secondary">{p.category}</Badge>
-                    <Badge variant={p.status === 'published' ? 'default' : 'outline'}>{p.status}</Badge>
+                    <Badge variant={p.status === 'published' ? 'success' : 'outline'} className="capitalize">{p.status}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground truncate">
-                    /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
+                    {p.public_path || `/learn/${p.slug}`} · {p.read_minutes} min · {p.author_name}
                   </p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                 <Button variant="outline" size="sm" disabled={aiSlug === p.slug} onClick={() => void genCover(p.slug)}>
-                  {aiSlug === p.slug ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />}
+                  {aiSlug === p.slug ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />}
                   AI cover
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/blog/${p.slug}`} target="_blank">
+                  <Link href={p.public_path || `/learn/${encodeURIComponent(p.slug)}`} target="_blank">
                     <Eye className="mr-1 h-3.5 w-3.5" /> View
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => editPost(p)}>Edit</Button>
-                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)}>
+                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)} aria-label="Delete post">
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}
@@ -613,7 +621,7 @@ function SignalsTab() {
       if (action === 'ingest') {
         addToast({ type: 'success', title: `Ingested ${data.created ?? 0} draft(s)` })
       } else if (action === 'approve') {
-        addToast({ type: 'success', title: 'Published to Newsroom' })
+        addToast({ type: 'success', title: 'Published to newsroom' })
       } else if (action === 'unpublish') {
         addToast({ type: 'success', title: 'Unpublished' })
       } else if (action === 'delete') {
@@ -636,10 +644,10 @@ function SignalsTab() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Radio className="h-5 w-5 text-teal-600" /> Signals
+            <Radio className="h-5 w-5 text-primary" /> Signals
           </h2>
           <p className="text-sm text-muted-foreground">
-            RSS feeds → full page scrape → fact extraction → draft → humanize → your approval.
+            We read RSS feeds, pull the facts from each article and write a draft. Nothing is published until you approve it.
           </p>
         </div>
         <Button onClick={() => void run('ingest')} disabled={busy === 'ingest'}>
@@ -651,23 +659,23 @@ function SignalsTab() {
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          No drafts yet. Click <strong>Run ingest</strong> to pull public feeds.
-        </Card>
+        <Panel className="p-10 text-center text-sm text-muted-foreground">
+          No drafts yet. Select <strong className="text-foreground">Run ingest</strong> to pull the latest public feeds.
+        </Panel>
       ) : (
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">{pending.length} pending · {items.length} total</p>
+          <p className="text-xs tabular-nums text-muted-foreground">{pending.length} pending · {items.length} total</p>
           {items.map((d) => (
-            <Card key={d.id} className="space-y-2 p-4">
+            <Panel key={d.id} className="space-y-2 rounded-2xl p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 {d.cover_image ? (
-                  <img src={d.cover_image} alt="" className="h-20 w-36 shrink-0 rounded-md border object-cover" />
+                  <img src={d.cover_image} alt="" className="h-20 w-36 shrink-0 rounded-lg border border-border object-cover" />
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{d.title}</p>
                     <Badge variant="secondary">{d.category}</Badge>
-                    <Badge variant={d.status === 'pending' ? 'default' : 'outline'}>{d.status}</Badge>
+                    <Badge variant={d.status === 'pending' ? 'default' : 'outline'} className="capitalize">{d.status}</Badge>
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.excerpt}</p>
                   {d.angle ? <p className="mt-1 text-[11px] text-muted-foreground">Angle: {d.angle}</p> : null}
@@ -683,18 +691,18 @@ function SignalsTab() {
                     {(d.source_urls?.length ? d.source_urls : [d.source_url]).map((u, i) => (
                       <span key={u}>
                         {i > 0 ? ' · ' : null}
-                        <a href={u} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-teal-600 hover:underline">
+                        <a href={u} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-primary hover:underline">
                           source{d.source_urls && d.source_urls.length > 1 ? ` ${i + 1}` : ''} <ExternalLink className="h-3 w-3" />
                         </a>
                       </span>
                     ))}
                     {d.blog_slug ? (
-                      <> · <Link href={`/blog/${d.blog_slug}`} className="text-teal-600 hover:underline">/blog/{d.blog_slug}</Link></>
+                      <> · <Link href={`/news/${d.blog_slug}`} className="text-primary hover:underline">/news/{d.blog_slug}</Link></>
                     ) : null}
                   </p>
                 </div>
                 {d.status === 'pending' ? (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setPreviewDraft(d)}>
                       <Eye className="mr-1 h-3.5 w-3.5" /> Preview
                     </Button>
@@ -721,20 +729,20 @@ function SignalsTab() {
                   </div>
                 )}
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}
 
       <Dialog open={!!previewDraft} onOpenChange={(open) => !open && setPreviewDraft(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{previewDraft?.title}</DialogTitle>
             <DialogDescription>{previewDraft?.category} · {previewDraft?.source_feed}</DialogDescription>
           </DialogHeader>
           <div className="mt-4 text-sm space-y-4">
             {previewDraft?.body ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: previewDraft.body }} />
+              <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(previewDraft.body) }} />
             ) : (
               <p className="text-muted-foreground italic">No body content generated.</p>
             )}
@@ -744,7 +752,7 @@ function SignalsTab() {
 
       <ConfirmDialog
         open={!!confirmAction}
-        title="Confirm Action"
+        title="Confirm action"
         message={confirmAction?.message || ''}
         confirmLabel="Confirm"
         onConfirm={() => {

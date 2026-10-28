@@ -32,12 +32,13 @@ export async function GET() {
       mongoDocExists: !!doc,
       mongoDocKeys: doc?.value ? Object.keys(doc.value).filter(k => k.includes('cloudflare')) : [],
       rawZoneId: rawZoneId ? `${String(rawZoneId).slice(0, 8)}...` : '(missing)',
-      rawApiToken: rawApiToken ? `${String(rawApiToken).slice(0, 8)}...` : '(missing)',
-      rawApiTokenLength: rawApiToken ? String(rawApiToken).length : 0,
+      // Stored token is encrypted at rest; never echo any of its characters.
+      rawApiToken: rawApiToken ? (String(rawApiToken).startsWith('enc:v1:') ? '(encrypted)' : '(plain text — re-save to encrypt)') : '(missing)',
       envZoneId: !!process.env.CLOUDFLARE_ZONE_ID,
       envApiToken: !!process.env.CLOUDFLARE_API_TOKEN,
     })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    console.error('[CodeSpectra] admin/cloudflare-debug:', e)
+    return NextResponse.json({ error: 'Cloudflare debug failed' }, { status: 500 })
   }
 }

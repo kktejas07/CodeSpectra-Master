@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { useT } from '@/lib/i18n/client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const { t } = useT()
   const handleClose = (value: boolean) => {
     setIsOpen(false)
     if (resolver) {
@@ -53,20 +55,20 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{options?.title || 'Confirm'}</AlertDialogTitle>
+            <AlertDialogTitle>{options?.title || t('common.confirm')}</AlertDialogTitle>
             <AlertDialogDescription>
               {options?.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => handleClose(false)}>
-              {options?.cancelText || 'Cancel'}
+              {options?.cancelText || t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               className={options?.destructive ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
               onClick={() => handleClose(true)}
             >
-              {options?.confirmText || 'Continue'}
+              {options?.confirmText || t('common.continue')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

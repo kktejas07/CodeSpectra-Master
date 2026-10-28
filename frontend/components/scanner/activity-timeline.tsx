@@ -1,9 +1,12 @@
+'use client'
+
 import { useState } from 'react'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, Filter, Download } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface Activity {
   id: string
@@ -20,6 +23,8 @@ interface ActivityTimelineProps {
 }
 
 export function ActivityTimeline({ activities = [], loading = false }: ActivityTimelineProps) {
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const [filterType, setFilterType] = useState<string>('all')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
@@ -56,31 +61,31 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Activity Timeline</h1>
-        <p className="text-foreground/60">View all code analysis and quality gate events</p>
+        <h2 className="sr-only">{t('tools.activityTimeline')}</h2>
+        <p className="text-sm text-muted-foreground">{t('tools.viewAllCodeAnalysisAndQualityd73')}</p>
       </div>
 
       {/* Filters */}
-      <Card className="p-4 bg-card/30">
+      <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1">
-            <label className="text-sm font-medium block mb-2">Event Type</label>
+            <label className="text-sm font-medium block mb-2">{t('tools.eventType')}</label>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground"
             >
-              <option value="all">All Events</option>
-              <option value="scan_completed">Scans Completed</option>
-              <option value="issue_created">Issues Created</option>
-              <option value="issue_resolved">Issues Resolved</option>
-              <option value="gate_passed">Quality Gates Passed</option>
-              <option value="gate_failed">Quality Gates Failed</option>
+              <option value="all">{t('tools.allEvents')}</option>
+              <option value="scan_completed">{t('tools.scansCompleted')}</option>
+              <option value="issue_created">{t('tools.issuesCreated')}</option>
+              <option value="issue_resolved">{t('tools.issuesResolved')}</option>
+              <option value="gate_passed">{t('tools.qualityGatesPassed')}</option>
+              <option value="gate_failed">{t('tools.qualityGatesFailed')}</option>
             </select>
           </div>
 
           <div>
-            <label className="text-sm font-medium block mb-2">Start Date</label>
+            <label className="text-sm font-medium block mb-2">{t('tools.startDate')}</label>
             <input
               type="date"
               value={startDate}
@@ -90,7 +95,7 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
           </div>
 
           <div>
-            <label className="text-sm font-medium block mb-2">End Date</label>
+            <label className="text-sm font-medium block mb-2">{t('tools.endDate')}</label>
             <input
               type="date"
               value={endDate}
@@ -109,22 +114,20 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
             a.click()
             URL.revokeObjectURL(url)
           }}>
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
+            <Download className="w-4 h-4" />{t('tools.export')}</Button>
         </div>
       </Card>
 
       {/* Timeline */}
       <div className="space-y-2">
         {loading ? (
-          <Card className="p-8 text-center">
-            <p className="text-foreground/60">Loading activities...</p>
+          <Card className="rounded-3xl p-8 text-center">
+            <p className="text-muted-foreground">{t('tools.loadingActivities')}</p>
           </Card>
         ) : filteredActivities.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
+          <Card className="rounded-3xl p-8 text-center border-dashed">
             <Calendar className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
-            <p className="text-foreground/60">No activities found</p>
+            <p className="text-muted-foreground">{t('tools.noActivitiesFound')}</p>
           </Card>
         ) : (
           filteredActivities.map((activity, idx) => (
@@ -133,7 +136,7 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
                 <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-border" />
               )}
 
-              <Card className="p-4 bg-card/30 border border-border hover:shadow-md transition-shadow">
+              <Card className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex gap-4">
                   {/* Timeline dot */}
                   <div className={`mt-1 w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${getEventColor(activity.eventType)}`}>
@@ -145,22 +148,22 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <h3 className="font-semibold text-foreground">{activity.description}</h3>
-                        <p className="text-sm text-foreground/60">by {activity.user}</p>
+                        <p className="text-sm text-muted-foreground">{t('tools.byUser', { user: activity.user })}</p>
                       </div>
                       <Badge variant="outline" className={getEventColor(activity.eventType)}>
                         {activity.eventType.replace(/_/g, ' ')}
                       </Badge>
                     </div>
 
-                    <p className="text-xs text-foreground/50 mt-2">
+                    <p className="text-xs text-muted-foreground mt-2">
                       {formatDateTime(activity.timestamp)}
                     </p>
 
                     {activity.details && (
                       <div className="mt-3 p-2 bg-background rounded text-xs text-foreground/70 space-y-1">
                         {Object.entries(activity.details).map(([key, value]) => (
-                          <div key={key}>
-                            <span className="font-medium">{key}:</span> {JSON.stringify(value)}
+                          <div key={key} className="wrap-break-word">
+                            <span className="font-medium">{key}:</span> {typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : JSON.stringify(value)}
                           </div>
                         ))}
                       </div>

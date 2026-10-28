@@ -11,6 +11,8 @@
  *  - ordering / ranking / matrix / table_fill → comma-separated CSV string
  *  - matching / drag_drop → JSON string `{ left: right, ... }`
  *  - coding + variants → JSON string `{ language, code }`
+ *  - wave 6 (system_design, case_study, typing_test, file_upload,
+ *    video_response) → JSON envelopes, see lib/question-extensions.ts
  *
  * ponytail: click/dropdown/reorder-button interactions only (no HTML5
  * drag-and-drop yet) — see Phase 2 decision. Hotspot regions are percentages
@@ -21,6 +23,9 @@ import { CodingQuestionEditor } from '@/components/assessment/CodingQuestionEdit
 import { normalizeCodeLang } from '@/lib/code-languages'
 import { canonicalType, metaFor } from '@/lib/question-types'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { BlackBoxRunner, ExtendedAnswerInput, type ExamContext, type ExtendedQuestion } from '@/components/assessment/ExtendedAnswerInput'
+import { EXTENDED_INPUT_TYPES } from '@/lib/question-extensions'
+import { useT } from '@/lib/i18n/client'
 
 export interface AnswerQuestion {
   id: string
@@ -35,6 +40,13 @@ export interface AnswerQuestion {
   regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
   language?: string
   starter_code?: string
+  /** Wave 6 fields (sub_questions, typing, upload, video, black_box_runs, allow_diagram). */
+  sub_questions?: ExtendedQuestion['sub_questions']
+  typing?: ExtendedQuestion['typing']
+  upload?: ExtendedQuestion['upload']
+  video?: ExtendedQuestion['video']
+  black_box_runs?: number
+  allow_diagram?: boolean
 }
 
 export interface QuestionAnswerInputProps {
@@ -45,6 +57,8 @@ export interface QuestionAnswerInputProps {
   shuffledOptions?: string[]
   readOnly?: boolean
   showSavedBadge?: boolean
+  /** Live test only: lets uploads, recordings and the black-box runner reach the exam API. */
+  examContext?: ExamContext
 }
 
 function asCsv(value: string | string[] | undefined): string[] {
@@ -64,16 +78,28 @@ function parsePairs(value: string | string[] | undefined): Record<string, string
 }
 
 function SavedBadge({ show }: { show?: boolean }) {
+  const { t } = useT()
   if (!show) return null
-  return <span className="text-xs px-2 py-0.5 rounded-full border bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</span>
+  return <span className="text-xs px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">{t('exam.savedLocally')}</span>
 }
 
 const inputCls = 'w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm'
 
-export function QuestionAnswerInput({ question, value, onChange, shuffledOptions, readOnly, showSavedBadge }: QuestionAnswerInputProps) {
+export function QuestionAnswerInput({ question, value, onChange, shuffledOptions, readOnly, showSavedBadge, examContext }: QuestionAnswerInputProps) {
+  const { t } = useT()
   const type = canonicalType(question.type)
   const meta = metaFor(type)
   const kind = meta.kind
+
+  // ── Wave 6: system design, case study, typing, file upload, video ──
+  if (EXTENDED_INPUT_TYPES.has(type)) {
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-end"><SavedBadge show={showSavedBadge} /></div>
+        <ExtendedAnswerInput question={question} value={value} onChange={onChange} readOnly={readOnly} examContext={examContext} SubInput={QuestionAnswerInput} />
+      </div>
+    )
+  }
 
   // ── Hotspot: click the correct image region ──
   if (type === 'hotspot') {
@@ -81,17 +107,20 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Click the correct region:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.clickTheCorrectRegion')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="relative inline-block max-w-full rounded-lg border overflow-hidden bg-muted/30">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={question.image_url || ''} alt="Hotspot" className="block max-w-full select-none" draggable={false} />
+          <img src={question.image_url || ''} alt={t('exam.hotspot')} className="block max-w-full select-none" draggable={false} />
+          {/* Pointer targets; keyboard and screen-reader users answer with the list below (same value). */}
           {(question.regions || []).map((r) => (
             <button
               key={r.id}
               type="button"
               disabled={readOnly}
+              tabIndex={-1}
+              aria-hidden
               onClick={() => !readOnly && onChange(r.id)}
               title={r.label || r.id}
               style={{ left: `${r.x}%`, top: `${r.y}%`, width: `${r.w}%`, height: `${r.h}%` }}
@@ -99,7 +128,18 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
             />
           ))}
         </div>
-        {selected && <p className="text-xs text-muted-foreground">Selected: {(question.regions || []).find((r) => r.id === selected)?.label || selected}</p>}
+        {selected && <p className="text-xs text-muted-foreground">{t('exam.selected')}{' '}{(question.regions || []).find((r) => r.id === selected)?.label || selected}</p>}
+        <fieldset className="space-y-1.5">
+          <legend className="text-xs font-medium text-muted-foreground">{t('exam.chooseRegionFromList')}</legend>
+          <div className="flex flex-wrap gap-2">
+            {(question.regions || []).map((r, i) => (
+              <label key={r.id} className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${selected === r.id ? 'border-primary bg-primary/10' : 'border-border bg-card'}`}>
+                <input type="radio" name={`hotspot-${question.id}`} value={r.id} checked={selected === r.id} disabled={readOnly} onChange={() => !readOnly && onChange(r.id)} className="h-4 w-4 accent-primary" />
+                <span>{r.label || t('exam.regionN', { n: i + 1 })}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </div>
     )
   }
@@ -111,13 +151,13 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     const opts = shuffledOptions?.length ? shuffledOptions : (question.options?.length ? question.options : fallback)
     const selectedArr = Array.isArray(value) ? value : []
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" role={isMulti ? 'group' : 'radiogroup'} aria-label={isMulti ? t('exam.selectAllThatApply') : t('exam.chooseOneAnswer')}>
         {opts.map((opt, i) => {
           const checked = isMulti ? selectedArr.includes(opt) : value === opt
           return (
             <label
               key={i}
-              className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${readOnly ? '' : 'cursor-pointer'} ${checked ? 'bg-primary/10 border-primary shadow-xs' : 'bg-card hover:border-primary/50'}`}
+              className={`flex items-center gap-3 p-4 rounded-xl border transition-colors duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${readOnly ? '' : 'cursor-pointer'} ${checked ? 'bg-primary/10 border-primary shadow-xs' : 'bg-card border-border hover:border-primary/50'}`}
             >
               <input
                 type={isMulti ? 'checkbox' : 'radio'}
@@ -134,9 +174,9 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                     onChange(opt)
                   }
                 }}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                className="h-4 w-4 accent-primary text-primary focus:ring-primary border-input"
               />
-              <span className="text-sm font-medium">{opt}</span>
+              <span className="text-sm font-medium text-foreground">{opt}</span>
             </label>
           )
         })}
@@ -153,12 +193,12 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-muted-foreground">Fill in {blankCount} blank(s):</label>
+            <label className="text-sm font-medium text-muted-foreground">{t('exam.fillInBlankcountBlankS', { blankCount })}</label>
             <SavedBadge show={showSavedBadge} />
           </div>
           {Array.from({ length: blankCount }, (_, idx) => (
             <div key={idx} className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Blank {idx + 1}</label>
+              <label className="text-xs text-muted-foreground font-medium">{t('exam.blank')}{' '}{idx + 1}</label>
               <input
                 type="text"
                 value={arr[idx] || ''}
@@ -168,7 +208,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                   next[idx] = e.target.value
                   onChange(next.map((s) => (s || '').trim()).join(', '))
                 }}
-                placeholder={`Answer for blank ${idx + 1}...`}
+                placeholder={t('exam.answerForBlankValue', { value: idx + 1 })}
+                aria-label={t('exam.blankValue', { value: idx + 1 })}
                 className={inputCls}
                 autoComplete="off"
               />
@@ -180,10 +221,10 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.yourAnswer')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
-        <input type="text" value={current} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder="Type your answer..." className={inputCls} autoComplete="off" />
+        <input type="text" aria-label={t('exam.yourAnswer')} value={current} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={t('exam.typeYourAnswer')} className={inputCls} autoComplete="off" />
       </div>
     )
   }
@@ -193,7 +234,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">{kind === 'numeric' ? 'Your numeric answer:' : 'Your answer:'}</label>
+          <label className="text-sm font-medium text-muted-foreground">{kind === 'numeric' ? t('exam.yourNumericAnswer') : t('exam.yourAnswer2')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <input
@@ -202,7 +243,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
           value={typeof value === 'string' ? value : ''}
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={kind === 'numeric' ? 'e.g. 42' : 'Type your answer...'}
+          placeholder={kind === 'numeric' ? 'e.g. 42' : t('exam.typeYourAnswer')}
+          aria-label={kind === 'numeric' ? t('exam.yourNumericAnswer2') : t('exam.yourAnswer')}
           className={inputCls}
           autoComplete="off"
         />
@@ -226,23 +268,23 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">{type === 'ranking' ? 'Rank these (top = highest):' : 'Put these in the correct order:'}</label>
+          <label className="text-sm font-medium text-muted-foreground">{type === 'ranking' ? t('exam.rankTheseTopHighest') : t('exam.putTheseInTheCorrectOrder')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
-        <div className="space-y-2">
+        <ol className="space-y-2" aria-label={type === 'ranking' ? t('exam.rankTheseTopHighest') : t('exam.putTheseInTheCorrectOrder')}>
           {order.map((item, i) => (
-            <div key={`${item}-${i}`} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-              <span className="text-xs font-mono text-muted-foreground w-6">{i + 1}.</span>
+            <li key={`${item}-${i}`} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
+              <span className="text-xs font-medium tabular-nums text-muted-foreground w-6" aria-hidden>{i + 1}.</span>
               <span className="flex-1 text-sm font-medium">{item}</span>
-              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1 rounded border disabled:opacity-30 hover:bg-muted" aria-label="Move up">
+              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveItemUp', { item, position: i + 1 })}>
                 <ChevronUp className="h-4 w-4" />
               </button>
-              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1 rounded border disabled:opacity-30 hover:bg-muted" aria-label="Move down">
+              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveItemDown', { item, position: i + 1 })}>
                 <ChevronDown className="h-4 w-4" />
               </button>
-            </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     )
   }
@@ -255,7 +297,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Match each item to its correct pair:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.matchEachItemToItsCorrecta0d')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="space-y-2">
@@ -267,9 +309,10 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                 value={map[p.left] || ''}
                 disabled={readOnly}
                 onChange={(e) => onChange(JSON.stringify({ ...map, [p.left]: e.target.value }))}
-                className="w-48 px-3 py-2 rounded-lg border border-border bg-card text-sm"
+                aria-label={t('exam.matchForLeft', { left: p.left })}
+                className="w-36 sm:w-48 px-3 py-2 rounded-lg border border-border bg-card text-sm"
               >
-                <option value="">— select —</option>
+                <option value="">{t('exam.select')}</option>
                 {rights.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
@@ -289,7 +332,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Select one option per row:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.selectOneOptionPerRow')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="rounded-lg border overflow-hidden">
@@ -307,6 +350,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                     name={`matrix-${question.id}-${ri}`}
                     disabled={readOnly}
                     checked={arr[ri] === c}
+                    aria-label={`${row}: ${c}`}
                     onChange={() => {
                       const next = [...arr]
                       next[ri] = c
@@ -330,7 +374,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Fill in each row:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.fillInEachRow')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="space-y-2">
@@ -346,8 +390,9 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                   next[ri] = e.target.value
                   onChange(next.map((s) => (s || '').trim()).join(', '))
                 }}
-                placeholder="Answer..."
-                className="w-56 px-3 py-2 rounded-lg border border-border bg-card text-sm"
+                placeholder={t('exam.answer2')}
+                aria-label={t('exam.answerForRow', { row })}
+                className="w-36 sm:w-56 px-3 py-2 rounded-lg border border-border bg-card text-sm"
               />
             </div>
           ))}
@@ -366,7 +411,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">{type === 'rating' ? 'Rate:' : 'Select a level:'}</label>
+          <label className="text-sm font-medium text-muted-foreground">{type === 'rating' ? t('exam.rate') : t('exam.selectALevel')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="flex flex-wrap gap-2 items-center">
@@ -411,7 +456,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         <pre className="w-full min-h-32 p-4 text-sm bg-card text-foreground rounded-lg border border-border overflow-auto font-mono">{code || '— no answer —'}</pre>
       )
     }
-    return (
+    const editor = (
       <CodingQuestionEditor
         question={{ ...question, starter_code: question.starter_code } as never}
         answer={code}
@@ -421,20 +466,31 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         onLanguageChange={(nextLang) => writeAnswer(nextLang, code)}
       />
     )
+    // Reverse coding: optional black box that runs the hidden reference on the candidate's input.
+    if (type === 'reverse_coding' && (question.black_box_runs || 0) > 0) {
+      return (
+        <div className="space-y-4">
+          {editor}
+          <BlackBoxRunner questionId={question.id} runs={question.black_box_runs || 0} examContext={examContext} />
+        </div>
+      )
+    }
+    return editor
   }
 
   // ── Descriptive / written (fallback) ──
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
+        <label className="text-sm font-medium text-muted-foreground">{t('exam.yourAnswer')}</label>
         <SavedBadge show={showSavedBadge} />
       </div>
       <textarea
         value={typeof value === 'string' ? value : ''}
         disabled={readOnly}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Write your response here..."
+        placeholder={t('exam.writeYourResponseHere')}
+        aria-label={t('exam.yourAnswer')}
         className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
         spellCheck={false}
       />

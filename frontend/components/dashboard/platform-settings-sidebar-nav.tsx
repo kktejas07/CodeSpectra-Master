@@ -18,6 +18,10 @@ import {
   Database,
   MessageCircle,
   Video,
+  Briefcase,
+  BarChart3,
+  Search,
+  HardDrive,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -26,28 +30,34 @@ import {
   platformSettingsHref,
   type PlatformSettingsSection,
 } from '@/lib/platform-settings-nav'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-const ITEMS: {
+const ITEMS = (t: Translator): {
   id: PlatformSettingsSection
   label: string
   icon: typeof Building2
-}[] = [
-  { id: 'branding', label: 'Branding & support', icon: Building2 },
-  { id: 'media', label: 'Media Player', icon: Video },
+}[] => ([
+  { id: 'branding', label: t('dash.brandingSupport'), icon: Building2 },
+  { id: 'media', label: t('dash.mediaPlayer'), icon: Video },
   { id: 'cloudflare', label: 'Cloudflare', icon: Globe2 },
-  { id: 'mail', label: 'Mail & email APIs', icon: Mail },
-  { id: 'ops', label: 'Operations', icon: Sliders },
-  { id: 'product', label: 'Product & access', icon: Users },
-  { id: 'certificates', label: 'Certificates', icon: ScrollText },
-  { id: 'integrations', label: 'Integrations', icon: KeyRound },
-  { id: 'payments', label: 'Payments & billing', icon: CreditCard },
-  { id: 'email-templates', label: 'Email templates', icon: FileText },
-  { id: 'llm', label: 'AI & LLM Keys', icon: Sparkles },
-  { id: 'gamification', label: 'Gamification & XP', icon: Trophy },
-  { id: 'kyc', label: 'KYC Providers', icon: Shield },
-  { id: 'redis', label: 'Redis / Rate Limiting', icon: Database },
-  { id: 'whatsapp', label: 'WhatsApp (OpenWA)', icon: MessageCircle },
-]
+  { id: 'mail', label: t('dash.mailEmailApis'), icon: Mail },
+  { id: 'ops', label: t('dash.operations'), icon: Sliders },
+  { id: 'product', label: t('dash.productAccess'), icon: Users },
+  { id: 'certificates', label: t('dash.certificates'), icon: ScrollText },
+  { id: 'integrations', label: t('dash.integrations'), icon: KeyRound },
+  { id: 'hiring', label: t('dash.hiringIntegrations'), icon: Briefcase },
+  { id: 'payments', label: t('dash.paymentsBilling'), icon: CreditCard },
+  { id: 'email-templates', label: t('dash.emailTemplates'), icon: FileText },
+  { id: 'llm', label: t('dash.aiLlmKeys'), icon: Sparkles },
+  { id: 'gamification', label: t('dash.gamificationXp'), icon: Trophy },
+  { id: 'kyc', label: t('dash.kycProviders'), icon: Shield },
+  { id: 'redis', label: t('dash.redisRateLimiting'), icon: Database },
+  { id: 'storage', label: t('dash.uploadStorage'), icon: HardDrive },
+  { id: 'whatsapp', label: t('dash.whatsappOpenwa'), icon: MessageCircle },
+  { id: 'seo', label: t('dash.seoAiSearch'), icon: Search },
+  { id: 'analytics', label: t('dash.analyticsTracking'), icon: BarChart3 },
+])
 
 export function PlatformSettingsSidebarNav({
   collapsed,
@@ -58,6 +68,7 @@ export function PlatformSettingsSidebarNav({
   homeHref: string
   onNavigate: () => void
 }) {
+  const { t } = useT()
   const searchParams = useSearchParams()
   const current = parsePlatformSettingsSection(searchParams.get('section'))
 
@@ -78,20 +89,18 @@ export function PlatformSettingsSidebarNav({
           )}
         >
           <ArrowLeft className="h-4 w-4 shrink-0" />
-          <span className={cn('font-medium', collapsed && 'lg:sr-only')}>Back to dashboard</span>
+          <span className={cn('font-medium', collapsed && 'lg:sr-only')}>{t('dash.backToDashboard')}</span>
         </Link>
         <p
           className={cn(
-            'mt-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80',
+            'mt-1 px-2 text-xs font-semibold text-muted-foreground',
             collapsed && 'lg:sr-only'
           )}
-        >
-          Platform settings
-        </p>
+        >{t('dash.platformSettings')}</p>
       </div>
 
       <div className="space-y-0.5 px-2 py-2">
-        {ITEMS.map((item) => {
+        {ITEMS(t).map((item) => {
           const href = platformSettingsHref(item.id)
           const active = current === item.id
           const Icon = item.icon
@@ -105,7 +114,7 @@ export function PlatformSettingsSidebarNav({
             >
               <div
                 className={cn(
-                  'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+                  'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-200',
                   collapsed && 'lg:justify-center lg:px-2',
                   active
                     ? 'bg-primary/10 font-medium text-primary'

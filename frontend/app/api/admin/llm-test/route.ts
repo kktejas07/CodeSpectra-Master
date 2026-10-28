@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { requireSuperAdmin } from '@/lib/route-auth'
-import { getMongoDb } from '@/lib/mongodb'
 
 const TEST_URLS: Record<string, string> = {
   gemini: 'https://generativelanguage.googleapis.com/v1beta/models',
@@ -30,10 +30,11 @@ export async function POST(request: Request) {
     const { provider } = await request.json()
     if (!provider) return NextResponse.json({ error: 'provider required' }, { status: 400 })
 
-    const db = await getMongoDb()
-    const secretsDoc = await db.collection('platform_settings').findOne({ key: 'secrets' })
+    // Decrypted view (secrets are encrypted at rest — lib/secrets-crypto.ts).
+    const secrets = (await readServerSecrets()) as Record<string, unknown>
     const keyField = KEY_FIELDS[provider]
-    const key = (secretsDoc?.value as any)?.[keyField]
+    const rawKey = keyField ? secrets[keyField] : undefined
+    const key = typeof rawKey === 'string' ? rawKey.split(',')[0].trim() : ''
     if (!key) return NextResponse.json({ ok: false, error: 'No key configured' })
 
     const url = TEST_URLS[provider]
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) })
       return NextResponse.json({ ok: res.ok, error: res.ok ? undefined : `HTTP ${res.status}` })
     }
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/llm-test:', e)
+    return NextResponse.json({ ok: false, error: 'LLM test failed. See server logs for details.' })
   }
 }

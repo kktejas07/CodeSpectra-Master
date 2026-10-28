@@ -15,6 +15,7 @@ export async function POST() {
       message: `Connected to ${result.provider} bucket "${result.bucket}" at ${result.endpoint}. Lesson audio will upload here after generation.`,
     })
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 })
+    console.error('[CodeSpectra] admin/r2/test:', e)
+    return NextResponse.json({ error: 'Storage connection test failed. Check the credentials and bucket, then see server logs for details.' }, { status: 400 })
   }
 }

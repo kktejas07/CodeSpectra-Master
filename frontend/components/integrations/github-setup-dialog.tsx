@@ -45,38 +45,39 @@ export function GitHubIntegrationSetup({
             Connect GitHub
           </DialogTitle>
           <DialogDescription>
-            Authenticate with GitHub to enable repository scanning and automatic analysis
+            Add a GitHub token so CodeSpectra can scan repositories and comment on pull requests.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <Card className="p-4 bg-blue-500/10 border-blue-500/30">
-            <h4 className="font-semibold text-foreground mb-2">How to get your Personal Access Token:</h4>
+          <Card className="rounded-2xl border-primary/25 bg-primary/5 p-4 shadow-none">
+            <h4 className="mb-2 font-semibold text-foreground">How to get a personal access token</h4>
             <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
               <li>Go to GitHub Settings → Developer Settings → Personal Access Tokens</li>
               <li>Click "Generate new token"</li>
-              <li>Select these scopes: repo, workflow, read:org</li>
+              <li>Select these scopes: <code className="font-mono text-foreground">repo</code>, <code className="font-mono text-foreground">workflow</code>, <code className="font-mono text-foreground">read:org</code></li>
               <li>Copy the generated token</li>
               <li>Paste it below</li>
             </ol>
             <Button variant="outline" className="mt-3 gap-2" asChild>
               <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4" />
-                Open GitHub Token Settings
+                <ExternalLink className="w-4 h-4" aria-hidden />
+                Open GitHub token settings
               </a>
             </Button>
           </Card>
 
           <div>
-            <label className="text-sm font-medium text-foreground block mb-2">Personal Access Token</label>
+            <label htmlFor="github-pat" className="mb-2 block text-sm font-medium text-foreground">Personal access token</label>
             <PasswordInput
+              id="github-pat"
               placeholder="ghp_..."
               value={token}
               onChange={(e) => setToken(e.target.value)}
               className="font-mono"
             />
             <p className="text-xs text-muted-foreground mt-2">
-              Your token is only used to authenticate with GitHub and will be securely stored
+              The token is only used to talk to GitHub and is stored on the server, not in your browser.
             </p>
           </div>
         </div>

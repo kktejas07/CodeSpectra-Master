@@ -13,6 +13,7 @@
 import { certificationAttempts, newAttemptId, newAttemptToken } from '@/lib/db/certifications'
 import { awardXp, getUserXp, type XpReason } from '@/lib/db/leaderboard'
 import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 import { getMongoDb } from '@/lib/mongodb'
 import { notify } from '@/lib/notifications'
 import type { Document, Filter } from 'mongodb'
@@ -37,10 +38,12 @@ export interface AwardXpResult {
 
 export async function awardXpWithLevelUp(args: AwardXpArgs): Promise<AwardXpResult> {
   const { userId, amount, reason } = args
-  if (amount <= 0) return { xpEventId: null, xp: await getUserXp(userId), level: xpToLevel(await getUserXp(userId)), leveledUp: false }
+  // CORE-003: levels follow the thresholds set in Admin → Settings → Gamification.
+  const { levels } = await getGamificationConfig()
+  if (amount <= 0) { const cur = await getUserXp(userId); return { xpEventId: null, xp: cur, level: xpToLevel(cur, levels), leveledUp: false } }
 
   const before = await getUserXp(userId)
-  const beforeLevel = xpToLevel(before)
+  const beforeLevel = xpToLevel(before, levels)
 
   const xpEventId = await awardXp({
     userId,
@@ -57,7 +60,7 @@ export async function awardXpWithLevelUp(args: AwardXpArgs): Promise<AwardXpResu
   }
 
   const xp = before + amount
-  const level = xpToLevel(xp)
+  const level = xpToLevel(xp, levels)
   const leveledUp = level > beforeLevel
 
   if (!args.quiet) {
@@ -66,6 +69,8 @@ export async function awardXpWithLevelUp(args: AwardXpArgs): Promise<AwardXpResu
       type: 'xp.awarded',
       title: `You gained ${amount} XP!`,
       message: `Keep up the great work — ${amount} XP added to your profile.`,
+      title_i18n: { key: 'xp.gained.title', params: { amount } },
+      message_i18n: { key: 'xp.gained.message', params: { amount } },
       link: '/dashboard/leaderboard',
       icon: 'star',
       metadata: { xp: String(amount), level: String(level), reason },
@@ -93,7 +98,7 @@ export async function issueLevelUpCertificate(
     const db = await getMongoDb()
     const user = await db.collection('user').findOne(
       { $or: [{ id: userId }, { _id: userId }] } as Filter<Document>,
-      { projection: { name: 1, fullName: 1, email: 1 } },
+      { projection: { name: 1, fullName: 1, email: 1, ui_locale: 1 } },
     )
     const name = String(user?.fullName || user?.name || 'CodeSpectra User')
     const email = String(user?.email || '')
@@ -126,6 +131,8 @@ export async function issueLevelUpCertificate(
       type: 'xp.level_up',
       title: `Congratulations! You reached Level ${newLevel}`,
       message: `You leveled up! View and download your Level ${newLevel} certificate.`,
+      title_i18n: { key: 'xp.levelUp.title', params: { level: newLevel } },
+      message_i18n: { key: 'xp.levelUp.message', params: { level: newLevel } },
       link,
       icon: 'trophy',
       metadata: { xp: String(totalXp), newLevel: String(newLevel), verify_token: verifyToken },
@@ -136,18 +143,32 @@ export async function issueLevelUpCertificate(
       type: 'certificate.issued',
       title: `Level ${newLevel} Certificate Issued`,
       message: 'Your level-up certificate is ready to view and download.',
+      title_i18n: { key: 'xp.levelCert.title', params: { level: newLevel } },
+      message_i18n: { key: 'xp.levelCert.message' },
       link,
       icon: 'award',
       metadata: { verify_token: verifyToken },
     })
 
-    // Branded level-up email.
+    // Branded level-up email: an engagement message (AUTO-094) — honours the email switch and engagement
+    // unsubscribes, carries the unsubscribe link + one-click headers, waits out quiet hours, and goes
+    // through the shared per-person limit (once per level).
     if (email) {
       try {
-        const { sendEmail } = await import('@/lib/send-email')
-        const { emailTemplates } = await import('@/lib/email-templates')
-        const tpl = emailTemplates.levelUp({ name, newLevel, totalXp, certUrl: link })
-        await sendEmail(email, tpl)
+        const pref = await db.collection('notification_preferences').findOne({ user_id: userId, type: 'email' }, { projection: { enabled: 1 } })
+        const { isUnsubscribed } = await import('@/lib/automation/mailer')
+        if (pref?.enabled !== false && !(await isUnsubscribed(email, 'engagement'))) {
+          const { emailTemplatesFor } = await import('@/lib/email-templates')
+          const { recipientLocaleFrom } = await import('@/lib/i18n/recipient')
+          const { withBudget } = await import('@/lib/messaging/budget')
+          const { deliverOrDefer } = await import('@/lib/notifications-delivery')
+          const locale = recipientLocaleFrom(user as { ui_locale?: unknown } | null)
+          const tpl = emailTemplatesFor(locale).levelUp({ name, newLevel, totalXp, certUrl: link })
+          await withBudget({ userId, email }, { class: 'engagement', topic: 'level-up', object: String(newLevel), source: 'xp-level-up' }, async () => {
+            await deliverOrDefer(userId, { email: { to: email, subject: tpl.subject, html: tpl.html, category: 'engagement', locale } })
+            return true
+          })
+        }
       } catch { /* email is optional */ }
     }
 

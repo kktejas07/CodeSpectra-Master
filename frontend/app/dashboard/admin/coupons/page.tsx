@@ -12,6 +12,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Loader2, Plus, Tag, Trash2, Pencil, Power, PowerOff, Users } from 'lucide-react'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { CheckCircle2, Ticket } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
@@ -24,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Coupon {
   id: string
@@ -36,9 +39,18 @@ interface Coupon {
   valid_until?: string
   active: boolean
   created_at: string
+  currency?: 'INR' | 'USD'
+  currency_migrated_at?: string | null
+  applies_to?: 'all' | 'plans' | 'marketplace'
+  marketplace_funding?: 'platform_items_only' | 'platform_funded'
+  seller_id?: string | null
+  per_user_limit?: number
+  plan_ids?: string[]
+  first_purchase_only?: boolean
 }
 
 export default function CouponsAdminPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
 
@@ -56,13 +68,23 @@ export default function CouponsAdminPage() {
   const [value, setValue] = useState('')
   const [trialDays, setTrialDays] = useState('')
   const [maxUses, setMaxUses] = useState('')
+  const [perUser, setPerUser] = useState('1')
+  const [planIds, setPlanIds] = useState('')
+  const [firstOnly, setFirstOnly] = useState(false)
   const [validUntil, setValidUntil] = useState('')
   const [currency, setCurrency] = useState('USD')
   const CURRENCY_MAP: Record<string, string> = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
+  // Per-coupon fields (CORE-018 / CORE-021).
+  const [couponCurrency, setCouponCurrency] = useState<'INR' | 'USD'>('INR')
+  const [appliesTo, setAppliesTo] = useState<'all' | 'plans' | 'marketplace'>('all')
+  const [funding, setFunding] = useState<'platform_items_only' | 'platform_funded'>('platform_items_only')
+  const [notices, setNotices] = useState<string[]>([])
 
   const openCreate = () => {
     setEditCoupon(null)
     setCode(''); setType('percentage'); setValue(''); setTrialDays(''); setMaxUses(''); setValidUntil('')
+    setPerUser('1'); setPlanIds(''); setFirstOnly(false)
+    setCouponCurrency(currency === 'USD' ? 'USD' : 'INR'); setAppliesTo('all'); setFunding('platform_items_only')
     setCreateOpen(true)
   }
 
@@ -72,9 +94,15 @@ export default function CouponsAdminPage() {
     setValue(c.discount_value ? String(c.discount_value) : '')
     setTrialDays(c.trial_duration_days ? String(c.trial_duration_days) : '')
     setMaxUses(c.max_uses ? String(c.max_uses) : '')
+    setPerUser(String(c.per_user_limit || 1)); setPlanIds((c.plan_ids || []).join(', ')); setFirstOnly(c.first_purchase_only === true)
     setValidUntil(c.valid_until ? c.valid_until.slice(0, 16) : '')
+    setCouponCurrency(c.currency === 'USD' ? 'USD' : 'INR')
+    setAppliesTo(c.applies_to ?? 'all')
+    setFunding(c.marketplace_funding ?? 'platform_items_only')
     setCreateOpen(true)
   }
+
+  const [loadError, setLoadError] = useState(false)
 
   const fetchCoupons = async () => {
     try { setLoading(true)
@@ -82,7 +110,9 @@ export default function CouponsAdminPage() {
       if (!res.ok) throw new Error('Failed to fetch coupons')
       const data = await res.json()
       setCoupons(data.coupons || [])
-    } catch (err: any) { addToast({ type: 'error', title: 'Error', message: err.message }) }
+      setNotices(Array.isArray(data.notices) ? data.notices : [])
+      setLoadError(false)
+    } catch (err: any) { setLoadError(true); addToast({ type: 'error', title: 'Error', message: err.message }) }
     finally { setLoading(false) }
   }
 
@@ -99,7 +129,7 @@ export default function CouponsAdminPage() {
     const missing = userIds.filter(id => !redemptionUsers[id])
     if (!missing.length) return
     let cancelled = false
-    fetch('/api/admin/users', { credentials: 'include' })
+    fetch(`/api/admin/users?ids=${encodeURIComponent(missing.slice(0, 200).join(','))}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled || !data?.users) return
@@ -117,7 +147,9 @@ export default function CouponsAdminPage() {
     try {
       const res = await fetch('/api/admin/platform-settings', { credentials: 'include' })
       const data = await res.json()
-      if (data?.platform_currency) setCurrency(data.platform_currency)
+      // settings live under `settings` (same as plans/billing); keep the old top-level read as a fallback
+      const cur = data?.settings?.platform_currency || data?.platform_currency
+      if (cur) setCurrency(cur)
     } catch { /* ignore */ }
   }
 
@@ -131,8 +163,14 @@ export default function CouponsAdminPage() {
           code: code.trim().toUpperCase(), discount_type: type,
           discount_value: type === 'trial' ? 100 : Number(value),
           max_uses: maxUses ? Number(maxUses) : 0,
+          per_user_limit: Number(perUser) || 1,
+          plan_ids: planIds.split(/[\s,]+/).map((x) => x.trim().toLowerCase()).filter(Boolean),
+          first_purchase_only: firstOnly,
           valid_until: validUntil || undefined,
           trial_duration_days: type === 'trial' ? Number(trialDays) : undefined,
+          currency: type === 'flat' ? couponCurrency : undefined,
+          applies_to: appliesTo,
+          marketplace_funding: funding,
         })
       })
       const data = await res.json()
@@ -163,21 +201,32 @@ export default function CouponsAdminPage() {
   }
 
   const columns: DataTableColumn<Coupon>[] = [
-    { key: 'code', header: 'Code', cell: (r) => <span className="font-mono font-bold">{r.code}</span> },
+    { key: 'code', header: 'Code', cell: (r) => <span className="font-mono font-semibold text-foreground">{r.code}</span> },
     { key: 'discount', header: 'Discount',
-      cell: (r) => r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `${CURRENCY_MAP[currency] || currency}${r.discount_value}` },
-    { key: 'usage', header: 'Usage', cell: (r) => <span>{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
+      cell: (r) => (
+        <span className="flex flex-wrap items-center gap-1.5">
+          {r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `${CURRENCY_MAP[r.currency || 'INR']}${r.discount_value} (${r.currency || 'INR'} orders only)`}
+          {r.currency_migrated_at && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400">{ta('couponAdm.checkCurrency')}</Badge>}
+        </span>
+      ) },
+    { key: 'scope', header: 'Where', cell: (r) => (
+      <span className="text-xs text-muted-foreground">
+        {r.seller_id ? 'One seller (seller-funded)' : r.applies_to === 'plans' ? 'Plans' : r.applies_to === 'marketplace' ? 'Marketplace' : 'Plans + marketplace'}
+        {!r.seller_id && r.applies_to !== 'plans' && <><br />{r.marketplace_funding === 'platform_funded' ? 'All sellers, platform pays' : 'CodeSpectra items + opted-in sellers'}</>}
+      </span>
+    ) },
+    { key: 'usage', header: 'Usage', cell: (r) => <span className="tabular-nums">{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
     { key: 'status', header: 'Status',
-      cell: (r) => r.active ? <Badge className="bg-green-500/10 text-green-600">Active</Badge> : <Badge variant="secondary">Inactive</Badge> },
+      cell: (r) => r.active ? <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">{ta('couponAdm.active')}</Badge> : <Badge variant="secondary">{ta('couponAdm.inactive')}</Badge> },
     { key: 'expiry', header: 'Expiry', cell: (r) => <span className="text-muted-foreground text-xs">{r.valid_until ? formatDate(r.valid_until) : 'Never'}</span> },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title="View users"><Users className="h-3 w-3" /></Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openEdit(r)}><Pencil className="h-3 w-3" /></Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleActive(r)} title={r.active ? 'Deactivate' : 'Activate'}>
-          {r.active ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title={ta('couponAdm.viewUsers')} aria-label={`Who used ${r.code}`}><Users className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openEdit(r)} title={ta('couponAdm.edit')} aria-label={`Edit ${r.code}`}><Pencil className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleActive(r)} title={r.active ? 'Deactivate' : 'Activate'} aria-label={r.active ? `Deactivate ${r.code}` : `Activate ${r.code}`}>
+          {r.active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
         </Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => setConfirmDeleteCoupon({ id: r.id, code: r.code })}><Trash2 className="h-3 w-3" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" title={ta('couponAdm.delete')} aria-label={`Delete ${r.code}`} onClick={() => setConfirmDeleteCoupon({ id: r.id, code: r.code })}><Trash2 className="h-3.5 w-3.5" /></Button>
       </div>
     )},
   ]
@@ -190,57 +239,121 @@ export default function CouponsAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2"><Tag className="h-8 w-8" /> Coupons</h1>
-          <p className="text-muted-foreground mt-1">Create and manage discount codes.</p>
+      <PageHeader
+        illustration="billing"
+        title={ta('couponAdm.coupons')}
+        description={ta('couponAdm.createAndManageDiscountCodesAnd')}
+        icon={<Tag />}
+        actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> {ta('couponAdm.newCoupon')}</Button>}
+      />
+
+      {notices.map((n) => (
+        <div key={n} role="status" className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-300">{n}</div>
+      ))}
+
+      {!loading && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label={ta('couponAdm.coupons')} value={coupons.length} icon={<Tag />} />
+          <StatCard label={ta('couponAdm.active')} value={coupons.filter((c) => c.active).length} icon={<CheckCircle2 />} />
+          <StatCard label={ta('couponAdm.timesRedeemed')} value={coupons.reduce((a, c) => a + (Number(c.current_uses) || 0), 0)} icon={<Ticket />} />
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> New Coupon</Button>
-      </div>
+      )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editCoupon ? 'Edit Coupon' : 'Create Coupon'}</DialogTitle>
+            <DialogTitle>{editCoupon ? 'Edit coupon' : 'Create coupon'}</DialogTitle>
             <DialogDescription>{editCoupon ? `Editing ${editCoupon.code}` : 'Generate a new discount code.'}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="code" className="text-right">Code</Label>
+              <Label htmlFor="code" className="text-right">{ta('couponAdm.code')}</Label>
               <Input id="code" value={code} onChange={e => setCode(e.target.value)} className="col-span-3 uppercase" placeholder="SUMMER20" disabled={!!editCoupon} />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="type" className="text-right">Type</Label>
+              <Label htmlFor="type" className="text-right">{ta('couponAdm.type')}</Label>
               <Select value={type} onValueChange={(v: any) => setType(v)}>
-                <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label={ta('couponAdm.type')} className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="percentage">Percentage (%)</SelectItem>
-                  <SelectItem value="flat">Flat Amount ({currency})</SelectItem>
-                  <SelectItem value="trial">Free Trial (Days)</SelectItem>
+                  <SelectItem value="percentage">{ta('couponAdm.percentage')}</SelectItem>
+                  <SelectItem value="flat">{ta('couponAdm.fixedAmount')}</SelectItem>
+                  <SelectItem value="trial">{ta('couponAdm.freeTrialDays')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {type !== 'trial' && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="value" className="text-right">Value</Label>
+              <Label htmlFor="value" className="text-right">{ta('couponAdm.value')}</Label>
               <Input id="value" type="number" value={value} onChange={e => setValue(e.target.value)} className="col-span-3" placeholder={type === 'percentage' ? "20" : "500"} />
+            </div>)}
+            {type === 'flat' && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="coupon-currency" className="text-right">{ta('couponAdm.currency')}</Label>
+              <Select value={couponCurrency} onValueChange={(v: 'INR' | 'USD') => setCouponCurrency(v)}>
+                <SelectTrigger id="coupon-currency" className="col-span-3"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INR">{ta('couponAdm.inrOnlyInrOrders')}</SelectItem>
+                  <SelectItem value="USD">{ta('couponAdm.usdOnlyUsdOrders')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>)}
+            {type !== 'trial' && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="applies-to" className="text-right">{ta('couponAdm.useOn')}</Label>
+              <Select value={appliesTo} onValueChange={(v: 'all' | 'plans' | 'marketplace') => setAppliesTo(v)}>
+                <SelectTrigger id="applies-to" className="col-span-3"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{ta('couponAdm.plansAndMarketplace')}</SelectItem>
+                  <SelectItem value="plans">{ta('couponAdm.plansOnly')}</SelectItem>
+                  <SelectItem value="marketplace">{ta('couponAdm.marketplaceOnly')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>)}
+            {type !== 'trial' && appliesTo !== 'plans' && (
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="funding" className="text-right pt-2">{ta('couponAdm.otherSellers')}</Label>
+              <div className="col-span-3 space-y-1">
+                <Select value={funding} onValueChange={(v: 'platform_items_only' | 'platform_funded') => setFunding(v)}>
+                  <SelectTrigger id="funding"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="platform_items_only">{ta('couponAdm.donTDiscountTheirItems')}</SelectItem>
+                    <SelectItem value="platform_funded">{ta('couponAdm.discountThemCodespectraPays')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{ta('couponAdm.sellersWhoOptedInToPlatform')}</p>
+              </div>
             </div>)}
             {type === 'trial' && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="days" className="text-right">Duration (Days)</Label>
+              <Label htmlFor="days" className="text-right">{ta('couponAdm.durationDays')}</Label>
               <Input id="days" type="number" value={trialDays} onChange={e => setTrialDays(e.target.value)} className="col-span-3" placeholder="90" />
             </div>)}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="uses" className="text-right">Max Uses</Label>
-              <Input id="uses" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="col-span-3" placeholder="Unlimited" />
+              <Label htmlFor="uses" className="text-right">{ta('couponAdm.maxUses')}</Label>
+              <Input id="uses" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="col-span-3" placeholder={ta('couponAdm.unlimited')} />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expiry" className="text-right">Expiry</Label>
+              <Label htmlFor="per-user" className="text-right">{ta('couponAdm.usesPerPerson')}</Label>
+              <Input id="per-user" type="number" min={1} max={1000} value={perUser} onChange={e => setPerUser(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="plan-ids" className="text-right">{ta('couponAdm.onlyForPlans')}</Label>
+              <Input id="plan-ids" value={planIds} onChange={e => setPlanIds(e.target.value)} className="col-span-3" placeholder={ta('couponAdm.anyPlanOrEGPro')} />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="first-only" className="text-right">{ta('couponAdm.firstPurchaseOnly')}</Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <input id="first-only" type="checkbox" checked={firstOnly} onChange={e => setFirstOnly(e.target.checked)} className="h-4 w-4 accent-primary" />
+                <span className="text-sm text-muted-foreground">{ta('couponAdm.onlyBuyersWhoHaveNeverPaid')}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="expiry" className="text-right">{ta('couponAdm.expiry')}</Label>
               <Input id="expiry" type="datetime-local" value={validUntil} onChange={e => setValidUntil(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>{ta('couponAdm.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || !code || (type !== 'trial' && !value)}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {editCoupon ? 'Update' : 'Create'}
@@ -249,25 +362,23 @@ export default function CouponsAdminPage() {
         </DialogContent>
       </Dialog>
 
-      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyMessage="No coupons yet." pageSize={20} />
+      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyState={loadError ? { illustration: 'error', title: "Couldn't load coupons", description: 'Check your connection and try again.', actionLabel: 'Try again', onAction: () => void fetchCoupons() } : { illustration: 'billing' }} emptyMessage="No coupons yet. Use New coupon to create your first code." pageSize={20} />
 
       <Dialog open={!!viewRedemptions} onOpenChange={(o) => { if (!o) setViewRedemptions(null) }}>
         <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
-            <DialogTitle>Redemptions — {viewRedemptions?.code}</DialogTitle>
-            <DialogDescription>
-              Users who have used this coupon. {viewRedemptions?.current_uses} total uses.
-            </DialogDescription>
+            <DialogTitle>{ta('couponAdm.redemptions', { code: viewRedemptions?.code })}</DialogTitle>
+            <DialogDescription>{ta('couponAdm.usersWhoHaveUsedThisCoupon', { current_uses: viewRedemptions?.current_uses })}</DialogDescription>
           </DialogHeader>
           <div className="max-h-[400px] overflow-y-auto">
             {(viewRedemptions as any)?.redemptions && (viewRedemptions as any).redemptions.length > 0 ? (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="py-2 pr-2">User</th>
-                    <th className="py-2 pr-2">Email</th>
-                    <th className="py-2 pr-2">Plan</th>
-                    <th className="py-2">Date</th>
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                    <th className="py-2 pr-2">{ta('couponAdm.user')}</th>
+                    <th className="py-2 pr-2">{ta('couponAdm.email')}</th>
+                    <th className="py-2 pr-2">{ta('couponAdm.plan')}</th>
+                    <th className="py-2">{ta('couponAdm.date')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,7 +387,7 @@ export default function CouponsAdminPage() {
                     const displayName = u?.name || r.user_name || r.user_id?.slice(0, 12) + '…'
                     const displayEmail = u?.email || r.user_email || '—'
                     return (
-                    <tr key={i} className="border-b last:border-0">
+                    <tr key={i} className="border-b border-border/60 last:border-0">
                       <td className="py-2 pr-2 font-medium">{displayName}</td>
                       <td className="py-2 pr-2 text-xs text-muted-foreground">{displayEmail}</td>
                       <td className="py-2 text-xs">{r.plan_id || '—'}</td>
@@ -287,7 +398,7 @@ export default function CouponsAdminPage() {
                 </tbody>
               </table>
             ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">No redemptions recorded yet. Redemptions from new payments will appear here.</p>
+              <p className="text-sm text-muted-foreground py-4 text-center">{ta('couponAdm.noRedemptionsRecordedYetRedemptionsFrom')}</p>
             )}
           </div>
         </DialogContent>
@@ -296,13 +407,11 @@ export default function CouponsAdminPage() {
       <AlertDialog open={!!confirmDeleteCoupon} onOpenChange={(open) => !open && setConfirmDeleteCoupon(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Coupon?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the coupon code "{confirmDeleteCoupon?.code}"? This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{ta('couponAdm.deleteCoupon')}</AlertDialogTitle>
+            <AlertDialogDescription>{ta('couponAdm.areYouSureYouWantTo', { code: confirmDeleteCoupon?.code })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{ta('couponAdm.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={async () => {
@@ -313,7 +422,7 @@ export default function CouponsAdminPage() {
                 }
               }}
             >
-              Delete
+              {ta('couponAdm.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

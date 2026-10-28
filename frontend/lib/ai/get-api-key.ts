@@ -26,7 +26,7 @@ export type ProviderId =
   | 'cloudflare_workers' | 'sambanova' | 'nscale' | 'chutes'
   | 'modelscope' | 'langchain' | 'langfuse' | 'pinecone' | 'qdrant'
   | 'tavily' | 'firecrawl' | 'serper' | 'jina' | 'exa'
-  | 'notion' | 'slack' | 'google_knowledge' | 'browserbase'
+  | 'mem0' | 'notion' | 'slack' | 'google_knowledge' | 'browserbase'
   | 'brightdata' | 'scrapingbee' | 'custom'
 
 // Map provider names to secret key field names
@@ -63,6 +63,7 @@ const PROVIDER_SECRET_MAP: Record<ProviderId, string> = {
   modelscope: 'modelscope_api_key',
   langchain: 'langchain_api_key',
   langfuse: 'langfuse_api_key',
+  mem0: 'mem0_api_key',
   pinecone: 'pinecone_api_key',
   qdrant: 'qdrant_api_key',
   tavily: 'tavily_api_key',
@@ -168,8 +169,19 @@ export async function trackAiUsage(event: {
   latency_ms?: number
   success: boolean
   error?: string
+  /** Price as an embedding (per input token) instead of a chat call. */
+  kind?: 'chat' | 'embedding'
+  tenant_id?: string | null
 }): Promise<void> {
   try {
+    // Platform cost record (ai_usage + spend counters) — the admin AI spend views read this.
+    const { recordAiUsage } = await import('@/lib/ai/usage-record')
+    recordAiUsage({
+      feature: event.feature, provider: event.provider, model: event.model,
+      inputTokens: event.input_tokens ?? 0, outputTokens: event.output_tokens ?? 0,
+      kind: event.kind, tokensEstimated: true, userId: event.user_id, tenantId: event.tenant_id,
+      latencyMs: event.latency_ms, ok: event.success,
+    })
     const { trackAiUsage: trackUsage } = await import('@/lib/db/analytics')
     const inputTokens = event.input_tokens || 0
     const outputTokens = event.output_tokens || 0

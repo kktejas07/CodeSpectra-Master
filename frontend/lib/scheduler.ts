@@ -15,7 +15,6 @@
  * workflows whose cron expression is due *at the minute* of `when`, and
  * executes each via the existing engine. Returns a per-workflow log.
  */
-import { executeWorkflow } from './workflow-engine'
 import { recordCronRun } from './cron-heartbeat'
 import { logger } from './logger'
 import {
@@ -161,47 +160,26 @@ export async function runDueWorkflows(
       })
       if (dup) continue
 
-      const started = nowIso()
-      let result
+      // Saved, resumable run (lib/automation/runs.ts): waits, retries and
+      // dead-lettering work for scheduled workflows too. The idempotency key
+      // makes a second tick in the same minute a no-op.
+      let runId = newId()
+      let status: SchedulerTickReport['triggered'][number]['status'] = 'failed'
+      let duration = 0
       try {
-        result = await executeWorkflow(wf)
+        const { startWorkflowRun } = await import('./automation/runs')
+        const { run } = await startWorkflowRun(wf, { trigger: 'schedule', actorId: 'scheduler', idempotencyKey: `cron:${wf.id}:${minuteKey}`, cronMinuteKey: minuteKey })
+        runId = run.id
+        status = run.status === 'success' || run.status === 'partial' || run.status === 'failed' ? run.status : 'success'
+        duration = run.duration_ms || 0
       } catch (e) {
-        result = {
-          status: 'failed' as const,
-          steps: [
-            {
-              node_id: 'scheduler',
-              label: 'scheduler',
-              ok: false,
-              error: e instanceof Error ? e.message : String(e),
-              duration_ms: 0,
-            },
-          ],
-          duration_ms: 0,
-        }
+        await runsCol.insertOne({
+          id: runId, workflow_id: wf.id, user_id: 'scheduler', status: 'failed', started_at: nowIso(), finished_at: nowIso(),
+          steps: [{ node_id: 'scheduler', label: 'scheduler', ok: false, error: e instanceof Error ? e.message : String(e), duration_ms: 0 }],
+          duration_ms: 0, cron_minute_key: minuteKey,
+        } as never)
       }
-      const finished = nowIso()
-      const runId = newId()
-      await runsCol.insertOne({
-        id: runId,
-        workflow_id: wf.id,
-        user_id: 'scheduler',
-        status: result.status,
-        started_at: started,
-        finished_at: finished,
-        steps: result.steps,
-        duration_ms: result.duration_ms,
-        // Extra field used for idempotency — not in the WorkflowRunDoc type
-        // but Mongo is happy storing extras.
-        cron_minute_key: minuteKey,
-      } as never)
-      triggered.push({
-        workflowId: wf.id,
-        name: wf.name,
-        runId,
-        status: result.status,
-        duration_ms: result.duration_ms,
-      })
+      triggered.push({ workflowId: wf.id, name: wf.name, runId, status, duration_ms: duration })
     }
 
     return {
@@ -232,14 +210,29 @@ export function startSchedulerLoop(): void {
   if (process.env.NEXT_PUBLIC_DISABLE_SCHEDULER === '1') return
   _bootstrapped = true
 
+  // AUTO-040: a tick never overlaps the previous one (slow Postal / AI no longer piles ticks up).
+  let running = false
   const tick = async () => {
+    if (running) {
+      console.warn('[scheduler] previous tick still running — this minute is skipped')
+      return
+    }
+    running = true
     const started = Date.now()
     try {
-      await runDueWorkflows()
-      await recordCronRun('scheduler-loop', true, Date.now() - started)
-    } catch (e) {
-      await recordCronRun('scheduler-loop', false, Date.now() - started, e instanceof Error ? e.message : String(e))
-      console.error('[scheduler] tick error:', e)
+      try {
+        await runDueWorkflows()
+        await recordCronRun('scheduler-loop', true, Date.now() - started)
+      } catch (e) {
+        await recordCronRun('scheduler-loop', false, Date.now() - started, e instanceof Error ? e.message : String(e))
+        console.error('[scheduler] tick error:', e)
+      }
+      // Automations, platform jobs and hiring sweeps first; heavy content jobs (events-feed pull,
+      // Learn AI drafts and digests) run in their own background lane.
+      // (The knowledge index tick runs inside it too — AUTO-084 — so /api/cron/tick gets it.)
+      await runAtsMinuteSweeps(new Date(), { heavyInBackground: true })
+    } finally {
+      running = false
     }
   }
 
@@ -260,17 +253,15 @@ export function stopSchedulerLoop(): void {
 }
 
 // ── Trial expiry check (runs daily) ─────────────────────────────────────────
-let _trialTimer: ReturnType<typeof setInterval> | null = null
-
+// Trial + grace expiry now run in the shared runner's daily block
+// (lib/platform-cron.ts via runAtsMinuteSweeps), so serverless hosts get them
+// from /api/cron/tick too (A-020). Kept as a no-op for existing callers.
 export function startTrialExpiryLoop(): void {
-  if (_trialTimer || process.env.NEXT_PUBLIC_DISABLE_SCHEDULER === '1') return
-  setTimeout(() => {
-    checkTrials()
-    _trialTimer = setInterval(checkTrials, 24 * 60 * 60_000)
-  }, 60_000)
+  return
 }
 
-async function checkTrials(): Promise<void> {
+/** @deprecated kept for manual runs; the shared runner calls the same functions. */
+export async function checkTrials(): Promise<void> {
   const started = Date.now()
   try {
     const { expireTrials } = await import('./coupon-service')
@@ -280,4 +271,163 @@ async function checkTrials(): Promise<void> {
   } catch {
     await recordCronRun('trial-expiry', false, Date.now() - started)
   }
+  // Same daily pass: end paid plans whose payment-failure grace period has run out.
+  const graceStarted = Date.now()
+  try {
+    const { endLapsedGracePeriods } = await import('./billing-plans')
+    const ended = await endLapsedGracePeriods()
+    if (ended > 0) logger.info(`[billing] Ended ${ended} subscription(s) after the grace period`)
+    await recordCronRun('grace-expiry', true, Date.now() - graceStarted)
+  } catch {
+    await recordCronRun('grace-expiry', false, Date.now() - graceStarted)
+  }
+}
+
+// ── Hiring (lib/ats) sweeps ─────────────────────────────────────────────────
+
+export interface AtsSweepReport {
+  ran: string[]
+  skipped: string[]
+  failed: string[]
+  /** Started in the background lane (in-process loop only). */
+  background?: string[]
+  /** Platform jobs (lib/platform-cron.ts): quiet-hours flush, exam auto-close, daily billing, scheduled cron routes. */
+  platform?: import('./platform-cron').PlatformCronReport
+}
+
+/**
+ * Every per-minute background job, in one place. Called by the in-process loop
+ * (startSchedulerLoop) AND by /api/cron/tick, so serverless hosts get the same
+ * work. Never throws.
+ *
+ * Each job claims its window (minute / 5 minutes / day) in the database
+ * (lib/automation/job-lease.ts) — one replica runs it even without Redis or
+ * while Redis fails open (AUTO-041) — records a heartbeat (AUTO-042), and
+ * never overlaps itself in a process. A failed daily window is retried.
+ *
+ * Order (AUTO-040): automations (event outbox, email retries, reminders) and
+ * platform-minute jobs (quiet-hours flush, exam auto-close) first, then the
+ * hiring / marketplace sweeps, then the heavy content lane (events-feed pull
+ * with AI summaries, Learn drafts and digests). The in-process loop runs the
+ * heavy lane in the background so it can't hold up the next minute.
+ */
+export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyInBackground?: boolean } = {}): Promise<AtsSweepReport> {
+  const report: AtsSweepReport = { ran: [], skipped: [], failed: [] }
+  const iso = now.toISOString()
+  const { runLeasedJob, minuteWindow, dayWindow } = await import('./automation/job-lease')
+  const minute = minuteWindow(now)
+  const fiveMin = `${iso.slice(0, 15)}${Math.floor((now.getUTCMinutes() % 10) / 5)}`
+  const job = async (name: string, window: string, fn: () => Promise<unknown>, lease: { maxAttempts?: number; leaseMs?: number; retryAfterMs?: number } = {}) => {
+    // Redis (when configured) keeps replicas off the database claim for per-minute jobs;
+    // the DB lease is what guarantees a single run.
+    if (window === minute && !(await acquireRedisLock(`codespectra:lock:${name}:${minute}`, 55).catch(() => true))) {
+      report.skipped.push(name)
+      return
+    }
+    const r = await runLeasedJob(name, window, fn, { now, ...lease })
+    if (!r.ran) report.skipped.push(name)
+    else (r.ok ? report.ran : report.failed).push(name)
+  }
+
+  // ── Critical lane ─────────────────────────────────────────────────────────
+  // Automations (lib/automation): event outbox dispatch, email retries, waiting workflow runs,
+  // persisted jobs/timers and the built-in system automations (Admin → Automations).
+  await job('automations', minute, async () => (await import('./automation/system/registry')).runAutomationTick(now), { leaseMs: 5 * 60_000 })
+  // Platform jobs (quiet-hours flush, exam auto-close, trial/grace expiry,
+  // digests + other scheduled cron routes) — lib/platform-cron.ts. Own claims.
+  try {
+    report.platform = await (await import('./platform-cron')).runPlatformCron(now, { longInBackground: opts.heavyInBackground })
+  } catch (e) {
+    report.failed.push('platform')
+    console.error('[scheduler] platform cron error:', e)
+  }
+
+  // ── Hiring + marketplace ──────────────────────────────────────────────────
+  // Interviews (24h / 1h reminders + scorecard deadlines) and HR compensation forms.
+  await job('ats-interviews', minute, async () => (await import('./ats/interviews/service')).runInterviewSweep(now))
+  await job('ats-hr-forms', minute, async () => (await import('./ats/hr/service')).sweepHrForms(now))
+  // Background verification: reminders, deadlines, simulated vendor, adverse-action notices, retention purge.
+  await job('ats-bgv', fiveMin, async () => (await import('./ats/bgv/service')).runBgvSweep(now))
+  // Bot screening: quiet-hour starts, reminders, timeouts, retries.
+  await job('ats-screening', minute, async () => (await import('./ats/screening/machine')).tickScreening(now, 200))
+  // Marketplace (buyer part): release unpaid checkouts after 30 min and send booking reminders.
+  await job('mkt-buyer', minute, async () => (await import('./marketplace/settle')).runBuyerSweep(now))
+  // Bulk assessment invites (lib/services/bulk-invites.ts): send queued invite e-mails
+  // left over from a request (rows are claimed atomically).
+  await job('assessment-invites', minute, async () => {
+    const { getMongoDb } = await import('./mongodb')
+    await (await import('./services/bulk-invites')).sendQueuedInvites(await getMongoDb(), { limit: 200, budgetMs: 40_000, now })
+  })
+  // Stage SLAs + assessment deadlines. Once per UTC day (retried if it fails).
+  await job('ats-sla', dayWindow(now), async () => {
+    const { sweepSla } = await import('./ats/engine')
+    const { sweepAssessmentDeadlines } = await import('./ats/handlers/assessment')
+    const late = await sweepAssessmentDeadlines(now)
+    const sla = await sweepSla(now)
+    if (late || sla.rejected) logger.info(`[ats] ${late} assessment deadline(s) missed, ${sla.rejected} SLA rejection(s)`)
+  }, { maxAttempts: 4, retryAfterMs: 10 * 60_000, leaseMs: 30 * 60_000 })
+  // Mock-interview recordings past their retention (lib/interview-sim/store.ts). Once per UTC day.
+  await job('interview-sim-retention', dayWindow(now), async () => (await import('./interview-sim/store')).sweepExpiredRecordings(now), { maxAttempts: 3, retryAfterMs: 30 * 60_000, leaseMs: 10 * 60_000 })
+
+  // ── Heavy content lane ────────────────────────────────────────────────────
+  const heavy = async () => {
+    // Wave 15 assistants (lib/assistants/tick.ts): revenue scan, org onboarding, weekly placement report,
+    // mentor follow-ups. Checked every tick; each loop claims its own window + heartbeat (assistant-*).
+    // First in the lane so a slow content job can't push them past a timeout (CORE-045 / AUTO-106).
+    await (await import('./assistants/tick')).runAssistantsTick(now).catch((e) => console.error('[scheduler] assistants error:', e))
+    // Slow built-in automation sweeps (content freshness: link checks + AI notes) — AUTO-099. Each claims its own window.
+    await job('automations-heavy', minute, async () => (await import('./automation/system/registry')).runHeavyAutomationSweeps(now), { leaseMs: 30 * 60_000 })
+    // Learn hub (lib/learn/generate.ts): publish due posts; drafts until today's quota; weekly digest.
+    await job('learn', minute, async () => (await import('./learn/generate')).runLearnTick(now), { leaseMs: 10 * 60_000 })
+    // Events feed (lib/events-feed/tick.ts): source pulls, WhatsApp alerts + reminders, weekly digest.
+    await job('events-feed', minute, async () => (await import('./events-feed/tick')).tickEventsFeed(now), { leaseMs: 10 * 60_000 })
+    // Tech news (lib/signals/digest.ts): daily digest to opted-in 'news' subscribers at the configured local hour.
+    const nd = await import('./signals/digest')
+    const newsDay = await nd.newsDigestDue(now).catch(() => null)
+    if (newsDay) await job('news-digest', newsDay, async () => nd.runNewsDigest(now, newsDay), { maxAttempts: 3, retryAfterMs: 10 * 60_000, leaseMs: 20 * 60_000 })
+    // Daily digest (lib/digest/service.ts): curator + verifier agents pick the top N (default 25) events,
+    // news, Learn posts and contests, publish /digest/<date> and notify subscribers. Bootstrap: the
+    // first tick with no digest yet publishes one at once; then daily from 08:00 Asia/Kolkata. One per date.
+    const dd = await import('./digest/service')
+    const digestDay = await dd.dailyDigestDue(now).catch(() => null)
+    if (digestDay) await job('content-digest', `digest:${digestDay.date}`, async () => { const r = await dd.runDailyDigest({ trigger: digestDay.trigger, now, date: digestDay.date }); if (!r.ok) throw new Error(r.message); return r.status }, { maxAttempts: 3, retryAfterMs: 15 * 60_000, leaseMs: 30 * 60_000 })
+    // Analytics (lib/analytics/rollup.ts): mirror the automation outbox into analytics events,
+    // rebuild today's / yesterday's daily rollups, backfill missing days. Once per 15 minutes.
+    await job('analytics', `${iso.slice(0, 13)}q${Math.floor(now.getUTCMinutes() / 15)}`, async () => (await import('./analytics/rollup')).runAnalyticsTick(now), { leaseMs: 10 * 60_000 })
+    // SEO (lib/seo/indexnow.ts): submit public URLs changed since the last successful
+    // submit to IndexNow. No-op until enabled in Admin → Settings → SEO. Once per 10 minutes.
+    await job('seo-indexnow', `${iso.slice(0, 15)}x`, async () => (await import('./seo/indexnow')).runIndexNowSweep(now), { leaseMs: 5 * 60_000 })
+    // Question bank bot (lib/question-bot/run.ts): nightly gap-filling drafts within the daily +
+    // monthly AI caps. Off until enabled in Admin → Question bot; once per UTC day from its run hour.
+    const qb = await import('./question-bot/run')
+    if (await qb.questionBotDue(now).catch(() => false)) {
+      await job('question-bot', dayWindow(now), async () => qb.runQuestionBot({ trigger: 'cron', now }), { maxAttempts: 2, retryAfterMs: 30 * 60_000, leaseMs: 30 * 60_000 })
+    }
+    // Test integrity (lib/integrity/similarity-job.ts): purge expired violation snapshots, then
+    // similar-code clusters + AI-written signals for ended tests / contests. Every 5 minutes.
+    await job('integrity', fiveMin, async () => (await import('./integrity/similarity-job')).runIntegritySweep(now), { leaseMs: 15 * 60_000 })
+    // Study plans (lib/study-plan/service.ts): build next week for plans whose week ended (per-plan lock)
+    // and send each learner's reminder at their local hour (claimed per local day). Once per UTC hour.
+    await job('study-plans', `${iso.slice(0, 13)}sp`, async () => (await import('./study-plan/service')).runStudyPlanTick(now), { leaseMs: 15 * 60_000 })
+    // WhatsApp practice (lib/wa-practice/service.ts): daily question / weekly mock at each learner's
+    // local hour (claimed per learner + local day). Guardian weekly reports (lib/guardian/service.ts):
+    // claimed per link + ISO week. Once per UTC hour each.
+    await job('wa-practice', `${iso.slice(0, 13)}wp`, async () => (await import('./wa-practice/service')).runPracticeTick(now), { leaseMs: 15 * 60_000 })
+    await job('guardian-reports', `${iso.slice(0, 13)}gr`, async () => (await import('./guardian/service')).runGuardianReports(now), { leaseMs: 20 * 60_000 })
+    // AUTO-084: knowledge index (lib/rag/ingest.ts) — queue, nightly sweep, pgvector outbox/backfill,
+    // weekly copilot eval. Here (not only the in-process loop) so serverless /api/cron/tick runs it,
+    // with a DB lease (one replica even without Redis) and a heartbeat.
+    await job('knowledge', minute, async () => (await import('./rag/ingest')).runKnowledgeTick(), { leaseMs: 5 * 60_000 })
+    // Hiring agents (lib/agent/hiring-loops/tick.ts): sourcer, interview scheduler, assessment author,
+    // integrity reviewer. Each claims its own window + heartbeat; they only draft proposals unless an org enabled auto-send.
+    await (await import('./agent/hiring-loops/tick')).runHiringLoopsTick(now).catch((e) => console.error('[scheduler] hiring agents error:', e))
+  }
+  if (opts.heavyInBackground) {
+    report.background = ['automations-heavy', 'learn', 'events-feed', 'news-digest', 'content-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans', 'wa-practice', 'guardian-reports', 'knowledge']
+    void heavy().catch((e) => console.error('[scheduler] content lane error:', e))
+  } else {
+    await heavy()
+  }
+
+  return report
 }

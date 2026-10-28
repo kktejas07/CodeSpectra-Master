@@ -75,6 +75,24 @@ export async function verifyPaymentSignature(args: {
   return safeEqual(expected, args.signature)
 }
 
+/**
+ * Subscription checkout signature: `HMAC_SHA256(payment_id|subscription_id, key_secret)`
+ * (Razorpay's documented order for subscriptions — payment id first).
+ */
+export async function verifySubscriptionPaymentSignature(args: {
+  subscription_id: string
+  payment_id: string
+  signature: string
+}): Promise<boolean> {
+  const c = await loadCreds()
+  if (!c.key_secret) return false
+  const expected = crypto
+    .createHmac('sha256', c.key_secret)
+    .update(`${args.payment_id}|${args.subscription_id}`)
+    .digest('hex')
+  return safeEqual(expected, args.signature)
+}
+
 /** Async webhook signature verification — used by /api/billing/webhook. */
 export async function verifyWebhookSignature(
   rawBody: string,

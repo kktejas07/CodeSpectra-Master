@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileCode, AlertCircle, TrendingUp, BarChart3 } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface FileMetric {
   path: string
@@ -24,6 +25,7 @@ interface MetricsFileBrowserProps {
 }
 
 export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrowserProps) {
+  const { t } = useT()
   const [sortBy, setSortBy] = useState<'loc' | 'complexity' | 'bugs' | 'coverage'>('loc')
   const [filterLanguage, setFilterLanguage] = useState('all')
 
@@ -52,15 +54,15 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Code Metrics</h1>
-        <p className="text-foreground/60">File-level analysis of code quality across your codebase</p>
+        <h2 className="sr-only">{t('tools.codeMetrics')}</h2>
+        <p className="text-sm text-muted-foreground">{t('tools.fileLevelAnalysisOfCodeQualityaa5')}</p>
       </div>
 
       {/* Filters */}
-      <Card className="p-4 bg-card/30 border border-border">
+      <Card className="p-4">
         <div className="flex flex-wrap gap-4 items-center">
           <div>
-            <label className="text-sm font-medium block mb-2">Language</label>
+            <label className="text-sm font-medium block mb-2">{t('common.language')}</label>
             <select
               value={filterLanguage}
               onChange={(e) => setFilterLanguage(e.target.value)}
@@ -68,63 +70,61 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
             >
               {languages.map((lang) => (
                 <option key={lang} value={lang}>
-                  {lang === 'all' ? 'All Languages' : lang}
+                  {lang === 'all' ? t('tools.allLanguages') : lang}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="text-sm font-medium block mb-2">Sort By</label>
+            <label className="text-sm font-medium block mb-2">{t('tools.sortBy')}</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
               className="px-3 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="loc">Lines of Code</option>
-              <option value="complexity">Complexity</option>
-              <option value="bugs">Bugs</option>
-              <option value="coverage">Coverage</option>
+              <option value="loc">{t('tools.linesOfCode')}</option>
+              <option value="complexity">{t('tools.complexity')}</option>
+              <option value="bugs">{t('tools.bugs')}</option>
+              <option value="coverage">{t('tools.coverage')}</option>
             </select>
           </div>
         </div>
       </Card>
 
       {/* Files Table */}
-      <Card className="overflow-hidden border border-border">
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">File</th>
-                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">LOC</th>
-                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">Complexity</th>
-                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">Bugs</th>
-                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">Vulnerabilities</th>
-                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">Code Smells</th>
-                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">Coverage</th>
-                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">Duplication</th>
+                <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">{t('tools.file')}</th>
+                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">{t('tools.loc')}</th>
+                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">{t('tools.complexity')}</th>
+                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">{t('tools.bugs')}</th>
+                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">{t('tools.vulnerabilities')}</th>
+                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">{t('tools.codeSmells')}</th>
+                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">{t('tools.coverage')}</th>
+                <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">{t('tools.duplication')}</th>
               </tr>
             </thead>
             <tbody>
               {sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-foreground/60">
-                    No files to display
-                  </td>
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">{t('tools.noFilesToDisplay')}</td>
                 </tr>
               ) : (
                 sorted.map((file, idx) => (
-                  <tr
+                  <tr role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
                     key={idx}
                     onClick={() => onSelectFile?.(file)}
                     className="border-t border-border hover:bg-muted/50 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3 flex items-center gap-2">
-                      <FileCode className="w-4 h-4 text-foreground/60" />
+                      <FileCode className="w-4 h-4 text-muted-foreground" />
                       <div>
                         <p className="font-medium text-foreground text-sm">{(file.path || '').split('/').pop()}</p>
-                        <p className="text-xs text-foreground/50">{file.path || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">{file.path || t('tools.unknown')}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-medium">{file.loc}</td>
@@ -156,24 +156,24 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
 
       {/* Summary Stats */}
       <div className="grid md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Total Files</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.totalFiles')}</p>
           <p className="text-3xl font-bold">{filtered.length}</p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Total Issues</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.totalIssues')}</p>
           <p className="text-3xl font-bold">
             {filtered.reduce((sum, f) => sum + f.bugs + f.vulnerabilities + f.codeSmells, 0)}
           </p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Avg Coverage</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.avgCoverage')}</p>
           <p className="text-3xl font-bold">
             {filtered.length > 0 ? (filtered.reduce((sum, f) => sum + f.coverage, 0) / filtered.length).toFixed(1) : 0}%
           </p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Total LOC</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.totalLoc')}</p>
           <p className="text-3xl font-bold">{filtered.reduce((sum, f) => sum + f.loc, 0)}</p>
         </Card>
       </div>

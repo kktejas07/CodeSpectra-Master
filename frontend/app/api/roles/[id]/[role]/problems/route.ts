@@ -138,7 +138,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       total: scored.length,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Role mapping failed'
+    const msg = 'Role mapping failed'
     console.error('[CodeSpectra] role-problems:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

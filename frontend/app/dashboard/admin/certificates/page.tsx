@@ -2,11 +2,12 @@
 import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -35,14 +36,17 @@ import {
   CheckCircle2,
   Trophy,
   FileText,
+  Ban,
 } from 'lucide-react'
 import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   CertificateRenderer,
   TEMPLATES,
   type CertificateData,
   type TemplateKey,
 } from '@/components/cert/CertificateTemplates'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface IssuedCert {
   id: string
@@ -58,7 +62,13 @@ interface IssuedCert {
   issuedAt: string
   verifyToken: string
   certificationId: string
+  revokedAt?: string | null
+  revokedBy?: string | null
+  revokeReason?: string | null
 }
+
+const REVOKE_REASON_MIN = 5
+const REVOKE_REASON_MAX = 500
 
 const PREVIEW_DATA: CertificateData = {
   candidateName: 'Alex Johnson',
@@ -80,6 +90,7 @@ interface UserSearchResult {
 }
 
 export default function CertificatesPage() {
+  const { t: ta } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
 
@@ -91,6 +102,10 @@ export default function CertificatesPage() {
   const [previewData, setPreviewData] = useState<CertificateData>(PREVIEW_DATA)
   const [auditSearch, setAuditSearch] = useState('')
   const [issuing, setIssuing] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<IssuedCert | null>(null)
+  const [revokeReason, setRevokeReason] = useState('')
+  const [revoking, setRevoking] = useState(false)
+  const [revokeError, setRevokeError] = useState<string | null>(null)
 
   const [formTemplate, setFormTemplate] = useState<TemplateKey>(TEMPLATE_KEYS[0])
   const [formTitle, setFormTitle] = useState('')
@@ -188,6 +203,43 @@ export default function CertificatesPage() {
     }
   }
 
+  function openRevoke(cert: IssuedCert) {
+    setRevokeTarget(cert)
+    setRevokeReason('')
+    setRevokeError(null)
+  }
+
+  async function handleRevoke() {
+    if (!revokeTarget) return
+    const reason = revokeReason.trim()
+    if (reason.length < REVOKE_REASON_MIN) {
+      setRevokeError(`Give a reason (at least ${REVOKE_REASON_MIN} characters).`)
+      return
+    }
+    try {
+      setRevoking(true)
+      setRevokeError(null)
+      const res = await csrfFetch(`/api/admin/certifications/${encodeURIComponent(revokeTarget.id)}/revoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setRevokeError(typeof data.error === 'string' ? data.error : 'Could not revoke the certificate. Try again.')
+        if (res.status === 409) fetchIssued()
+        return
+      }
+      addToast({ title: 'Certificate revoked', type: 'success' })
+      setRevokeTarget(null)
+      fetchIssued()
+    } catch {
+      setRevokeError('Could not revoke the certificate. Try again.')
+    } finally {
+      setRevoking(false)
+    }
+  }
+
   function resetForm() {
     setFormTemplate(TEMPLATE_KEYS[0])
     setFormTitle('')
@@ -251,53 +303,33 @@ export default function CertificatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Award className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Certificates</h1>
-        </div>
-        <Button size="sm" onClick={() => setIssueDialogOpen(true)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Issue Certificate
-        </Button>
-      </div>
+      <PageHeader
+        illustration="certificate"
+        icon={<Award />}
+        title={ta('certAdm.certificates')}
+        description={ta('certAdm.issueCertificatesPreviewThemAndCheck')}
+        actions={
+          <Button size="sm" onClick={() => setIssueDialogOpen(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            {ta('certAdm.issueCertificate')}
+          </Button>
+        }
+        className="mb-0"
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">Total issued</p>
-              <p className="text-2xl font-bold">{issued.length}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">This month</p>
-              <p className="text-2xl font-bold">{thisMonthCount}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-blue-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">Templates</p>
-              <p className="text-2xl font-bold">{TEMPLATE_KEYS.length}</p>
-            </div>
-          </div>
-        </Card>
+        <StatCard label={ta('certAdm.totalIssued')} value={issued.length} icon={<CheckCircle2 />} />
+        <StatCard label={ta('certAdm.thisMonth')} value={thisMonthCount} icon={<Trophy />} />
+        <StatCard label={ta('certAdm.templates')} value={TEMPLATE_KEYS.length} icon={<FileText />} />
       </div>
 
-      <Card className="border-border/60">
+      <Panel className="overflow-hidden p-0">
         <div className="border-b border-border/60 px-4 py-3">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search audit log..."
+              placeholder={ta('certAdm.searchByNameEmailTitleOr')}
+              aria-label={ta('certAdm.searchIssuedCertificates')}
               value={auditSearch}
               onChange={(e) => setAuditSearch(e.target.value)}
               className="h-8 text-xs"
@@ -305,41 +337,48 @@ export default function CertificatesPage() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
+          <table className="w-full text-xs min-w-[760px]">
+            <thead className="bg-muted/50">
               <tr className="border-b border-border/60 text-left text-muted-foreground">
-                <th className="py-2.5 px-4 font-medium">Recipient</th>
-                <th className="py-2.5 px-4 font-medium">Certificate</th>
-                <th className="py-2.5 px-4 font-medium">Template</th>
-                <th className="py-2.5 px-4 font-medium">Score</th>
-                <th className="py-2.5 px-4 font-medium">Issued</th>
-                <th className="py-2.5 px-4 font-medium">Issued By</th>
-                <th className="py-2.5 px-4 font-medium">Actions</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.recipient')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.certificate')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.template')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.score')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.issued')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.issuedBy')}</th>
+                <th className="py-2.5 px-4 font-medium">{ta('certAdm.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </td>
                 </tr>
               ) : filteredCerts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    No certificates found
+                  <td colSpan={7} className="p-0">
+                    {auditSearch ? (
+                      <EmptyState variant="search" title={ta('certAdm.noCertificatesMatchYourSearch')} description={ta('certAdm.tryADifferentNameEmailOr')} className="border-0 bg-transparent py-6 md:py-8" />
+                    ) : (
+                      <EmptyState illustration="certificate" title={ta('certAdm.noCertificatesIssuedYet')} description={ta('certAdm.useIssueCertificateToCreateThe')} className="border-0 bg-transparent py-6 md:py-8" />
+                    )}
                   </td>
                 </tr>
               ) : (
                 filteredCerts.map((cert) => (
-                  <tr key={cert.id} className="border-b border-border/30 hover:bg-accent/50">
+                  <tr key={cert.id} className="border-b border-border/40 last:border-0 hover:bg-muted/40">
                     <td className="py-2.5 px-4">
                       <p className="font-medium">{cert.user.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{cert.user.email}</p>
+                      <p className="text-[11px] text-muted-foreground">{cert.user.email}</p>
                     </td>
                     <td className="py-2.5 px-4">
                       <p className="font-medium">{cert.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{cert.level}</p>
+                      <p className="text-[11px] text-muted-foreground">{cert.level}</p>
+                      {cert.revokedAt && (
+                        <Badge variant="destructive" className="mt-1 text-[10px]" title={cert.revokeReason || undefined}>{ta('certAdm.revoked', { formatDate: formatDate(cert.revokedAt) })}</Badge>
+                      )}
                     </td>
                     <td className="py-2.5 px-4">
                       <Badge variant="outline" className="text-[10px] capitalize">
@@ -347,15 +386,15 @@ export default function CertificatesPage() {
                       </Badge>
                     </td>
                     <td className="py-2.5 px-4">
-                      <span className="font-medium">{cert.score}</span>
+                      <span className="font-medium tabular-nums">{cert.score}</span>
                       {cert.scoreLabel && (
-                        <p className="text-[10px] text-muted-foreground">{cert.scoreLabel}</p>
+                        <p className="text-[11px] text-muted-foreground">{cert.scoreLabel}</p>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-[10px] text-muted-foreground">
+                    <td className="py-2.5 px-4 text-[11px] tabular-nums text-muted-foreground">
                       {formatDate(cert.issuedAt)}
                     </td>
-                    <td className="py-2.5 px-4 text-[10px] text-muted-foreground">
+                    <td className="py-2.5 px-4 text-[11px] text-muted-foreground">
                       {cert.issuedBy || 'System'}
                     </td>
                     <td className="py-2.5 px-4">
@@ -364,6 +403,7 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
+                          aria-label={ta('certAdm.previewCertificate')}
                           onClick={() => openPreview(cert)}
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -372,10 +412,23 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
+                          aria-label={ta('certAdm.openVerificationPage')}
                           onClick={() => window.open(`/cert/verify/${cert.verifyToken}`, '_blank')}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
+                        {!cert.revokedAt && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            aria-label={ta('certAdm.revokeCertificate')}
+                            title={ta('certAdm.revokeCertificate')}
+                            onClick={() => openRevoke(cert)}
+                          >
+                            <Ban className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -384,24 +437,24 @@ export default function CertificatesPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Panel>
 
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Issue Certificate</DialogTitle>
+            <DialogTitle>{ta('certAdm.issueCertificate')}</DialogTitle>
             <DialogDescription>
-              Search for a user and fill in the certificate details to issue a new certificate.
+              {ta('certAdm.searchForAUserAndFill')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-xs">Recipient</Label>
+              <Label className="text-xs">{ta('certAdm.recipient')}</Label>
               {formSelectedUser ? (
                 <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium">{formSelectedUser.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{formSelectedUser.email}</p>
+                    <p className="text-[11px] text-muted-foreground">{formSelectedUser.email}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -412,13 +465,13 @@ export default function CertificatesPage() {
                       setFormUserSearch('')
                     }}
                   >
-                    Change
+                    {ta('certAdm.change')}
                   </Button>
                 </div>
               ) : (
                 <div className="relative">
-                  <Input
-                    placeholder="Search by name or email..."
+                  <Input aria-label={ta('certAdm.searchByNameOrEmail')}
+                    placeholder={ta('certAdm.searchByNameOrEmail2')}
                     value={formUserSearch}
                     onChange={(e) => setFormUserSearch(e.target.value)}
                     className="h-8 text-xs"
@@ -440,7 +493,7 @@ export default function CertificatesPage() {
                         >
                           <div>
                             <p className="font-medium">{u.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{u.email}</p>
+                            <p className="text-[11px] text-muted-foreground">{u.email}</p>
                           </div>
                         </button>
                       ))}
@@ -450,9 +503,9 @@ export default function CertificatesPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Template</Label>
+              <Label className="text-xs">{ta('certAdm.template')}</Label>
               <Select value={formTemplate} onValueChange={(v) => setFormTemplate(v as TemplateKey)}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label={ta('certAdm.template')} className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -465,9 +518,9 @@ export default function CertificatesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Title</Label>
-              <Input
-                placeholder="e.g. Full-Stack Web Development"
+              <Label className="text-xs">{ta('certAdm.title')}</Label>
+              <Input aria-label={ta('certAdm.title')}
+                placeholder={ta('certAdm.eGFullStackWebDevelopment')}
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
                 className="h-8 text-xs"
@@ -475,16 +528,16 @@ export default function CertificatesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs">Level</Label>
-                <Input
+                <Label className="text-xs">{ta('certAdm.level')}</Label>
+                <Input aria-label={ta('certAdm.level')}
                   value={formLevel}
                   onChange={(e) => setFormLevel(e.target.value)}
                   className="h-8 text-xs"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">Score</Label>
-                <Input
+                <Label className="text-xs">{ta('certAdm.score')}</Label>
+                <Input aria-label={ta('certAdm.score')}
                   type="number"
                   value={formScore}
                   onChange={(e) => setFormScore(e.target.value)}
@@ -493,26 +546,26 @@ export default function CertificatesPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Source</Label>
-              <Input
+              <Label className="text-xs">{ta('certAdm.source')}</Label>
+              <Input aria-label={ta('certAdm.source')}
                 value={formSource}
                 onChange={(e) => setFormSource(e.target.value)}
                 className="h-8 text-xs"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Score Label (optional)</Label>
-              <Input
-                placeholder="e.g. +420 XP earned"
+              <Label className="text-xs">{ta('certAdm.scoreLabelOptional')}</Label>
+              <Input aria-label={ta('certAdm.scoreLabelOptional')}
+                placeholder={ta('certAdm.eG420XpEarned')}
                 value={formScoreLabel}
                 onChange={(e) => setFormScoreLabel(e.target.value)}
                 className="h-8 text-xs"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Event Title (optional)</Label>
-              <Input
-                placeholder="e.g. Spring 2026 Codeathon"
+              <Label className="text-xs">{ta('certAdm.eventTitleOptional')}</Label>
+              <Input aria-label={ta('certAdm.eventTitleOptional')}
+                placeholder={ta('certAdm.eGSpring2026Codeathon')}
                 value={formEventTitle}
                 onChange={(e) => setFormEventTitle(e.target.value)}
                 className="h-8 text-xs"
@@ -521,7 +574,7 @@ export default function CertificatesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setIssueDialogOpen(false)}>
-              Cancel
+              {ta('certAdm.cancel')}
             </Button>
             <Button
               size="sm"
@@ -529,24 +582,67 @@ export default function CertificatesPage() {
               disabled={issuing || !formSelectedUser || !formTitle.trim()}
             >
               {issuing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Issue Certificate
+              {ta('certAdm.issueCertificate')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open && !revoking) setRevokeTarget(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{ta('certAdm.revokeCertificate')}</DialogTitle>
+            <DialogDescription>
+              {revokeTarget
+                ? `"${revokeTarget.title}" issued to ${revokeTarget.user.name} will show as revoked on its public verification page. This can't be undone.`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="revoke-reason" className="text-xs">{ta('certAdm.reason')}</Label>
+            <Textarea
+              id="revoke-reason"
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value.slice(0, REVOKE_REASON_MAX))}
+              placeholder={ta('certAdm.eGIssuedToTheWrong')}
+              rows={3}
+              aria-describedby="revoke-reason-hint"
+              className="text-xs"
+            />
+            <p id="revoke-reason-hint" className="text-[11px] text-muted-foreground">
+              {ta('certAdm.requiredKeptInTheAuditLog')}
+            </p>
+            {revokeError && <p role="alert" className="text-xs text-destructive">{revokeError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setRevokeTarget(null)} disabled={revoking}>
+              {ta('certAdm.cancel')}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleRevoke}
+              disabled={revoking || revokeReason.trim().length < REVOKE_REASON_MIN}
+            >
+              {revoking && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {ta('certAdm.revokeCertificate')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>Certificate Preview</DialogTitle>
-            <DialogDescription>Preview of the selected certificate template.</DialogDescription>
+            <DialogTitle>{ta('certAdm.certificatePreview')}</DialogTitle>
+            <DialogDescription>{ta('certAdm.previewOfTheSelectedCertificateTemplate')}</DialogDescription>
           </DialogHeader>
           <div className="w-full overflow-hidden rounded-lg border shadow-sm my-4 bg-muted/20">
             <CertificateRenderer template={previewTemplate} data={previewData} />
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setPreviewDialogOpen(false)}>
-              Close
+              {ta('certAdm.close')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -21,6 +21,8 @@ export function bootSchedulerOnce(): void {
       const mod = await import('./scheduler')
       mod.startSchedulerLoop()
       mod.startTrialExpiryLoop()
+      // Hot-collection indexes + legacy invite backfill (lib/db-indexes.ts), background.
+      ;(await import('./db-indexes')).ensureHotIndexesOnce()
       logger.info('[CodeSpectra] scheduler loop booted lazily on first request')
     } catch (e) {
       logger.warn('[CodeSpectra] scheduler bootstrap skipped:', e)

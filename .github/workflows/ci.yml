@@ -75,7 +75,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - run: pip install -r backend/requirements.txt
@@ -94,16 +94,26 @@ jobs:
           backend/tests/test_item_bank_and_generic_plugins.py
           backend/tests/test_text_to_cad_generator.py
           backend/tests/test_webhooks_and_compliance.py
+          backend/tests/test_security_scan.py
+          backend/tests/test_internal_security.py
+          backend/tests/test_log_redaction_and_docs.py
+          backend/tests/test_rag_ranking.py
           -q
         timeout-minutes: 10
 
   build:
-    name: Production build (yarn build)
+    name: Production build (yarn build) + smoke
     runs-on: ubuntu-latest
     permissions:
       contents: read
       # setup-node's yarn cache restores via the cache API
       actions: read
+    # Throwaway MongoDB for the post-build smoke (no secrets, no real data).
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
     defaults:
       run:
         working-directory: frontend
@@ -122,6 +132,139 @@ jobs:
       - run: yarn build
         env:
           SESSION_SECRET: ci-secret
+          # The app outgrew Node's default heap (build aborted with exit 134).
+          NODE_OPTIONS: --max-old-space-size=6144
+      # Smoke the built app (A-063): boot `next start` against the throwaway
+      # MongoDB and check key pages, auth redirects, cron auth and the
+      # Permissions-Policy (mic/camera for self). Fast — no browser download.
+      - name: Smoke test built app
+        env:
+          NODE_ENV: production
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB_NAME: codespectra_ci
+          NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
+          SKIP_AUTO_INDEXES: '1'
+          CRON_SECRET: ci-cron-secret
+        # Throwaway keys generated per run (keeps the secret scanner clean).
+        run: |
+          export SESSION_SECRET="$(openssl rand -hex 32)"
+          export SECRETS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          npx next start -p 3000 -H 127.0.0.1 > /tmp/next.log 2>&1 &
+          BASE_URL=http://127.0.0.1:3000 node scripts/ci-smoke.mjs || (echo '--- server log ---'; tail -n 200 /tmp/next.log; exit 1)
+        timeout-minutes: 5
+
+  e2e:
+    name: Browser smoke (Playwright)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # setup-node's yarn cache restores via the cache API
+      actions: read
+    # Same throwaway MongoDB as the build smoke (no secrets, no real data).
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    defaults:
+      run:
+        working-directory: frontend
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+        env:
+          SESSION_SECRET: ci-secret
+          # The app outgrew Node's default heap (build aborted with exit 134).
+          NODE_OPTIONS: --max-old-space-size=6144
+      # Chromium only (+ its OS deps); the version matches @playwright/test in package.json.
+      - run: npx playwright install --with-deps chromium
+      # A-063 / CORE-032: a small real-browser suite (e2e/ci-smoke.spec.ts) against the built app.
+      - name: Playwright smoke
+        env:
+          NODE_ENV: production
+          CI: '1'
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB_NAME: codespectra_e2e
+          NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
+          SKIP_AUTO_INDEXES: '1'
+          CRON_SECRET: ci-cron-secret
+          BASE_URL: http://127.0.0.1:3000
+        # Throwaway keys generated per run (keeps the secret scanner clean).
+        run: |
+          export SESSION_SECRET="$(openssl rand -hex 32)"
+          export SECRETS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          npx next start -p 3000 -H 127.0.0.1 > /tmp/next-e2e.log 2>&1 &
+          for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
+          npx playwright test e2e/ci-smoke.spec.ts || (echo '--- server log ---'; tail -n 200 /tmp/next-e2e.log; exit 1)
+        timeout-minutes: 8
+      # SEO-039: axe (no critical) + a Tab-only pass on the signed-in candidate
+      # screens (incl. a seeded test with every question type), as a seeded
+      # candidate, plus the wave-15 admin screens as the seeded superadmin —
+      # throwaway passwords.
+      - name: Candidate accessibility (axe + keyboard)
+        env:
+          NODE_ENV: production
+          CI: '1'
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB_NAME: codespectra_e2e
+          NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
+          SKIP_AUTO_INDEXES: '1'
+          CRON_SECRET: ci-cron-secret
+          BASE_URL: http://127.0.0.1:3000
+          E2E_CANDIDATE_EMAIL: demo@codespectra.com
+        run: |
+          export E2E_CANDIDATE_PASSWORD="Ci-$(openssl rand -hex 12)!"
+          export E2E_ADMIN_EMAIL=superadmin@codespectra.com E2E_ADMIN_PASSWORD="Ci-$(openssl rand -hex 12)!"
+          export SEED_DEMO_PASS="$E2E_CANDIDATE_PASSWORD" SEED_SUPERADMIN_PASS="$E2E_ADMIN_PASSWORD" SEED_ADMIN_PASS="Ci-$(openssl rand -hex 12)!" SEED_QA_PASS="Ci-$(openssl rand -hex 12)!"
+          NODE_ENV=development npx tsx scripts/seed-dev-users.ts
+          # SEO-039: a published assessment with one question of every type.
+          NODE_ENV=development npx tsx scripts/seed-a11y-assessment.ts
+          if ! curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login; then
+            export SESSION_SECRET="$(openssl rand -hex 32)"
+            export SECRETS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+            npx next start -p 3000 -H 127.0.0.1 >> /tmp/next-e2e.log 2>&1 &
+            for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
+          fi
+          npx playwright test e2e/a11y-candidate.spec.ts e2e/a11y-admin.spec.ts --workers=1 --reporter=github,list || (echo '--- server log ---'; tail -n 200 /tmp/next-e2e.log; exit 1)
+        timeout-minutes: 8
+      # Wave 5: crawl every public page of the built app at 360/390/768/1280 px.
+      # Fails on horizontal overflow, broken internal links, missing/duplicate
+      # titles, positive tabindex or 5xx (console errors are reported only).
+      # Wave 10: --axe adds axe-core (WCAG 2.1 A/AA) serious/critical findings to the
+      # report and a ::warning annotation. SEO-039: critical violations now fail the
+      # job (--axe-gate critical); switch to `serious` once that backlog is zero.
+      # SEO-056: serious colour-contrast findings fail too (critical,color-contrast).
+      - name: Public site QA crawl
+        env:
+          NODE_ENV: production
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB_NAME: codespectra_e2e
+          NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
+          SKIP_AUTO_INDEXES: '1'
+          CRON_SECRET: ci-cron-secret
+        run: |
+          if ! curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login; then
+            export SESSION_SECRET="$(openssl rand -hex 32)"
+            export SECRETS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+            npx next start -p 3000 -H 127.0.0.1 >> /tmp/next-e2e.log 2>&1 &
+            for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
+          fi
+          node scripts/qa/crawl.mjs --base http://127.0.0.1:3000 --max-pages 150 --out qa-crawl-report.json --strict --axe --axe-gate critical,color-contrast
+        timeout-minutes: 15
+      - name: Upload QA crawl report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: qa-crawl-report
+          path: frontend/qa-crawl-report.json
+          if-no-files-found: ignore
 
   dep-audit:
     name: Dependency audit (yarn + pip)
@@ -137,7 +280,7 @@ jobs:
           node-version: 22
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       # Gate at CRITICAL only: the moderate/high backlog (uuid via
@@ -147,22 +290,32 @@ jobs:
       # problem). Upgrade path runs via Dependabot (see dependabot.yml).
       - name: Yarn audit (critical)
         working-directory: frontend
-        run: yarn audit --level critical --groups dependencies
-      # Informational for now: starlette 0.37.2 + ecdsa have known vulns
-      # (pip-audit exits nonzero). Upgrading starlette is a major bump with
-      # FastAPI-compat risk — do it via a Dependabot PR with tests, then
-      # drop `continue-on-error` to make this step blocking.
-      - name: pip-audit (informational)
+        # yarn v1's exit code is a severity bitmask (1 info, 2 low, 4 moderate,
+        # 8 high, 16 critical) that ignores --level, so gate on the critical bit.
+        run: |
+          set +e
+          yarn audit --level critical --groups dependencies
+          code=$?
+          if [ $((code & 16)) -ne 0 ]; then echo "Critical vulnerabilities found"; exit 1; fi
+          exit 0
+      # SEC-028: fail on any NEW high advisory (known unfixable ones are listed
+      # with a reason in scripts/audit-gate.mjs).
+      - name: Yarn audit (new highs)
+        working-directory: frontend
+        run: (yarn audit --groups dependencies --json || true) | node scripts/audit-gate.mjs
+      # Blocking since wave 4 (SEC-004/SEC-028): python-jose (+ ecdsa) was
+      # replaced by PyJWT and pip-audit reports no known vulnerabilities.
+      - name: pip-audit
         run: |
           pip install pip-audit
           pip-audit -r backend/requirements.txt --desc
-        continue-on-error: true
 
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -170,6 +323,9 @@ jobs:
       # Rules live in .gitleaks.toml (defaults + allowlist for the two
       # provably-fake scanner fixtures). Any other hit fails the job.
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          # Required by gitleaks-action to list a pull request's commits.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   docker:
     name: Frontend image build

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { invalidateSecurityPolicyCache } from '@/lib/db/security'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function GET() {
   const gate = await requireSuperAdmin()
@@ -10,7 +11,7 @@ export async function GET() {
     const db = await getMongoDb()
     const data = await db.collection('security_settings').find({}).toArray()
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function PATCH(request: Request) {
@@ -31,6 +32,7 @@ export async function PATCH(request: Request) {
       { upsert: true },
     )
     invalidateSecurityPolicyCache()
+    await auditAdmin(gate.user, 'admin.security_policy.update', 'settings', `security/${String(name)}`, `status: ${status}`, 'warning')
     return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

@@ -274,17 +274,17 @@ export function DynamicInterview({
   // Render interview stage
   if (stage === 'intro') {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md p-8 space-y-6">
+      <div className="min-h-[70vh] bg-background flex items-center justify-center p-4 sm:p-6">
+        <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 space-y-6">
           <div className="text-center space-y-2">
-            <Brain className="w-12 h-12 mx-auto text-primary" />
+            <Brain className="w-12 h-12 mx-auto text-primary" aria-hidden />
             <h1 className="text-3xl font-bold text-foreground">Ready?</h1>
-            <p className="text-foreground/60">
+            <p className="text-muted-foreground">
               You&apos;re about to start a {interviewType} interview. The AI will ask dynamic questions based on your responses. Be honest and thorough.
             </p>
           </div>
 
-          <ul className="space-y-2 text-sm text-foreground/70">
+          <ul className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-center gap-2">
               <Clock className="h-4 w-4 shrink-0 text-primary" />
               Duration: about 30 minutes
@@ -312,11 +312,11 @@ export function DynamicInterview({
             {isLoadingQuestion ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Preparing Interview...
+                Preparing interview…
               </>
             ) : (
               <>
-                Start Interview
+                Start interview
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -342,49 +342,49 @@ export function DynamicInterview({
     }
 
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 p-6">
+      <div className="min-h-[70vh] bg-background p-4 sm:p-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          <Card className="p-8 text-center space-y-4">
-            <h1 className="text-3xl font-bold text-foreground">Interview Complete!</h1>
-            <p className="text-foreground/60">
+          <Card className="rounded-3xl border-border/70 p-8 text-center space-y-4">
+            <h1 className="text-3xl font-bold text-foreground">Interview complete</h1>
+            <p className="text-muted-foreground">
               Your feedback has been generated. Review your performance below.
             </p>
             <Button variant="outline" onClick={downloadReport} className="gap-2">
               <Download className="w-4 h-4" />
-              Download Report
+              Download report
             </Button>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {feedback.map((item) => (
-              <Card key={item.dimension} className="p-6 space-y-4">
+              <Card key={item.dimension} className="rounded-3xl border-border/70 p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-lg text-foreground">
                     {item.dimension}
                   </h3>
-                  <div className="text-2xl font-bold text-primary">
+                  <div className="text-2xl font-bold tabular-nums text-primary">
                     {item.score}%
                   </div>
                 </div>
 
-                <div className="w-full bg-slate-700 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div
                     className="bg-primary h-2 rounded-full"
                     style={{ width: `${item.score}%` }}
                   />
                 </div>
 
-                <p className="text-sm text-foreground/70">{item.feedback}</p>
+                <p className="text-sm text-muted-foreground">{item.feedback}</p>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-foreground/60 uppercase">
+                  <p className="text-xs font-semibold text-foreground">
                     Suggestions
                   </p>
                   <ul className="space-y-1">
                     {item.suggestions.map((suggestion, i) => (
                       <li
                         key={i}
-                        className="text-sm text-foreground/60 flex gap-2"
+                        className="text-sm text-muted-foreground flex gap-2"
                       >
                         <span>•</span>
                         <span>{suggestion}</span>
@@ -397,7 +397,7 @@ export function DynamicInterview({
           </div>
 
           <Button asChild className="w-full">
-            <a href="/dashboard">Return to Dashboard</a>
+            <a href="/dashboard">Return to dashboard</a>
           </Button>
         </div>
       </div>
@@ -409,7 +409,7 @@ export function DynamicInterview({
   const isTimeUp = timeRemaining === 0
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-background text-foreground p-4 sm:p-6">
       {interviewId && (
         <ProctorMonitor
           sessionKind="interview"
@@ -428,18 +428,18 @@ export function DynamicInterview({
       {/* Header */}
       <div className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-primary" />
-          <h1 className="text-xl font-bold">{interviewType} Interview</h1>
+          <Brain className="w-5 h-5 text-primary" aria-hidden />
+          <h1 className="text-xl font-bold capitalize">{interviewType} interview</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-            isTimeUp ? 'bg-red-500/20 text-red-400 animate-pulse' :
-            isLowTime ? 'bg-red-500/10 text-red-400' :
-            'bg-white/10'
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${
+            isTimeUp ? 'bg-red-500/15 text-red-600 dark:text-red-400 animate-pulse motion-reduce:animate-none' :
+            isLowTime ? 'bg-red-500/10 text-red-600 dark:text-red-400' :
+            'bg-muted text-foreground'
           }`}>
             <Clock className="w-4 h-4" />
-            <span className="text-sm font-medium">{formatTime(timeRemaining)}</span>
-            {isLowTime && <AlertTriangle className="w-4 h-4 text-red-400" />}
+            <span className="font-mono text-sm font-medium tabular-nums">{formatTime(timeRemaining)}</span>
+            {isLowTime && <AlertTriangle className="w-4 h-4" aria-hidden />}
           </div>
         </div>
       </div>
@@ -447,7 +447,7 @@ export function DynamicInterview({
       <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chat Area */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 bg-slate-900 border-slate-700 h-96 overflow-y-auto">
+          <Card className="rounded-3xl border-border/70 p-6 h-96 overflow-y-auto">
             <div className="space-y-4">
               {messages.map((msg, i) => (
                 <div
@@ -457,15 +457,15 @@ export function DynamicInterview({
                   }`}
                 >
                   <div
-                    className={`max-w-xs px-4 py-2 rounded-lg ${
+                    className={`max-w-xs px-4 py-2 rounded-2xl ${
                       msg.role === 'interviewer'
-                        ? 'bg-primary/20 text-white'
-                        : 'bg-primary text-white'
+                        ? 'bg-primary/10 text-foreground'
+                        : 'bg-primary text-primary-foreground'
                     }`}
                   >
                     <p className="text-sm">{msg.content}</p>
                     {msg.duration && (
-                      <p className="text-xs opacity-70 mt-1">
+                      <p className="text-xs tabular-nums opacity-70 mt-1">
                         {msg.duration}s
                       </p>
                     )}
@@ -475,7 +475,7 @@ export function DynamicInterview({
 
               {isLoadingQuestion && (
                 <div className="flex gap-3">
-                  <div className="bg-primary/20 px-4 py-2 rounded-lg">
+                  <div className="bg-primary/10 px-4 py-2 rounded-2xl">
                     <Skeleton className="h-4 w-32" />
                   </div>
                 </div>
@@ -486,20 +486,21 @@ export function DynamicInterview({
           </Card>
 
           {/* Input Area */}
-          <Card className="p-6 bg-slate-900 border-slate-700 space-y-4">
+          <Card className="rounded-3xl border-border/70 p-6 space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <MessageCircle className="w-4 h-4" />
-                Your Response
+              <label htmlFor="dyn-answer" className="text-sm font-medium flex items-center gap-2">
+                <MessageCircle className="w-4 h-4 text-primary" aria-hidden />
+                Your response
               </label>
               <Textarea
+                id="dyn-answer"
                 value={userAnswer || transcript}
                 onChange={(e) => setUserAnswer(e.target.value)}
-                placeholder="Type your answer or click the microphone to speak..."
-                className="bg-slate-800 border-slate-700 text-white min-h-24"
+                placeholder="Type your answer or click the microphone to speak…"
+                className="min-h-24"
               />
               {speechError && (
-                <p className="text-xs text-red-400">{speechError}</p>
+                <p className="text-xs text-destructive">{speechError}</p>
               )}
             </div>
 
@@ -513,7 +514,7 @@ export function DynamicInterview({
                   {isListening ? (
                     <>
                       <MicOff className="w-4 h-4" />
-                      Stop Listening
+                      Stop listening
                     </>
                   ) : (
                     <>
@@ -532,12 +533,12 @@ export function DynamicInterview({
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Processing...
+                    Processing…
                   </>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    Submit Answer
+                    Submit answer
                   </>
                 )}
               </Button>
@@ -549,23 +550,23 @@ export function DynamicInterview({
         <div className="space-y-4">
           {currentQuestion && (
             <>
-              <Card className="p-4 bg-slate-900 border-slate-700 space-y-3">
-                <div className="space-y-2">
+              <Card className="rounded-3xl border-border/70 p-5 space-y-3">
+                <div className="flex flex-wrap gap-2">
                   <Badge>{currentQuestion.category}</Badge>
                   <Badge variant="outline">{currentQuestion.difficulty}</Badge>
                 </div>
-                <p className="text-sm text-foreground/70">
+                <p className="text-sm text-muted-foreground">
                   {currentQuestion.reasoning}
                 </p>
-                <div className="flex items-center gap-2 text-xs text-foreground/60">
-                  <Clock className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+                  <Clock className="w-4 h-4" aria-hidden />
                   Suggested: {currentQuestion.timeLimit}s
                 </div>
               </Card>
 
-              <Card className="p-4 bg-slate-900 border-slate-700 space-y-3">
-                <h3 className="font-semibold text-sm">Tips</h3>
-                <ul className="text-xs text-foreground/70 space-y-1">
+              <Card className="rounded-3xl border-border/70 p-5 space-y-3">
+                <h3 className="font-semibold text-sm text-foreground">Tips</h3>
+                <ul className="text-xs text-muted-foreground space-y-1">
                   <li>• Be specific with examples</li>
                   <li>• Show your thinking process</li>
                   <li>• Ask clarifying questions if needed</li>

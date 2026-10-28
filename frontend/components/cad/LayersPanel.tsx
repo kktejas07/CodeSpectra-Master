@@ -14,8 +14,10 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
+import { useT } from '@/lib/i18n/client'
 
 export function LayersPanel() {
+  const { t } = useT()
   const layers = useCADStore((s) => s.layers);
   const shapes = useCADStore((s) => s.shapes);
   const activeLayerId = useCADStore((s) => s.activeLayerId);
@@ -60,12 +62,12 @@ export function LayersPanel() {
   return (
     <div className="flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase text-muted-foreground">Layers</span>
+        <span className="text-xs font-semibold text-muted-foreground">{t('exam.layers')}</span>
         <button
           type="button"
           onClick={() => addLayer(`Layer ${layers.length + 1}`)}
           className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          title="Add Layer"
+          title={t('exam.addLayer')}
         >
           <Plus className="h-3 w-3" />
         </button>
@@ -101,7 +103,7 @@ export function LayersPanel() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); handleMoveUp(e, layer.id); }}
                     className="rounded p-0.5 hover:bg-muted"
-                    title="Move Up"
+                    title={t('exam.moveUp2')}
                   >
                     <ChevronUp className="h-3 w-3" />
                   </button>
@@ -109,7 +111,7 @@ export function LayersPanel() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); handleMoveDown(e, layer.id); }}
                     className="rounded p-0.5 hover:bg-muted"
-                    title="Move Down"
+                    title={t('exam.moveDown2')}
                   >
                     <ChevronDown className="h-3 w-3" />
                   </button>
@@ -117,7 +119,7 @@ export function LayersPanel() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { visible: !layer.visible }); }}
                     className="rounded p-0.5 hover:bg-muted"
-                    title={layer.visible ? 'Hide' : 'Show'}
+                    title={layer.visible ? t('exam.hide') : t('exam.show')}
                   >
                     {layer.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3 opacity-40" />}
                   </button>
@@ -125,7 +127,7 @@ export function LayersPanel() {
                     type="button"
                     onClick={(e) => { e.stopPropagation(); updateLayer(layer.id, { locked: !layer.locked }); }}
                     className="rounded p-0.5 hover:bg-muted"
-                    title={layer.locked ? 'Unlock' : 'Lock'}
+                    title={layer.locked ? t('exam.unlock') : t('exam.lock')}
                   >
                     {layer.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3 opacity-40" />}
                   </button>
@@ -134,7 +136,7 @@ export function LayersPanel() {
                       type="button"
                       onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); }}
                       className="rounded p-0.5 hover:bg-destructive/10 hover:text-destructive"
-                      title="Delete Layer"
+                      title={t('exam.deleteLayer')}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -144,7 +146,7 @@ export function LayersPanel() {
 
               {/* Row 2: Opacity slider */}
               <div className="mt-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <span className="w-8 text-[9px] text-muted-foreground/60">Op</span>
+                <span className="w-8 text-[9px] text-muted-foreground/60">{t('exam.op')}</span>
                 <input
                   type="range"
                   min={0}

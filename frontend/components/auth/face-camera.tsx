@@ -1,9 +1,36 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import * as faceapi from '@vladmandic/face-api'
+// face-api touches browser globals (TextEncoder, WebGL) when it loads, so it is
+// imported lazily in the browser only; a static import crashed server rendering
+// of every page that shows the face camera (sign-in, face enrolment, ID checks).
+type FaceApi = typeof import('@vladmandic/face-api')
+let faceapi: FaceApi
+let faceApiPromise: Promise<FaceApi> | null = null
+function loadFaceApi(): Promise<FaceApi> {
+  if (!faceApiPromise) {
+    faceApiPromise = import('@vladmandic/face-api').then((m) => (faceapi = m))
+    faceApiPromise.catch(() => { faceApiPromise = null })
+  }
+  return faceApiPromise
+}
 import { Loader2, Camera, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  createLivenessTracker,
+  eyeAspectRatio,
+  livenessInstruction,
+  noseYaw,
+  type LivenessChallenge,
+} from '@/lib/auth-face-liveness'
+import { useT } from '@/lib/i18n/client'
+
+export interface LivenessCapture {
+  /** Descriptors from two frames: before and after the challenge. */
+  descriptors: Float32Array[]
+  challenge: LivenessChallenge
+  passed: true
+}
 
 interface FaceCameraProps {
   mode: 'enroll' | 'verify'
@@ -17,6 +44,13 @@ interface FaceCameraProps {
    * assessment proctoring, which only needs a stored photo.
    */
   captureMode?: 'liveness' | 'instant'
+  /**
+   * Face sign-in: after the first frame, ask for this movement (blink /
+   * turn), then take a second frame, and report both via onLivenessCapture
+   * instead of onCapture.
+   */
+  livenessChallenge?: LivenessChallenge
+  onLivenessCapture?: (result: LivenessCapture) => void
 }
 
 const CDN_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'
@@ -30,6 +64,22 @@ const DETECT_TIMEOUT_MS = 8000
 const CAPTURE_BUDGET_MS = 25000
 const MODEL_LOAD_TIMEOUT_MS = 45000
 const MODEL_SLOW_HINT_MS = 12000
+const LIVENESS_BUDGET_MS = 15000
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+type LandmarkSet = {
+  getNose: () => Array<{ x: number; y: number }>
+  getLeftEye: () => Array<{ x: number; y: number }>
+  getRightEye: () => Array<{ x: number; y: number }>
+}
+
+function sampleOf(lm: LandmarkSet) {
+  const l = lm.getLeftEye()
+  const r = lm.getRightEye()
+  const nose = lm.getNose()
+  return { ear: (eyeAspectRatio(l) + eyeAspectRatio(r)) / 2, yaw: noseYaw(l, r, nose[3] ?? nose[0]) }
+}
 
 function detectOptions() {
   return new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.35, inputSize: 320 })
@@ -50,6 +100,7 @@ let backendName = 'unknown'
  * Falls back to the CPU backend when WebGL is unavailable.
  */
 async function warmUpBackend(): Promise<void> {
+  await loadFaceApi()
   const tf = faceapi.tf as any
   const probe = () => {
     const t = tf.tensor1d([0, 1, 2, 3])
@@ -77,6 +128,7 @@ async function warmUpBackend(): Promise<void> {
 function loadFaceModels() {
   if (!modelsPromise) {
     modelsPromise = (async () => {
+      await loadFaceApi()
       await (faceapi.tf as { ready?: () => Promise<void> }).ready?.()
       let lastErr: unknown = null
       let loaded = false
@@ -116,7 +168,8 @@ function withTimeout<T>(thenable: unknown, ms: number, label: string): Promise<T
   })
 }
 
-export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' }: FaceCameraProps) {
+export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness', livenessChallenge, onLivenessCapture }: FaceCameraProps) {
+  const { t } = useT()
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const onErrorRef = useRef(onError)
@@ -130,8 +183,12 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
   // models are cached after first success, camera stream is re-requested).
   const [initNonce, setInitNonce] = useState(0)
 
+  const onLivenessRef = useRef(onLivenessCapture)
+  const challengeRef = useRef(livenessChallenge)
   onErrorRef.current = onError
   onCaptureRef.current = onCapture
+  onLivenessRef.current = onLivenessCapture
+  challengeRef.current = livenessChallenge
 
   useEffect(() => {
     let mounted = true
@@ -146,13 +203,13 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         // backend warm-up entirely and go straight to the camera.
         if (captureMode !== 'instant') {
           slowTimer = setTimeout(() => {
-            if (mounted) setMessage('Still downloading recognition models — slow connection, please wait…')
+            if (mounted) setMessage(t('exam.stillDownloadingRecognitionModelsSlowCon89a'))
           }, MODEL_SLOW_HINT_MS)
           await withTimeout(loadFaceModels(), MODEL_LOAD_TIMEOUT_MS, 'Model download timed out')
           if (slowTimer) { clearTimeout(slowTimer); slowTimer = null }
         }
         if (!mounted) return
-        setMessage('Please grant camera permissions.')
+        setMessage(t('exam.pleaseGrantCameraPermissions'))
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         })
@@ -177,10 +234,10 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         setStatus('error')
         setMessage(
           denied
-            ? 'Camera access denied or unavailable.'
+            ? t('exam.cameraAccessDeniedOrUnavailable')
             : timedOut
-              ? 'Setup took too long (models or camera). Check your connection and retry.'
-              : 'Failed to load biometric models.',
+              ? t('exam.setupTookTooLongModelsOr12f')
+              : t('exam.failedToLoadBiometricModels'),
         )
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)))
       }
@@ -208,7 +265,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
     }
     runIdRef.current += 1
     setStatus('initializing')
-    setMessage(captureMode === 'instant' ? 'Starting camera…' : 'Loading face recognition models...')
+    setMessage(captureMode === 'instant' ? t('exam.startingCamera') : t('exam.loadingFaceRecognitionModels'))
     setInitNonce((n) => n + 1)
   }
 
@@ -221,6 +278,81 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
 
   const stopLoop = () => {
     runIdRef.current += 1
+  }
+
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+  }
+
+  /**
+   * Face sign-in liveness: ask for the challenge movement, confirm it over
+   * several frames, then take a second centred descriptor. Both frames go
+   * to the server, which matches each against the enrolled template.
+   */
+  const runLiveness = async (runId: number, first: Float32Array, challenge: LivenessChallenge) => {
+    const tracker = createLivenessTracker(challenge)
+    setMessage(livenessInstruction(challenge))
+    let startedAt = Date.now()
+    while (runIdRef.current === runId) {
+      const video = videoRef.current
+      if (!video) return
+      if (Date.now() - startedAt > LIVENESS_BUDGET_MS) {
+        setStatus('error')
+        setMessage(t('exam.weCouldntConfirmTheMovementRetryb51'))
+        return
+      }
+      try {
+        const det = (await withTimeout(
+          (await loadFaceApi()).detectSingleFace(video, detectOptions()).withFaceLandmarks(true),
+          DETECT_TIMEOUT_MS,
+          'Face detection timed out',
+        )) as { landmarks: LandmarkSet } | undefined
+        if (runIdRef.current !== runId) return
+        if (det && tracker.push(sampleOf(det.landmarks))) break
+      } catch (err) {
+        if (runIdRef.current !== runId) return
+        console.error('Liveness check error:', err)
+      }
+      await sleep(40)
+    }
+    if (runIdRef.current !== runId) return
+
+    setMessage(t('exam.doneNowLookStraightAtThe0b2'))
+    startedAt = Date.now()
+    while (runIdRef.current === runId) {
+      const video = videoRef.current
+      if (!video) return
+      if (Date.now() - startedAt > LIVENESS_BUDGET_MS) {
+        setStatus('error')
+        setMessage(t('exam.couldNotLockOntoYourFace47d'))
+        return
+      }
+      try {
+        const det = (await withTimeout(
+          (await loadFaceApi()).detectSingleFace(video, detectOptions()).withFaceLandmarks(true).withFaceDescriptor(),
+          DETECT_TIMEOUT_MS,
+          'Descriptor timed out',
+        )) as { landmarks: LandmarkSet; descriptor: Float32Array } | undefined
+        if (runIdRef.current !== runId) return
+        if (det) {
+          const { yaw } = sampleOf(det.landmarks)
+          if (yaw >= 0.36 && yaw <= 0.64) {
+            stopStream()
+            setStatus('captured')
+            setMessage(t('exam.faceCaptured'))
+            onLivenessRef.current?.({ descriptors: [first, det.descriptor], challenge, passed: true })
+            return
+          }
+        }
+      } catch (err) {
+        if (runIdRef.current !== runId) return
+        console.error('Liveness capture error:', err)
+      }
+      await sleep(80)
+    }
   }
 
   const analyzeFace = async (runId: number) => {
@@ -236,7 +368,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
 
       if (Date.now() - startedAt > CAPTURE_BUDGET_MS) {
         setStatus('error')
-        setMessage('Could not lock onto your face. Move closer, face the camera, and retry.')
+        setMessage(t('exam.couldNotLockOntoYourFaced5d'))
         return
       }
 
@@ -245,7 +377,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         // freezing the loop with no message and never reaching the 25s budget.
         // The 8s timeout turns a hang into an ordinary miss (loop continues).
         const detection = (await withTimeout(
-          faceapi
+          (await loadFaceApi())
             .detectSingleFace(videoRef.current, detectOptions())
             .withFaceLandmarks(true),
           DETECT_TIMEOUT_MS,
@@ -262,7 +394,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         if (runIdRef.current !== runId) return
 
         if (!detection) {
-          setMessage('No face detected. Look directly at the camera.')
+          setMessage(t('exam.noFaceDetectedLookDirectlyAt600'))
           await new Promise((r) => setTimeout(r, 150))
           continue
         }
@@ -272,7 +404,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         const videoWidth = videoRef.current.videoWidth
         const videoHeight = videoRef.current.videoHeight
         if (width < videoWidth * 0.12 || height < videoHeight * 0.12) {
-          setMessage('Move closer to the camera.')
+          setMessage(t('exam.moveCloserToTheCamera'))
           await new Promise((r) => setTimeout(r, 150))
           continue
         }
@@ -285,14 +417,14 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         const noseOffset = faceWidth === 0 ? 0.5 : (nose[0].x - leftEye[0].x) / faceWidth
 
         if (noseOffset < 0.22 || noseOffset > 0.78) {
-          setMessage('Look straight at the camera.')
+          setMessage(t('exam.lookStraightAtTheCamera'))
           await new Promise((r) => setTimeout(r, 150))
           continue
         }
 
-        setMessage('Capturing biometric template...')
+        setMessage(t('exam.capturingBiometricTemplate'))
         const fullDetection = (await withTimeout(
-          faceapi
+          (await loadFaceApi())
             .detectSingleFace(videoRef.current, detectOptions())
             .withFaceLandmarks(true)
             .withFaceDescriptor(),
@@ -304,7 +436,13 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
 
         if (!fullDetection) {
           setStatus('error')
-          setMessage('Failed to generate biometric descriptor. Try again.')
+          setMessage(t('exam.failedToGenerateBiometricDescriptorTry6e5'))
+          return
+        }
+
+        const challenge = challengeRef.current
+        if (challenge && onLivenessRef.current) {
+          await runLiveness(runId, fullDetection.descriptor, challenge)
           return
         }
 
@@ -320,7 +458,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         }
 
         setStatus('captured')
-        setMessage('Face captured.')
+        setMessage(t('exam.faceCaptured'))
         onCaptureRef.current(fullDetection.descriptor, dataUrl)
         return
       } catch (err: any) {
@@ -340,7 +478,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
       const runId = runIdRef.current + 1
       runIdRef.current = runId
       setStatus('detecting')
-      setMessage('Capturing photo…')
+      setMessage(t('exam.capturingPhoto'))
       const video = videoRef.current
       try {
         const videoWidth = video.videoWidth || 640
@@ -356,12 +494,12 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         }
         if (runIdRef.current !== runId) return
         setStatus('captured')
-        setMessage('Photo captured.')
+        setMessage(t('exam.photoCaptured'))
         onCaptureRef.current(null, dataUrl)
       } catch (err) {
         console.error('Instant capture failed:', err)
         setStatus('error')
-        setMessage('Could not capture the photo. Please retry.')
+        setMessage(t('exam.couldNotCaptureThePhotoPlease759'))
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)))
       }
       return
@@ -369,14 +507,14 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
     const runId = runIdRef.current + 1
     runIdRef.current = runId
     setStatus('detecting')
-    setMessage('Hold still — detecting your face...')
+    setMessage(t('exam.holdStillDetectingYourFace'))
     void analyzeFace(runId)
   }
 
   const resetCapture = () => {
     stopLoop()
     setStatus('ready')
-    setMessage('Ready to capture.')
+    setMessage(t('exam.readyToCapture'))
   }
 
   return (
@@ -391,7 +529,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
             </div>
             <p className="text-sm font-medium mt-4 bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">{message}</p>
             <p className="text-xs text-muted-foreground mt-1 animate-pulse">
-              {captureMode === 'instant' ? 'Starting camera...' : 'Initializing Biometrics Engine...'}
+              {captureMode === 'instant' ? t('exam.startingCamera2') : t('exam.initializingBiometricsEngine')}
             </p>
           </div>
         )}
@@ -434,7 +572,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         {status === 'ready' && (
           <Button onClick={captureFace} className="w-full gap-2">
             <Camera className="w-4 h-4" />
-            {mode === 'enroll' ? 'Capture Face & Enroll' : captureMode === 'instant' ? 'Capture Photo' : 'Verify My Face'}
+            {mode === 'enroll' ? t('exam.captureFaceAndEnroll') : captureMode === 'instant' ? t('exam.capturePhoto') : t('exam.verifyMyFace')}
           </Button>
         )}
 
@@ -444,17 +582,13 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
               <Loader2 className="w-4 h-4 animate-spin" />
               Analyzing...
             </Button>
-            <Button variant="ghost" size="sm" onClick={resetCapture}>
-              Restart Analysis
-            </Button>
+            <Button variant="ghost" size="sm" onClick={resetCapture}>{t('exam.restartAnalysis')}</Button>
           </div>
         )}
 
         {status === 'error' && (
           <Button onClick={retryInit} className="w-full gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Retry Capture
-          </Button>
+            <RefreshCw className="h-4 w-4" />{t('exam.retryCapture')}</Button>
         )}
       </div>
     </div>

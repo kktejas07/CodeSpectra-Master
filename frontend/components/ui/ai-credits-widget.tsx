@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 interface AICredits {
   balance: number
@@ -14,6 +15,7 @@ interface AICredits {
 }
 
 export function AiCreditsWidget({ className }: { className?: string }) {
+  const { t, rich } = useT()
   const [credits, setCredits] = useState<AICredits | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -29,9 +31,9 @@ export function AiCreditsWidget({ className }: { className?: string }) {
 
   if (loading) {
     return (
-      <Card className={cn("overflow-hidden bg-linear-to-br from-blue-500/10 to-purple-500/10 border-blue-500/20", className)}>
+      <Card className={cn("overflow-hidden border-primary/20 bg-primary/5", className)}>
         <CardContent className="p-4 flex items-center justify-center min-h-25">
-          <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+          <Loader2 aria-label={t('common.aiCreditsLoading')} className="h-5 w-5 animate-spin text-primary" />
         </CardContent>
       </Card>
     )
@@ -48,20 +50,20 @@ export function AiCreditsWidget({ className }: { className?: string }) {
   return (
     <Card className={cn("overflow-hidden border bg-card relative", className)}>
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-linear-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-primary/15 rounded-full blur-2xl pointer-events-none" />
       
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Sparkles className="h-4 w-4 text-blue-500" />
-              <h3 className="font-semibold">AI Credits</h3>
+              <Sparkles aria-hidden className="h-4 w-4 text-primary" />
+              <h3 className="text-base font-semibold">{t('common.aiCreditsTitle')}</h3>
               {!isPro && (
-                <span className="text-[10px] uppercase font-bold bg-muted px-2 py-0.5 rounded-full text-muted-foreground">Free Plan</span>
+                <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{t('common.aiCreditsFreePlan')}</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Used for AI Mock Tests and AI Interview Feedback
+              {t('common.aiCreditsUsedFor')}
             </p>
           </div>
           <div className="text-right">
@@ -74,14 +76,14 @@ export function AiCreditsWidget({ className }: { className?: string }) {
 
         <Progress 
           value={percentage} 
-          className={cn("h-2 mb-3", isLow ? "[&>div]:bg-red-500" : "[&>div]:bg-blue-500")} 
+          className={cn("h-2 mb-3", isLow ? "[&>div]:bg-red-500" : "[&>div]:bg-primary")} 
         />
         
         <div className="mt-4 bg-muted/50 p-3 rounded-lg border border-border/50 text-xs text-muted-foreground">
-          Your AI Credits will be reset every month. 
+          {t('common.aiCreditsReset')}
           {!isPro && (
             <span className="block mt-1">
-              For quick AI Credits, <Link href="/dashboard/pricing" className="text-blue-500 font-semibold hover:underline">go PRO</Link> now and get 10 credits/month to upskill.
+              {rich('common.aiCreditsUpsell', { link: <Link href="/dashboard/pricing" className="text-primary font-semibold hover:underline">{t('common.aiCreditsGoPro')}</Link> })}
             </span>
           )}
         </div>

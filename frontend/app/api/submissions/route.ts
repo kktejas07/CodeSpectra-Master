@@ -11,6 +11,9 @@ import {
 } from '@/lib/db/problems'
 import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS, getXpRewards } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
+import { limitRequest } from '@/lib/rate-limit'
+import { claimIdempotency, idempotencyCol, parseIdempotencyKey, settleIdempotency } from '@/lib/submission-idempotency'
+import { getUserEntitlements, checkLimit, windowStart, checkProblemAccess, packLockedError } from '@/lib/entitlements'
 import type { PistonExecuteResult } from '@/lib/piston'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -44,7 +47,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     ])
     return NextResponse.json({ submissions: rows, total, limit, offset })
   } catch {
-    return NextResponse.json({ error: 'Failed to load submissions' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load submissions', code: 'sub_load_failed' }, { status: 500 })
   }
 }
 
@@ -76,17 +79,53 @@ function classifyStatus(res: PistonExecuteResult): {
   return { status: 'accepted' }
 }
 
+/**
+ * POST /api/submissions. With an `Idempotency-Key` header (offline answers
+ * synced by the PWA, lib/submission-idempotency.ts) a repeat of the same key
+ * returns the first result instead of grading twice.
+ */
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const idem = parseIdempotencyKey(request.headers.get('idempotency-key'))
+  if (!idem) return gradeSubmission(request)
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+  const col = await idempotencyCol()
+  const claim = await claimIdempotency(col, gate.user.id, idem)
+  if (claim.kind === 'replay') {
+    return NextResponse.json(claim.body, { status: claim.status, headers: { 'Idempotent-Replayed': 'true' } })
+  }
+  if (claim.kind === 'in_progress') {
+    return NextResponse.json({ error: 'This answer is already being graded.', code: 'sub_already_grading' }, { status: 425, headers: { 'Retry-After': '30' } })
+  }
+  let res: NextResponse
+  try {
+    res = await gradeSubmission(request)
+  } catch (e) {
+    await settleIdempotency(col, gate.user.id, idem, 500, null).catch(() => undefined)
+    throw e
+  }
+  const body = await res.clone().json().catch(() => null)
+  await settleIdempotency(col, gate.user.id, idem, res.status, body).catch((e) => console.error('[submissions] idempotency save failed:', (e as Error)?.message))
+  return res
+}
+
+async function gradeSubmission(request: NextRequest): Promise<NextResponse> {
   const gate = await requireAuth()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
+  // Each call runs every test case on the sandbox; cap per user.
+  const limited = await limitRequest(request, 'submissions', gate.user.id, 30, 60_000)
+  if (limited) return limited
+
   let body: SubmitBody
   try {
     body = (await request.json()) as SubmitBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const slug = body.problem_slug?.trim()
@@ -96,24 +135,50 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (!slug || !lang || typeof source !== 'string') {
     return NextResponse.json(
-      { error: 'problem_slug, language, and source_code are required' },
+      { error: 'problem_slug, language, and source_code are required', code: 'sub_fields_required' },
       { status: 400 },
     )
   }
   if (source.length > 50_000) {
-    return NextResponse.json({ error: 'source_code too large (50KB max)' }, { status: 400 })
+    return NextResponse.json({ error: 'source_code too large (50KB max)', code: 'sub_source_too_large' }, { status: 400 })
   }
 
   const pCol = await problems()
   const problem = await pCol.findOne({ slug })
-  if (!problem) {
-    return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+  // Practice submit only for published, non-hackathon problems (hackathon problems use their own route).
+  if (!problem || problem.is_published === false || problem.hackathon_id || problem.visibility === 'hackathon_only') {
+    return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
+  }
+
+  // Problem packs: run and submit both need access (purchase or included plan).
+  const isOwner = !!problem.created_by && problem.created_by === gate.user.id
+  let access
+  try {
+    access = await checkProblemAccess(gate.user, problem, isOwner)
+  } catch (e) {
+    console.error('[submissions] pack access check failed:', e)
+    return NextResponse.json({ error: 'Could not check access to this problem. Please try again.', code: 'sub_access_check_failed' }, { status: 503 })
+  }
+  if (access.locked) return NextResponse.json(packLockedError(access), { status: 402 })
+
+  // Plan limit: distinct problems submitted this month (lib/entitlements.ts).
+  // Re-submitting a problem already attempted this month is always allowed.
+  if (mode === 'submit') {
+    const since = windowStart('month')
+    const sCol = await submissions()
+    const seen = await sCol.findOne({ user_id: gate.user.id, problem_id: problem.id, created_at: { $gte: since } }, { projection: { _id: 1 } })
+    if (!seen) {
+      const attempted = await sCol.distinct('problem_id', { user_id: gate.user.id, created_at: { $gte: since } })
+      const denied = checkLimit(gate.user, await getUserEntitlements(gate.user.id), 'max_challenges', attempted.length, 1,
+        'You have reached this month\'s challenge limit on your plan. Upgrade to keep going.')
+      if (denied) return NextResponse.json(denied, { status: 402 })
+    }
   }
 
   // Pick tests: `run` mode uses only samples, `submit` uses all.
   const tests = (problem.test_cases || []).filter((t) => (mode === 'run' ? t.is_sample : true))
   if (tests.length === 0) {
-    return NextResponse.json({ error: 'No test cases configured' }, { status: 400 })
+    return NextResponse.json({ error: 'No test cases configured', code: 'sub_no_tests' }, { status: 400 })
   }
 
   const results: TestRunResult[] = []
@@ -201,7 +266,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await sCol.insertOne(doc)
     } catch (e) {
       console.error('[CodeSpectra] submission insert failed:', e)
-      return NextResponse.json({ error: 'Submission failed to save. Please retry.' }, { status: 500 })
+      return NextResponse.json({ error: 'Submission failed to save. Please retry.', code: 'sub_save_failed' }, { status: 500 })
     }
 
     // XP award is best-effort — failures are logged but don't fail the response.
