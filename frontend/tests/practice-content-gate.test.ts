@@ -11,6 +11,7 @@ import {
   type ArenaExecutor,
 } from '@/lib/practice-content/arena-generate'
 import type { ArenaChallenge } from '@/lib/arena-challenges'
+import { problemPublishable } from '@/lib/practice-content/problems-generate'
 
 const goodRaw = {
   title: 'Rotate A Matrix In Place',
@@ -96,6 +97,32 @@ describe('verifyArenaChallenge (publish gate)', () => {
   it('rejects a candidate with nothing gradable', async () => {
     const res = await verifyArenaChallenge(challenge({ examples: [], testCases: [] }), matches)
     expect(res).toEqual({ ok: false, reason: 'no gradable cases' })
+  })
+})
+
+describe('problemPublishable (problems publish gate)', () => {
+  const verified = { verified: true, language: 'python', total: 6, passed: 6, dropped: [], note: '' }
+
+  it('publishes a verified problem with enough tests', () => {
+    expect(problemPublishable(verified, 6)).toEqual({ ok: true })
+  })
+
+  it('refuses when the reference solution could not verify the tests', () => {
+    const res = problemPublishable({ ...verified, verified: false, note: 'No reference solution — hidden tests were not checked.' }, 6)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.reason).toContain('No reference solution')
+  })
+
+  it('refuses when the runner was unavailable (verified = null)', () => {
+    expect(problemPublishable({ ...verified, verified: null }, 6).ok).toBe(false)
+  })
+
+  it('refuses when too few tests survived verification', () => {
+    const res = problemPublishable(verified, 3)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.reason).toContain('need 4')
   })
 })
 

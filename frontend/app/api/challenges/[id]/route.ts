@@ -18,7 +18,10 @@ export async function GET(
     try {
       doc = await db.collection('challenges').findOne({ _id: new ObjectId(id) })
     } catch {
-      doc = await db.collection('challenges').findOne({ slug: id })
+      // Not an ObjectId — fall back to the stable string id / slug the seeds use.
+    }
+    if (!doc) {
+      doc = await db.collection('challenges').findOne({ $or: [{ id }, { slug: id }] })
     }
 
     if (!doc) {

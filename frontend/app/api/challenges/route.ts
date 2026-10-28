@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { normalizeChallengeRow } from '@/lib/challenges/normalize'
 
 interface ChallengeDoc {
   id: string
@@ -68,7 +69,9 @@ export async function GET() {
     const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
       ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
       : {}
-    const data = await db.collection('challenges').find(filter).toArray()
+    const data = (await db.collection('challenges').find(filter).toArray()).map(d =>
+      normalizeChallengeRow(d as Record<string, unknown>),
+    )
     return NextResponse.json({ data })
   } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
