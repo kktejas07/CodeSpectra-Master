@@ -588,6 +588,23 @@ async function waitForGlobalCooldown() {
 /** Fail over across configured keys. Uses unified getApiKey() with round-robin. */
 async function completeWithFallback(args: Parameters<typeof backendComplete>[0]) {
   const primary = await platformModelOverrides()
+  // ponytail: paid custom gateway (e.g. brocode Claude haiku) goes FIRST when
+  // the admin configured endpoint + key — 10-60min video scripts are long
+  // output and 429 Stall on free tiers; haiku is the cheapest model that
+  // holds script quality. Absent config = identical chain as before.
+  let customFirst: { provider: string; model: string; endpoint?: string } | null = null
+  try {
+    const secrets = await readServerSecrets()
+    const ep = String((secrets as Record<string, unknown>).custom_endpoint || '').trim().replace(/\/+$/, '')
+    const mo = String((secrets as Record<string, unknown>).custom_model || '').trim()
+    if (ep && /^https?:\/\//.test(ep)) {
+      const { getApiKey } = await import('@/lib/ai/get-api-key')
+      const ck = await getApiKey('custom')
+      if (ck?.key) customFirst = { provider: 'custom', model: mo || 'custom', endpoint: ep }
+    }
+  } catch {
+    // Gateway stays out of the chain — free tiers cover generation.
+  }
   const nvidia = PROVIDER_MODELS.filter(p => p.provider === 'nvidia')
   // ponytail: the shared fallback layer tries this explicit override first,
   // then its own chain — so each entry here gets exactly one targeted shot
@@ -596,7 +613,7 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
     ...PROVIDER_MODELS.filter(p => p.provider !== 'nvidia'),
   ]
   const start = rest.length ? (rr++ % rest.length) : 0
-  const chain = [...nvidia, ...rest.slice(start), ...rest.slice(0, start)]
+  const chain = [...(customFirst ? [customFirst] : []), ...nvidia, ...rest.slice(start), ...rest.slice(0, start)]
   const seen = new Set<string>()
   let last = 'No LLM provider with a key is configured'
   let waitedRateLimit = false
