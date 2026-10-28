@@ -106,6 +106,10 @@ services:
       - MONGODB_DB_NAME=${MONGODB_DB_NAME:-codespectra}
       - INTERNAL_BACKEND_URL=http://backend:8000
       - INTERNAL_BACKEND_SECRET=${INTERNAL_BACKEND_SECRET}
+      # platform_settings.secrets are AES-encrypted at rest; without this the
+      # worker can't decrypt ANY LLM/TTS key and every video lesson fails with
+      # "No LLM provider with a key is configured" (SEC-018 class, 2026-10-28).
+      - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:-}
     depends_on:
       backend:
         condition: service_healthy
