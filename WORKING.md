@@ -5,6 +5,8 @@
 > Protocol rules live in `AGENTS.md` → "Multi-Session Coordination".
 
 ## Current Claims
+| opencode (this session, PRACTICE-CONTENT-SPEC) | IN PROGRESS — spec only (no code yet): practice content pipeline for arena/problems/challenges (100+ each, +1/day) + tracks (9×12 posts) + 100-days repair (days 79–100 unpassable). Grounded in prod counts (arena 6, problems 22, challenges 6, tracks 9, learn_posts 0, question_bank 17,184) and verified defects (arena detail reads hardcoded array, challenges detail 404s + `undefined min`, 100-days content client-bundled). Godoc: `docs/superpowers/specs/2026-10-29-practice-content-pipeline-design.md`. Awaiting review before implementation. | docs/superpowers/specs/2026-10-29-practice-content-pipeline-design.md (new), WORKING.md | IN PROGRESS — spec PR open, awaiting user review | 2026-10-29 |
+
 | opencode (this session, CSP-CONSOLE-FIX) | IN PROGRESS — 4 console classes: (1) zod v4 JIT Function probe in prod chunk 96145 → config({jitless:true}) in providers; (2) beforeinstallprompt nag → engagement-gated preventDefault; (3) upgrade-insecure-requests in report-only → omit via reportOnly flag; (4) CF challenge-platform iframe scripts → drop server-side reports (unfixable client-side under strict-dynamic). | components/providers.tsx, pwa/install-state.ts, lib/csp/policy.ts, lib/csp/report.ts, tests/csp-policy.test.ts | DONE — merged via #393→dev-fixes→#392. Console classes fixed; challenge iframe line documented as unfixable client-side. | 2026-10-28 |
 
 
