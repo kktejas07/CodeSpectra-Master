@@ -170,6 +170,12 @@ export interface StrictCspOptions {
   reportUri?: string
   /** Private-upload bucket origin (lib/csp/storage-origin.ts): presigned PUT + GET. */
   storage?: string | null
+  /**
+   * True when the output ships as Content-Security-Policy-Report-Only.
+   * upgrade-insecure-requests is ignored there (browser logs a notice), so
+   * omit it — the enforced policy keeps it.
+   */
+  reportOnly?: boolean
 }
 
 /** The strict policy (report-only by default, enforced with CSP_ENFORCE=1). */
@@ -215,7 +221,7 @@ export function strictCsp(opts: StrictCspOptions): string {
     "form-action 'self'",
     "frame-ancestors 'none'",
     "manifest-src 'self'",
-    dev ? null : 'upgrade-insecure-requests',
+    (dev || opts.reportOnly) ? null : 'upgrade-insecure-requests',
     `report-uri ${report}`,
     `report-to ${CSP_REPORT_GROUP}`,
   ])
@@ -233,7 +239,7 @@ export interface CspHeaderPlan {
 
 /** Which headers a page response gets for a given mode / variant. */
 export function cspHeaders(opts: { mode: CspMode; variant: CspVariant; nonce?: string; dev?: boolean; tags?: TagHosts; storage?: string | null }): CspHeaderPlan {
-  const strict = strictCsp({ variant: opts.variant, nonce: opts.nonce, dev: opts.dev, tags: opts.tags, storage: opts.storage })
+  const strict = strictCsp({ variant: opts.variant, nonce: opts.nonce, dev: opts.dev, tags: opts.tags, storage: opts.storage, reportOnly: opts.mode !== 'enforce' })
   const response: Record<string, string> = {
     // Reporting API endpoint for `report-to` (report-uri covers older browsers).
     'Reporting-Endpoints': `${CSP_REPORT_GROUP}="${CSP_REPORT_PATH}"`,
