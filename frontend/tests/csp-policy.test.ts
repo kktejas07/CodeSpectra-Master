@@ -66,6 +66,17 @@ describe('strictCsp', () => {
     expect(directive(strictCsp({ variant: 'nonce', nonce, dev: true }), 'script-src')).toContain("'unsafe-eval'")
   })
 
+  it('omits upgrade-insecure-requests from the report-only policy (browsers ignore it there)', () => {
+    expect(strictCsp({ variant: 'static', reportOnly: true })).not.toContain('upgrade-insecure-requests')
+    expect(strictCsp({ variant: 'nonce', nonce: makeNonce(), reportOnly: true })).not.toContain('upgrade-insecure-requests')
+    // ...but keeps it when the same policy is enforced
+    expect(strictCsp({ variant: 'static' })).toContain('upgrade-insecure-requests')
+    const enforced = cspHeaders({ mode: 'enforce', variant: 'static' })
+    expect(enforced.response['Content-Security-Policy']).toContain('upgrade-insecure-requests')
+    const reported = cspHeaders({ mode: 'report-only', variant: 'static' })
+    expect(reported.response['Content-Security-Policy-Report-Only']).not.toContain('upgrade-insecure-requests')
+  })
+
   it('adds the consent-gated analytics hosts', () => {
     const p = strictCsp({ variant: 'static', tags: { script: ['https://www.googletagmanager.com'], connect: ['https://*.posthog.com'], frame: ['https://td.doubleclick.net'] } })
     expect(directive(p, 'script-src')).toContain('https://www.googletagmanager.com')
@@ -153,6 +164,23 @@ describe('CSP reports', () => {
     expect(redactPath('/bgv/AbC9x8Y7z6W5v4U3t2S1r0Q')).toBe('/bgv/:id')
   })
 
+  it('drops Cloudflare challenge-platform noise but keeps real violations', () => {
+    const challenge = {
+      'csp-report': {
+        'document-uri': 'about:blank',
+        'violated-directive': 'script-src',
+        'blocked-uri': 'https://codespectra.ai/cdn-cgi/challenge-platform/h/g/scripts/jsd/c787ce48cf6b/main.js',
+        disposition: 'report',
+      },
+    }
+    expect(parseCspReports(challenge)).toEqual([])
+    const reports = parseCspReports([
+      { type: 'csp-violation', body: { documentURL: 'https://codespectra.ai/login', effectiveDirective: 'script-src', blockedURL: 'https://codespectra.ai/cdn-cgi/challenge-platform/h/g/scripts/jsd/x/main.js', disposition: 'report' } },
+      { type: 'csp-violation', body: { documentURL: 'https://codespectra.ai/login', effectiveDirective: 'script-src', blockedURL: 'https://evil.example/x.js', disposition: 'report' } },
+    ])
+    expect(reports).toEqual([{ directive: 'script-src', blocked: 'https://evil.example', document: 'https://codespectra.ai/login', source: undefined, line: undefined, disposition: 'report' }])
+  })
+
   it('the report endpoint is reachable without a CSRF token', () => {
     expect(isCsrfExempt('/api/csp-report')).toBe(true)
   })
@@ -199,7 +227,7 @@ describe('private-upload bucket origin in the CSP', () => {
     }
     const none = cspHeaders({ mode: 'report-only', variant: 'static', storage: null })
     expect(none.response['Content-Security-Policy']).toBe(legacyCsp())
-    expect(none.response['Content-Security-Policy-Report-Only']).toBe(strictCsp({ variant: 'static' }))
+    expect(none.response['Content-Security-Policy-Report-Only']).toBe(strictCsp({ variant: 'static', reportOnly: true }))
   })
 })
 

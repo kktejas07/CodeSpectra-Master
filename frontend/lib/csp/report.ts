@@ -83,13 +83,25 @@ function fromReportingApi(b: Record<string, unknown>): CspViolation {
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 
+/**
+ * Cloudflare's own challenge scripts (Turnstile's about:blank iframe,
+ * /cdn-cgi/challenge-platform/…) can't carry our nonce and strict-dynamic
+ * disables host allowlisting, so they always report script-src violations.
+ * The policy is report-only so Turnstile is unaffected — dropping keeps the
+ * endpoint's rate budget for real violations.
+ */
+function blockedIsChallengeNoise(raw: unknown): boolean {
+  return typeof raw === 'string' && /\/cdn-cgi\/challenge-platform\//.test(raw)
+}
+
 /** Parsed request body (either format) → at most 20 redacted violations. */
 export function parseCspReports(body: unknown): CspViolation[] {
   const out: CspViolation[] = []
-  if (isObj(body) && isObj(body['csp-report'])) out.push(fromLegacy(body['csp-report']))
-  else if (Array.isArray(body)) {
+  if (isObj(body) && isObj(body['csp-report'])) {
+    if (!blockedIsChallengeNoise(body['csp-report']['blocked-uri'])) out.push(fromLegacy(body['csp-report']))
+  } else if (Array.isArray(body)) {
     for (const r of body.slice(0, MAX_REPORTS)) {
-      if (isObj(r) && r.type === 'csp-violation' && isObj(r.body)) out.push(fromReportingApi(r.body))
+      if (isObj(r) && r.type === 'csp-violation' && isObj(r.body) && !blockedIsChallengeNoise(r.body.blockedURL)) out.push(fromReportingApi(r.body))
     }
   }
   return out.slice(0, MAX_REPORTS)

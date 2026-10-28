@@ -15,6 +15,11 @@ let deferred: BeforeInstallPromptEvent | null = null
 
 export function captureInstallPrompt(): () => void {
   const onPrompt = (e: Event) => {
+    // Only take over the prompt when our install card will actually show.
+    // Otherwise leave the default: Chrome logs "Banner not shown" whenever
+    // preventDefault() is called without a later prompt(), and its own
+    // mini-infobar remains available to early visitors.
+    if (!shouldShowInstall(readEngagement(), Date.now())) return
     e.preventDefault()
     deferred = e as BeforeInstallPromptEvent
     window.dispatchEvent(new CustomEvent(EVENT))
