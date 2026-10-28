@@ -213,10 +213,10 @@ function ArenaChallengeInner() {
         body: JSON.stringify({
           source_code: codeRef.current,
           language,
-          test_cases: challenge.examples.map(ex => ({
-            input: ex.input,
-            expected_output: ex.output,
-          })),
+          // The server owns the test cases (runs included) — sending them from
+          // here let the client decide what "passed" meant.
+          challenge_id: challenge.id,
+          variant_id: variantId ?? undefined,
           mode: 'run',
         }),
       })
