@@ -1,5 +1,7 @@
 export type ArenaDifficulty = 'easy' | 'medium' | 'hard'
 
+export const ARENA_COLLECTION = 'arena_challenges'
+
 /** A graded case: what the user's program receives on stdin and must print. */
 export type ArenaTestCase = { stdin: string; expected_stdout: string }
 
@@ -34,7 +36,7 @@ export type ArenaChallenge = {
  * whole program (like the `problems` collection), not a function signature, so
  * a generic skeleton is honest; generated challenges ship problem-specific ones.
  */
-const STARTERS: Record<string, string> = {
+export const ARENA_STARTERS: Record<string, string> = {
   javascript: "const src = require('fs').readFileSync(0, 'utf8')\n// TODO: parse `src`, compute the answer, print it with console.log\n",
   typescript: "const src = require('fs').readFileSync(0, 'utf8')\n// TODO: parse `src`, compute the answer, print it with console.log\n",
   python: 'import sys\nsrc = sys.stdin.read()\n# TODO: parse `src`, compute the answer, print it\n',
@@ -42,7 +44,7 @@ const STARTERS: Record<string, string> = {
   cpp: '#include <bits/stdc++.h>\nusing namespace std;\nint main() {\n    // TODO: read stdin, compute the answer, print it\n    return 0;\n}\n',
 }
 
-const starter = (): Record<string, string> => ({ ...STARTERS })
+const starter = (): Record<string, string> => ({ ...ARENA_STARTERS })
 
 const SEED_CHALLENGES: ArenaChallenge[] = [
   {

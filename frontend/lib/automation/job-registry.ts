@@ -50,6 +50,7 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'daily-digest', label: 'Daily digest', group: 'Cron routes', everyMinutes: 1440 },
   { id: 'weekly-digest', label: 'Weekly digest', group: 'Cron routes', everyMinutes: 10080 },
   { id: 'ebooks-daily', label: 'Daily ebook draft', group: 'Cron routes', everyMinutes: 1440, optional: true },
+  { id: 'practice-daily', label: 'Practice: 1 verified arena challenge/day', group: 'Cron routes', everyMinutes: 1440, optional: true },
   { id: 'signals-ingest', label: 'Signals ingest', group: 'Cron routes', everyMinutes: 360, optional: true },
   { id: 'security-scan', label: 'Security scan', group: 'Cron routes', everyMinutes: 10080 },
   // AUTO-083: jobs added in later waves (all record heartbeats via runLeasedJob / withCronHeartbeat).

@@ -12,9 +12,8 @@
 import 'server-only'
 import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
-import { ARENA_CHALLENGES, getArenaChallenge as getSeedChallenge, type ArenaChallenge } from '@/lib/arena-challenges'
+import { ARENA_CHALLENGES, ARENA_COLLECTION, getArenaChallenge as getSeedChallenge, type ArenaChallenge } from '@/lib/arena-challenges'
 
-export const ARENA_COLLECTION = 'arena_challenges'
 export const ARENA_SUBMISSIONS = 'arena_submissions'
 
 export type ArenaStats = { solved: number; attempts: number }

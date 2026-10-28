@@ -39,6 +39,7 @@ export const SCHEDULED_ROUTES: ScheduledRoute[] = [
   { id: 'daily-digest', path: '/api/cron/daily-digest', cron: '0 8 * * *', intervalMinutes: 1440, load: () => import('@/app/api/cron/daily-digest/route') },
   { id: 'weekly-digest', path: '/api/cron/weekly-digest', cron: '0 9 * * 1', intervalMinutes: 10080, load: () => import('@/app/api/cron/weekly-digest/route') },
   { id: 'ebooks-daily', path: '/api/cron/ebooks-daily', cron: '0 7 * * *', intervalMinutes: 1440, load: () => import('@/app/api/cron/ebooks-daily/route'), long: true },
+  { id: 'practice-daily', path: '/api/cron/practice-daily', cron: '0 6 * * *', intervalMinutes: 1440, load: () => import('@/app/api/cron/practice-daily/route'), long: true },
   { id: 'signals-ingest', path: '/api/cron/signals-ingest', cron: '0 */6 * * *', intervalMinutes: 360, load: () => import('@/app/api/cron/signals-ingest/route'), long: true },
   { id: 'security-scan', path: '/api/cron/security-scan', cron: '0 3 * * 0', intervalMinutes: 10080, load: () => import('@/app/api/cron/security-scan/route'), long: true },
 ]
