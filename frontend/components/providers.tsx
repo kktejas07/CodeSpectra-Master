@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import '@/lib/fetch-csrf-guard'
+import { config as zodConfig } from 'zod'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/lib/toast-context'
@@ -16,6 +17,18 @@ import { TourProvider } from '@/components/tour/tour-context'
  * widgets wait for their own mount (components/nav-theme-switch.tsx).
  */
 const INERT_SCRIPT = { type: 'application/json' } as const
+
+// ponytail: zod v4 JIT-compiles schemas via a Function("") probe that trips
+// the report-only strict CSP (no unsafe-eval) on every page using validation.
+// jitless disables only the eval fast path — same results, ~same speed for
+// form-sized schemas. Browser-only: keep server JIT intact.
+if (typeof window !== 'undefined') {
+  try {
+    zodConfig({ jitless: true })
+  } catch {
+    /* validation still works, JIT probe just reports */
+  }
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
