@@ -15,7 +15,7 @@ import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ai'
 import { awardXpWithLevelUp } from '@/lib/xp-service'
-import { getArenaChallenge } from '@/lib/arena-challenges'
+import { loadArenaChallenge } from '@/lib/arena/store'
 import {
   ARENA_DAILY_POINT_CAP,
   ARENA_XP_REASON,
@@ -124,7 +124,7 @@ export async function awardArenaPoints(args: {
 }): Promise<ArenaAwardResult> {
   const now = args.now ?? new Date()
   const day = utcDayKey(now)
-  const original = getArenaChallenge(args.originalId)
+  const original = await loadArenaChallenge(args.originalId)
   const col = await arenaAwards()
 
   const [existing, earnedToday] = await Promise.all([

@@ -6,7 +6,7 @@ import { newId, nowIso } from '@/lib/db/ai'
 import { limitRequest } from '@/lib/rate-limit'
 import { HUNDRED_DAYS } from '@/lib/100-days-data'
 import { completedDaysFrom, findSprintProblem } from '@/lib/hundred-days-progress'
-import { getArenaChallenge } from '@/lib/arena-challenges'
+import { loadArenaChallenge } from '@/lib/arena/store'
 import { awardArenaPoints, loadArenaVariant, type ArenaAwardResult } from '@/lib/arena-awards'
 
 const MAX_SOURCE = 50_000
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   // Arena submits are graded on the server's own tests: the stored AI variant
   // served to this user, else the original seed. Client test cases are ignored.
   const arenaSubmit = mode === 'submit' && Boolean(challenge_id) && !sprint
-  const arenaOriginal = arenaSubmit ? getArenaChallenge(challenge_id!) : undefined
+  const arenaOriginal = arenaSubmit ? await loadArenaChallenge(challenge_id!) : undefined
   if (arenaSubmit && !arenaOriginal) {
     return NextResponse.json({ error: 'Unknown challenge' }, { status: 404 })
   }

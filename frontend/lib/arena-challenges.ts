@@ -15,12 +15,10 @@ export type ArenaChallenge = {
   defaultCode: Record<string, string>
 }
 
-export const ARENA_CHALLENGE_ORDER = ['1', '2', '3', '4', '5', '6'] as const
-
 const SEED_CHALLENGES: ArenaChallenge[] = [
   {
     id: '1', title: 'Two Sum', shortDescription: 'Find two numbers that add up to a target',
-    difficulty: 'easy', category: 'Arrays', points: 100, solved: 1245, attempts: 3,
+    difficulty: 'easy', category: 'Arrays', points: 100, solved: 0, attempts: 0,
     statement: ['Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.', 'You may assume each input has exactly one solution and you may not use the same element twice. Return the answer in any order.'],
     examples: [{ input: 'nums = [2,7,11,15], target = 9', output: '[0,1]', explanation: 'Because nums[0] + nums[1] == 9, we return [0, 1].' }, { input: 'nums = [3,2,4], target = 6', output: '[1,2]' }, { input: 'nums = [3,3], target = 6', output: '[0,1]' }],
     constraints: ['2 <= nums.length <= 10^4', '-10^9 <= nums[i] <= 10^9', '-10^9 <= target <= 10^9', 'Exactly one valid answer exists.'],
@@ -28,7 +26,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
   },
   {
     id: '2', title: 'Longest Substring Without Repeating Characters', shortDescription: 'Find the length of the longest substring without repeating characters.',
-    difficulty: 'medium', category: 'Strings', points: 200, solved: 892, attempts: 3,
+    difficulty: 'medium', category: 'Strings', points: 200, solved: 0, attempts: 0,
     statement: ['Given a string s, find the length of the longest substring without repeating characters.'],
     examples: [{ input: 's = "abcabcbb"', output: '3', explanation: 'The answer is "abc", with the length of 3.' }, { input: 's = "bbbbb"', output: '1' }, { input: 's = "pwwkew"', output: '3', explanation: 'The answer is "wke", with the length of 3.' }],
     constraints: ['0 <= s.length <= 5 * 10^4', 's consists of English letters, digits, symbols and spaces.'],
@@ -36,7 +34,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
   },
   {
     id: '3', title: 'Median of Two Sorted Arrays', shortDescription: 'Given two sorted arrays, return the median.',
-    difficulty: 'hard', category: 'Arrays', points: 300, solved: 456, attempts: 3,
+    difficulty: 'hard', category: 'Arrays', points: 300, solved: 0, attempts: 0,
     statement: ['Given two sorted arrays nums1 and nums2 of size m and n respectively, return the median of the two sorted arrays.', 'The overall run time complexity should be O(log (m+n)).'],
     examples: [{ input: 'nums1 = [1,3], nums2 = [2]', output: '2.00000', explanation: 'Merged array = [1,2,3] and median is 2.' }, { input: 'nums1 = [1,2], nums2 = [3,4]', output: '2.50000' }],
     constraints: ['nums1.length == m', 'nums2.length == n', '0 <= m <= 1000', '0 <= n <= 1000', '-10^6 <= nums1[i], nums2[i] <= 10^6'],
@@ -44,7 +42,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
   },
   {
     id: '4', title: 'Valid Parentheses', shortDescription: 'Determine if the input string is valid.',
-    difficulty: 'easy', category: 'Stacks', points: 100, solved: 2100, attempts: 2,
+    difficulty: 'easy', category: 'Stacks', points: 100, solved: 0, attempts: 0,
     statement: ['Given a string s containing just the characters (, ), {, }, [ and ], determine if the input string is valid.', 'Open brackets must be closed by the same type of brackets and in the correct order.'],
     examples: [{ input: 's = "()"', output: 'true' }, { input: 's = "()[]{}"', output: 'true' }, { input: 's = "(]"', output: 'false' }],
     constraints: ['1 <= s.length <= 10^4', 's consists of parentheses only ().'],
@@ -52,7 +50,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
   },
   {
     id: '5', title: 'Binary Tree Inorder Traversal', shortDescription: 'Perform an inorder traversal of a binary tree.',
-    difficulty: 'easy', category: 'Trees', points: 100, solved: 1800, attempts: 2,
+    difficulty: 'easy', category: 'Trees', points: 100, solved: 0, attempts: 0,
     statement: ['Given the root of a binary tree, return the inorder traversal of its nodes values.'],
     examples: [{ input: 'root = [1,null,2,3]', output: '[1,3,2]' }, { input: 'root = []', output: '[]' }, { input: 'root = [1]', output: '[1]' }],
     constraints: ['The number of nodes in the tree is in the range [0, 100].', '-100 <= Node.val <= 100'],
@@ -60,7 +58,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
   },
   {
     id: '6', title: 'Edit Distance', shortDescription: 'Compute the minimum number of operations to convert word1 to word2.',
-    difficulty: 'hard', category: 'Dynamic Programming', points: 300, solved: 320, attempts: 4,
+    difficulty: 'hard', category: 'Dynamic Programming', points: 300, solved: 0, attempts: 0,
     statement: ['Given two strings word1 and word2, return the minimum number of operations required to convert word1 to word2.', 'You have 3 operations: insert a character, delete a character, or replace a character.'],
     examples: [{ input: 'word1 = "horse", word2 = "ros"', output: '3', explanation: 'horse -> rorse (replace h with r)\nrorse -> rose (remove r)\nrose -> ros (remove e)' }, { input: 'word1 = "intention", word2 = "execution"', output: '5' }],
     constraints: ['0 <= word1.length, word2.length <= 500', 'word1 and word2 consist of lowercase English letters.'],
@@ -70,12 +68,11 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
 
 export const ARENA_CHALLENGES: ArenaChallenge[] = SEED_CHALLENGES
 
+/**
+ * Seed lookup ONLY (Mongo unreachable fallback). Runtime reads go through
+ * `lib/arena/store.ts` — the list page, detail page, AI adapt route and submit
+ * grader must all see the same rows, including generated ones.
+ */
 export function getArenaChallenge(id: string): ArenaChallenge | undefined {
   return ARENA_CHALLENGES.find(c => c.id === id)
-}
-
-export function getNextArenaChallengeId(currentId: string): string | null {
-  const idx = ARENA_CHALLENGE_ORDER.indexOf(currentId as typeof ARENA_CHALLENGE_ORDER[number])
-  if (idx === -1 || idx >= ARENA_CHALLENGE_ORDER.length - 1) return null
-  return ARENA_CHALLENGE_ORDER[idx + 1]
 }

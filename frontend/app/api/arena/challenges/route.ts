@@ -1,27 +1,23 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { getMongoDb } from '@/lib/mongodb'
-import { ARENA_CHALLENGES } from '@/lib/arena-challenges'
+import { listArenaChallenges, arenaStats } from '@/lib/arena/store'
 
-async function ensureSeeded() {
-  try {
-    const db = await getMongoDb()
-    const col = db.collection('arena_challenges')
-    const n = await col.estimatedDocumentCount()
-    if (n > 0) return
-    await col.insertMany(ARENA_CHALLENGES)
-  } catch {
-    console.warn('[CodeSpectra] arena challenges auto-seed skipped')
-  }
-}
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
-    await ensureSeeded()
-    const db = await getMongoDb()
-    const data = await db.collection('arena_challenges').find({}).toArray()
+    const [rows, stats] = await Promise.all([listArenaChallenges(), arenaStats()])
+    // Engagement is real or zero — never the invented numbers the seeds used to carry.
+    const data = rows.map(c => ({
+      ...c,
+      solved: stats[c.id]?.solved ?? 0,
+      attempts: stats[c.id]?.attempts ?? 0,
+    }))
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
+  } catch {
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
+  }
 }
