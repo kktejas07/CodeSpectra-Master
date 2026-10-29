@@ -3494,5 +3494,20 @@
   "knowledge.aq.calls_one": "{count} AI కాల్",
   "knowledge.aq.calls_other": "{count} AI కాల్స్",
   "knowledge.aq.skipped_one": "{count} ప్రశ్నకు స్కోర్ ఇవ్వలేదు ({reasons})",
-  "knowledge.aq.skipped_other": "{count} ప్రశ్నలకు స్కోర్ ఇవ్వలేదు ({reasons})"
+  "knowledge.aq.skipped_other": "{count} ప్రశ్నలకు స్కోర్ ఇవ్వలేదు ({reasons})",
+  "practiceReview.title": "ప్రాక్టీస్ సమీక్ష",
+  "practiceReview.subtitle": "ఆమోదించే వరకు సృష్టించిన ఛాలెంజ్‌లు అభ్యాసకులకు కనిపించవు.",
+  "practiceReview.draft": "డ్రాఫ్ట్",
+  "practiceReview.approved": "ఆమోదించబడింది",
+  "practiceReview.rejected": "తిరస్కరించబడింది",
+  "practiceReview.loading": "డ్రాఫ్ట్‌లు లోడ్ అవుతున్నాయి…",
+  "practiceReview.empty": "సమీక్ష కోసం ఏమీ లేదు.",
+  "practiceReview.emptyBody": "నిర్ణయం అవసరమైన ఛాలెంజ్‌లు ఇక్కడ కనిపిస్తాయి.",
+  "practiceReview.approve": "ఆమోదించండి",
+  "practiceReview.reject": "తిరస్కరించండి",
+  "practiceReview.backToChallenges": "ఛాలెంజ్‌లు",
+  "practiceReview.loadFailed": "డ్రాఫ్ట్‌లు లోడ్ కాలేదు. మళ్లీ ప్రయత్నించడానికి రిఫ్రెష్ చేయండి.",
+  "practiceReview.actionFailed": "ఆ నిర్ణయం సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.",
+  "practiceReview.reviewApproved": "ఛాలెంజ్ ఆమోదించబడింది",
+  "practiceReview.reviewRejected": "ఛాలెంజ్ తిరస్కరించబడింది"
 }

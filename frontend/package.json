@@ -172,7 +172,8 @@
     "ws": "^8.22.0",
     "follow-redirects": "^1.16.1",
     "dompurify": "^3.4.17",
-    "zod": "^4.6.6"
+    "zod": "^4.6.6",
+    "re2js": "^2.9.1"
   },
   "overrides": {
     "snarkjs": "0.7.5"
