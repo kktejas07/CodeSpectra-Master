@@ -31,6 +31,7 @@ import { checkCodeExamples, checkComplexity, qualityScore, verbatimOverlap, vetP
 import { readingMinutes, replaceSection, sanitizeMarkdown } from './markdown'
 import { findDuplicateTitle, pickNextTopics, slugify, uniqueSlug } from './topics'
 import { publishDuePosts } from './posts'
+import { unwrapPayloadJson } from '@/lib/ai/json-payload'
 import { PROSE_FIRST_CATEGORIES, categoryLabel, type LearnLanguage, type LearnPostDoc, type LearnTopicDoc } from './types'
 
 // ─── Prompt ─────────────────────────────────────────────────────────────────
@@ -93,32 +94,15 @@ export function buildUserMessage(topic: Pick<LearnTopicDoc, 'title' | 'category'
  * Pick the post object out of a model response.
  *
  * `callModel` used to trust `res.json` whenever it was an object — but an empty
- * `{}` is an object too, so a backend that failed to parse still won: the real
- * JSON sitting in `text` was never read, every draft validated as "title:
- * expected string, received undefined", and Learn produced 0 posts across 12
- * scheduled runs (2026-10-29).
- *
- * Also unwraps the containers models like to add (`{post:{...}}`,
- * `{data:{...}}`, `[{...}]`) so one wrapper doesn't cost a post.
+ * `{}` is an object too, so a backend that failed to parse still won and the
+ * real JSON in `text` was never read. A first fix ("first non-empty object")
+ * then stopped at the transport envelope `{ ok, raw, json, usage, provider,
+ * model }`, which is non-empty too. `unwrapPayloadJson` walks all the way down.
  */
 export function coercePostJson(...candidates: unknown[]): Record<string, unknown> | null {
   for (const c of candidates) {
-    if (!c || typeof c !== 'object') continue
-    const obj = (Array.isArray(c) ? c[0] : c) as unknown
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) continue
-    const record = obj as Record<string, unknown>
-    if (Object.keys(record).length === 0) continue
-    // A single-key wrapper whose value looks like the post.
-    if (record.title === undefined) {
-      const keys = Object.keys(record)
-      if (keys.length === 1) {
-        const inner = record[keys[0]]
-        if (inner && typeof inner === 'object' && !Array.isArray(inner) && (inner as Record<string, unknown>).title !== undefined) {
-          return inner as Record<string, unknown>
-        }
-      }
-    }
-    return record
+    const found = unwrapPayloadJson(c)
+    if (found) return found
   }
   return null
 }

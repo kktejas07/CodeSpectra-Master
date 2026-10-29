@@ -59,6 +59,10 @@ async function main() {
   console.log(`[backfill] ${done}/${TARGET} generated arena challenges already present`)
 
   let failuresInARow = 0
+  // A duplicate is not a failure: the model re-uses good titles. Cap them
+  // instead of aborting, or a small model parks the whole run.
+  let duplicates = 0
+  const MAX_DUPLICATES = 25
   while (done < TARGET) {
     const i = done + failuresInARow
     const category = CATEGORIES[i % CATEGORIES.length]
@@ -82,8 +86,13 @@ async function main() {
       failuresInARow = 0
       console.log(`[backfill] ${done}/${TARGET} + ${result.challenge.title} (${difficulty}, ${category})`)
     } else {
-      console.log(`[backfill] duplicate skipped: ${result.challenge.title}`)
-      failuresInARow++
+      duplicates++
+      console.log(`[backfill] duplicate skipped (${duplicates}/${MAX_DUPLICATES}): ${result.challenge.title}`)
+      if (duplicates >= MAX_DUPLICATES) {
+        console.error(`[backfill] ${MAX_DUPLICATES} duplicates in a row — the model is repeating itself. Stopping.`)
+        await client.close()
+        process.exit(1)
+      }
     }
   }
 

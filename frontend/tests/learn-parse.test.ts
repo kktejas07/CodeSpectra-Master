@@ -27,6 +27,10 @@ describe('coercePostJson', () => {
     expect(coercePostJson([post])).toEqual(post)
   })
 
+  it('walks through the transport envelope (the live failure: keys ok, raw, json, …)', () => {
+    expect(coercePostJson({ ok: true, raw: '', json: post, usage: {}, provider: 'groq', model: 'm' })).toEqual(post)
+  })
+
   it('returns null when nothing usable is present', () => {
     expect(coercePostJson(null, undefined, {}, [])).toBeNull()
   })

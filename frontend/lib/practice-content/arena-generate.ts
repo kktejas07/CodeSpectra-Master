@@ -28,32 +28,13 @@ export function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
 }
 
-/** LLM output often arrives wrapped in a fence or with prose around it. */
-export function parseJsonObject(text: string): unknown {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const body = (fenced ? fenced[1] : text).trim()
-  const start = body.indexOf('{')
-  const end = body.lastIndexOf('}')
-  if (start === -1 || end <= start) throw new Error('No JSON object in model output')
-  return JSON.parse(body.slice(start, end + 1))
-}
+// Shared with Learn and Challenges — the transport envelope is the same
+// everywhere. Re-exported so callers/tests keep their existing imports.
+export { parseJsonObject, jsonFromCompletion } from '@/lib/ai/json-payload'
+import { jsonFromCompletion, unwrapPayloadJson } from '@/lib/ai/json-payload'
 
-/**
- * The JSON from a completed call.
- *
- * `backendComplete` returns the parsed object in `json` when the provider
- * honoured `responseFormat: 'json'` and may leave `text` empty — reading only
- * `text` rejected every candidate with "No JSON object in model output" and the
- * whole backfill stopped after six failures (2026-10-29). Prefer `json`, fall
- * back to parsing `raw`/`text`.
- */
-export function jsonFromCompletion(res: { json?: unknown; raw?: string; text?: string }): unknown {
-  if (res.json && typeof res.json === 'object' && Object.keys(res.json as object).length > 0) return res.json
-  for (const candidate of [res.raw, res.text]) {
-    if (!candidate) continue
-    try { return parseJsonObject(candidate) } catch { /* try the next */ }
-  }
-  throw new Error('No JSON object in model output')
+export function unwrapGeneratedJson(raw: unknown): Record<string, unknown> | null {
+  return unwrapPayloadJson(raw)
 }
 
 function asString(v: unknown): string {
@@ -79,17 +60,21 @@ export type NormalizeResult =
  * no reference solution, fewer than two cases, or a case with no expected output.
  */
 export function normalizeGeneratedArena(raw: unknown): NormalizeResult {
-  if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
-  const r = raw as Record<string, unknown>
+  const ctx = unwrapGeneratedJson(raw) ?? (raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null)
+  if (!ctx) return { ok: false, reason: 'not an object' }
+  const r = ctx
+  // Every rejection names the keys that arrived: without it a systemic shape
+  // mismatch looks identical to a model that ignored the contract.
+  const got = () => ` (received keys: ${Object.keys(r).slice(0, 12).join(', ') || 'none'})`
 
   const title = asString(r.title).trim()
-  if (title.length < 8 || title.length > 120) return { ok: false, reason: 'title missing or out of range' }
+  if (title.length < 8 || title.length > 120) return { ok: false, reason: `title missing or out of range${got()}` }
 
   const difficulty = asString(r.difficulty).toLowerCase()
-  if (!['easy', 'medium', 'hard'].includes(difficulty)) return { ok: false, reason: 'difficulty must be easy|medium|hard' }
+  if (!['easy', 'medium', 'hard'].includes(difficulty)) return { ok: false, reason: `difficulty must be easy|medium|hard${got()}` }
 
   const solutionCode = asString(r.solutionCode ?? r.solution_code ?? r.solution)
-  if (solutionCode.trim().length < 20) return { ok: false, reason: 'reference solution missing' }
+  if (solutionCode.trim().length < 20) return { ok: false, reason: `reference solution missing${got()}` }
 
   const rawExamples = Array.isArray(r.examples) ? r.examples : []
   const examples = rawExamples
@@ -190,7 +175,7 @@ Return ONE JSON object, no prose:
   "category": string,                    // e.g. "Arrays", "Strings", "Graphs", "SQL"
   "statement": string[],                 // 2-4 sentences, state the EXACT stdin format
   "examples": [{ "input": string, "output": string, "explanation": string }],  // >= 3
-  "testCases": [{ "stdin": string, "expected_stdout": string }],              // 3-5 hidden cases
+  "testCases": [{ "stdin": string, "expected_stdout": string }],              // 2-3 hidden cases (keep them simple)
   "constraints": string[],
   "solutionCode": string                 // JavaScript, reads stdin, prints stdout
 }
@@ -199,7 +184,9 @@ Hard rules (a wrong answer is rejected automatically):
 - The solver writes a COMPLETE PROGRAM: it reads stdin and prints to stdout. No function signatures, no tests, no argv.
 - "input"/"stdin" is the literal text fed to stdin. Prefer one value per line or JSON arrays on a line.
 - "output"/"expected_stdout" is exactly what solutionCode prints — no labels, no trailing spaces.
-- solutionCode must use only Node built-ins, read with fs.readFileSync(0,'utf8'), and print with console.log.
+- solutionCode runs on Node (CommonJS): read stdin with require('fs').readFileSync(0,'utf8') and print with console.log.
+- MENTALLY EXECUTE solutionCode on every case before answering. The expected output must be what that code prints, not what you think it should print. Fewer, simpler cases are better than clever ones you cannot trace.
+- Prefer single-line deterministic outputs (a number, a JSON array, a space-separated list). Avoid floats, dates, randomness, and anything implementation-dependent.
 - Original problems only. Do not reuse LeetCode titles or statements.`
 
 export type GenerateResult =
