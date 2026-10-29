@@ -11,6 +11,8 @@ import {
   type ArenaExecutor,
 } from '@/lib/practice-content/arena-generate'
 import type { ArenaChallenge } from '@/lib/arena-challenges'
+import { problemPublishable } from '@/lib/practice-content/problems-generate'
+import { normalizeGeneratedChallenge } from '@/lib/practice-content/challenges-generate'
 
 const goodRaw = {
   title: 'Rotate A Matrix In Place',
@@ -96,6 +98,63 @@ describe('verifyArenaChallenge (publish gate)', () => {
   it('rejects a candidate with nothing gradable', async () => {
     const res = await verifyArenaChallenge(challenge({ examples: [], testCases: [] }), matches)
     expect(res).toEqual({ ok: false, reason: 'no gradable cases' })
+  })
+})
+
+describe('problemPublishable (problems publish gate)', () => {
+  const verified = { verified: true, language: 'python', total: 6, passed: 6, dropped: [], note: '' }
+
+  it('publishes a verified problem with enough tests', () => {
+    expect(problemPublishable(verified, 6)).toEqual({ ok: true })
+  })
+
+  it('refuses when the reference solution could not verify the tests', () => {
+    const res = problemPublishable({ ...verified, verified: false, note: 'No reference solution — hidden tests were not checked.' }, 6)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.reason).toContain('No reference solution')
+  })
+
+  it('refuses when the runner was unavailable (verified = null)', () => {
+    expect(problemPublishable({ ...verified, verified: null }, 6).ok).toBe(false)
+  })
+
+  it('refuses when too few tests survived verification', () => {
+    const res = problemPublishable(verified, 3)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.reason).toContain('need 4')
+  })
+})
+
+describe('normalizeGeneratedChallenge (challenge drafts)', () => {
+  const good = {
+    title: 'Rewrite A Blocking Node Route',
+    type: 'code_review',
+    difficulty: 'medium',
+    duration_minutes: 20,
+    description: 'The route below reads a 2 GB file with fs.readFileSync inside the request handler. Explain what happens under concurrent load and rewrite it so memory stays bounded.',
+  }
+
+  it('accepts a complete prompt and marks it draft', () => {
+    const n = normalizeGeneratedChallenge(good)
+    expect(n.ok).toBe(true)
+    if (!n.ok) return
+    expect(n.challenge.review_status).toBe('draft')
+    expect(n.challenge.id).toBe('ch_ai_rewrite-a-blocking-node-route')
+    expect(n.challenge.duration_minutes).toBe(20)
+  })
+
+  it('rejects a vague description — an admin would have to rewrite it anyway', () => {
+    const n = normalizeGeneratedChallenge({ ...good, description: 'Explain the event loop.' })
+    expect(n.ok).toBe(false)
+    if (n.ok) return
+    expect(n.reason).toContain('description too short')
+  })
+
+  it('rejects an unknown type and an out-of-range duration', () => {
+    expect(normalizeGeneratedChallenge({ ...good, type: 'trivia' }).ok).toBe(false)
+    expect(normalizeGeneratedChallenge({ ...good, duration_minutes: 300 }).ok).toBe(false)
   })
 })
 

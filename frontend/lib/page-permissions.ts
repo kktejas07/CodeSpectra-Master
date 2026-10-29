@@ -41,6 +41,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
 
   // Hackathons, Problems & Proctoring (hackathon/codeathon admin is in EVENT_ADMIN_ROUTES)
   '/dashboard/admin/question-bank',
+  '/dashboard/admin/practice-review',
   // '/dashboard/admin/assessments/bulk' is open to company admins (CORE-009): the API scopes them to their tests.
   '/dashboard/admin/assessments/pipeline',
   '/dashboard/admin/proctor',
@@ -520,6 +521,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/help': 'Help center',
   '/dashboard/admin/sso': 'SSO config',
   '/dashboard/admin/question-bank': 'Question bank',
+  '/dashboard/admin/practice-review': 'Practice review',
   '/dashboard/admin/hiring-manager-report': 'Hiring report',
   '/dashboard/admin/predictive-validity': 'Predictive validity',
   '/dashboard/admin/sme-review': 'SME review',

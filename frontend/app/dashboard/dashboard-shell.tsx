@@ -553,6 +553,7 @@ export default function DashboardLayout({
       [DASHBOARD_ROUTES.organization.team]: Users2,
       '/dashboard/admin/team/activity': Activity,
       '/dashboard/admin/question-bank': Database,
+      '/dashboard/admin/practice-review': ClipboardCheck,
       '/dashboard/admin/company-patterns': Building2,
       '/dashboard/admin/predictive-validity': LineChart,
       '/dashboard/admin/sme-review': UserCheck,
