@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Code2, Play, Send, CheckCircle, AlertCircle, Loader2, ArrowRight, Sparkles, Database, Trophy } from 'lucide-react'
-import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from '@/lib/arena-challenges'
+import type { ArenaChallenge } from '@/lib/arena-challenges'
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { PageHeader } from '@/components/app/page-kit'
@@ -87,13 +87,49 @@ function ArenaChallengeInner() {
   const router = useRouter()
   const id = String(params?.id ?? '')
 
-  const baseChallenge = useMemo(() => getArenaChallenge(id), [id])
-  const nextId = useMemo(() => getNextArenaChallengeId(id), [id])
+  // The challenge comes from the API (Mongo), never the hardcoded seed array —
+  // otherwise generated challenges 404 on click. `nextId` comes from the same
+  // list the arena page renders, so navigation keeps working past the seeds.
+  const [baseChallenge, setBaseChallenge] = useState<ArenaChallenge | null>(null)
+  const [nextId, setNextId] = useState<string | null>(null)
+  const [loadingChallenge, setLoadingChallenge] = useState(true)
 
-  const [challenge, setChallenge] = useState<ArenaChallenge | null>(baseChallenge ?? null)
+  const [challenge, setChallenge] = useState<ArenaChallenge | null>(null)
   const [source, setSource] = useState<'ai' | 'static' | null>(null)
   const [adaptNotice, setAdaptNotice] = useState<string | null>(null)
   const [variantId, setVariantId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const ac = new AbortController()
+    setLoadingChallenge(true)
+    setBaseChallenge(null)
+    setChallenge(null)
+    fetch(`/api/arena/challenges/${encodeURIComponent(id)}`, { credentials: 'include', signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((json: { data?: ArenaChallenge }) => {
+        const found = json.data ?? null
+        setBaseChallenge(found)
+        setChallenge(found)
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) { setBaseChallenge(null); setChallenge(null) }
+      })
+      .finally(() => { if (!ac.signal.aborted) setLoadingChallenge(false) })
+    return () => ac.abort()
+  }, [id])
+
+  useEffect(() => {
+    const ac = new AbortController()
+    fetch('/api/arena/challenges', { credentials: 'include', signal: ac.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((json: { data?: ArenaChallenge[] }) => {
+        const rows = json.data ?? []
+        const idx = rows.findIndex((c) => c.id === id)
+        setNextId(idx >= 0 && idx < rows.length - 1 ? rows[idx + 1].id : null)
+      })
+      .catch(() => { if (!ac.signal.aborted) setNextId(null) })
+    return () => ac.abort()
+  }, [id])
 
   useEffect(() => {
     setChallenge(baseChallenge ?? null)
@@ -177,10 +213,10 @@ function ArenaChallengeInner() {
         body: JSON.stringify({
           source_code: codeRef.current,
           language,
-          test_cases: challenge.examples.map(ex => ({
-            input: ex.input,
-            expected_output: ex.output,
-          })),
+          // The server owns the test cases (runs included) — sending them from
+          // here let the client decide what "passed" meant.
+          challenge_id: challenge.id,
+          variant_id: variantId ?? undefined,
           mode: 'run',
         }),
       })
@@ -243,6 +279,17 @@ function ArenaChallengeInner() {
       setSubmitted(false)
     }
   }, [challenge, language, nextId, router, id, variantId])
+
+  if (loadingChallenge) {
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <div className="h-10 w-64 bg-muted/60 rounded" />
+        <div className="h-4 w-full bg-muted/40 rounded" />
+        <div className="h-4 w-2/3 bg-muted/40 rounded" />
+        <div className="h-64 w-full bg-muted/30 rounded" />
+      </div>
+    )
+  }
 
   if (!challenge) {
     return (

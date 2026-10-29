@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { normalizeChallengeRow } from '@/lib/challenges/normalize'
 
 interface ChallengeDoc {
   id: string
@@ -65,10 +66,16 @@ export async function GET() {
     await ensureSeeded()
     const db = await getMongoDb()
     // role-scope: narrows a tenant admin to their own org (never a grant)
-    const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
+    const baseFilter: Record<string, unknown> = gate.user.role === 'tenant_admin'
       ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
       : {}
-    const data = await db.collection('challenges').find(filter).toArray()
+    // Generated challenges are drafts until a human approves them
+    // (/dashboard/admin/practice-review). Legacy rows have no review_status and
+    // stay visible.
+    const filter = { ...baseFilter, review_status: { $nin: ['draft', 'rejected'] } }
+    const data = (await db.collection('challenges').find(filter).toArray()).map(d =>
+      normalizeChallengeRow(d as Record<string, unknown>),
+    )
     return NextResponse.json({ data })
   } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

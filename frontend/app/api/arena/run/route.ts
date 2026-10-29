@@ -6,7 +6,8 @@ import { newId, nowIso } from '@/lib/db/ai'
 import { limitRequest } from '@/lib/rate-limit'
 import { HUNDRED_DAYS } from '@/lib/100-days-data'
 import { completedDaysFrom, findSprintProblem } from '@/lib/hundred-days-progress'
-import { getArenaChallenge } from '@/lib/arena-challenges'
+import { loadArenaChallenge } from '@/lib/arena/store'
+import type { ArenaTestCase } from '@/lib/arena-challenges'
 import { awardArenaPoints, loadArenaVariant, type ArenaAwardResult } from '@/lib/arena-awards'
 
 const MAX_SOURCE = 50_000
@@ -61,11 +62,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unknown problem' }, { status: 404 })
   }
 
-  // Arena submits are graded on the server's own tests: the stored AI variant
-  // served to this user, else the original seed. Client test cases are ignored.
-  const arenaSubmit = mode === 'submit' && Boolean(challenge_id) && !sprint
-  const arenaOriginal = arenaSubmit ? getArenaChallenge(challenge_id!) : undefined
-  if (arenaSubmit && !arenaOriginal) {
+  // Any call that names a challenge is graded on the SERVER's cases — runs
+  // included. The client never supplies them, so hidden cases stay hidden and
+  // a tampered payload cannot grade itself green.
+  const arenaChallengeId = !sprint && challenge_id ? challenge_id : null
+  const arenaSubmit = mode === 'submit' && Boolean(arenaChallengeId)
+  const arenaOriginal = arenaChallengeId ? await loadArenaChallenge(arenaChallengeId) : undefined
+  if (arenaChallengeId && !arenaOriginal) {
     return NextResponse.json({ error: 'Unknown challenge' }, { status: 404 })
   }
 
@@ -73,15 +76,21 @@ export async function POST(request: NextRequest) {
   if (sprint) {
     test_cases = sprint.problem.examples.map((ex) => ({ input: ex.input, expected_output: ex.output }))
   } else if (arenaOriginal) {
-    let examples = arenaOriginal.examples
+    // Graded cases: the stored AI variant served to this user, else the
+    // challenge's own test cases (falling back to examples for legacy rows).
+    let cases: ArenaTestCase[] | { input: string; output: string }[] =
+      arenaOriginal.testCases?.length ? arenaOriginal.testCases : arenaOriginal.examples
     if (variantId) {
       const variant = await loadArenaVariant(gate.user.id, variantId).catch(() => null)
       if (!variant || variant.original_id !== arenaOriginal.id) {
         return NextResponse.json({ error: 'This version of the challenge has expired. Reload the page to get a fresh one.' }, { status: 409 })
       }
-      examples = variant.examples
+      cases = variant.examples
     }
-    test_cases = examples.map((ex) => ({ input: ex.input, expected_output: ex.output }))
+    test_cases = cases.map((c) => ({
+      input: 'stdin' in c ? c.stdin : c.input,
+      expected_output: 'expected_stdout' in c ? c.expected_stdout : c.output,
+    }))
   } else {
     const raw = Array.isArray(body.test_cases) ? body.test_cases : []
     if (raw.length > MAX_CASES) {
@@ -154,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (arenaOriginal) {
+  if (arenaSubmit && arenaOriginal) {
     try {
       const db = await getMongoDb()
       await db.collection('arena_submissions').insertOne({
@@ -179,7 +188,7 @@ export async function POST(request: NextRequest) {
   // Arena points: server-graded accepted submit, once per original question, daily cap.
   let arenaPoints: ArenaAwardResult | null = null
   let arenaPointsError: string | null = null
-  if (arenaOriginal) {
+  if (arenaSubmit && arenaOriginal) {
     try {
       arenaPoints = await awardArenaPoints({
         userId: gate.user.id,

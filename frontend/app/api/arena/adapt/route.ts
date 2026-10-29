@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
-import { getArenaChallenge, type ArenaChallenge } from '@/lib/arena-challenges'
+import type { ArenaChallenge } from '@/lib/arena-challenges'
+import { loadArenaChallenge } from '@/lib/arena/store'
 import { backendComplete } from '@/lib/ai/backend'
 import { hasAnyAiProvider } from '@/lib/ai/provider-fallback'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
 
   const challengeId = String(body.challengeId ?? '1')
   const userStack = Array.isArray(body.userStack) ? body.userStack.filter((x) => typeof x === 'string') : []
-  const base = getArenaChallenge(challengeId)
+  const base = await loadArenaChallenge(challengeId)
   if (!base) {
     return NextResponse.json({ error: 'Unknown challenge' }, { status: 404 })
   }

@@ -100,8 +100,9 @@ export interface SaveProblemOptions {
    * 'legacy' = what POST /api/ai/generate-problem has always written on publish.
    * 'draft'  = agent: unpublished, owned by the caller's tenant.
    * 'hackathon' = agent: attached to an event (hackathon_only), owned by the caller's tenant.
+   * 'published' = pipeline: verified content that goes live immediately.
    */
-  mode: 'legacy' | 'draft' | 'hackathon'
+  mode: 'legacy' | 'draft' | 'hackathon' | 'published'
 }
 
 /** Insert a generated problem. Returns its id + slug. */
@@ -139,7 +140,7 @@ export async function saveGeneratedProblem(
     created_at: nowIso(),
   }
   if (opts.mode !== 'legacy') {
-    doc.is_published = opts.mode === 'hackathon'
+    doc.is_published = opts.mode === 'hackathon' || opts.mode === 'published'
     doc.visibility = opts.mode === 'hackathon' ? 'hackathon_only' : 'public'
     doc.updated_at = nowIso()
     doc.source = 'ai_agent'

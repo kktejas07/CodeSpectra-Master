@@ -1,0 +1,88 @@
+/**
+ * Backfill challenge prompts until `--count` AI-generated ones exist
+ * (default 100). They land as drafts and stay invisible until approved at
+ * /dashboard/admin/practice-review — challenges are prose, so there is nothing
+ * to execute and verify.
+ *
+ *   cd frontend
+ *   MONGODB_URI=... yarn tsx scripts/backfill-challenges.ts --count=100
+ *
+ * Resumable: counts what already exists and tops up; deduped by slug/title.
+ */
+import { MongoClient } from 'mongodb'
+import { loadEnvConfig } from '@next/env'
+
+loadEnvConfig(process.cwd())
+
+const MONGO_URI = process.env.MONGODB_URI
+const DB_NAME = process.env.MONGODB_DB_NAME || 'codespectra'
+
+function arg(name: string, fallback: number): number {
+  const hit = process.argv.find(a => a.startsWith(`--${name}=`))
+  if (!hit) return fallback
+  const n = Number(hit.split('=')[1])
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+const TARGET = arg('count', 100)
+const MAX_FAILURES_IN_A_ROW = 6
+const TYPES = ['technical', 'system_design', 'behavioral', 'code_review', 'debugging'] as const
+const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
+
+async function main() {
+  if (!MONGO_URI) {
+    console.error('MONGODB_URI is required (run with the app env, e.g. on the server)')
+    process.exit(2)
+  }
+
+  const { generateChallenge } = await import('../lib/practice-content/challenges-generate')
+
+  const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
+  await client.connect()
+  const col = client.db(DB_NAME).collection('challenges')
+
+  const countGenerated = () => col.countDocuments({ source: 'ai' })
+
+  let done = await countGenerated()
+  console.log(`[backfill] ${done}/${TARGET} generated challenges already present (drafts until approved)`)
+
+  let failuresInARow = 0
+  while (done < TARGET) {
+    const i = done + failuresInARow
+    const type = TYPES[i % TYPES.length]
+    const difficulty = DIFFICULTIES[i % DIFFICULTIES.length]
+
+    const result = await generateChallenge({ type, difficulty })
+    if (!result.ok) {
+      failuresInARow++
+      console.error(`[backfill] rejected (${type}/${difficulty}): ${result.reason}`)
+      if (failuresInARow >= MAX_FAILURES_IN_A_ROW) {
+        console.error(`[backfill] ${MAX_FAILURES_IN_A_ROW} failures in a row — stopping. Check provider keys.`)
+        await client.close()
+        process.exit(1)
+      }
+      continue
+    }
+
+    const c = result.challenge
+    const exists = await col.findOne({ $or: [{ id: c.id }, { slug: c.slug }, { title: c.title }] })
+    if (exists) {
+      console.log(`[backfill] duplicate skipped: ${c.title}`)
+      failuresInARow++
+      continue
+    }
+
+    await col.insertOne({ ...c, created_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    done = await countGenerated()
+    failuresInARow = 0
+    console.log(`[backfill] ${done}/${TARGET} + ${c.title} (${type}, ${difficulty})`)
+  }
+
+  await client.close()
+  console.log(`[backfill] done — ${done} generated challenges awaiting review`)
+}
+
+main().catch((e) => {
+  console.error('[backfill] failed:', e)
+  process.exit(1)
+})

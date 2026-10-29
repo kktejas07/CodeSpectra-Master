@@ -88,6 +88,16 @@ const HTTP_CRON_JOBS = [
     intervalMinutes: 60,
   },
   {
+    id: 'practice-daily',
+    path: '/api/cron/practice-daily',
+    name: 'Daily arena challenge',
+    what: 'Adds one arena challenge per day. Published only when its reference solution reproduces every expected output in the sandbox.',
+    recommend: 'Daily',
+    cronHint: '0 6 * * *',
+    auth: 'CRON_SECRET',
+    intervalMinutes: 1440,
+  },
+  {
     id: 'ebooks-daily',
     path: '/api/cron/ebooks-daily',
     name: 'Daily ebook draft',
