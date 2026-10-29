@@ -202,6 +202,8 @@ export async function generateArenaChallenge(opts: {
   exec?: ArenaExecutor
   difficulty?: string
   category?: string
+  /** Narrows the subject so repeated runs don't produce the same problem. */
+  topicHint?: string
   maxAttempts?: number
   /** Only used for AI spend attribution. */
   feature?: string
@@ -214,6 +216,8 @@ export async function generateArenaChallenge(opts: {
     const userMessage = [
       opts.difficulty ? `Difficulty: ${opts.difficulty}.` : 'Difficulty: medium.',
       opts.category ? `Category: ${opts.category}.` : '',
+      opts.topicHint ? `Focus specifically on: ${opts.topicHint}.` : '',
+      'Use a title you have not used before.',
       attempt > 1 ? `Your previous attempt was rejected: ${lastReason}. Fix that.` : '',
       'Write one new challenge as JSON.',
     ].filter(Boolean).join('\n')
@@ -224,6 +228,7 @@ export async function generateArenaChallenge(opts: {
         systemMessage: SYSTEM_PROMPT,
         userMessage,
         responseFormat: 'json',
+        cache: false, // otherwise an identical prompt replays the cached answer and the run loops on one title
         feature: opts.feature ?? 'practice-content',
       })
       if (!res.ok) {
