@@ -105,6 +105,12 @@ interface BackendCompleteArgs {
   apiKeyOverride?: string
   feature?: string
   userId?: string
+  /**
+   * Batch callers (content backfills, cron) would rather try the next provider
+   * than sleep out a 429: with several keys configured, cycling is faster than
+   * waiting, and a missed day matters less than a stalled run.
+   */
+  skipRateLimitWait?: boolean
 }
 
 /**
@@ -372,6 +378,12 @@ export async function providerFallbackComplete(args: BackendCompleteArgs): Promi
 
         // Mark key as rate-limited in DB
         await markKeyRateLimited(p.provider, p.apiKey, (retryAfterSec || 60) * 1000)
+
+        // Batch work moves on immediately; interactive calls wait it out.
+        if (args.skipRateLimitWait) {
+          console.log(`[provider-fallback] skipping ${providerModel} (batch mode) — trying the next provider`)
+          continue
+        }
 
         // Wait and retry same provider once
         if (totalRetries < MAX_RETRIES) {

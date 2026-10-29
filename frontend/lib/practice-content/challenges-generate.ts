@@ -140,6 +140,7 @@ export async function generateChallenge(opts: {
         userMessage,
         responseFormat: 'json',
         cache: false, // otherwise an identical prompt replays the cached answer and the run loops on one title
+        skipRateLimitWait: true, // batch: try another provider rather than sleep 30s
         feature: 'practice-content-challenges',
       })
       if (!res.ok) return { ok: false, reason: `LLM call failed: ${res.text || 'no output'}`, attempts: attempt }

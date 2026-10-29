@@ -296,6 +296,8 @@ export async function backendComplete(args: {
   apiKeyOverride?: string
   feature?: string
   userId?: string
+  /** Batch callers: cycle providers on 429 instead of sleeping (lib/ai/provider-fallback). */
+  skipRateLimitWait?: boolean
   /** Set false to bypass the semantic response cache (default true). */
   cache?: boolean
 }): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string; usage?: { input_tokens: number, output_tokens: number }; provider?: string; model?: string }> {

@@ -229,6 +229,7 @@ export async function generateArenaChallenge(opts: {
         userMessage,
         responseFormat: 'json',
         cache: false, // otherwise an identical prompt replays the cached answer and the run loops on one title
+        skipRateLimitWait: true, // batch: try another provider rather than sleep 30s
         feature: opts.feature ?? 'practice-content',
       })
       if (!res.ok) {
