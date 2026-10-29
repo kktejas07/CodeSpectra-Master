@@ -3494,5 +3494,20 @@
   "knowledge.aq.calls_one": "{count} AI कॉल",
   "knowledge.aq.calls_other": "{count} AI कॉल",
   "knowledge.aq.skipped_one": "{count} प्रश्न का स्कोर नहीं हुआ ({reasons})",
-  "knowledge.aq.skipped_other": "{count} प्रश्नों का स्कोर नहीं हुआ ({reasons})"
+  "knowledge.aq.skipped_other": "{count} प्रश्नों का स्कोर नहीं हुआ ({reasons})",
+  "practiceReview.title": "अभ्यास समीक्षा",
+  "practiceReview.subtitle": "स्वीकृति तक बनाए गए चैलेंज शिक्षार्थियों को नहीं दिखते।",
+  "practiceReview.draft": "मसौदा",
+  "practiceReview.approved": "स्वीकृत",
+  "practiceReview.rejected": "अस्वीकृत",
+  "practiceReview.loading": "मसौदे लोड हो रहे हैं…",
+  "practiceReview.empty": "समीक्षा के लिए कुछ नहीं है।",
+  "practiceReview.emptyBody": "जिन चैलेंज पर निर्णय चाहिए वे यहाँ दिखेंगे।",
+  "practiceReview.approve": "स्वीकृत करें",
+  "practiceReview.reject": "अस्वीकार करें",
+  "practiceReview.backToChallenges": "चैलेंज",
+  "practiceReview.loadFailed": "मसौदे लोड नहीं हो सके। फिर से कोशिश करने के लिए रीफ़्रेश करें।",
+  "practiceReview.actionFailed": "यह निर्णय सहेजा नहीं जा सका। फिर से कोशिश करें।",
+  "practiceReview.reviewApproved": "चैलेंज स्वीकृत हुआ",
+  "practiceReview.reviewRejected": "चैलेंज अस्वीकृत हुआ"
 }

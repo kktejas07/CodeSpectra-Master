@@ -41,6 +41,7 @@ Evidence for the defects:
 
 - `frontend/app/dashboard/arena/[id]/page.tsx:90` reads `getArenaChallenge()` from `lib/arena-challenges.ts`, not the API — rows added to Mongo cannot render.
 - `frontend/lib/arena-challenges.ts:18` `ARENA_CHALLENGE_ORDER = ['1'..'6']` caps navigation at 6.
+- **Arena content is ungradeable as shipped.** `app/api/arena/run/route.ts:118` feeds `examples[].input` to Piston as stdin, while every starter is a LeetCode-style function (`function twoSum(nums, target)`) that never reads stdin and prints nothing — with `input: 'nums = [2,7,11,15], target = 9'` and `expected_output: '[0,1]'`. All six seeds are unsolvable by any user. The 100-Days sprint grades through the same `examples` path.
 - `frontend/app/api/challenges/route.ts:20-41` seeds `duration_minutes`/`success_rate`; `app/dashboard/challenges/page.tsx:164-165` renders `duration`/`successRate` → `undefined min`.
 - `frontend/app/api/challenges/[id]/route.ts:18-22` looks up `_id`/`slug`; seeds have neither → every detail page 404s.
 - `frontend/lib/100-days-data.ts` is 865 lines bundled into the client; days 79–100 have placeholder expected outputs (`eyJ...signature`, `a1b2c3d4e5f6`) graded by exact stdout in `app/api/arena/run/route.ts:124-126` — they can never pass.
@@ -79,6 +80,16 @@ daily scheduler job     ─┘        │
 
 Coding items keep the existing shape: `starter_code`, `test_cases[]` (≥6: 2 sample + 4 hidden), `solution_code`, `constraints`, `topics[]`.
 
+### 5.1 Arena I/O contract (decided 2026-10-29)
+
+Arena adopts the `problems` contract, because the old one was ungradeable: the grader pipes `examples[].input` to stdin while the starter is a LeetCode-style function that never reads stdin.
+
+- A challenge is a **complete program**: stdin in, stdout out. No function-signature harness (that would need one wrapper per language × 5).
+- `testCases: { stdin, expected_stdout }[]` holds hidden cases; `examples` hold the literal stdin/stdout so what the user sees is what is graded.
+- The reference solution is verified against every case before publish, and seeds keep one so the contract is testable (`tests/arena-seed-cases.test.ts`).
+- Runs are graded server-side too when a `challenge_id` is present — the client never supplies test cases.
+- The 100-Days sprint uses the same grading path and must migrate in Phase 3.
+
 ## 6. Publish gate
 
 ```
@@ -103,6 +114,8 @@ A candidate is retried at most 3 times before the run records a failure; the run
 
 **Arena**
 - Detail page reads a **new** `GET /api/arena/challenges/[id]` (no such route exists today — only list/adapt/run); delete `ARENA_CHALLENGE_ORDER` capping.
+- Migrate the seeds to the §5.1 contract (real stdin formats, stdin-reading starters, reference solution each) — merged in #400.
+- Runs and submits both grade on the server's cases; the client stops shipping `test_cases`.
 - `solved`/`attempts` computed from `arena_submissions`; remove the invented numbers from `lib/arena-challenges.ts`.
 - Detail lookup must accept the seeded row shape (by `id` or `slug`).
 
