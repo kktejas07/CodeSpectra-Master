@@ -139,6 +139,7 @@ export async function generateChallenge(opts: {
         systemMessage: SYSTEM_PROMPT,
         userMessage,
         responseFormat: 'json',
+        cache: false, // otherwise an identical prompt replays the cached answer and the run loops on one title
         feature: 'practice-content-challenges',
       })
       if (!res.ok) return { ok: false, reason: `LLM call failed: ${res.text || 'no output'}`, attempts: attempt }

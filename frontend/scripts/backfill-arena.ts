@@ -39,6 +39,19 @@ const CATEGORIES = [
   'Greedy', 'Binary Search', 'Sorting', 'Recursion', 'Bit Manipulation', 'Math',
 ]
 const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
+// Category+difficulty alone repeat quickly and the model converges on one title;
+// rotate a concrete subject so each request is genuinely different.
+const HINTS = [
+  'frequency counting in a stream', 'interval merging and overlaps', 'prefix sums and range queries',
+  'two-pointer partitioning', 'monotonic stack patterns', 'top-k selection', 'matrix traversal orders',
+  'string tokenising without regex', 'binary search on the answer', 'union-find connectivity',
+  'cycle detection in directed graphs', 'shortest path with weighted edges', 'greedy scheduling',
+  'dynamic programming on subsequences', 'bit tricks and masks', 'trie prefix matching',
+  'sliding window over fixed alphabet', 'coordinate compression', 'simulating a queue with two stacks',
+  'tree serialisation and parsing', 'sweep line counting', 'digit manipulation', 'base conversion',
+  'run-length encoding', 'longest common subarray', 'counting sort variants', 'modular arithmetic',
+  'string anagram grouping', 'palindrome expansion', 'grid flood fill',
+]
 
 async function main() {
   if (!MONGO_URI) {
@@ -68,7 +81,7 @@ async function main() {
     const category = CATEGORIES[i % CATEGORIES.length]
     const difficulty = DIFFICULTIES[i % DIFFICULTIES.length]
 
-    const result = await generateArenaChallenge({ category, difficulty, feature: 'practice-content-backfill' })
+    const result = await generateArenaChallenge({ category, difficulty, topicHint: HINTS[i % HINTS.length], feature: 'practice-content-backfill' })
     if (!result.ok) {
       failuresInARow++
       console.error(`[backfill] rejected (${category}/${difficulty}): ${result.reason}`)
