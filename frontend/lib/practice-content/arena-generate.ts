@@ -28,32 +28,13 @@ export function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
 }
 
-/** LLM output often arrives wrapped in a fence or with prose around it. */
-export function parseJsonObject(text: string): unknown {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const body = (fenced ? fenced[1] : text).trim()
-  const start = body.indexOf('{')
-  const end = body.lastIndexOf('}')
-  if (start === -1 || end <= start) throw new Error('No JSON object in model output')
-  return JSON.parse(body.slice(start, end + 1))
-}
+// Shared with Learn and Challenges — the transport envelope is the same
+// everywhere. Re-exported so callers/tests keep their existing imports.
+export { parseJsonObject, jsonFromCompletion } from '@/lib/ai/json-payload'
+import { jsonFromCompletion, unwrapPayloadJson } from '@/lib/ai/json-payload'
 
-/**
- * The JSON from a completed call.
- *
- * `backendComplete` returns the parsed object in `json` when the provider
- * honoured `responseFormat: 'json'` and may leave `text` empty — reading only
- * `text` rejected every candidate with "No JSON object in model output" and the
- * whole backfill stopped after six failures (2026-10-29). Prefer `json`, fall
- * back to parsing `raw`/`text`.
- */
-export function jsonFromCompletion(res: { json?: unknown; raw?: string; text?: string }): unknown {
-  if (res.json && typeof res.json === 'object' && Object.keys(res.json as object).length > 0) return res.json
-  for (const candidate of [res.raw, res.text]) {
-    if (!candidate) continue
-    try { return parseJsonObject(candidate) } catch { /* try the next */ }
-  }
-  throw new Error('No JSON object in model output')
+export function unwrapGeneratedJson(raw: unknown): Record<string, unknown> | null {
+  return unwrapPayloadJson(raw)
 }
 
 function asString(v: unknown): string {
@@ -70,46 +51,6 @@ function normalizeOutput(s: string): string {
   return s.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').trim()
 }
 
-/**
- * Find the payload inside whatever the provider/backend wrapped it in.
- *
- * Observed live (2026-10-29): the completion arrives as
- *   { ok, raw, json, usage, provider, model }
- * i.e. the transport envelope, with the challenge one level down in `json`.
- * Models add their own wrappers on top of that (`{challenge:{…}}`, `{data:{…}}`,
- * `[{…}]`). This walks down instead of guessing one level, so a wrapper never
- * costs a run.
- */
-const PAYLOAD_KEYS = ['json', 'data', 'challenge', 'problem', 'result', 'payload', 'output', 'content', 'response', 'message', 'text']
-
-export function unwrapGeneratedJson(raw: unknown, depth = 0): Record<string, unknown> | null {
-  if (depth > 6) return null
-  if (typeof raw === 'string') {
-    try { return unwrapGeneratedJson(JSON.parse(raw), depth + 1) } catch { return null }
-  }
-  if (!raw || typeof raw !== 'object') return null
-  const obj = Array.isArray(raw) ? raw[0] : raw
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null
-
-  const rec = obj as Record<string, unknown>
-  if (typeof rec.title === 'string') return rec
-
-  for (const key of PAYLOAD_KEYS) {
-    if (!(key in rec)) continue
-    const inner = unwrapGeneratedJson(rec[key], depth + 1)
-    if (inner) return inner
-  }
-
-  const keys = Object.keys(rec)
-  if (keys.length === 1) {
-    const inner = unwrapGeneratedJson(rec[keys[0]], depth + 1)
-    if (inner) return inner
-  }
-
-  // Nothing recognisable inside: hand it back so the rejection can name the keys.
-  return rec
-}
-
 export type NormalizeResult =
   | { ok: true; challenge: ArenaChallenge }
   | { ok: false; reason: string }
@@ -119,7 +60,7 @@ export type NormalizeResult =
  * no reference solution, fewer than two cases, or a case with no expected output.
  */
 export function normalizeGeneratedArena(raw: unknown): NormalizeResult {
-  const ctx = unwrapGeneratedJson(raw)
+  const ctx = unwrapGeneratedJson(raw) ?? (raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : null)
   if (!ctx) return { ok: false, reason: 'not an object' }
   const r = ctx
   // Every rejection names the keys that arrived: without it a systemic shape

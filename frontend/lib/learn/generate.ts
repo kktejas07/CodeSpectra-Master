@@ -31,6 +31,7 @@ import { checkCodeExamples, checkComplexity, qualityScore, verbatimOverlap, vetP
 import { readingMinutes, replaceSection, sanitizeMarkdown } from './markdown'
 import { findDuplicateTitle, pickNextTopics, slugify, uniqueSlug } from './topics'
 import { publishDuePosts } from './posts'
+import { unwrapPayloadJson } from '@/lib/ai/json-payload'
 import { PROSE_FIRST_CATEGORIES, categoryLabel, type LearnLanguage, type LearnPostDoc, type LearnTopicDoc } from './types'
 
 // ─── Prompt ─────────────────────────────────────────────────────────────────
@@ -89,6 +90,23 @@ export function buildUserMessage(topic: Pick<LearnTopicDoc, 'title' | 'category'
 
 // ─── Model call ─────────────────────────────────────────────────────────────
 
+/**
+ * Pick the post object out of a model response.
+ *
+ * `callModel` used to trust `res.json` whenever it was an object — but an empty
+ * `{}` is an object too, so a backend that failed to parse still won and the
+ * real JSON in `text` was never read. A first fix ("first non-empty object")
+ * then stopped at the transport envelope `{ ok, raw, json, usage, provider,
+ * model }`, which is non-empty too. `unwrapPayloadJson` walks all the way down.
+ */
+export function coercePostJson(...candidates: unknown[]): Record<string, unknown> | null {
+  for (const c of candidates) {
+    const found = unwrapPayloadJson(c)
+    if (found) return found
+  }
+  return null
+}
+
 async function callModel(systemMessage: string, userMessage: string, feature: string): Promise<{ json: unknown; model: string | null } | null> {
   const [{ backendComplete }, { platformModelOverrides, extractJson }] = await Promise.all([
     import('@/lib/ai/backend'),
@@ -97,7 +115,11 @@ async function callModel(systemMessage: string, userMessage: string, feature: st
   const overrides = await platformModelOverrides()
   const res = await backendComplete({ systemMessage, userMessage, modelRole: 'reasoning', responseFormat: 'json', feature, cache: false, ...overrides })
   if (!res.ok) return null
-  const json = res.json && typeof res.json === 'object' ? res.json : extractJson(res.raw || res.text || '')
+  const json = coercePostJson(
+    res.json,
+    extractJson(res.raw || ''),
+    extractJson(res.text || ''),
+  )
   return json ? { json, model: res.model ?? null } : null
 }
 
@@ -171,16 +193,20 @@ export async function generateForTopic(topic: LearnTopicDoc, opts: { by: 'bot' |
     let retryErrors: string[] | undefined
     let validated: ReturnType<typeof validateGeneratedPost> | null = null
     let model: string | null = null
+    let lastKeys = ''
     for (let attempt = 0; attempt < 2; attempt++) {
       const out = await callModel(system, buildUserMessage(topic, pages, { rejectHint: lastRejected?.reject_reason, retryErrors }), 'learn-generate')
       if (!out) return { ok: false, topic: topic.title, error: 'The AI model did not answer. Check the platform AI settings.' }
       model = out.model
+      lastKeys = out.json && typeof out.json === 'object' ? Object.keys(out.json as object).slice(0, 12).join(', ') : typeof out.json
       validated = validateGeneratedPost(out.json, { category: topic.category, languages })
       if (validated.ok) break
       retryErrors = validated.errors
     }
     if (!validated || !validated.ok) {
-      return { ok: false, topic: topic.title, error: `The draft was incomplete: ${(validated && !validated.ok ? validated.errors : []).slice(0, 3).join('; ')}` }
+      // The received keys are the fastest way to tell "model ignored the shape"
+      // from "we parsed the wrong object" — 12 runs were lost without them.
+      return { ok: false, topic: topic.title, error: `The draft was incomplete (received keys: ${lastKeys || 'none'}): ${(validated && !validated.ok ? validated.errors : []).slice(0, 3).join('; ')}` }
     }
     const post = validated.post
     flags.push(...validated.issues)
