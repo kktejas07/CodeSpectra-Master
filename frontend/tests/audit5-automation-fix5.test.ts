@@ -145,7 +145,7 @@ describe('cron routes catch up a missed slot (AUTO-087)', () => {
     expect(scheduledRouteSlot(weekly, at, '2026-10-19T09:00:30Z')).toBeNull()
     // Too late (next day) → wait for next week.
     expect(scheduledRouteSlot(weekly, new Date('2026-10-20T09:07:00Z'), '2026-10-12T09:01:00Z')).toBeNull()
-    expect(SCHEDULED_ROUTES.filter((r) => r.long).map((r) => r.id).sort()).toEqual(['ebooks-daily', 'security-scan', 'signals-ingest'])
+    expect(SCHEDULED_ROUTES.filter((r) => r.long).map((r) => r.id).sort()).toEqual(['ebooks-daily', 'practice-daily', 'security-scan', 'signals-ingest'])
   })
 })
 

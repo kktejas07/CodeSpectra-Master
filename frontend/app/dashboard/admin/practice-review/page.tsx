@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { ArrowLeft, Check, Loader2, X } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useAdminT } from '@/lib/i18n/admin'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +37,7 @@ interface Counts {
 
 export default function PracticeReviewPage() {
   const gate = usePageGuard('superadmin')
+  const { t } = useAdminT()
   const [drafts, setDrafts] = useState<DraftChallenge[]>([])
   const [counts, setCounts] = useState<Counts | null>(null)
   const [loading, setLoading] = useState(true)
@@ -48,15 +50,15 @@ export default function PracticeReviewPage() {
     try {
       const res = await fetch('/api/admin/practice-review', { credentials: 'include' })
       const json = await res.json() as { data?: DraftChallenge[]; counts?: Counts; error?: string }
-      if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`)
+      if (!res.ok) throw new Error(json.error || String(res.status))
       setDrafts(json.data ?? [])
       setCounts(json.counts ?? null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load drafts')
+    } catch {
+      setError(t('practiceReview.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (gate.ready) void load()
@@ -64,6 +66,7 @@ export default function PracticeReviewPage() {
 
   const review = useCallback(async (id: string, action: 'approve' | 'reject') => {
     setBusy(id)
+    setError(null)
     try {
       const res = await csrfFetch('/api/admin/practice-review', {
         method: 'PATCH',
@@ -71,22 +74,19 @@ export default function PracticeReviewPage() {
         credentials: 'include',
         body: JSON.stringify({ id, action }),
       })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({})) as { error?: string }
-        throw new Error(json.error || `Request failed (${res.status})`)
-      }
+      if (!res.ok) throw new Error(String(res.status))
       setDrafts(prev => prev.filter(d => d.id !== id))
       setCounts(prev => prev ? {
         draft: Math.max(0, prev.draft - 1),
         approved: prev.approved + (action === 'approve' ? 1 : 0),
         rejected: prev.rejected + (action === 'reject' ? 1 : 0),
       } : prev)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Action failed')
+    } catch {
+      setError(t('practiceReview.actionFailed'))
     } finally {
       setBusy(null)
     }
-  }, [])
+  }, [t])
 
   if (!gate.ready) return null
 
@@ -94,21 +94,22 @@ export default function PracticeReviewPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Practice review</h1>
-          <p className="text-sm text-muted-foreground">
-            Generated challenges stay invisible to learners until approved here.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('practiceReview.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('practiceReview.subtitle')}</p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/challenges"><ArrowLeft className="mr-2 h-4 w-4" />Challenges</Link>
+          <Link href="/dashboard/challenges">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t('practiceReview.backToChallenges')}
+          </Link>
         </Button>
       </div>
 
       {counts && (
         <div className="flex flex-wrap gap-2 text-sm">
-          <Badge variant="secondary">Draft {counts.draft}</Badge>
-          <Badge variant="outline">Approved {counts.approved}</Badge>
-          <Badge variant="outline">Rejected {counts.rejected}</Badge>
+          <Badge variant="secondary">{t('practiceReview.draft')} {counts.draft}</Badge>
+          <Badge variant="outline">{t('practiceReview.approved')} {counts.approved}</Badge>
+          <Badge variant="outline">{t('practiceReview.rejected')} {counts.rejected}</Badge>
         </div>
       )}
 
@@ -120,12 +121,14 @@ export default function PracticeReviewPage() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading drafts…
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t('practiceReview.loading')}
         </div>
       ) : drafts.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Nothing waiting for review.
+          <CardContent className="space-y-1 py-10 text-center">
+            <p className="text-sm font-medium">{t('practiceReview.empty')}</p>
+            <p className="text-sm text-muted-foreground">{t('practiceReview.emptyBody')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -145,10 +148,11 @@ export default function PracticeReviewPage() {
                 <div className="flex gap-2">
                   <Button size="sm" onClick={() => void review(d.id, 'approve')} disabled={busy === d.id}>
                     {busy === d.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                    Approve
+                    {t('practiceReview.approve')}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => void review(d.id, 'reject')} disabled={busy === d.id}>
-                    <X className="mr-2 h-4 w-4" />Reject
+                    <X className="mr-2 h-4 w-4" />
+                    {t('practiceReview.reject')}
                   </Button>
                 </div>
               </CardContent>

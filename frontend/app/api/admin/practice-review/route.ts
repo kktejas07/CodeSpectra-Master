@@ -57,7 +57,8 @@ export async function PATCH(req: NextRequest) {
   const id = String(body.id ?? '').trim()
   const action = String(body.action ?? '')
   if (!id || !['approve', 'reject'].includes(action)) {
-    return NextResponse.json({ error: 'id and action (approve|reject) are required' }, { status: 400 })
+    // Message must match the catalog text for `invalid_request` (tests/i18n-api-errors).
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
 
   const db = await getMongoDb()

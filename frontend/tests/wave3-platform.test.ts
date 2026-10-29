@@ -86,7 +86,7 @@ describe('shared scheduler: scheduled cron routes (A-019)', () => {
     expect(scheduledRouteDue(daily, at8, '2026-10-19T07:58:00Z')).toBe(false)
     expect(scheduledRouteDue(daily, at8, '2026-10-18T08:00:00Z')).toBe(true)
     const ids = SCHEDULED_ROUTES.map((r) => r.id).sort()
-    expect(ids).toEqual(['daily-digest', 'ebooks-daily', 'exam-reminders', 'security-scan', 'signals-ingest', 'status-check', 'weekly-digest'])
+    expect(ids).toEqual(['daily-digest', 'ebooks-daily', 'exam-reminders', 'practice-daily', 'security-scan', 'signals-ingest', 'status-check', 'weekly-digest'])
   })
 })
 
