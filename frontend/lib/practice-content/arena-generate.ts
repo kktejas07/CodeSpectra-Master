@@ -38,6 +38,24 @@ export function parseJsonObject(text: string): unknown {
   return JSON.parse(body.slice(start, end + 1))
 }
 
+/**
+ * The JSON from a completed call.
+ *
+ * `backendComplete` returns the parsed object in `json` when the provider
+ * honoured `responseFormat: 'json'` and may leave `text` empty — reading only
+ * `text` rejected every candidate with "No JSON object in model output" and the
+ * whole backfill stopped after six failures (2026-10-29). Prefer `json`, fall
+ * back to parsing `raw`/`text`.
+ */
+export function jsonFromCompletion(res: { json?: unknown; raw?: string; text?: string }): unknown {
+  if (res.json && typeof res.json === 'object' && Object.keys(res.json as object).length > 0) return res.json
+  for (const candidate of [res.raw, res.text]) {
+    if (!candidate) continue
+    try { return parseJsonObject(candidate) } catch { /* try the next */ }
+  }
+  throw new Error('No JSON object in model output')
+}
+
 function asString(v: unknown): string {
   return typeof v === 'string' ? v : ''
 }
@@ -213,7 +231,7 @@ export async function generateArenaChallenge(opts: {
       'Write one new challenge as JSON.',
     ].filter(Boolean).join('\n')
 
-    let text: string
+    let raw: unknown
     try {
       const res = await backendComplete({
         systemMessage: SYSTEM_PROMPT,
@@ -224,15 +242,15 @@ export async function generateArenaChallenge(opts: {
       if (!res.ok) {
         return { ok: false, reason: `LLM call failed: ${res.text || 'no output'}`, attempts: attempt }
       }
-      text = res.text ?? ''
+      raw = jsonFromCompletion(res)
     } catch (e) {
-      return { ok: false, reason: `LLM call failed: ${e instanceof Error ? e.message : String(e)}`, attempts: attempt }
+      // Includes a genuinely unparseable completion: keep the reason so the run
+      // log says whether the model refused or returned prose.
+      lastReason = `unparseable output: ${e instanceof Error ? e.message : String(e)}`
+      continue
     }
 
-    const parsed = (() => {
-      try { return normalizeGeneratedArena(parseJsonObject(text)) }
-      catch (e) { return { ok: false as const, reason: `unparseable output: ${e instanceof Error ? e.message : String(e)}` } }
-    })()
+    const parsed = normalizeGeneratedArena(raw)
 
     if (!parsed.ok) { lastReason = parsed.reason; continue }
 
