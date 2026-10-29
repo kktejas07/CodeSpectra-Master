@@ -1,3 +1,5 @@
+import { HUNDRED_DAYS_REPAIRS } from './100-days-repairs'
+
 export interface HundredDayProblem {
   id: string
   title: string
@@ -60,7 +62,7 @@ function p(id: string, title: string, diff: HundredDayProblem['difficulty'], des
   return { id, title, difficulty: diff, description: desc, inputFormat: inputFmt, outputFormat: outputFmt, constraints, examples: exs, starterCode: S(langs) }
 }
 
-export const HUNDRED_DAYS: HundredDay[] = [
+const RAW_HUNDRED_DAYS: HundredDay[] = [
   {
     day: 1, theme: 'Your First Programs', topics: ['basics', 'io'],
     problems: [
@@ -864,3 +866,22 @@ export const HUNDRED_DAYS: HundredDay[] = [
     ],
   },
 ]
+
+/**
+ * Days with repairs applied.
+ *
+ * Some problems could never be passed — placeholder expected output
+ * (`eyJ...signature`) or a design essay graded by exact stdout. Repairs are
+ * kept in 100-days-repairs.ts so this file stays readable, and
+ * tests/hundred-days-repairs.test.ts proves each replacement's examples with a
+ * reference solution.
+ */
+const REPAIRS = new Map(HUNDRED_DAYS_REPAIRS.map((r) => [r.id, r]))
+
+export const HUNDRED_DAYS: HundredDay[] = RAW_HUNDRED_DAYS.map((day) => ({
+  ...day,
+  problems: day.problems.map((problem) => {
+    const repair = REPAIRS.get(problem.id)
+    return repair ? { ...problem, ...repair } : problem
+  }),
+}))
