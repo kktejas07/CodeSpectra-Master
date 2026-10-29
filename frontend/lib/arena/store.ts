@@ -34,8 +34,20 @@ export async function ensureArenaSeeded(): Promise<void> {
   try {
     const db = await getMongoDb()
     const col = db.collection(ARENA_COLLECTION)
-    if ((await col.estimatedDocumentCount()) > 0) return
-    await col.insertMany(ARENA_CHALLENGES.map(c => ({ ...c })))
+    if ((await col.estimatedDocumentCount()) === 0) {
+      await col.insertMany(ARENA_CHALLENGES.map(c => ({ ...c })))
+      return
+    }
+    // Self-heal: rows seeded before the stdin/stdout contract have prose
+    // examples and no reference solution, so they can never be graded. Refresh
+    // their CONTENT only — engagement counters stay as they are.
+    const stale = await col.countDocuments({ id: { $in: ARENA_CHALLENGES.map(c => c.id) }, testCases: { $exists: false } })
+    if (stale === 0) return
+    for (const seed of ARENA_CHALLENGES) {
+      const { solved: _solved, attempts: _attempts, ...content } = seed
+      await col.updateOne({ id: seed.id }, { $set: { ...content, migrated_at: new Date().toISOString() } })
+    }
+    console.info('[arena] migrated', stale, 'seed challenge(s) to the stdin/stdout contract')
   } catch {
     console.warn('[arena] auto-seed skipped')
   }
