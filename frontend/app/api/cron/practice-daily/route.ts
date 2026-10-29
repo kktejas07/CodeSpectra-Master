@@ -20,6 +20,7 @@ import { ARENA_COLLECTION } from '@/lib/arena-challenges'
 import { generateArenaChallenge } from '@/lib/practice-content/arena-generate'
 import { insertVerifiedArenaChallenge } from '@/lib/practice-content/arena-store'
 import { generateVerifiedProblem, systemPracticeUser } from '@/lib/practice-content/problems-generate'
+import { generateChallenge, CHALLENGE_TYPES } from '@/lib/practice-content/challenges-generate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -77,9 +78,38 @@ async function postImpl(req: NextRequest) {
     }
   }
 
-  const ok = arena.ok || problem.ok
+  // --- challenge draft (prose: waits for a human at /dashboard/admin/practice-review) ---
+  let challenge: ItemResult
+  const challengeToday = await db.collection('challenges').findOne({ source: 'ai', created_at: { $gte: dayStart } })
+  if (challengeToday) {
+    challenge = { ok: true, skipped: 'already_today', id: String(challengeToday.id ?? '') }
+  } else {
+    try {
+      const gen = await generateChallenge({
+        type: CHALLENGE_TYPES[seed % CHALLENGE_TYPES.length],
+        difficulty,
+      })
+      if (!gen.ok) {
+        challenge = { ok: false, reason: gen.reason }
+      } else {
+        const c = gen.challenge
+        const exists = await db.collection('challenges').findOne({ $or: [{ id: c.id }, { slug: c.slug }, { title: c.title }] })
+        if (exists) {
+          challenge = { ok: true, skipped: 'duplicate', id: exists.id }
+        } else {
+          const now = new Date().toISOString()
+          await db.collection('challenges').insertOne({ ...c, created_at: now, updated_at: now })
+          challenge = { ok: true, id: c.id, title: c.title }
+        }
+      }
+    } catch (e) {
+      challenge = { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  const ok = arena.ok || problem.ok || challenge.ok
   return NextResponse.json(
-    { ok, day: dayKey, arena, problem },
+    { ok, day: dayKey, arena, problem, challenge },
     { status: ok ? 200 : 502 },
   )
 }
