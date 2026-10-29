@@ -56,7 +56,10 @@ describe('normalizeGeneratedArena', () => {
 
   it('rejects a candidate with no reference solution', () => {
     const n = normalizeGeneratedArena({ ...goodRaw, solutionCode: '' })
-    expect(n).toEqual({ ok: false, reason: 'reference solution missing' })
+    expect(n.ok).toBe(false)
+    if (n.ok) return
+    // The reason names the keys that arrived, so keep this a substring check.
+    expect(n.reason).toContain('reference solution missing')
   })
 
   it('rejects fewer than two worked examples', () => {

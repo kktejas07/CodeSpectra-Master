@@ -61,7 +61,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
     ],
     constraints: ['2 <= nums.length <= 10^4', '-10^9 <= nums[i] <= 10^9', 'Exactly one valid answer exists.'],
     defaultCode: starter(),
-    solutionCode: "const [line1, line2] = require('fs').readFileSync(0, 'utf8').trim().split('\\n')\nconst nums = JSON.parse(line1)\nconst target = Number(line2)\nconst seen = new Map()\nfor (let i = 0; i < nums.length; i++) {\n  const want = target - nums[i]\n  if (seen.has(want)) { console.log(JSON.stringify([seen.get(want), i])); break }\n  seen.set(nums[i], i)\n}\n",
+    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst [line1, line2] = stdin.trim().split('\\n')\nconst nums = JSON.parse(line1)\nconst target = Number(line2)\nconst seen = new Map()\nfor (let i = 0; i < nums.length; i++) {\n  const want = target - nums[i]\n  if (seen.has(want)) { console.log(JSON.stringify([seen.get(want), i])); break }\n  seen.set(nums[i], i)\n}\n",
   },
   {
     id: '2', title: 'Longest Substring Without Repeating Characters', shortDescription: 'Length of the longest substring with all-distinct characters',
@@ -77,7 +77,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
     ],
     constraints: ['0 <= s.length <= 5 * 10^4'],
     defaultCode: starter(),
-    solutionCode: "const s = require('fs').readFileSync(0, 'utf8').replace(/\\r?\\n$/, '')\nconst last = new Map()\nlet start = 0, best = 0\nfor (let i = 0; i < s.length; i++) {\n  if (last.has(s[i]) && last.get(s[i]) >= start) start = last.get(s[i]) + 1\n  last.set(s[i], i)\n  best = Math.max(best, i - start + 1)\n}\nconsole.log(best)\n",
+    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst s = stdin.replace(/\\r?\\n$/, '')\nconst last = new Map()\nlet start = 0, best = 0\nfor (let i = 0; i < s.length; i++) {\n  if (last.has(s[i]) && last.get(s[i]) >= start) start = last.get(s[i]) + 1\n  last.set(s[i], i)\n  best = Math.max(best, i - start + 1)\n}\nconsole.log(best)\n",
   },
   {
     id: '3', title: 'Median of Two Sorted Arrays', shortDescription: 'Median of two sorted arrays',
@@ -92,7 +92,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
     ],
     constraints: ['0 <= nums1.length, nums2.length <= 1000', 'nums1 and nums2 are sorted ascending'],
     defaultCode: starter(),
-    solutionCode: "const [a, b] = require('fs').readFileSync(0, 'utf8').trim().split('\\n').map(l => JSON.parse(l))\nconst all = [...a, ...b].sort((x, y) => x - y)\nconst n = all.length\nconst mid = n % 2 ? all[(n - 1) / 2] : (all[n / 2 - 1] + all[n / 2]) / 2\nconsole.log(Number.isInteger(mid) ? String(mid) : String(mid))\n",
+    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst [a, b] = stdin.trim().split('\\n').map(l => JSON.parse(l))\nconst all = [...a, ...b].sort((x, y) => x - y)\nconst n = all.length\nconst mid = n % 2 ? all[(n - 1) / 2] : (all[n / 2 - 1] + all[n / 2]) / 2\nconsole.log(Number.isInteger(mid) ? String(mid) : String(mid))\n",
   },
   {
     id: '4', title: 'Valid Parentheses', shortDescription: 'Decide whether brackets are balanced',
@@ -108,7 +108,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
     ],
     constraints: ['1 <= s.length <= 10^4'],
     defaultCode: starter(),
-    solutionCode: "const s = require('fs').readFileSync(0, 'utf8').trim()\nconst pairs = { ')': '(', ']': '[', '}': '{' }\nconst stack = []\nlet ok = true\nfor (const ch of s) {\n  if (ch === '(' || ch === '[' || ch === '{') stack.push(ch)\n  else if (stack.pop() !== pairs[ch]) { ok = false; break }\n}\nconsole.log(ok && stack.length === 0 ? 'true' : 'false')\n",
+    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst s = stdin.trim()\nconst pairs = { ')': '(', ']': '[', '}': '{' }\nconst stack = []\nlet ok = true\nfor (const ch of s) {\n  if (ch === '(' || ch === '[' || ch === '{') stack.push(ch)\n  else if (stack.pop() !== pairs[ch]) { ok = false; break }\n}\nconsole.log(ok && stack.length === 0 ? 'true' : 'false')\n",
   },
   {
     id: '5', title: 'Binary Tree Inorder Traversal', shortDescription: 'Inorder traversal of a level-order tree array',
@@ -124,7 +124,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
     ],
     constraints: ['0 <= nodes <= 100'],
     defaultCode: starter(),
-    solutionCode: "const raw = require('fs').readFileSync(0, 'utf8').trim()\nconst arr = raw ? JSON.parse(raw) : []\nconst out = []\nif (arr.length && arr[0] !== null) {\n  const root = { v: arr[0], l: null, r: null }\n  const q = [root]\n  let i = 1\n  while (q.length && i < arr.length) {\n    const node = q.shift()\n    const left = i < arr.length ? arr[i++] : null\n    const right = i < arr.length ? arr[i++] : null\n    if (left !== null) { node.l = { v: left, l: null, r: null }; q.push(node.l) }\n    if (right !== null) { node.r = { v: right, l: null, r: null }; q.push(node.r) }\n  }\n  const walk = (n) => { if (!n) return; walk(n.l); out.push(n.v); walk(n.r) }\n  walk(root)\n}\nconsole.log(JSON.stringify(out))\n",
+    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst raw = stdin.trim()\nconst arr = raw ? JSON.parse(raw) : []\nconst out = []\nif (arr.length && arr[0] !== null) {\n  const root = { v: arr[0], l: null, r: null }\n  const q = [root]\n  let i = 1\n  while (q.length && i < arr.length) {\n    const node = q.shift()\n    const left = i < arr.length ? arr[i++] : null\n    const right = i < arr.length ? arr[i++] : null\n    if (left !== null) { node.l = { v: left, l: null, r: null }; q.push(node.l) }\n    if (right !== null) { node.r = { v: right, l: null, r: null }; q.push(node.r) }\n  }\n  const walk = (n) => { if (!n) return; walk(n.l); out.push(n.v); walk(n.r) }\n  walk(root)\n}\nconsole.log(JSON.stringify(out))\n",
   },
   {
     id: '6', title: 'Edit Distance', shortDescription: 'Minimum operations to turn one word into another',
@@ -139,7 +139,7 @@ const SEED_CHALLENGES: ArenaChallenge[] = [
     ],
     constraints: ['0 <= word length <= 500', 'Words are lowercase English letters'],
     defaultCode: starter(),
-    solutionCode: "const [a, b] = require('fs').readFileSync(0, 'utf8').trim().split('\\n')\nconst prev = Array.from({ length: b.length + 1 }, (_, j) => j)\nfor (let i = 1; i <= a.length; i++) {\n  let diag = prev[0]\n  prev[0] = i\n  for (let j = 1; j <= b.length; j++) {\n    const tmp = prev[j]\n    prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1))\n    diag = tmp\n  }\n}\nconsole.log(a.length === 0 ? b.length : a.length === 0 ? b.length : prev[b.length])\n",
+    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst [a, b] = stdin.trim().split('\\n')\nconst prev = Array.from({ length: b.length + 1 }, (_, j) => j)\nfor (let i = 1; i <= a.length; i++) {\n  let diag = prev[0]\n  prev[0] = i\n  for (let j = 1; j <= b.length; j++) {\n    const tmp = prev[j]\n    prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1))\n    diag = tmp\n  }\n}\nconsole.log(a.length === 0 ? b.length : a.length === 0 ? b.length : prev[b.length])\n",
   },
 ]
 

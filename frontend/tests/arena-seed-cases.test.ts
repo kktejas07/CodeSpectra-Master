@@ -13,6 +13,8 @@ import { describe, expect, it } from 'vitest'
 import { ARENA_CHALLENGES } from '@/lib/arena-challenges'
 
 function runSolution(solution: string, stdin: string): string {
+  // Piston runs JavaScript on Node (CommonJS) after pickRuntime() stops the
+  // Deno runtime from winning the lookup — match that here.
   return execFileSync(process.execPath, ['-e', solution], {
     input: stdin,
     encoding: 'utf8',

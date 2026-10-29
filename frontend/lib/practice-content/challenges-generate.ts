@@ -13,7 +13,7 @@
  * No `server-only` import — loaded by scripts/backfill-challenges.ts under tsx.
  */
 import { backendComplete } from '@/lib/ai/backend'
-import { jsonFromCompletion } from './arena-generate'
+import { jsonFromCompletion, unwrapGeneratedJson } from './arena-generate'
 
 export const CHALLENGE_TYPES = ['technical', 'system_design', 'behavioral', 'code_review', 'debugging'] as const
 export type ChallengeType = typeof CHALLENGE_TYPES[number]
@@ -43,8 +43,9 @@ export function slugifyTitle(title: string): string {
 }
 
 export function normalizeGeneratedChallenge(raw: unknown): ChallengeNormalizeResult {
-  if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
-  const r = raw as Record<string, unknown>
+  // Same transport envelope / model wrapper as the arena generator.
+  const r = unwrapGeneratedJson(raw)
+  if (!r) return { ok: false, reason: 'not an object' }
   const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 
   const title = str(r.title)

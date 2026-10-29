@@ -128,14 +128,30 @@ export async function fetchRuntimes(): Promise<PistonRuntime[]> {
   return _runtimes
 }
 
+/**
+ * Prefer a Node runtime over the others.
+ *
+ * Piston ships TWO `javascript` runtimes: Deno 1.32.3 (listed first) and Node
+ * 18.15.0 (aliases `node-js`/`node-javascript`). Taking the first match put
+ * every JavaScript submission on Deno, where `process` and `require` do not
+ * exist — so no starter that reads stdin could run (found 2026-10-29 via the
+ * arena backfill: reference solutions printed empty and stdin reads threw).
+ */
+const NODE_ALIASES = ['node-js', 'node-javascript', 'node-ts']
+
+export function pickRuntime<T extends { language: string; version: string; aliases?: string[] }>(
+  list: T[],
+  language: string,
+): T | undefined {
+  const lang = language.toLowerCase()
+  const matches = list.filter((r) => r.language === lang || (r.aliases ?? []).includes(lang))
+  return matches.find((r) => (r.aliases ?? []).some((a) => NODE_ALIASES.includes(a))) ?? matches[0]
+}
+
 export async function resolveLanguageVersion(language: string): Promise<string | null> {
   try {
     const list = await fetchRuntimes()
-    const lang = language.toLowerCase()
-    const hit = list.find(
-      (r) => r.language === lang || (r.aliases ?? []).includes(lang),
-    )
-    return hit?.version ?? null
+    return pickRuntime(list, language)?.version ?? null
   } catch {
     return null
   }

@@ -70,6 +70,46 @@ function normalizeOutput(s: string): string {
   return s.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').trim()
 }
 
+/**
+ * Find the payload inside whatever the provider/backend wrapped it in.
+ *
+ * Observed live (2026-10-29): the completion arrives as
+ *   { ok, raw, json, usage, provider, model }
+ * i.e. the transport envelope, with the challenge one level down in `json`.
+ * Models add their own wrappers on top of that (`{challenge:{…}}`, `{data:{…}}`,
+ * `[{…}]`). This walks down instead of guessing one level, so a wrapper never
+ * costs a run.
+ */
+const PAYLOAD_KEYS = ['json', 'data', 'challenge', 'problem', 'result', 'payload', 'output', 'content', 'response', 'message', 'text']
+
+export function unwrapGeneratedJson(raw: unknown, depth = 0): Record<string, unknown> | null {
+  if (depth > 6) return null
+  if (typeof raw === 'string') {
+    try { return unwrapGeneratedJson(JSON.parse(raw), depth + 1) } catch { return null }
+  }
+  if (!raw || typeof raw !== 'object') return null
+  const obj = Array.isArray(raw) ? raw[0] : raw
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null
+
+  const rec = obj as Record<string, unknown>
+  if (typeof rec.title === 'string') return rec
+
+  for (const key of PAYLOAD_KEYS) {
+    if (!(key in rec)) continue
+    const inner = unwrapGeneratedJson(rec[key], depth + 1)
+    if (inner) return inner
+  }
+
+  const keys = Object.keys(rec)
+  if (keys.length === 1) {
+    const inner = unwrapGeneratedJson(rec[keys[0]], depth + 1)
+    if (inner) return inner
+  }
+
+  // Nothing recognisable inside: hand it back so the rejection can name the keys.
+  return rec
+}
+
 export type NormalizeResult =
   | { ok: true; challenge: ArenaChallenge }
   | { ok: false; reason: string }
@@ -79,17 +119,21 @@ export type NormalizeResult =
  * no reference solution, fewer than two cases, or a case with no expected output.
  */
 export function normalizeGeneratedArena(raw: unknown): NormalizeResult {
-  if (!raw || typeof raw !== 'object') return { ok: false, reason: 'not an object' }
-  const r = raw as Record<string, unknown>
+  const ctx = unwrapGeneratedJson(raw)
+  if (!ctx) return { ok: false, reason: 'not an object' }
+  const r = ctx
+  // Every rejection names the keys that arrived: without it a systemic shape
+  // mismatch looks identical to a model that ignored the contract.
+  const got = () => ` (received keys: ${Object.keys(r).slice(0, 12).join(', ') || 'none'})`
 
   const title = asString(r.title).trim()
-  if (title.length < 8 || title.length > 120) return { ok: false, reason: 'title missing or out of range' }
+  if (title.length < 8 || title.length > 120) return { ok: false, reason: `title missing or out of range${got()}` }
 
   const difficulty = asString(r.difficulty).toLowerCase()
-  if (!['easy', 'medium', 'hard'].includes(difficulty)) return { ok: false, reason: 'difficulty must be easy|medium|hard' }
+  if (!['easy', 'medium', 'hard'].includes(difficulty)) return { ok: false, reason: `difficulty must be easy|medium|hard${got()}` }
 
   const solutionCode = asString(r.solutionCode ?? r.solution_code ?? r.solution)
-  if (solutionCode.trim().length < 20) return { ok: false, reason: 'reference solution missing' }
+  if (solutionCode.trim().length < 20) return { ok: false, reason: `reference solution missing${got()}` }
 
   const rawExamples = Array.isArray(r.examples) ? r.examples : []
   const examples = rawExamples
@@ -199,7 +243,7 @@ Hard rules (a wrong answer is rejected automatically):
 - The solver writes a COMPLETE PROGRAM: it reads stdin and prints to stdout. No function signatures, no tests, no argv.
 - "input"/"stdin" is the literal text fed to stdin. Prefer one value per line or JSON arrays on a line.
 - "output"/"expected_stdout" is exactly what solutionCode prints — no labels, no trailing spaces.
-- solutionCode must use only Node built-ins, read with fs.readFileSync(0,'utf8'), and print with console.log.
+- solutionCode runs on Node (CommonJS): read stdin with require('fs').readFileSync(0,'utf8') and print with console.log.
 - Original problems only. Do not reuse LeetCode titles or statements.`
 
 export type GenerateResult =
