@@ -49,7 +49,8 @@ USER node
 # patches/ must exist before yarn install — postinstall runs patch-package
 COPY --chown=node:node package.json yarn.lock ./
 COPY --chown=node:node patches ./patches
-RUN yarn install --frozen-lockfile
+# Same layer, so the ~6 GB yarn cache never lands in the image.
+RUN yarn install --frozen-lockfile && yarn cache clean
 COPY --chown=node:node . .
 # ponytail: self-host face-api models (~6.7MB) so verification never depends
 # on a third-party CDN at runtime (outages/throttling/regional blocks stalled
@@ -64,7 +65,9 @@ RUN chmod +x scripts/docker-entrypoint.sh \
 # The app outgrew Node's default heap (CI build aborted with exit 134).
 # Override with --build-arg NODE_BUILD_HEAP_MB=… on smaller build hosts.
 ARG NODE_BUILD_HEAP_MB=6144
-RUN NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_HEAP_MB} yarn build
+# .next/cache/webpack is ~4 GB of build-only state; fetch-cache stays (it is the
+# runtime Data Cache). Together with the yarn cache this halves the image.
+RUN NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_HEAP_MB} yarn build && rm -rf .next/cache/webpack
 # ponytail: busybox wget is the probe (no curl in node:22-alpine). Compose
 # healthcheck overrides this when deployed via compose; this covers plain builds.
 HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s CMD wget -q -O- http://localhost:80/api/health >/dev/null 2>&1 || exit 1
