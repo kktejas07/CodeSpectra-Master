@@ -3494,5 +3494,20 @@
   "knowledge.aq.calls_one": "{count} AI call",
   "knowledge.aq.calls_other": "{count} AI calls",
   "knowledge.aq.skipped_one": "{count} question not scored ({reasons})",
-  "knowledge.aq.skipped_other": "{count} questions not scored ({reasons})"
+  "knowledge.aq.skipped_other": "{count} questions not scored ({reasons})",
+  "practiceReview.title": "Practice review",
+  "practiceReview.subtitle": "Generated challenges stay invisible to learners until approved here.",
+  "practiceReview.draft": "Draft",
+  "practiceReview.approved": "Approved",
+  "practiceReview.rejected": "Rejected",
+  "practiceReview.loading": "Loading drafts…",
+  "practiceReview.empty": "Nothing waiting for review.",
+  "practiceReview.emptyBody": "Generated challenges that need a decision will appear here.",
+  "practiceReview.approve": "Approve",
+  "practiceReview.reject": "Reject",
+  "practiceReview.backToChallenges": "Challenges",
+  "practiceReview.loadFailed": "Couldn’t load drafts. Refresh to try again.",
+  "practiceReview.actionFailed": "Couldn’t save that decision. Try again.",
+  "practiceReview.reviewApproved": "Challenge approved",
+  "practiceReview.reviewRejected": "Challenge rejected"
 }

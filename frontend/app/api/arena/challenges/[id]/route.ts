@@ -21,7 +21,7 @@ export async function GET(
   const { id } = await ctx.params
   const challenge = await loadArenaChallenge(id)
   if (!challenge) {
-    return NextResponse.json({ error: 'Unknown challenge', code: 'not_found' }, { status: 404 })
+    return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   }
 
   const stats = await arenaStats()
