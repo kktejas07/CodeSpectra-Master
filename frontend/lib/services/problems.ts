@@ -3,7 +3,10 @@
  * — the route and the admin agent (create_problem / create_hackathon) use the
  * same generator, provider fallback, test-case shape and generation log.
  */
-import 'server-only'
+// ponytail: no `import 'server-only'` — scripts/backfill-problems.ts runs this
+// under plain tsx, where the marker package cannot resolve (same class as
+// #397/#405). Nothing here is client-safe anyway (db + AI), so a client import
+// still fails the Next build.
 import { backendComplete, backendPost } from '@/lib/ai/backend'
 import { estimateTokens, reportAiUsage } from '@/lib/ai/usage-meter'
 import { resolveModel } from '@/lib/ai/get-user-model'

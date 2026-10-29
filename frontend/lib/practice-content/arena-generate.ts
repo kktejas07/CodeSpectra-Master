@@ -234,7 +234,7 @@ Return ONE JSON object, no prose:
   "category": string,                    // e.g. "Arrays", "Strings", "Graphs", "SQL"
   "statement": string[],                 // 2-4 sentences, state the EXACT stdin format
   "examples": [{ "input": string, "output": string, "explanation": string }],  // >= 3
-  "testCases": [{ "stdin": string, "expected_stdout": string }],              // 3-5 hidden cases
+  "testCases": [{ "stdin": string, "expected_stdout": string }],              // 2-3 hidden cases (keep them simple)
   "constraints": string[],
   "solutionCode": string                 // JavaScript, reads stdin, prints stdout
 }
@@ -244,6 +244,8 @@ Hard rules (a wrong answer is rejected automatically):
 - "input"/"stdin" is the literal text fed to stdin. Prefer one value per line or JSON arrays on a line.
 - "output"/"expected_stdout" is exactly what solutionCode prints — no labels, no trailing spaces.
 - solutionCode runs on Node (CommonJS): read stdin with require('fs').readFileSync(0,'utf8') and print with console.log.
+- MENTALLY EXECUTE solutionCode on every case before answering. The expected output must be what that code prints, not what you think it should print. Fewer, simpler cases are better than clever ones you cannot trace.
+- Prefer single-line deterministic outputs (a number, a JSON array, a space-separated list). Avoid floats, dates, randomness, and anything implementation-dependent.
 - Original problems only. Do not reuse LeetCode titles or statements.`
 
 export type GenerateResult =
