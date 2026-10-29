@@ -13,7 +13,13 @@
  * Old `ai_usage` rows have no `costMicros`; readers estimate them from tokens
  * with current prices and flag the result as estimated (lib/ai/spend).
  */
-import 'server-only'
+// ponytail: deliberately NO `import 'server-only'` here. The course worker runs
+// this same file under plain `tsx` (scripts/docker-entrypoint.sh → COURSE_WORKER=1),
+// where Next's server-only alias doesn't exist and the import throws
+// "Cannot find module 'server-only'" — that killed every lesson's LLM call.
+// The guard is redundant anyway: every server dep below is lazy
+// (@/lib/mongodb, @/lib/notifications), so a client-side import still fails the
+// Next build. Regression test: tests/course-worker-modules.test.ts.
 import { DEFAULT_PRICE_BOOK, priceCall, setActivePriceBook, type PriceBook, type PricedCall, type PriceKind } from './pricing'
 import { baseFeature, bookFor, budgetCrossings, DEFAULT_AI_COST_SETTINGS, hardStopApplies, mergeAiCostSettings, type AiCostSettings, type BudgetThreshold } from './spend'
 
