@@ -8,6 +8,7 @@ import {
   normalizeGeneratedArena,
   verifyArenaChallenge,
   gradedCases,
+  jsonFromCompletion,
   type ArenaExecutor,
 } from '@/lib/practice-content/arena-generate'
 import type { ArenaChallenge } from '@/lib/arena-challenges'
@@ -155,6 +156,21 @@ describe('normalizeGeneratedChallenge (challenge drafts)', () => {
   it('rejects an unknown type and an out-of-range duration', () => {
     expect(normalizeGeneratedChallenge({ ...good, type: 'trivia' }).ok).toBe(false)
     expect(normalizeGeneratedChallenge({ ...good, duration_minutes: 300 }).ok).toBe(false)
+  })
+})
+
+describe('jsonFromCompletion', () => {
+  it('uses the parsed json field when text is empty (the bug that stopped the backfill)', () => {
+    expect(jsonFromCompletion({ json: { title: 'x' }, text: '' })).toEqual({ title: 'x' })
+  })
+
+  it('falls back to fenced text', () => {
+    expect(jsonFromCompletion({ text: '```json\n{"a":1}\n```' })).toEqual({ a: 1 })
+  })
+
+  it('throws when there is nothing to parse', () => {
+    expect(() => jsonFromCompletion({ text: 'I cannot help with that.' })).toThrow(/No JSON object/)
+    expect(() => jsonFromCompletion({ json: {} })).toThrow(/No JSON object/)
   })
 })
 

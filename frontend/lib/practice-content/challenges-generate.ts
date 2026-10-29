@@ -13,6 +13,7 @@
  * No `server-only` import — loaded by scripts/backfill-challenges.ts under tsx.
  */
 import { backendComplete } from '@/lib/ai/backend'
+import { jsonFromCompletion } from './arena-generate'
 
 export const CHALLENGE_TYPES = ['technical', 'system_design', 'behavioral', 'code_review', 'debugging'] as const
 export type ChallengeType = typeof CHALLENGE_TYPES[number]
@@ -127,7 +128,7 @@ export async function generateChallenge(opts: {
       'Write one new challenge as JSON.',
     ].filter(Boolean).join('\n')
 
-    let text = ''
+    let raw: unknown
     try {
       const res = await backendComplete({
         systemMessage: SYSTEM_PROMPT,
@@ -136,24 +137,13 @@ export async function generateChallenge(opts: {
         feature: 'practice-content-challenges',
       })
       if (!res.ok) return { ok: false, reason: `LLM call failed: ${res.text || 'no output'}`, attempts: attempt }
-      text = res.text ?? ''
+      raw = jsonFromCompletion(res)
     } catch (e) {
-      return { ok: false, reason: `LLM call failed: ${e instanceof Error ? e.message : String(e)}`, attempts: attempt }
+      lastReason = `unparseable output: ${e instanceof Error ? e.message : String(e)}`
+      continue
     }
 
-    const parsed = (() => {
-      try {
-        const body = text.trim()
-        const fenced = body.match(/```(?:json)?\s*([\s\S]*?)```/)
-        const src = (fenced ? fenced[1] : body).trim()
-        const start = src.indexOf('{')
-        const end = src.lastIndexOf('}')
-        if (start === -1 || end <= start) throw new Error('no JSON object')
-        return normalizeGeneratedChallenge(JSON.parse(src.slice(start, end + 1)))
-      } catch (e) {
-        return { ok: false as const, reason: `unparseable output: ${e instanceof Error ? e.message : String(e)}` }
-      }
-    })()
+    const parsed = normalizeGeneratedChallenge(raw)
 
     if (!parsed.ok) { lastReason = parsed.reason; continue }
     return { ok: true, challenge: parsed.challenge, attempts: attempt }
