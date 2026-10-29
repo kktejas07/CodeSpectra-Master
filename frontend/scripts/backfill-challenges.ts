@@ -47,6 +47,10 @@ async function main() {
   console.log(`[backfill] ${done}/${TARGET} generated challenges already present (drafts until approved)`)
 
   let failuresInARow = 0
+  // A duplicate is not a failure: the model re-uses good titles. Cap them
+  // instead of aborting, or a small model parks the whole run.
+  let duplicates = 0
+  const MAX_DUPLICATES = 25
   while (done < TARGET) {
     const i = done + failuresInARow
     const type = TYPES[i % TYPES.length]
@@ -67,8 +71,13 @@ async function main() {
     const c = result.challenge
     const exists = await col.findOne({ $or: [{ id: c.id }, { slug: c.slug }, { title: c.title }] })
     if (exists) {
-      console.log(`[backfill] duplicate skipped: ${c.title}`)
-      failuresInARow++
+      duplicates++
+      console.log(`[backfill] duplicate skipped (${duplicates}/${MAX_DUPLICATES}): ${c.title}`)
+      if (duplicates >= MAX_DUPLICATES) {
+        console.error(`[backfill] ${MAX_DUPLICATES} duplicates in a row — the model is repeating itself. Stopping.`)
+        await client.close()
+        process.exit(1)
+      }
       continue
     }
 
