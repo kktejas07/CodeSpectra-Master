@@ -28,6 +28,20 @@ const TARGET = arg('count', 100)
 const MAX_FAILURES_IN_A_ROW = 6
 const TYPES = ['technical', 'system_design', 'behavioral', 'code_review', 'debugging'] as const
 const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
+// Without variety the model repeats one title forever (seen live: 7 identical
+// "Detect a Cycle in a Directed Graph Using DFS" back to back).
+const HINTS = [
+  'concurrency and race conditions', 'database indexing and query plans', 'HTTP caching and ETags',
+  'memory leaks and profiling', 'API versioning', 'message queues and backpressure',
+  'authentication vs authorization', 'idempotency and retries', 'pagination strategies',
+  'connection pooling', 'load balancing health checks', 'schema migrations with zero downtime',
+  'rate limiting algorithms', 'observability and tracing', 'CI pipeline flakiness',
+  'dependency injection and testability', 'immutable data structures', 'feature flags and rollouts',
+  'eventual consistency', 'cascading failures and circuit breakers', 'timezone handling',
+  'unicode and text normalisation', 'floating point money handling', 'accessibility in forms',
+  'caching invalidation', 'batch processing vs streaming', 'file uploads and validation',
+  'websocket reconnection', 'secrets rotation', 'cost optimisation in the cloud',
+]
 
 async function main() {
   if (!MONGO_URI) {
@@ -56,7 +70,7 @@ async function main() {
     const type = TYPES[i % TYPES.length]
     const difficulty = DIFFICULTIES[i % DIFFICULTIES.length]
 
-    const result = await generateChallenge({ type, difficulty })
+    const result = await generateChallenge({ type, difficulty, topicHint: HINTS[i % HINTS.length] })
     if (!result.ok) {
       failuresInARow++
       console.error(`[backfill] rejected (${type}/${difficulty}): ${result.reason}`)

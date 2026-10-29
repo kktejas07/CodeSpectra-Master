@@ -116,6 +116,8 @@ export type ChallengeGenerateResult =
 export async function generateChallenge(opts: {
   type?: ChallengeType
   difficulty?: 'easy' | 'medium' | 'hard'
+  /** Narrows the subject so repeated runs stop producing the same title. */
+  topicHint?: string
   maxAttempts?: number
 } = {}): Promise<ChallengeGenerateResult> {
   const maxAttempts = opts.maxAttempts ?? 2
@@ -125,7 +127,9 @@ export async function generateChallenge(opts: {
     const userMessage = [
       `Type: ${opts.type ?? 'technical'}.`,
       `Difficulty: ${opts.difficulty ?? 'medium'}.`,
+      opts.topicHint ? `Focus this challenge specifically on: ${opts.topicHint}.` : '',
       attempt > 1 ? `Your previous attempt was rejected: ${lastReason}. Fix that.` : '',
+      'Use a title you have not used before.',
       'Write one new challenge as JSON.',
     ].filter(Boolean).join('\n')
 
