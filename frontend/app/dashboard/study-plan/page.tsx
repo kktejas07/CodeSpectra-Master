@@ -65,11 +65,11 @@ export default function StudyPlanPage() {
 
   if (!gate.ready) return null
   if (err) return <EmptyState illustration="error" title={t('dashboard.spLoadFailed')} description={err} actionLabel={t('common.tryAgain')} onAction={() => { setErr(null); load() }} />
-  if (view === undefined || !targets) return <div className="mx-auto max-w-5xl space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-3xl bg-muted motion-reduce:animate-none" />)}</div>
+  if (view === undefined || !targets) return <div className="w-full space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-3xl bg-muted motion-reduce:animate-none" />)}</div>
 
   if (!view || editing) {
     return (
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="w-full">
         <PageHeader title={t('dashboard.studyPlan')} icon={<CalendarCheck />} description={t('dashboard.spSetupDesc')} />
         <SetupForm targets={targets} initial={view?.plan} onCancel={view ? () => setEditing(false) : undefined} onDone={(v) => { setView(v); setEditing(false) }} />
       </div>
@@ -80,7 +80,7 @@ export default function StudyPlanPage() {
   const pct = view.progress.minutes_total ? Math.round((view.progress.minutes_done / view.progress.minutes_total) * 100) : 0
   const href = (it: PlanItem) => (it.kind === 'daily_challenge' && daily ? daily : it.href)
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="w-full">
       <PageHeader title={t('dashboard.studyPlan')} icon={<CalendarCheck />} description={`${p.target.label} · ${t('dashboard.weekN', { n: p.week.week_no })} · ${t('dashboard.daysLeftCount', { count: view.days_left })}`}
         actions={<div className="flex flex-wrap gap-2">
           <Button variant="outline" className="rounded-full" disabled={busy === 'regen'} onClick={async () => {
