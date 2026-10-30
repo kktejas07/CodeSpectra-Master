@@ -42,7 +42,12 @@ export async function ensureArenaSeeded(): Promise<void> {
     // examples and no reference solution, so they can never be graded. Refresh
     // their CONTENT only — engagement counters stay as they are.
     const stale = await col.countDocuments({ id: { $in: ARENA_CHALLENGES.map(c => c.id) }, testCases: { $exists: false } })
-    if (stale === 0) return
+    // A renamed seed must also refresh, otherwise the old title keeps showing
+    // (and can duplicate a problem on /dashboard/problems).
+    const first = ARENA_CHALLENGES[0]
+    const stored = await col.findOne({ id: first.id }, { projection: { title: 1 } })
+    const renamed = !stored || stored.title !== first.title
+    if (stale === 0 && !renamed) return
     for (const seed of ARENA_CHALLENGES) {
       const { solved: _solved, attempts: _attempts, ...content } = seed
       await col.updateOne({ id: seed.id }, { $set: { ...content, migrated_at: new Date().toISOString() } })

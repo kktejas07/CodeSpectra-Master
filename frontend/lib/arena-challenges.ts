@@ -48,20 +48,20 @@ const starter = (): Record<string, string> => ({ ...ARENA_STARTERS })
 
 const SEED_CHALLENGES: ArenaChallenge[] = [
   {
-    id: '1', title: 'Two Sum', shortDescription: 'Find two indices that add up to a target',
+    id: '1', title: 'Count Pairs With Difference K', shortDescription: 'Count index pairs whose values differ by exactly K',
     difficulty: 'easy', category: 'Arrays', points: 100, solved: 0, attempts: 0,
     statement: [
-      'Input (stdin): line 1 is a JSON array of integers, line 2 is the target integer.',
-      'Print the two indices (0-based, in any order) whose values add up to the target, as a JSON array. Exactly one solution exists.',
+      'Input (stdin): line 1 is a JSON array of integers, line 2 is the integer K.',
+      'Print how many pairs of indices i < j satisfy |a[i] - a[j]| = K.',
     ],
     examples: [
-      { input: '[2,7,11,15]\n9', output: '[0,1]', explanation: 'nums[0] + nums[1] == 9' },
-      { input: '[3,2,4]\n6', output: '[1,2]' },
-      { input: '[3,3]\n6', output: '[0,1]' },
+      { input: '[1,5,3,4,2]\n2', output: '3', explanation: 'Pairs (1,3), (5,3) and (4,2)' },
+      { input: '[1,2,3]\n1', output: '2' },
+      { input: '[1,1,1]\n0', output: '3', explanation: 'Every pair differs by 0' },
     ],
-    constraints: ['2 <= nums.length <= 10^4', '-10^9 <= nums[i] <= 10^9', 'Exactly one valid answer exists.'],
+    constraints: ['2 <= a.length <= 10^5', '0 <= K <= 10^9'],
     defaultCode: starter(),
-    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst [line1, line2] = stdin.trim().split('\\n')\nconst nums = JSON.parse(line1)\nconst target = Number(line2)\nconst seen = new Map()\nfor (let i = 0; i < nums.length; i++) {\n  const want = target - nums[i]\n  if (seen.has(want)) { console.log(JSON.stringify([seen.get(want), i])); break }\n  seen.set(nums[i], i)\n}\n",
+    solutionCode: "const stdin = require('fs').readFileSync(0, 'utf8')\nconst [line1, line2] = stdin.trim().split('\\n')\nconst a = JSON.parse(line1)\nconst k = Number(line2)\nconst seen = new Map()\nlet count = 0\nfor (const v of a) {\n  count += (seen.get(v - k) || 0) + (k === 0 ? 0 : (seen.get(v + k) || 0))\n  seen.set(v, (seen.get(v) || 0) + 1)\n}\nconsole.log(count)\n",
   },
   {
     id: '2', title: 'Longest Substring Without Repeating Characters', shortDescription: 'Length of the longest substring with all-distinct characters',

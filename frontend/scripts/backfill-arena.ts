@@ -66,9 +66,10 @@ async function main() {
 
   const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
-  const col = client.db(DB_NAME).collection(ARENA_COLLECTION)
+  const db = client.db(DB_NAME)
+  const col = db.collection(ARENA_COLLECTION)
 
-  let done = await countGeneratedArena(col)
+  let done = await countGeneratedArena(db)
   console.log(`[backfill] ${done}/${TARGET} generated arena challenges already present`)
 
   let failuresInARow = 0
@@ -93,7 +94,7 @@ async function main() {
       continue
     }
 
-    const outcome = await insertVerifiedArenaChallenge(col, result.challenge)
+    const outcome = await insertVerifiedArenaChallenge(db, result.challenge)
     if (outcome === 'inserted') {
       done++
       failuresInARow = 0
