@@ -6,13 +6,19 @@ import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { SEED_PROBLEMS_BULK } from '@/scripts/seed-problems-bulk'
 import { sanitizeRegex } from '@/lib/sanitize'
 import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
+import { normalizeTitle } from '@/lib/practice-content/uniqueness'
 
+/**
+ * Make sure every authored seed is present.
+ *
+ * This used to bail out as soon as the collection had ANY row, so a database
+ * with 22 problems never received the other 55 hand-written ones — the page
+ * showed 6 solvable problems while 55 sat unused in the repo (2026-10-30).
+ * Now it upserts what is missing, which costs one query when nothing is.
+ */
 async function ensureSeeded() {
   try {
     const col = await problems()
-    const n = await col.estimatedDocumentCount()
-    if (n > 0) return
-    const now = nowIso()
     const all = [...SEED_PROBLEMS, ...SEED_PROBLEMS_BULK]
     const seen = new Set<string>()
     const uniqueAll = all.filter((p) => {
@@ -21,7 +27,23 @@ async function ensureSeeded() {
       seen.add(k)
       return true
     })
-    const docs: ProblemDoc[] = uniqueAll.map((p) => ({
+
+    const rows = await col.find({}, { projection: { id: 1, slug: 1, title: 1 } }).toArray()
+    const present = new Set(rows.flatMap((d) => [String(d.id ?? ''), String(d.slug ?? '')]).filter(Boolean))
+    // Titles collide across seeds too ("Maximum Subarray" exists in both lists);
+    // adding them by id alone would resurrect a duplicate on the page.
+    const titles = new Set(rows.map((d) => normalizeTitle(d.title)).filter(Boolean))
+    const missing = uniqueAll.filter((p) => {
+      if (present.has(String(p.id ?? '')) || present.has(String(p.slug ?? ''))) return false
+      const key = normalizeTitle(p.title)
+      if (titles.has(key)) return false
+      titles.add(key)
+      return true
+    })
+    if (missing.length === 0) return
+
+    const now = nowIso()
+    const docs: ProblemDoc[] = missing.map((p) => ({
       ...p,
       created_at: now,
       updated_at: now,
