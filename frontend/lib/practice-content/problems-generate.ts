@@ -16,8 +16,11 @@ import {
   verifyGeneratedProblem,
   saveGeneratedProblem,
   logGeneratedProblem,
+  shapeGeneratedProblem,
   type TestVerification,
 } from '@/lib/services/problems'
+import { getMongoDb } from '@/lib/mongodb'
+import { findTitleOwner } from './uniqueness'
 import type { ServiceUser } from '@/lib/services/result'
 
 /** 2 sample + hidden cases; below this a problem can't discriminate. */
@@ -58,6 +61,13 @@ export async function generateVerifiedProblem(opts: {
   if (!gate.ok) {
     try { await logGeneratedProblem(opts.user.id, result, null) } catch { /* logging is best effort */ }
     return { ok: false, reason: gate.reason }
+  }
+
+  // The same question must not already be on arena/challenges (or here).
+  const owner = await findTitleOwner(await getMongoDb(), shapeGeneratedProblem(result).title)
+  if (owner) {
+    try { await logGeneratedProblem(opts.user.id, result, null) } catch { /* best effort */ }
+    return { ok: false, reason: `duplicate title — already on ${owner.collection}` }
   }
 
   const saved = await saveGeneratedProblem(opts.user, { ...result, tests_verified: true }, { mode: 'published' })

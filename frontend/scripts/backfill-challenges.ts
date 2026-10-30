@@ -50,10 +50,12 @@ async function main() {
   }
 
   const { generateChallenge } = await import('../lib/practice-content/challenges-generate')
+  const { findTitleOwner } = await import('../lib/practice-content/uniqueness')
 
   const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
-  const col = client.db(DB_NAME).collection('challenges')
+  const db = client.db(DB_NAME)
+  const col = db.collection('challenges')
 
   const countGenerated = () => col.countDocuments({ source: 'ai' })
 
@@ -83,7 +85,8 @@ async function main() {
     }
 
     const c = result.challenge
-    const exists = await col.findOne({ $or: [{ id: c.id }, { slug: c.slug }, { title: c.title }] })
+    const exists = (await col.findOne({ $or: [{ id: c.id }, { slug: c.slug }, { title: c.title }] }))
+      ?? (await findTitleOwner(db, c.title))
     if (exists) {
       duplicates++
       console.log(`[backfill] duplicate skipped (${duplicates}/${MAX_DUPLICATES}): ${c.title}`)

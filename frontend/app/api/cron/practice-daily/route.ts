@@ -20,6 +20,7 @@ import { ARENA_COLLECTION } from '@/lib/arena-challenges'
 import { generateArenaChallenge } from '@/lib/practice-content/arena-generate'
 import { insertVerifiedArenaChallenge } from '@/lib/practice-content/arena-store'
 import { generateVerifiedProblem, systemPracticeUser } from '@/lib/practice-content/problems-generate'
+import { findTitleOwner } from '@/lib/practice-content/uniqueness'
 import { generateChallenge, CHALLENGE_TYPES } from '@/lib/practice-content/challenges-generate'
 
 export const runtime = 'nodejs'
@@ -55,7 +56,7 @@ async function postImpl(req: NextRequest) {
     if (!gen.ok) {
       arena = { ok: false, reason: gen.reason }
     } else {
-      const inserted = await insertVerifiedArenaChallenge(arenaCol, gen.challenge)
+      const inserted = await insertVerifiedArenaChallenge(db, gen.challenge)
       arena = { ok: true, id: gen.challenge.id, title: gen.challenge.title, skipped: inserted === 'duplicate' ? 'duplicate' : undefined }
     }
   }
@@ -93,7 +94,8 @@ async function postImpl(req: NextRequest) {
         challenge = { ok: false, reason: gen.reason }
       } else {
         const c = gen.challenge
-        const exists = await db.collection('challenges').findOne({ $or: [{ id: c.id }, { slug: c.slug }, { title: c.title }] })
+        const exists = (await db.collection('challenges').findOne({ $or: [{ id: c.id }, { slug: c.slug }, { title: c.title }] }))
+          ?? (await findTitleOwner(db, c.title))
         if (exists) {
           challenge = { ok: true, skipped: 'duplicate', id: exists.id }
         } else {
