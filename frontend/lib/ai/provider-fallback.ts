@@ -17,11 +17,16 @@ import { type LLMProviderId } from '@/lib/llm-config'
 import { markKeyRateLimited, getRoundRobinKey } from '@/lib/ai/get-round-robin-key'
 
 // Provider fallback order (priority: free first, then paid).
-// ponytail: model IDs verified 2026-09-21 — gemini-2.0-flash 404s, Groq
-// llama-3.1-8b-instant 404s, Zen deepseek-v4-flash-free upstream-unavailable
-// (prod job logs). Free providers rotate models often — re-check the
-// provider /models catalog if the chain starts failing, and keep this in
-// sync with PROVIDER_MODELS in lib/courses/lesson-video.ts.
+// ponytail: model IDs probed live 2026-10-30 (decrypted key → provider API):
+//   groq gpt-oss-120b / gpt-oss-20b     200  ✅ the only working capacity
+//   groq llama-3.3-70b-versatile        404  model removed — DROPPED
+//   nvidia (both entries)               404/410 models removed — DROPPED
+//   gemini gemini-3-flash-preview       400  key invalid
+//   cerebras / deepseek / openai        402/402/429 no credits
+//   openrouter                          401  user not found
+//   mistral                             429  throttled (may recover)
+// Keep this list honest: a dead model costs a wasted attempt on every call,
+// and a batch run burns its whole rate budget on entries that cannot work.
 export const PROVIDER_FALLBACK_CHAIN: {
   provider: LLMProviderId
   model: string
@@ -32,9 +37,6 @@ export const PROVIDER_FALLBACK_CHAIN: {
   // Free tiers first
   { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
   { provider: 'groq', model: 'openai/gpt-oss-20b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
-  { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
-  { provider: 'nvidia', model: 'nvidia/llama-3.1-nemotron-70b-instruct', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: true },
-  { provider: 'nvidia', model: 'deepseek-ai/deepseek-v4-flash-0731', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: true },
   { provider: 'gemini', model: 'gemini-3-flash-preview', secretKey: 'gemini_api_key', free: true },
   { provider: 'cerebras', model: 'gpt-oss-120b', endpoint: 'https://api.cerebras.ai/v1', secretKey: 'cerebras_api_key', free: true },
   { provider: 'opencode', model: 'mimo-v2.5-free', secretKey: 'opencode_api_key', free: true },
