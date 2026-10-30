@@ -28,6 +28,20 @@ function arg(name: string, fallback: number): number {
 const TARGET = arg('count', 100)
 const MAX_FAILURES_IN_A_ROW = 6
 
+const RATE_LIMIT_RE = /rate.?limit|429|providers failed|try again in/i
+const RATE_WAIT_MS = Number(process.env.BACKFILL_RATE_WAIT_MS || 45000)
+const MAX_RATE_WAITS = Number(process.env.BACKFILL_MAX_RATE_WAITS || 40)
+let rateWaits = 0
+function paceOnRateLimit(reason: string): boolean {
+  if (!RATE_LIMIT_RE.test(reason)) return false
+  if (rateWaits >= MAX_RATE_WAITS) return false
+  rateWaits++
+  console.log(`[backfill] rate limited (${rateWaits}/${MAX_RATE_WAITS}) — waiting ${Math.round(RATE_WAIT_MS / 1000)}s: ${reason.slice(0, 90)}`)
+  return true
+}
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+
 const TOPICS = [
   'arrays', 'strings', 'hash map', 'two pointers', 'sliding window', 'stack',
   'queue', 'linked list', 'binary tree', 'graph', 'dynamic programming',
@@ -65,6 +79,8 @@ async function main() {
     })
 
     if (!result.ok) {
+      // A free-tier 429 is not a bad candidate: wait it out and retry, up to a cap.
+      if (paceOnRateLimit(result.reason)) { await sleep(RATE_WAIT_MS); continue }
       failuresInARow++
       console.error(`[backfill] rejected (${topic}/${difficulty}): ${result.reason}`)
       if (failuresInARow >= MAX_FAILURES_IN_A_ROW) {
