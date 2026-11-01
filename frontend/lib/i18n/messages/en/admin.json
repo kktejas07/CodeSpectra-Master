@@ -3509,5 +3509,6 @@
   "practiceReview.loadFailed": "Couldn’t load drafts. Refresh to try again.",
   "practiceReview.actionFailed": "Couldn’t save that decision. Try again.",
   "practiceReview.reviewApproved": "Challenge approved",
-  "practiceReview.reviewRejected": "Challenge rejected"
+  "practiceReview.reviewRejected": "Challenge rejected",
+  "practiceReview.approveAll": "Approve all"
 }

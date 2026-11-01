@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  let body: { id?: string; action?: string }
+  let body: { id?: string; ids?: string[]; all?: boolean; action?: string }
   try {
     body = await req.json()
   } catch {
@@ -56,24 +56,36 @@ export async function PATCH(req: NextRequest) {
 
   const id = String(body.id ?? '').trim()
   const action = String(body.action ?? '')
-  if (!id || !['approve', 'reject'].includes(action)) {
+  const ids = Array.isArray(body.ids) ? body.ids.map(String).filter(Boolean) : []
+  const all = body.all === true
+  if ((!id && ids.length === 0 && !all) || !['approve', 'reject'].includes(action)) {
     // Message must match the catalog text for `invalid_request` (tests/i18n-api-errors).
     return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
 
   const db = await getMongoDb()
-  const res = await db.collection('challenges').updateOne(
-    { $or: [{ id }, { slug: id }] },
-    {
-      $set: {
-        review_status: action === 'approve' ? 'approved' : 'rejected',
-        reviewed_by: gate.user.id,
-        reviewed_at: new Date().toISOString(),
-      },
-    },
-  )
+  const set = {
+    review_status: action === 'approve' ? 'approved' : 'rejected',
+    reviewed_by: gate.user.id,
+    reviewed_at: new Date().toISOString(),
+  }
+
+  // Bulk: `all` clears every draft (one click for a 40-item queue),
+  // `ids` handles a selection. Single `id` stays supported.
+  const filter = all
+    ? { review_status: 'draft' }
+    : ids.length > 0
+      ? { $or: [{ id: { $in: ids } }, { slug: { $in: ids } }] }
+      : { $or: [{ id }, { slug: id }] }
+
+  const res = await db.collection('challenges').updateMany(filter, { $set: set })
   if (!res.matchedCount) {
     return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   }
-  return NextResponse.json({ ok: true, id, action })
+  return NextResponse.json({
+    ok: true,
+    action,
+    updated: res.modifiedCount,
+    ...(all ? {} : ids.length ? { ids } : { id }),
+  })
 }

@@ -64,6 +64,25 @@ export default function PracticeReviewPage() {
     if (gate.ready) void load()
   }, [gate.ready, load])
 
+  const reviewAll = useCallback(async (action: 'approve' | 'reject') => {
+    setBusy('__all__')
+    setError(null)
+    try {
+      const res = await csrfFetch('/api/admin/practice-review', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action, all: true }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      await load()
+    } catch {
+      setError(t('practiceReview.actionFailed'))
+    } finally {
+      setBusy(null)
+    }
+  }, [load, t])
+
   const review = useCallback(async (id: string, action: 'approve' | 'reject') => {
     setBusy(id)
     setError(null)
@@ -106,10 +125,16 @@ export default function PracticeReviewPage() {
       </div>
 
       {counts && (
-        <div className="flex flex-wrap gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant="secondary">{t('practiceReview.draft')} {counts.draft}</Badge>
           <Badge variant="outline">{t('practiceReview.approved')} {counts.approved}</Badge>
           <Badge variant="outline">{t('practiceReview.rejected')} {counts.rejected}</Badge>
+          {counts.draft > 0 && (
+            <Button size="sm" className="ml-auto" onClick={() => void reviewAll('approve')} disabled={busy === '__all__'}>
+              {busy === '__all__' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+              {t('practiceReview.approveAll')} ({counts.draft})
+            </Button>
+          )}
         </div>
       )}
 

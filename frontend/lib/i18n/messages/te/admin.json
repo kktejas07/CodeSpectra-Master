@@ -3509,5 +3509,6 @@
   "practiceReview.loadFailed": "డ్రాఫ్ట్‌లు లోడ్ కాలేదు. మళ్లీ ప్రయత్నించడానికి రిఫ్రెష్ చేయండి.",
   "practiceReview.actionFailed": "ఆ నిర్ణయం సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.",
   "practiceReview.reviewApproved": "ఛాలెంజ్ ఆమోదించబడింది",
-  "practiceReview.reviewRejected": "ఛాలెంజ్ తిరస్కరించబడింది"
+  "practiceReview.reviewRejected": "ఛాలెంజ్ తిరస్కరించబడింది",
+  "practiceReview.approveAll": "అన్నీ ఆమోదించండి"
 }
