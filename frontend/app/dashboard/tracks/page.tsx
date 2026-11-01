@@ -161,8 +161,10 @@ export default function TracksPage() {
                   <div className="mt-auto space-y-1.5">
                     {modulesForTrack(t.id).map((m, mi) => {
                       const mt = m.topics.map(x => x.toLowerCase())
+                      const lt = m.learnTags.map(x => x.toLowerCase())
                       const modProblems = problems.filter(p => p.topics.some(t => mt.includes(t)))
-                      const modLessons = lessonTags.filter(tags => tags.some(t => mt.includes(t)))
+                      // Lessons match on Learn's own tags, not problem topics.
+                      const modLessons = lt.length ? lessonTags.filter(tags => tags.some(t => lt.includes(t))) : []
                       return (
                         <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1.5 text-[11px]">
                           <span className="truncate text-muted-foreground">
