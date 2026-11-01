@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy, HelpCircle, Loader2 } from 'lucide-react'
+import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy, HelpCircle, Loader2, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -31,6 +31,9 @@ interface Challenge {
 export default function ChallengesPage() {
   const { t: tr } = useT()
   const gate = usePageGuard('user')
+  // The review surface is superadmin-only. Ask the server instead of guessing
+  // from a role string, so the link appears exactly when approval would work.
+  const [canReview, setCanReview] = useState(false)
 
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading, setLoading] = useState(true)
@@ -58,6 +61,13 @@ export default function ChallengesPage() {
       ]
       autoPlayPageTour('challenges', challengesTour)}
   }, [gate.ready, startTour, setTourSeen])
+
+  useEffect(() => {
+    fetch('/api/user/my-permissions', { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : null))
+      .then((j: { readable?: string[] } | null) => setCanReview(Boolean(j?.readable?.includes('/dashboard/admin/practice-review'))))
+      .catch(() => setCanReview(false))
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -92,6 +102,14 @@ export default function ChallengesPage() {
             description={tr('practice.practiseCodingSystemDesignAndBehavioural4eb')}
             icon={<Trophy />}
             className="mb-0"
+            actions={canReview ? (
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link href="/dashboard/admin/practice-review">
+                  <ShieldCheck className="mr-1.5 h-4 w-4" />
+                  {tr('practice.reviewDrafts')}
+                </Link>
+              </Button>
+            ) : undefined}
           />
         </div>
       </div>

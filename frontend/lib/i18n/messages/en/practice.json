@@ -624,5 +624,6 @@
   "difficultyLabels:intermediate": "Intermediate",
   "difficultyLabels:advanced": "Advanced",
   "difficultyLabels:expert": "Expert",
-  "unlockedSuffix": " — unlocked"
+  "unlockedSuffix": " — unlocked",
+  "reviewDrafts": "Review drafts"
 }

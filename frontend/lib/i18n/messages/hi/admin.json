@@ -3509,5 +3509,6 @@
   "practiceReview.loadFailed": "मसौदे लोड नहीं हो सके। फिर से कोशिश करने के लिए रीफ़्रेश करें।",
   "practiceReview.actionFailed": "यह निर्णय सहेजा नहीं जा सका। फिर से कोशिश करें।",
   "practiceReview.reviewApproved": "चैलेंज स्वीकृत हुआ",
-  "practiceReview.reviewRejected": "चैलेंज अस्वीकृत हुआ"
+  "practiceReview.reviewRejected": "चैलेंज अस्वीकृत हुआ",
+  "practiceReview.approveAll": "सभी स्वीकृत करें"
 }
