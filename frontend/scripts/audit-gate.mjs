@@ -10,7 +10,6 @@ import { createInterface } from 'node:readline'
 
 const ACCEPTED = new Map([
   ['GHSA-vfj7-8cjw-p6xm', 'braces ≤3.0.3 (via patch-package, build-time only) — no fixed release'],
-  ['GHSA-86w9-cpqp-85rv', 'node-forge ≤1.4.0 (via @anon-aadhaar) — no fixed release; proofs are also bound server-side (SEC-026)'],
   // xlsx (GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9) removed in wave 5 — lib/xlsx-lite.ts (fflate) replaces it.
 ])
 
