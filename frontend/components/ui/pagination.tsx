@@ -46,7 +46,7 @@ export function Pagination({ page, totalPages, onChange, totalItems, pageSize, c
   const to = pageSize && totalItems ? Math.min(page * pageSize, totalItems) : undefined
 
   return (
-    <nav className={cn('flex flex-wrap items-center justify-between gap-3 pt-2', className)} aria-label="Pagination">
+    <nav className={cn('flex flex-wrap items-center justify-between gap-3 pt-2', className)} aria-label={t('practice.pagination')}>
       <p className="text-xs text-muted-foreground tabular-nums">
         {totalItems !== undefined && from !== undefined && to !== undefined
           ? `${from}–${to} / ${totalItems}`
