@@ -119,6 +119,11 @@ export default function AdminExamsPage() {
   const [screeningType, setScreeningType] = useState('mixed')
   const [saving, setSaving] = useState(false)
 
+  // AI quick-create state
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [aiParsing, setAiParsing] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+
   // Share-link dialog state (replaces immediate ?share=true copy)
   const [isLinkOpen, setIsLinkOpen] = useState(false)
   const [linkExam, setLinkExam] = useState<Exam | null>(null)
@@ -242,6 +247,100 @@ export default function AdminExamsPage() {
     setBranch('')
     setScreeningType('mixed')
     setIsModalOpen(true)
+  }
+
+  const handleAiCreate = async () => {
+    const prompt = aiPrompt.trim()
+    if (!prompt || aiParsing) return
+    setAiParsing(true)
+    setAiError(null)
+    try {
+      const res = await csrfFetch('/api/ai/edith', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `You are a JSON-only extraction assistant. Parse this admin instruction and return a JSON object (no markdown) with these exact fields:
+{
+  "title": string (descriptive title for the assessment),
+  "subject": string (technology/subject, e.g. "Java", "Python", "React"),
+  "level": "Beginner" | "Intermediate" | "Advanced",
+  "duration": number (minutes, default 60),
+  "passing_score": number (percentage 0-100, default 60),
+  "screening_type": "mcq" | "coding" | "mixed",
+  "questions": number (default 20)
+}
+
+Admin instruction: "${prompt}"
+
+Examples:
+- "Java medium 40% cutoff" → {"title":"Java Assessment","subject":"Java","level":"Intermediate","duration":60,"passing_score":40,"screening_type":"mixed","questions":20}
+- "Python advanced coding 90 min 70%" → {"title":"Python Coding Assessment","subject":"Python","level":"Advanced","duration":90,"passing_score":70,"screening_type":"coding","questions":20}
+
+Return ONLY valid JSON, nothing else.`,
+          context_mode: 'none',
+        }),
+      })
+      if (!res.ok || !res.body) throw new Error('AI request failed')
+      // Accumulate SSE stream
+      const reader = res.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      let acc = ''
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        const events = buf.split('\n\n')
+        buf = events.pop() || ''
+        for (const ev of events) {
+          const line = ev.trim()
+          if (!line.startsWith('data:')) continue
+          const payload = line.slice(5).trim()
+          if (payload === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(payload) as { delta?: string; error?: string }
+            if (parsed.delta) acc += parsed.delta
+          } catch { /* skip */ }
+        }
+      }
+      // Extract JSON from acc (strip markdown fences if any)
+      const jsonMatch = acc.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('Could not parse AI response')
+      const data = JSON.parse(jsonMatch[0]) as {
+        title?: string; subject?: string; level?: string; duration?: number;
+        passing_score?: number; screening_type?: string; questions?: number
+      }
+      // Pre-fill the create modal
+      setEditingExam(null)
+      setTitle(data.title || prompt)
+      setSubject(data.subject || '')
+      setLevel(data.level && ['Beginner','Intermediate','Advanced'].includes(data.level) ? data.level : 'Intermediate')
+      setDuration(Number(data.duration) || 60)
+      setPassingScore(Number(data.passing_score) || 60)
+      setScreeningType(data.screening_type && ['mcq','coding','mixed'].includes(data.screening_type) ? data.screening_type : 'mixed')
+      setQuestions(Number(data.questions) || 20)
+      setTechStack(data.subject || '')
+      setStartsAt('')
+      setEndsAt('')
+      setRequireTokenLinks(false)
+      setRequireIdVerification(true)
+      setRequireFaceCapture(true)
+      setNoCameraPolicy('allow_flag')
+      setAllowRetake(false)
+      setMaxAttempts(1)
+      setIssueCertificates(true)
+      setAutoReleaseScores(false)
+      setPublished(false)
+      setAccessType('invite_only')
+      setDegreeType('')
+      setBranch('')
+      setAiPrompt('')
+      setIsModalOpen(true)
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Failed to parse instruction')
+    } finally {
+      setAiParsing(false)
+    }
   }
 
   const openEditModal = (exam: Exam) => {
@@ -665,6 +764,32 @@ export default function AdminExamsPage() {
           <StatCard label={tx('assess.submitted')} value={visibleExams.reduce((n, e) => n + (e.attempts || 0), 0)} icon={<Users />} />
         </div>
       )}
+
+      {/* AI Quick-Create Bar */}
+      <form
+        onSubmit={(e) => { e.preventDefault(); void handleAiCreate() }}
+        className="flex items-center gap-2 rounded-2xl border border-violet-500/20 bg-violet-950/10 px-4 py-3"
+      >
+        <Wand2 className="h-4 w-4 shrink-0 text-violet-400" />
+        <Input
+          value={aiPrompt}
+          onChange={(e) => { setAiPrompt(e.target.value); setAiError(null) }}
+          placeholder='Create with AI — e.g. "Java medium 40% cutoff" or "Python advanced coding 90 min"'
+          className="flex-1 border-0 bg-transparent px-0 text-sm placeholder:text-violet-700/60 focus-visible:ring-0"
+          disabled={aiParsing}
+        />
+        {aiError && <span className="shrink-0 text-xs text-destructive">{aiError}</span>}
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          disabled={aiParsing || !aiPrompt.trim()}
+          className="shrink-0 gap-1.5 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+        >
+          {aiParsing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+          {aiParsing ? 'Parsing…' : 'Generate'}
+        </Button>
+      </form>
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-card p-3">
         <span className="text-sm font-medium text-muted-foreground">{tx('assess.created')}</span>

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { NumberField } from '@/components/ui/number-field'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
@@ -36,6 +37,7 @@ import { useAdminT } from '@/lib/i18n/admin'
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
   num_teams: number; max_per_team: number; timeout_minutes: number
+  max_registrations?: number | null; open_registration?: boolean; registration_deadline?: string | null
   starts_at: string; ends_at: string; status: string
   tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean }[]
   rules: { type: string; title: string; description: string }[]
@@ -78,6 +80,9 @@ export default function HackathonsAdminPage() {
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
     solve_limit: 0,
     banner_url: '',
+    open_registration: false,
+    max_registrations: 0,
+    registration_deadline: '',
   })
   const [editing, setEditing] = useState<Hackathon | null>(null)
 
@@ -316,6 +321,9 @@ export default function HackathonsAdminPage() {
           scoring: form.scoring,
           solve_limit: form.solve_limit || undefined,
           banner_url: form.banner_url,
+          open_registration: form.open_registration,
+          max_registrations: form.open_registration && form.max_registrations > 0 ? form.max_registrations : undefined,
+          registration_deadline: form.open_registration && form.registration_deadline ? fromZonedDatetimeString(form.registration_deadline, tz) : undefined,
         }),
       })
       const j = await res.json()
@@ -350,6 +358,9 @@ export default function HackathonsAdminPage() {
           scoring: form.scoring,
           solve_limit: form.solve_limit || undefined,
           banner_url: form.banner_url,
+          open_registration: form.open_registration,
+          max_registrations: form.open_registration && form.max_registrations > 0 ? form.max_registrations : undefined,
+          registration_deadline: form.open_registration && form.registration_deadline ? fromZonedDatetimeString(form.registration_deadline, tz) : undefined,
         }),
       })
       const j = await res.json()
@@ -386,6 +397,9 @@ export default function HackathonsAdminPage() {
       scoring: hk.scoring || { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
       solve_limit: Number((hk as any).solve_limit) || 0,
       banner_url: (hk as any).banner_url || '',
+      open_registration: !!(hk as any).open_registration,
+      max_registrations: Number((hk as any).max_registrations) || 0,
+      registration_deadline: (hk as any).registration_deadline ? toLocalDatetimeString(new Date((hk as any).registration_deadline)) : '',
     })
   }
 
@@ -578,6 +592,49 @@ export default function HackathonsAdminPage() {
                     placeholder={ta('hkForm.orPasteImageUrl')}
                   />
                 </div>
+              {/* Registration Settings */}
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-medium">Open Registration</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Allow students to self-register before the event starts</p>
+                  </div>
+                  <Switch
+                    checked={form.open_registration}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, open_registration: v }))}
+                  />
+                </div>
+                {form.open_registration && (
+                  <div className="grid gap-4 md:grid-cols-2 pt-1">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Registration Cap</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={10000}
+                          value={form.max_registrations || ''}
+                          onChange={(e) => setForm((f) => ({ ...f, max_registrations: Math.max(0, parseInt(e.target.value) || 0) }))}
+                          placeholder="e.g. 500 (0 = unlimited)"
+                          className="text-sm"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Max students who can register (0 = no limit)</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Registration Deadline</Label>
+                      <Input
+                        type="datetime-local"
+                        value={form.registration_deadline}
+                        onChange={(e) => setForm((f) => ({ ...f, registration_deadline: e.target.value }))}
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">Optional cutoff for new registrations</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <Button onClick={() => setStep(2)}>{ta('hkForm.nextProblems')}</Button>
             </div>
           )}
