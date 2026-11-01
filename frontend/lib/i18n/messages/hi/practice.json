@@ -624,5 +624,6 @@
   "difficultyLabels:intermediate": "इंटरमीडिएट",
   "difficultyLabels:advanced": "एडवांस्ड",
   "difficultyLabels:expert": "एक्सपर्ट",
-  "unlockedSuffix": " — अनलॉक"
+  "unlockedSuffix": " — अनलॉक",
+  "reviewDrafts": "मसौदे देखें"
 }
