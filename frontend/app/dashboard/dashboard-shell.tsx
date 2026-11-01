@@ -138,6 +138,7 @@ import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
+import { GoEdith } from '@/components/ai/go-edith'
 import { canShowInNav } from '@/lib/page-access-map'
 import { fetchLockedPages } from '@/lib/use-page-guard'
 import { resolveTourId } from '@/components/tour/tour-context'
@@ -1286,6 +1287,7 @@ export default function DashboardLayout({
       </div>
       {/* Floating Chatbot */}
       {chatbotEnabled && <AskCodeSpectra />}
+      <GoEdith />
 
       {/* Real-time FCM push → XP toasts / notification popups */}
       <PushNotifications userId={userProfile?.id} />

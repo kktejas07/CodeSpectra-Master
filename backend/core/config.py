@@ -32,6 +32,8 @@ class Settings:
     OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
     GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
     CUSTOM_API_KEY: str = os.environ.get("CUSTOM_API_KEY", "")
+    CUSTOM_ENDPOINT: str = os.environ.get("CUSTOM_ENDPOINT", "https://www.brocode.live/api/v1")
+    CUSTOM_MODEL: str = os.environ.get("CUSTOM_MODEL", "gpt-4o-mini")
     LLM_API_KEY: str = os.environ.get("LLM_API_KEY", "")
 
     # ─── Piston (code execution) ───────────────────────────────
@@ -99,7 +101,14 @@ class Settings:
     # ─── LLM Model Registry ────────────────────────────────────
     # Map logical roles to (provider, model) tuples
     MODEL_REGISTRY: dict[str, tuple[str, str]] = {
-        "reasoning": ("anthropic", "claude-sonnet-4-5-20250929"),
+        # Use brocode.live (OpenAI-compatible) as default reasoning provider.
+        # Falls back to anthropic if CUSTOM_API_KEY is unset.
+        "reasoning": (
+            "custom" if os.environ.get("CUSTOM_API_KEY") else "anthropic",
+            os.environ.get("CUSTOM_MODEL", "gpt-4o-mini")
+            if os.environ.get("CUSTOM_API_KEY")
+            else "claude-sonnet-4-5-20250929",
+        ),
         "fast": ("gemini", "gemini-3-flash-preview"),
         "vision": ("gemini", "gemini-3-flash-preview"),
     }

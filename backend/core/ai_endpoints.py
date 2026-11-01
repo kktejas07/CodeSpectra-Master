@@ -36,6 +36,7 @@ BUILTIN_HOSTS: frozenset[str] = frozenset(
         "generativelanguage.googleapis.com",
         "api.together.xyz",
         "api.fireworks.ai",
+        "www.brocode.live",  # brocode.live OpenAI-compatible LLM proxy
     }
 )
 
