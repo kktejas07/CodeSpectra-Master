@@ -170,7 +170,7 @@ export default function TracksPage() {
                             {m.title}
                           </span>
                           <span className="shrink-0 tabular-nums text-muted-foreground">
-                            {modLessons.length} lessons · {modProblems.length} problems
+                            {modLessons.length} {tr('practice.lessons')} · {modProblems.length} {tr('practice.problemsLabel')}
                           </span>
                         </div>
                       )
