@@ -29,6 +29,13 @@ function arg(name: string, fallback: number): number {
 
 const TARGET = arg('count', 108)
 const MAX_FAILURES_IN_A_ROW = 5
+// Learn generation is the most expensive call in the app; with a free-tier
+// provider the daily tick mostly waits. Pace instead of aborting.
+const RATE_LIMIT_RE = /rate.?limit|429|providers failed|try again in|did not answer/i
+const RATE_WAIT_MS = Number(process.env.BACKFILL_RATE_WAIT_MS || 60000)
+const MAX_RATE_WAITS = Number(process.env.BACKFILL_MAX_RATE_WAITS || 30)
+let rateWaits = 0
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 async function main() {
   if (!MONGO_URI) {
@@ -55,6 +62,12 @@ async function main() {
       console.error(`[backfill] failed: ${reason}`)
       // "Every enabled topic already has a post" is a hard stop, not a retry.
       if (/already has a post/i.test(reason)) break
+      if (RATE_LIMIT_RE.test(reason) && rateWaits < MAX_RATE_WAITS) {
+        rateWaits++
+        console.log(`[backfill] rate limited (${rateWaits}/${MAX_RATE_WAITS}) — waiting ${Math.round(RATE_WAIT_MS / 1000)}s`)
+        await sleep(RATE_WAIT_MS)
+        continue
+      }
       failuresInARow++
       if (failuresInARow >= MAX_FAILURES_IN_A_ROW) {
         console.error(`[backfill] ${MAX_FAILURES_IN_A_ROW} failures in a row — stopping. Check provider keys.`)
