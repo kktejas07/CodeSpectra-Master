@@ -625,5 +625,7 @@
   "difficultyLabels:advanced": "Advanced",
   "difficultyLabels:expert": "Expert",
   "unlockedSuffix": " — unlocked",
-  "reviewDrafts": "Review drafts"
+  "reviewDrafts": "Review drafts",
+  "lessons": "lessons",
+  "problemsLabel": "problems"
 }
