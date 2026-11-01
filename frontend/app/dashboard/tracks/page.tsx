@@ -12,6 +12,7 @@ import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n/client'
+import { modulesForTrack } from '@/lib/tracks/curriculum'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   python: FileCode2,
@@ -41,7 +42,8 @@ export default function TracksPage() {
   const { startTour, setTourSeen } = useTour()
 
   const [tracks, setTracks] = useState<TrackDef[]>([])
-  const [problemTopics, setProblemTopics] = useState<string[][]>([])
+  const [problems, setProblems] = useState<{ topics: string[]; difficulty: string }[]>([])
+  const [lessonTags, setLessonTags] = useState<string[][]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
@@ -52,10 +54,16 @@ export default function TracksPage() {
     Promise.all([
       fetch('/api/tracks').then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() }),
       fetch('/api/problems', { cache: 'no-store' }).then(r => r.json()),
-    ]).then(([tracksJson, problemsJson]) => {
+      fetch('/api/learn?limit=60').then(r => (r.ok ? r.json() : { posts: [] })).catch(() => ({ posts: [] })),
+    ]).then(([tracksJson, problemsJson, learnJson]) => {
       if (tracksJson.data) setTracks(tracksJson.data)
-      const all: { topics?: string[] }[] = problemsJson.data || []
-      setProblemTopics(all.map(p => (p.topics || []).map(t => t.toLowerCase())))
+      const all: { topics?: string[]; difficulty?: string }[] = problemsJson.data || []
+      setProblems(all.map(p => ({
+        topics: (p.topics || []).map(t => t.toLowerCase()),
+        difficulty: String(p.difficulty || '').toLowerCase(),
+      })))
+      const posts: { tags?: string[]; title?: string; category?: string }[] = learnJson?.posts || learnJson?.data || []
+      setLessonTags(posts.map(p => [...(p.tags || []), p.category || ''].map(t => String(t).toLowerCase()).filter(Boolean)))
     }).catch(() => setLoadError(true)).finally(() => setLoading(false))
   }, [reloadKey])
 
@@ -83,7 +91,7 @@ export default function TracksPage() {
   // matching what the Practice link filters to.
   function trackProblemCount(track: TrackDef): number {
     const wanted = new Set(track.topics.map(t => (t || '').toLowerCase()))
-    return problemTopics.filter(ts => ts.some(t => wanted.has(t))).length
+    return problems.filter(p => p.topics.some(t => wanted.has(t))).length
   }
 
   if (!gate.ready) return null
@@ -150,10 +158,28 @@ export default function TracksPage() {
                       <span key={tp} className="rounded-full border border-border/70 bg-muted/40 text-[11px] text-muted-foreground px-2 py-0.5">{tp}</span>
                     ))}
                   </div>
-                  <div className="mt-auto flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground tabular-nums">{count > 0 ? tr('practice.countProblems', { count }) : tr('practice.moreProblemsComing')}</span>
-                    <span className="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0">{tr('practice.practice')}{' '}<ArrowRight className="h-3 w-3" />
-                    </span>
+                  <div className="mt-auto space-y-1.5">
+                    {modulesForTrack(t.id).map((m, mi) => {
+                      const mt = m.topics.map(x => x.toLowerCase())
+                      const modProblems = problems.filter(p => p.topics.some(t => mt.includes(t)))
+                      const modLessons = lessonTags.filter(tags => tags.some(t => mt.includes(t)))
+                      return (
+                        <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1.5 text-[11px]">
+                          <span className="truncate text-muted-foreground">
+                            <span className="mr-1.5 font-medium text-foreground">{mi + 1}.</span>
+                            {m.title}
+                          </span>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">
+                            {modLessons.length} lessons · {modProblems.length} problems
+                          </span>
+                        </div>
+                      )
+                    })}
+                    <div className="flex items-center justify-between pt-1 text-xs">
+                      <span className="text-muted-foreground tabular-nums">{count > 0 ? tr('practice.countProblems', { count }) : tr('practice.moreProblemsComing')}</span>
+                      <span className="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0">{tr('practice.practice')}{' '}<ArrowRight className="h-3 w-3" />
+                      </span>
+                    </div>
                   </div>
                 </Panel>
               </Link>
