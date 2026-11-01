@@ -1,6 +1,11 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
+  const [page, setPage] = useState(1)
+  const DAY_PAGE_SIZE = 12
+  const totalPages = Math.max(1, Math.ceil(HUNDRED_DAYS.length / DAY_PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pagedDays = HUNDRED_DAYS.slice((safePage - 1) * DAY_PAGE_SIZE, safePage * DAY_PAGE_SIZE)
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -18,6 +23,7 @@ import { SkeletonCard, SkeletonStats, SkeletonList, SkeletonText } from '@/compo
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { useT } from '@/lib/i18n/client'
+import { Pagination } from '@/components/ui/pagination'
 
 function getCompletedLocal(): Set<number> {
   if (typeof window === 'undefined') return new Set()
@@ -293,7 +299,7 @@ export default function HundredDaysPage() {
 
           {/* Days Accordion List */}
           <div className="space-y-3" data-tour="100-days-list">
-            {HUNDRED_DAYS.map((d, index) => {
+            {pagedDays.map((d, index) => {
               const isCompleted = completed.has(d.day)
               const isExpanded = expandedDays.has(d.day)
               const isAvailable = index <= stats.done; // Unlocks sequentially
@@ -368,6 +374,7 @@ export default function HundredDaysPage() {
                 </Card>
               )
             })}
+              <Pagination page={safePage} totalPages={totalPages} onChange={setPage} totalItems={HUNDRED_DAYS.length} pageSize={DAY_PAGE_SIZE} />
           </div>
 
         </div>

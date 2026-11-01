@@ -14,6 +14,7 @@ import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-ki
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n/client'
+import { Pagination } from '@/components/ui/pagination'
 
 interface Challenge {
   id: string
@@ -28,9 +29,12 @@ interface Challenge {
   prerequisites?: string[]
 }
 
+const PAGE_SIZE = 9
+
 export default function ChallengesPage() {
   const { t: tr } = useT()
   const gate = usePageGuard('user')
+  const [page, setPage] = useState(1)
   // The review surface is superadmin-only. Ask the server instead of guessing
   // from a role string, so the link appears exactly when approval would work.
   const [canReview, setCanReview] = useState(false)
@@ -84,6 +88,11 @@ export default function ChallengesPage() {
     if (selectedDifficulty && c.difficulty !== selectedDifficulty) return false
     return true
   })
+
+  // Paginate the grid: 26 items today, more once drafts are approved.
+  const totalPages = Math.max(1, Math.ceil(filteredChallenges.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const visibleChallenges = filteredChallenges.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const completedCount = challenges.filter(c => c.completed).length
   const types = [...new Set(challenges.map(c => c.type))]
@@ -160,7 +169,7 @@ export default function ChallengesPage() {
           </div>
 
           <BentoGrid className="lg:grid-cols-3">
-            {filteredChallenges.map((c) => (
+            {visibleChallenges.map((c) => (
               <Panel key={c.id} interactive={!c.locked} className={`flex flex-col p-5 ${c.locked ? 'opacity-60' : ''}`}>
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -199,6 +208,7 @@ export default function ChallengesPage() {
               </Panel>
             ))}
           </BentoGrid>
+          <Pagination page={safePage} totalPages={totalPages} onChange={setPage} totalItems={filteredChallenges.length} pageSize={PAGE_SIZE} />
         </>
       )}
     </div>

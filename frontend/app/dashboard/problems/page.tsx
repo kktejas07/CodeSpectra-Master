@@ -20,6 +20,9 @@ import { Panel } from '@/components/app/page-kit'
 import { AppBanner, Illustration, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n/client'
+import { Pagination } from '@/components/ui/pagination'
+
+const PAGE_SIZE = 20
 
 function FilterAccordion({ title, items, selected, onToggle }: { title: string, items: {id: string, label: string}[], selected: string[], onToggle: (id: string) => void }) {
   const [open, setOpen] = useState(true)
@@ -49,6 +52,7 @@ export default function ProblemsListPage() {
   const { td, t: tr } = useT()
   const gate = usePageGuard('user')
   const { loading, error, q, setQ, difficulty, setDifficulty, filtered, load } = useProblemsViewModel()
+  const [page, setPage] = useState(1)
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
 
@@ -77,6 +81,11 @@ export default function ProblemsListPage() {
       : filtered.filter(p => (p.topics || []).some(t => selectedTopics.includes(t.toLowerCase()))),
     [filtered, selectedTopics],
   )
+
+  // 58 problems today; the table renders one page at a time.
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const paged = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const pickRandom = () => {
     const open = visible.filter((x) => !x.locked)
@@ -364,7 +373,7 @@ export default function ProblemsListPage() {
                     <EmptyState variant="search" title={tr('practice.noProblemsMatch')} description={tr('practice.tryADifferentWordOrClear18e')} className="rounded-none border-0 bg-transparent" />
                  ) : (
                     <div className="divide-y divide-border/40">
-                       {visible.map((p, i) => (
+                       {paged.map((p, i) => (
                          <div key={p.id || i} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/40 transition-colors group">
                             <div className="col-span-8 flex gap-3 min-w-0">
                                <div className="min-w-0">
@@ -402,6 +411,7 @@ export default function ProblemsListPage() {
                        ))}
                     </div>
                  )}
+                 <Pagination page={safePage} totalPages={totalPages} onChange={setPage} totalItems={visible.length} pageSize={PAGE_SIZE} />
                 </div>
                </div>
               </div>

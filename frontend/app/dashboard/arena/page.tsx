@@ -12,6 +12,7 @@ import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-ki
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n/client'
+import { Pagination } from '@/components/ui/pagination'
 
 interface ArenaChallenge {
   id: string
@@ -70,6 +71,8 @@ const GridSkeleton = () => (
   </div>
 )
 
+const PAGE_SIZE = 12
+
 export default function ArenaPage() {
   const { t } = useT()
   const gate = usePageGuard('user')
@@ -80,6 +83,7 @@ export default function ArenaPage() {
   const [reloadKey, setReloadKey] = useState(0)
   const [difficulty, setDifficulty] = useState('all')
   const [category, setCategory] = useState('all')
+  const [page, setPage] = useState(1)
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
@@ -129,6 +133,12 @@ export default function ArenaPage() {
     if (category !== 'all' && c.category !== category) return false
     return true
   })
+
+  // One page at a time: arena passed 120 items, which was one endless scroll.
+  const reflected = filtered.length
+  const totalPages = Math.max(1, Math.ceil(reflected / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const categories = ['all', ...new Set(challenges.map(c => c.category).filter(Boolean))]
   const difficulties = ['all', 'easy', 'medium', 'hard']
@@ -209,7 +219,7 @@ export default function ArenaPage() {
 
           <div data-tour="arena-grid">
           <BentoGrid className="lg:grid-cols-3">
-            {filtered.map((c) => (
+            {visible.map((c) => (
               <Link key={c.id} href={`/dashboard/arena/${c.id}`} className="rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 <Panel interactive className="h-full p-5">
                   <div className="mb-3 flex items-start justify-between gap-2">
@@ -227,6 +237,7 @@ export default function ArenaPage() {
               </Link>
             ))}
           </BentoGrid>
+          <Pagination page={safePage} totalPages={totalPages} onChange={setPage} totalItems={reflected} pageSize={PAGE_SIZE} />
           </div>
         </>
       )}
