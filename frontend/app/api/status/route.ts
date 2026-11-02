@@ -7,6 +7,34 @@ export const dynamic = 'force-dynamic'
 
 type ComponentStatus = { name: string; status: 'operational' | 'degraded' | 'down'; latency?: number; message?: string }
 
+
+/**
+ * Historical rows were written with vendor-revealing names before 2026-11-02.
+ * Normalise on read so old records cannot leak "MongoDB"/"Piston"/"local
+ * executor" on a public page, whatever is stored.
+ */
+const NEUTRAL_NAMES: [RegExp, string][] = [
+  [/database|mongo/i, 'Database'],
+  [/api/i, 'API'],
+  [/piston|code execution|sandbox/i, 'Code execution'],
+  [/email/i, 'Email delivery'],
+]
+
+function neutralName(name: unknown): string {
+  const raw = String(name ?? '')
+  for (const [re, label] of NEUTRAL_NAMES) if (re.test(raw)) return label
+  return 'Service'
+}
+
+function sanitizeLog(log: any) {
+  if (!log || !Array.isArray(log.components)) return log
+  return {
+    ...log,
+    // Drop `message` too: it held "Using local executor" / "HTTP <status>".
+    components: log.components.map((c: any) => ({ name: neutralName(c?.name), status: c?.status, latency: c?.latency })),
+  }
+}
+
 export async function GET() {
   const components: ComponentStatus[] = []
 
@@ -86,6 +114,6 @@ export async function GET() {
     status: overallStatus,
     updated_at: new Date().toISOString(),
     components,
-    historical_logs: logs
+    historical_logs: logs.map(sanitizeLog)
   })
 }
