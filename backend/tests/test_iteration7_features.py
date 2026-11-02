@@ -5,22 +5,35 @@ Iteration 7 - Backend tests for new features:
 - MCP endpoint
 - Workflows
 - GitHub webhooks / queue
-- Submission XP code-path verification
+
+All tests here need a live Next.js app on localhost:3000 (or
+CODESPECTRA_LIVE_URL) backed by seeded MongoDB; they skip cleanly when no
+server is reachable. The static code-path checks moved to
+test_frontend_codepaths.py so they run offline.
 """
 import os
-import re
+
 import requests
 import pytest
 
-from live_frontend import login_live, make_live_session
+from live_frontend import live_available, login_live, make_live_session
 
 # Per agent-to-agent note: external preview proxy is broken for new routes; use localhost:3000 directly.
-BASE_URL = "http://localhost:3000"
+BASE_URL = os.environ.get("CODESPECTRA_LIVE_URL", "http://localhost:3000")
 
 SUPERADMIN = {"email": "qa@codespectra.dev", "password": "QApass123!"}
 USER = {"email": "user@codespectra.dev", "password": "CodeSpectra@2026"}
 
 ORIGIN_HEADER = {"Origin": BASE_URL}
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_live_server():
+    if not live_available(BASE_URL):
+        pytest.skip(
+            f"live app unreachable at {BASE_URL} — start the Next.js app "
+            "with a seeded MongoDB, or point CODESPECTRA_LIVE_URL at a deployment"
+        )
 
 
 # ---------- fixtures ----------
@@ -309,34 +322,3 @@ class TestGitHub:
         assert body.get("ok") is True
         assert "processed" in body
         assert "results" in body
-
-
-# ---------- Code-path verification (Piston blocked) ----------
-class TestSubmissionXPCodepath:
-    def test_award_xp_exists_in_submissions(self):
-        p = "/app/frontend/app/api/submissions/route.ts"
-        assert os.path.exists(p), f"missing {p}"
-        with open(p, "r") as f:
-            src = f.read()
-        assert "awardXp" in src, "awardXp not referenced in submissions route"
-        assert "FIRST_BLOOD_BONUS" in src, "FIRST_BLOOD_BONUS not referenced"
-        # first-blood logic should check for prior accepted submissions
-        assert re.search(r"first.?blood", src, re.IGNORECASE), "first-blood marker not found"
-
-
-# ---------- Face-MFA cleanup ----------
-class TestFaceMfaCleanup:
-    def test_face_auth_service_deleted(self):
-        assert not os.path.exists("/app/frontend/lib/face-auth-service.ts")
-
-    def test_no_imports_of_face_auth(self):
-        import subprocess
-        # exclude docs / git / node_modules
-        out = subprocess.run(
-            ["grep", "-rln", "--include=*.ts", "--include=*.tsx",
-             "--exclude-dir=node_modules", "--exclude-dir=.next",
-             "face-auth-service", "/app/frontend"],
-            capture_output=True, text=True
-        )
-        files = [l for l in out.stdout.strip().split("\n") if l]
-        assert files == [], f"residual references to face-auth-service: {files}"

@@ -10,16 +10,22 @@ Coverage:
 """
 import os
 import re
+from pathlib import Path
+
 import requests
 import pytest
-from pymongo import MongoClient
-from dotenv import load_dotenv
 
-from live_frontend import login_live, make_live_session
+from live_frontend import live_available, login_live, make_live_session
 
-load_dotenv("/app/backend/.env")
+# Repo-relative so the module imports (and skip-guards) work on a bare
+# checkout; still overrides in-docker where /app/backend/.env exists.
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+if (_BACKEND_DIR / ".env").exists():
+    from dotenv import load_dotenv
 
-BASE_URL = "http://localhost:3000"
+    load_dotenv(str(_BACKEND_DIR / ".env"))
+
+BASE_URL = os.environ.get("CODESPECTRA_LIVE_URL", "http://localhost:3000")
 
 SUPERADMIN = {"email": "qa@codespectra.dev", "password": "QApass123!"}
 TENANT = {"email": "tenant@codespectra.dev", "password": "CodeSpectra@2026"}
@@ -29,14 +35,29 @@ RECRUITER = {"email": "recruiter@codespectra.dev", "password": "CodeSpectra@2026
 ORIGIN_HEADER = {"Origin": BASE_URL}
 JSON_HEADERS = {**ORIGIN_HEADER, "Content-Type": "application/json"}
 
-MONGO_URL = os.environ.get("MONGO_URL")
-DB_NAME = os.environ.get("DB_NAME", "codespectra")
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_live_server():
+    if not live_available(BASE_URL):
+        pytest.skip(
+            f"live app unreachable at {BASE_URL} — start the Next.js app "
+            "with a seeded MongoDB, or point CODESPECTRA_LIVE_URL at a deployment"
+        )
 
 
 @pytest.fixture(scope="session")
 def mongo():
-    client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=8000)
-    db = client[DB_NAME]
+    # Session fixtures set up before the module-level autouse skip guard, so
+    # re-check reachability here: without a live server (or pymongo) these
+    # DB-dependent tests skip rather than error at setup.
+    if not live_available(BASE_URL):
+        pytest.skip(
+            f"live app / MongoDB unreachable at {BASE_URL} — DB-dependent tests skipped"
+        )
+    from pymongo import MongoClient
+
+    client = MongoClient(os.environ.get("MONGO_URL"), serverSelectionTimeoutMS=8000)
+    db = client[os.environ.get("DB_NAME", "codespectra")]
     yield db
     client.close()
 
