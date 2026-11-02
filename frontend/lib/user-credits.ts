@@ -25,12 +25,20 @@ function nextReset(now = new Date()): Date {
 export async function getUserAiCredits(userId: string): Promise<{ balance: number; plan: string; allowance: number; resets_at: string | null }> {
   const col = await users()
   const user = (await col.findOne(userIdFilter(userId), {
-    projection: { aiCredits: 1, creditsResetAt: 1, creditsPlan: 1 },
-  })) as { aiCredits?: unknown; creditsResetAt?: unknown; creditsPlan?: unknown } | null
+    projection: { aiCredits: 1, creditsResetAt: 1, creditsPlan: 1, role: 1 },
+  })) as { aiCredits?: unknown; creditsResetAt?: unknown; creditsPlan?: unknown; role?: string } | null
   if (!user) return { balance: 0, plan: 'free', allowance: 0, resets_at: null }
 
   const ent = await getUserEntitlements(userId)
   const allowance = aiAllowanceFor(ent.plan)
+
+  // Platform operators are never gated — lib/entitlements.ts::hasEntitlement
+  // already exempts superadmins for every other feature, but the credit path
+  // treated them as free users (10/month) and 402'd the copilot and mock
+  // interviews at zero. Unlimited = the balance never decreases.
+  if (user.role === 'superadmin') {
+    return { balance: Number.MAX_SAFE_INTEGER, plan: ent.planKey, allowance: Number.MAX_SAFE_INTEGER, resets_at: null }
+  }
   const period = creditPeriod({
     balance: user.aiCredits,
     resetAt: user.creditsResetAt,
@@ -65,6 +73,12 @@ export async function spendAiCredits(userId: string, amount = 1): Promise<SpendR
   const n = assertCreditAmount(amount)
   const { balance } = await getUserAiCredits(userId) // starts the period if due
   if (balance < n) return { ok: false, balance }
+
+  // Superadmins: unlimited — skip the decrement so the stored balance can't
+  // drift to zero and re-block them (see getUserAiCredits).
+  const roleCol = await users()
+  const caller = (await roleCol.findOne(userIdFilter(userId), { projection: { role: 1 } })) as { role?: string } | null
+  if (caller?.role === 'superadmin') return { ok: true, balance }
   const col = await users()
   const res = await col.findOneAndUpdate(
     { $and: [userIdFilter(userId), { aiCredits: { $gte: n } }] } as never,
