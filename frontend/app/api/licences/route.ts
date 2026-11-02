@@ -12,7 +12,10 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: Request) {
   const g = await licenceGate(new URL(req.url).searchParams.get('org'))
   if (!g.ok) return NextResponse.json({ error: g.error, code: g.code }, { status: g.status })
-  if (!g.orgId) return NextResponse.json({ error: 'Choose an organisation.', code: 'licence_org_required' }, { status: 400 })
+  // A superadmin with no org selected is a picker state, not a client error:
+  // returning 400 made /dashboard/admin/licences render as broken and filled the
+  // console with "GET /api/licences 400" on every load.
+  if (!g.orgId) return NextResponse.json({ needs_org: true, licences: [], org: null, profile: null, pricing: null })
   try {
     const [{ listOrgLicences, seatUsage, orgInfo }, { getBillingSettings }, { getBillingProfile }] = await Promise.all([import('@/lib/billing/licences'), import('@/lib/billing/settings'), import('@/lib/billing/tax-invoice')])
     const [list, settings, org, profile] = await Promise.all([listOrgLicences(g.orgId), getBillingSettings(), orgInfo(g.orgId), getBillingProfile(`org:${g.orgId}`)])

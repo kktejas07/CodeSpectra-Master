@@ -3526,5 +3526,7 @@
   "llm.gatewayBecomesPrimaryPrefix": "సేవ్ చేసిన తర్వాత ఈ గేట్‌వే అవుతుంది",
   "llm.primaryAiProvider": "ప్రాథమిక AI ప్రొవైడర్",
   "llm.gatewayBecomesPrimarySuffix": "అన్ని ఫీచర్లకు (ఏజెంట్, EDITH, హైరింగ్ AI).",
-  "llm.gatewayFallbackNote": "ఎండ్‌పాయింట్ మరియు కీ సెట్ చేస్తే, ఈ గేట్‌వే ఆటోమేటిక్ ఫాల్‌బ్యాక్ చైన్ మరియు హెల్త్ ట్యాబ్ ప్రోబ్‌లో చేరుతుంది."
+  "llm.gatewayFallbackNote": "ఎండ్‌పాయింట్ మరియు కీ సెట్ చేస్తే, ఈ గేట్‌వే ఆటోమేటిక్ ఫాల్‌బ్యాక్ చైన్ మరియు హెల్త్ ట్యాబ్ ప్రోబ్‌లో చేరుతుంది.",
+  "licences.chooseOrgHint": "లైసెన్స్‌లు నిర్వహించడానికి సంస్థను ఎంచుకోండి.",
+  "licences.chooseOrgEmpty": "ఇంకా సంస్థలు లేవు. Admin → Organizations లో సృష్టించండి."
 }
