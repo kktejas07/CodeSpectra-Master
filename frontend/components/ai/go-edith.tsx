@@ -319,10 +319,10 @@ export function GoEdith() {
 /* ── Empty state ── */
 function EdithEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
   const examples = [
-    '🔍 What is the time complexity of quicksort?',
-    '🐛 Debug my last scan — what issues were found?',
-    '🌐 What are the latest JavaScript frameworks in 2025?',
-    '⚡ Explain how async/await works under the hood',
+    '🐛 Summarize my last code scan — what issues were found?',
+    '⚡ How do I add my own API key to skip credits?',
+    '🔍 What does Big-O notation mean and why does it matter?',
+    '🤖 What can the AI Agent do that regular chat cannot?',
   ]
   return (
     <div className="space-y-4 text-center pt-8">
