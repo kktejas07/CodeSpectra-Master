@@ -3510,5 +3510,21 @@
   "practiceReview.actionFailed": "ఆ నిర్ణయం సేవ్ కాలేదు. మళ్లీ ప్రయత్నించండి.",
   "practiceReview.reviewApproved": "ఛాలెంజ్ ఆమోదించబడింది",
   "practiceReview.reviewRejected": "ఛాలెంజ్ తిరస్కరించబడింది",
-  "practiceReview.approveAll": "అన్నీ ఆమోదించండి"
+  "practiceReview.approveAll": "అన్నీ ఆమోదించండి",
+  "assessments.aiPlaceholder": "AI తో సృష్టించండి — ఉదా. \"Java medium 40% cutoff\" లేదా \"Python advanced coding 90 min\"",
+  "hackathons.openRegistration": "నమోదు తెరిచి ఉంది",
+  "hackathons.openRegistrationHint": "ఈవెంట్ ప్రారంభానికి ముందు విద్యార్థులు స్వయంగా నమోదు చేసుకోవచ్చు",
+  "hackathons.registrationCap": "నమోదు పరిమితి",
+  "hackathons.registrationCapHint": "నమోదు చేసుకోగల గరిష్ఠ విద్యార్థులు (0 = పరిమితి లేదు)",
+  "hackathons.registrationDeadline": "నమోదు చివరి తేదీ",
+  "hackathons.registrationDeadlineHint": "కొత్త నమోదులకు ఐచ్ఛిక కటాఫ్",
+  "hackathons.registrationCapPlaceholder": "ఉదా. 500 (0 = అపరిమితం)",
+  "llm.model": "మోడల్",
+  "llm.defaultModel": "డిఫాల్ట్ మోడల్",
+  "llm.customModelPlaceholder": "ఉదా. meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast",
+  "llm.modelPlaceholder": "ఉదా. provider/model-name",
+  "llm.gatewayBecomesPrimaryPrefix": "సేవ్ చేసిన తర్వాత ఈ గేట్‌వే అవుతుంది",
+  "llm.primaryAiProvider": "ప్రాథమిక AI ప్రొవైడర్",
+  "llm.gatewayBecomesPrimarySuffix": "అన్ని ఫీచర్లకు (ఏజెంట్, EDITH, హైరింగ్ AI).",
+  "llm.gatewayFallbackNote": "ఎండ్‌పాయింట్ మరియు కీ సెట్ చేస్తే, ఈ గేట్‌వే ఆటోమేటిక్ ఫాల్‌బ్యాక్ చైన్ మరియు హెల్త్ ట్యాబ్ ప్రోబ్‌లో చేరుతుంది."
 }

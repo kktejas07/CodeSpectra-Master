@@ -596,8 +596,8 @@ export default function HackathonsAdminPage() {
               <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-sm font-medium">Open Registration</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">Allow students to self-register before the event starts</p>
+                    <Label className="text-sm font-medium">{ta('hackathons.openRegistration')}</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">{ta('hackathons.openRegistrationHint')}</p>
                   </div>
                   <Switch
                     checked={form.open_registration}
@@ -607,7 +607,7 @@ export default function HackathonsAdminPage() {
                 {form.open_registration && (
                   <div className="grid gap-4 md:grid-cols-2 pt-1">
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Registration Cap</Label>
+                      <Label className="text-sm">{ta('hackathons.registrationCap')}</Label>
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
@@ -615,21 +615,21 @@ export default function HackathonsAdminPage() {
                           max={10000}
                           value={form.max_registrations || ''}
                           onChange={(e) => setForm((f) => ({ ...f, max_registrations: Math.max(0, parseInt(e.target.value) || 0) }))}
-                          placeholder="e.g. 500 (0 = unlimited)"
+                          placeholder={ta('hackathons.registrationCapPlaceholder')}
                           className="text-sm"
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground">Max students who can register (0 = no limit)</p>
+                      <p className="text-xs text-muted-foreground">{ta('hackathons.registrationCapHint')}</p>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-sm">Registration Deadline</Label>
+                      <Label className="text-sm">{ta('hackathons.registrationDeadline')}</Label>
                       <Input
                         type="datetime-local"
                         value={form.registration_deadline}
                         onChange={(e) => setForm((f) => ({ ...f, registration_deadline: e.target.value }))}
                         className="text-sm"
                       />
-                      <p className="text-xs text-muted-foreground">Optional cutoff for new registrations</p>
+                      <p className="text-xs text-muted-foreground">{ta('hackathons.registrationDeadlineHint')}</p>
                     </div>
                   </div>
                 )}
