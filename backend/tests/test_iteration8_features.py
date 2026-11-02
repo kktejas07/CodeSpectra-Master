@@ -3,19 +3,29 @@ Iteration 8 - Backend tests for new features:
 - Local subprocess executor (Piston fallback) + dynamic piston_url override
 - GitHub PR webhook -> queue enqueue + queue/run processing
 - Workflows PATCH persisting cron_expression + Visual builder data shape
+
+All tests here need a live Next.js app on localhost:3000 (or
+CODESPECTRA_LIVE_URL) backed by seeded MongoDB; they skip cleanly when no
+server is reachable.
 """
 import os
 import time
+from pathlib import Path
+
 import requests
 import pytest
-from pymongo import MongoClient
-from dotenv import load_dotenv
 
-from live_frontend import login_live
+from live_frontend import live_available, login_live
 
-load_dotenv("/app/backend/.env")
+# Repo-relative so the module imports (and skip-guards) work on a bare
+# checkout; still overrides in-docker where /app/backend/.env exists.
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+if (_BACKEND_DIR / ".env").exists():
+    from dotenv import load_dotenv
 
-BASE_URL = "http://localhost:3000"
+    load_dotenv(str(_BACKEND_DIR / ".env"))
+
+BASE_URL = os.environ.get("CODESPECTRA_LIVE_URL", "http://localhost:3000")
 
 SUPERADMIN = {"email": "qa@codespectra.dev", "password": "QApass123!"}
 USER = {"email": "user@codespectra.dev", "password": "CodeSpectra@2026"}
@@ -24,13 +34,23 @@ RECRUITER = {"email": "recruiter@codespectra.dev", "password": "CodeSpectra@2026
 ORIGIN_HEADER = {"Origin": BASE_URL}
 JSON_HEADERS = {**ORIGIN_HEADER, "Content-Type": "application/json"}
 
-MONGO_URL = os.environ.get("MONGO_URL")
-DB_NAME = os.environ.get("DB_NAME", "codespectra")
-
 
 # ---------- fixtures ----------
+@pytest.fixture(scope="module", autouse=True)
+def _require_live_server():
+    if not live_available(BASE_URL):
+        pytest.skip(
+            f"live app unreachable at {BASE_URL} — start the Next.js app "
+            "with a seeded MongoDB, or point CODESPECTRA_LIVE_URL at a deployment"
+        )
+
+
 @pytest.fixture(scope="session")
 def mongo():
+    from pymongo import MongoClient
+
+    MONGO_URL = os.environ.get("MONGO_URL")
+    DB_NAME = os.environ.get("DB_NAME", "codespectra")
     client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=8000)
     yield client[DB_NAME]
     client.close()
