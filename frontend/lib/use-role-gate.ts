@@ -14,6 +14,8 @@ interface RoleGate {
   ready: boolean
   allowed: boolean
   user: { id: string; email: string; name?: string; role: UserRole } | null
+  /** The resolved role from the session API (available even before Firebase loads). */
+  role: UserRole | null
   loading: boolean
 }
 
@@ -71,5 +73,5 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
     return false
   })()
 
-  return { ready, allowed, user: profile, loading: !ready }
+  return { ready, allowed, user: profile, role: userRole, loading: !ready }
 }

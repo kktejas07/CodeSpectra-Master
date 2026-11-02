@@ -92,7 +92,10 @@ export function usePageGuard(
   const target = typeof routeOrRole === 'string' && routeOrRole.startsWith('/') ? routeOrRole : pathname
   const mapped = resolveRouteAccess(target) !== null
   const fallbackRole = (routeOrRole.startsWith('/') ? 'user' : routeOrRole) as AccessRole
-  const role = gate.user?.role ?? null
+  // Use gate.role (from session API) rather than gate.user?.role — gate.user
+  // requires Firebase to load too, causing a null-role race that redirects
+  // superadmins before Firebase finishes initialising (double-redirect bug).
+  const role = gate.role ?? gate.user?.role ?? null
 
   const decide = (permissions?: PagePerm[]) => {
     if (!role) return { ok: false as const, reason: 'unauthenticated' as const }
