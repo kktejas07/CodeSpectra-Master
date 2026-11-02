@@ -149,14 +149,28 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     authType: 'bearer',
   },
   {
-    // ponytail: user-supplied OpenAI-compatible gateway (e.g. a proxy like
-    // https://api.apinex.bond/v1). Endpoint + models come from saved settings,
-    // never from this static list — keep models empty so the UI forces entry.
+    // ponytail: user-supplied OpenAI-compatible gateway.
+    // Primary use-case: brocode.live (platform gateway).
+    // Endpoint + key come from saved settings; models list is the suggested
+    // picker — user can still type any model string manually.
     id: 'custom',
     label: 'Custom gateway (OpenAI-compatible)',
     free: false,
-    models: [],
-    endpoint: '',
+    models: [
+      // brocode.live model catalog (update as new models are added)
+      'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast',
+      'meta-llama/llama-4-scout-17b-16e-instruct',
+      'meta-llama/llama-3.3-70b-instruct',
+      'meta-llama/llama-3.1-8b-instruct',
+      'deepseek/deepseek-r1',
+      'deepseek/deepseek-v3',
+      'deepseek/deepseek-r1-distill-llama-70b',
+      'qwen/qwen3-30b-a3b',
+      'qwen/qwen3-8b',
+      'mistralai/mistral-small-3.1-24b-instruct',
+      'google/gemma-3-27b-it',
+    ],
+    endpoint: 'https://api.brocode.live/v1',
     authType: 'bearer',
   },
 ] as const

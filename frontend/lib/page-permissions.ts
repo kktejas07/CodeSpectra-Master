@@ -525,7 +525,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/hiring-manager-report': 'Hiring report',
   '/dashboard/admin/predictive-validity': 'Predictive validity',
   '/dashboard/admin/sme-review': 'SME review',
-  '/dashboard/admin/agent': 'AI copilot',
+  '/dashboard/admin/agent': 'EDITH (AI copilot)',
   '/dashboard/admin/hiring-agents': 'Hiring agents',
   '/dashboard/admin/knowledge': 'Knowledge',
   '/dashboard/hiring': 'Hiring',

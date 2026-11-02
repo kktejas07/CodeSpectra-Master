@@ -84,7 +84,7 @@ const PROVIDERS: ProviderKey[] = [
   { id: 'groq', label: 'Groq', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama, Mixtral, Gemma.', key: 'groq_api_key', icon: Zap, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. 300+ models including free tiers.', key: 'openrouter_api_key', icon: Puzzle, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'opencode', label: 'OpenCode (Zen)', placeholder: '...', url: 'https://opencode.ai', urlLabel: 'OpenCode', desc: 'Free tier via Zen gateway. Dozens of open models.', key: 'opencode_api_key', icon: Zap, category: 'llm', categoryLabel: 'LLM Providers' },
-  { id: 'custom', label: 'Custom gateway', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'Key issuer', desc: 'Any OpenAI-compatible endpoint (e.g. a proxy gateway). Set endpoint + model below.', key: 'custom_api_key', icon: Globe, category: 'llm', categoryLabel: 'LLM Providers', gateway: true },
+  { id: 'custom', label: 'Custom gateway', placeholder: 'Your API key (any format)', url: 'https://brocode.live', urlLabel: 'brocode.live', desc: 'Platform AI gateway (brocode.live or any OpenAI-compatible endpoint). Set endpoint + model below — once saved, this becomes the primary provider.', key: 'custom_api_key', icon: Globe, category: 'llm', categoryLabel: 'LLM Providers', gateway: true },
   { id: 'nvidia', label: 'NVIDIA NIM', placeholder: 'nvapi-...', url: 'https://build.nvidia.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models.', key: 'nvidia_api_key', icon: Cpu, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'deepseek', label: 'DeepSeek', placeholder: 'sk-...', url: 'https://platform.deepseek.com', urlLabel: 'DeepSeek Platform', desc: 'Paid. DeepSeek V3, R1 reasoning models.', key: 'deepseek_api_key', icon: Brain, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'cerebras', label: 'Cerebras', placeholder: 'csk-...', url: 'https://cloud.cerebras.ai', urlLabel: 'Cerebras Cloud', desc: 'Paid. Ultra-fast inference on Cerebras wafer-scale.', key: 'cerebras_api_key', icon: Zap, category: 'llm', categoryLabel: 'LLM Providers' },
@@ -237,6 +237,7 @@ export function LlmSettingsTabs() {
     }
     setSavingGateway(true)
     try {
+      // Save endpoint + model as server secrets (used by provider-fallback).
       const res = await csrfFetch('/api/admin/server-secrets', {
         method: 'PATCH',
         credentials: 'include',
@@ -245,8 +246,20 @@ export function LlmSettingsTabs() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || 'Save failed')
+
+      // Also promote custom gateway as the platform LLM so readPlatformLlmConfig()
+      // returns it and the agent / EDITH use it as the primary provider.
+      if (endpoint && customModel.trim()) {
+        await csrfFetch('/api/admin/llm-config', {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'custom', model: customModel.trim(), endpoint }),
+        }).catch(() => { /* non-critical — fallback chain still uses it */ })
+      }
+
       setSavedGateway({ endpoint: endpoint || null, model: customModel.trim() || null })
-      addToast({ type: 'success', title: 'Custom gateway saved — it now joins the fallback chain' })
+      addToast({ type: 'success', title: 'Custom gateway saved — it is now the primary AI provider' })
     } catch (e) {
       addToast({ type: 'error', title: 'Save failed', message: e instanceof Error ? e.message : 'Unknown error' })
     } finally {
@@ -610,18 +623,33 @@ export function LlmSettingsTabs() {
                                 <Input aria-label="Gateway endpoint (OpenAI-compatible base URL)"
                                   value={customEndpoint}
                                   onChange={(e) => setCustomEndpoint(e.target.value)}
-                                  placeholder="https://api.apinex.bond/v1"
+                                  placeholder="https://api.brocode.live/v1"
                                   className="h-8 text-xs font-mono"
                                 />
+                                <p className="text-[10px] text-muted-foreground">e.g. <code className="bg-muted px-1 rounded font-mono text-[10px]">https://api.brocode.live/v1</code></p>
                               </div>
                               <div className="grid gap-1.5">
-                                <Label className="text-[11px] text-muted-foreground">Default model</Label>
-                                <Input aria-label="Default model"
+                                <Label className="text-[11px] text-muted-foreground">Model</Label>
+                                <Input aria-label="Model"
                                   value={customModel}
                                   onChange={(e) => setCustomModel(e.target.value)}
-                                  placeholder="e.g. provider/model-name"
+                                  placeholder="e.g. meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast"
                                   className="h-8 text-xs font-mono"
+                                  list="brocode-models"
                                 />
+                                <datalist id="brocode-models">
+                                  <option value="meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast" />
+                                  <option value="meta-llama/llama-4-scout-17b-16e-instruct" />
+                                  <option value="meta-llama/llama-3.3-70b-instruct" />
+                                  <option value="meta-llama/llama-3.1-8b-instruct" />
+                                  <option value="deepseek/deepseek-r1" />
+                                  <option value="deepseek/deepseek-v3" />
+                                  <option value="deepseek/deepseek-r1-distill-llama-70b" />
+                                  <option value="qwen/qwen3-30b-a3b" />
+                                  <option value="qwen/qwen3-8b" />
+                                  <option value="mistralai/mistral-small-3.1-24b-instruct" />
+                                  <option value="google/gemma-3-27b-it" />
+                                </datalist>
                               </div>
                               {savedGateway.endpoint && (
                                 <p className="text-[10px] text-muted-foreground font-mono truncate" title={savedGateway.endpoint}>
@@ -633,7 +661,7 @@ export function LlmSettingsTabs() {
                                 Save gateway
                               </Button>
                               <p className="text-[10px] text-muted-foreground">
-                                With endpoint + key set, this gateway joins the automatic fallback chain and the Health tab probe.
+                                Once saved, this gateway becomes the <strong>primary AI provider</strong> for all features (agent, EDITH, hiring AI).
                               </p>
                             </div>
                           )}

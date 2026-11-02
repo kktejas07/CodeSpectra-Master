@@ -53,13 +53,14 @@ function decrypt(stored: string): string {
 
 const VALID_PREFIXES = ['sk-', 'sk-or-v1-', 'AIza', 'gsk_']
 
-export function validateApiKey(key: string): { ok: true } | { ok: false; error: string } {
+export function validateApiKey(key: string, skipPrefixCheck = false): { ok: true } | { ok: false; error: string } {
   const k = key.trim()
   if (!k) return { ok: false, error: 'API key cannot be empty.' }
-  if (k.length < 20) return { ok: false, error: 'API key looks too short.' }
+  if (k.length < 10) return { ok: false, error: 'API key looks too short.' }
   if (k.includes('•') || k.includes('*')) return { ok: false, error: 'Paste your full unmasked API key.' }
-  if (!VALID_PREFIXES.some((p) => k.startsWith(p))) {
-    return { ok: false, error: 'Key must start with sk-, sk-or-v1-, AIza, or gsk_.' }
+  // Custom gateway (e.g. brocode.live) may use arbitrary key formats — skip prefix check.
+  if (!skipPrefixCheck && !VALID_PREFIXES.some((p) => k.startsWith(p))) {
+    return { ok: false, error: 'Key must start with sk-, sk-or-v1-, AIza, or gsk_. For a custom gateway key, use Settings → AI Tools → Custom gateway.' }
   }
   return { ok: true }
 }
