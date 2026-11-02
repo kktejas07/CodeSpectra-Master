@@ -7,6 +7,7 @@ export const runtime = 'nodejs'
 
 // Frontend proxy: browser → POST /api/learning/generate-course → backend /internal/ai/generate-course
 const FALLBACK_PROVIDERS = [
+  { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast', endpoint: 'https://api.brocode.live/v1' },
   { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1' },
   { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
   { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },

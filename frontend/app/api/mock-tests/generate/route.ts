@@ -146,6 +146,7 @@ export async function POST(req: Request) {
     const { providerOverride, modelOverride, modelRole } = await resolveModel(gate.user.id, 'grade_model')
 
     const FALLBACK_PROVIDERS = [
+      { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast' },
       { provider: 'groq', model: 'openai/gpt-oss-120b' },
       { provider: 'gemini', model: 'gemini-2.0-flash' },
       { provider: 'openai', model: 'gpt-4o-mini' },
