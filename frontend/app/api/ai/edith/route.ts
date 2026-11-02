@@ -1,12 +1,16 @@
 /**
  * POST /api/ai/edith — GO EDITH multi-source AI assistant
  *
- * Routing logic (token-efficient, cheapest path first):
- *  1. Intent classifier (tiny prompt) → 'code' | 'search' | 'knowledge' | 'platform'
- *  2. code      → existing /api/ai/agent pipeline (if code attached) or chat
- *  3. search    → Google Custom Search → inject top-3 snippets as context → LLM answer
- *  4. knowledge → RAG from user scan history → LLM answer
- *  5. platform  → direct LLM with system knowledge about CodeSpectra
+ * Routing logic (cheapest path first):
+ *  1. context_mode=none   → direct LLM, no extra context
+ *  2. context_mode=google → Google Custom Search → inject snippets
+ *  3. context_mode=rag    → full RAG pipeline (router → retrieve → grade → inject)
+ *  4. context_mode=auto   → detect intent:
+ *       search keywords    → Google CSE
+ *       everything else    → RAG pipeline (with web fallback if retrieval comes up short)
+ *
+ * RAG pipeline: lib/rag/pipeline.ts
+ *   routeQuery() → source types → searchKnowledge() → grade → context block
  *
  * All paths stream SSE back to the client.
  */
@@ -18,6 +22,7 @@ import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 import { getMongoDb } from '@/lib/mongodb'
 import { resolveAiKey } from '@/lib/byok'
+import { runRagPipeline } from '@/lib/rag/pipeline'
 
 export const runtime = 'nodejs'
 
@@ -58,8 +63,8 @@ async function googleSearch(query: string): Promise<GoogleResult[]> {
   }
 }
 
-/* ── RAG context (reuse existing scan history) ──────── */
-async function getRagContext(userId: string): Promise<string> {
+/* ── Legacy scan-history fallback (used when RAG pipeline has no vector index) ── */
+async function getScanHistoryContext(userId: string): Promise<string> {
   try {
     const db = await getMongoDb()
     const scans = await db
@@ -71,7 +76,7 @@ async function getRagContext(userId: string): Promise<string> {
 
     if (!scans.length) return ''
     return (
-      'Recent user activity:\n' +
+      'Recent code scans (from scan history):\n' +
       scans
         .map((s) => `- ${s.language || 'code'} scan (${(s.created_at || '').slice(0, 10)}): ${(s.summary || '').slice(0, 200)}`)
         .join('\n')
@@ -152,12 +157,12 @@ export async function POST(req: NextRequest): Promise<Response> {
   const sources: Array<{ title: string; url: string }> = []
 
   // Auto-detect: use Google if message looks like a "what is / find / latest / search" query
-  const needsSearch =
+  const isSearchQuery =
     contextMode === 'google' ||
     (contextMode === 'auto' &&
       /\b(what is|who is|latest|current|news|find|search|when|where|how to|define|explain|vs|compare|price|release|update)\b/i.test(message))
 
-  if (needsSearch) {
+  if (isSearchQuery) {
     const results = await googleSearch(message)
     if (results.length) {
       extraContext =
@@ -167,10 +172,40 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
   }
 
-  // RAG: attach user scan history for coding questions
-  if (contextMode === 'rag' || (contextMode === 'auto' && !needsSearch)) {
-    const ragCtx = await getRagContext(user.id)
-    if (ragCtx) extraContext += '\n\n' + ragCtx
+  // RAG pipeline — full Corrective RAG with intent routing
+  if (contextMode === 'rag' || (contextMode === 'auto' && !isSearchQuery)) {
+    // ponytail: AgentCaller.role is superadmin|tenant_admin.
+    // Regular users get superadmin role so the ACL lets them read public platform chunks.
+    // The pipeline only requests public source types (doc, problem, course…) for regular users.
+    const callerRole: 'superadmin' | 'tenant_admin' =
+      user.role === 'superadmin' ? 'superadmin'
+      : user.role === 'tenant_admin' ? 'tenant_admin'
+      : 'superadmin' // regular user → read platform public chunks
+    const caller = { userId: user.id, role: callerRole, tenantId: user.tenantId ?? null }
+    try {
+      const ragResult = await runRagPipeline(message, caller)
+      if (!ragResult.needsWebFallback && ragResult.context) {
+        extraContext += '\n\n' + ragResult.context
+        sources.push(...ragResult.sources)
+      } else if (ragResult.needsWebFallback) {
+        // Pipeline came up empty — try web search as a fallback
+        const results = await googleSearch(message)
+        if (results.length) {
+          extraContext +=
+            '\n\n[Web search results (RAG fallback):]\n' +
+            results.map((r, i) => `${i + 1}. ${r.title}\n   ${r.snippet}`).join('\n\n')
+          sources.push(...results.map((r) => ({ title: r.title, url: r.link })))
+        } else {
+          // Last resort: scan history
+          const scanCtx = await getScanHistoryContext(user.id)
+          if (scanCtx) extraContext += '\n\n' + scanCtx
+        }
+      }
+    } catch {
+      // RAG error is non-fatal — fall back to scan history
+      const scanCtx = await getScanHistoryContext(user.id)
+      if (scanCtx) extraContext += '\n\n' + scanCtx
+    }
   }
 
   /* ── Build system prompt ──────────────────────────── */
