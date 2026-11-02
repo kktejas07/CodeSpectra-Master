@@ -3510,5 +3510,21 @@
   "practiceReview.actionFailed": "यह निर्णय सहेजा नहीं जा सका। फिर से कोशिश करें।",
   "practiceReview.reviewApproved": "चैलेंज स्वीकृत हुआ",
   "practiceReview.reviewRejected": "चैलेंज अस्वीकृत हुआ",
-  "practiceReview.approveAll": "सभी स्वीकृत करें"
+  "practiceReview.approveAll": "सभी स्वीकृत करें",
+  "assessments.aiPlaceholder": "AI से बनाएं — जैसे \"Java medium 40% cutoff\" या \"Python advanced coding 90 min\"",
+  "hackathons.openRegistration": "पंजीकरण खुला",
+  "hackathons.openRegistrationHint": "इवेंट शुरू होने से पहले छात्रों को स्वयं पंजीकरण की अनुमति दें",
+  "hackathons.registrationCap": "पंजीकरण सीमा",
+  "hackathons.registrationCapHint": "अधिकतम छात्र जो पंजीकरण कर सकते हैं (0 = कोई सीमा नहीं)",
+  "hackathons.registrationDeadline": "पंजीकरण की अंतिम तिथि",
+  "hackathons.registrationDeadlineHint": "नए पंजीकरण के लिए वैकल्पिक अंतिम समय",
+  "hackathons.registrationCapPlaceholder": "जैसे 500 (0 = असीमित)",
+  "llm.model": "मॉडल",
+  "llm.defaultModel": "डिफ़ॉल्ट मॉडल",
+  "llm.customModelPlaceholder": "जैसे meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast",
+  "llm.modelPlaceholder": "जैसे provider/model-name",
+  "llm.gatewayBecomesPrimaryPrefix": "सहेजने के बाद यह गेटवे बन जाता है",
+  "llm.primaryAiProvider": "प्राथमिक AI प्रदाता",
+  "llm.gatewayBecomesPrimarySuffix": "सभी सुविधाओं के लिए (एजेंट, EDITH, हायरिंग AI)।",
+  "llm.gatewayFallbackNote": "एंडपॉइंट और कुंजी सेट होने पर यह गेटवे स्वचालित फ़ॉलबैक श्रृंखला और हेल्थ टैब जाँच में शामिल हो जाता है।"
 }

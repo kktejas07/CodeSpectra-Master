@@ -774,7 +774,7 @@ Return ONLY valid JSON, nothing else.`,
         <Input
           value={aiPrompt}
           onChange={(e) => { setAiPrompt(e.target.value); setAiError(null) }}
-          placeholder='Create with AI — e.g. "Java medium 40% cutoff" or "Python advanced coding 90 min"'
+          placeholder={tx('assessments.aiPlaceholder')}
           className="flex-1 border-0 bg-transparent px-0 text-sm placeholder:text-violet-700/60 focus-visible:ring-0"
           disabled={aiParsing}
         />
