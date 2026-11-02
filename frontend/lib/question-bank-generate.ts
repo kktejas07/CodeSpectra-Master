@@ -19,6 +19,7 @@ import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 import { logger } from '@/lib/logger'
 
 const FALLBACKS: { provider: string; model: string; endpoint?: string }[] = [
+  { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast', endpoint: 'https://api.brocode.live/v1' },
   { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1' },
   { provider: 'gemini', model: 'gemini-2.0-flash' },
   { provider: 'openai', model: 'gpt-4o-mini' },
