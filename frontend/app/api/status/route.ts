@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
+import { resolvePistonUrl } from '@/lib/piston'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,45 +16,45 @@ export async function GET() {
   try {
     const db = await getMongoDb()
     await db.command({ ping: 1 })
-    components.push({ name: 'Database (MongoDB)', status: 'operational', latency: Date.now() - mongoStart })
+    // Public page: never name the vendor or the sandbox implementation — that
+    // tells an attacker exactly what to fingerprint (2026-11-02).
+    components.push({ name: 'Database', status: 'operational', latency: Date.now() - mongoStart })
   } catch {
-    components.push({ name: 'Database (MongoDB)', status: 'down', message: 'Connection failed' })
+    components.push({ name: 'Database', status: 'down' })
   }
 
   // Next.js API
-  components.push({ name: 'API Server', status: 'operational' })
+  components.push({ name: 'API', status: 'operational' })
 
-  // Piston
-  const pistonStart = Date.now()
+  // Code execution: probe the resolver the grader actually uses (platform
+  // setting). The old check read an env var that is unset in Docker, so it
+  // reported "Using local executor" while the sandbox was healthy.
+  const sandboxStart = Date.now()
   try {
-    const pistonUrl = process.env.PISTON_URL || 'http://piston:2000/api/v2'
-    const res = await fetch(`${pistonUrl}/runtimes`, { signal: AbortSignal.timeout(5000) })
-    components.push({
-      name: 'Code Execution (Piston)',
-      status: res.ok ? 'operational' : 'degraded',
-      latency: Date.now() - pistonStart,
-      message: res.ok ? undefined : `HTTP ${res.status}`,
-    })
+    const pistonUrl = await resolvePistonUrl()
+    if (!pistonUrl) {
+      components.push({ name: 'Code execution', status: 'degraded' })
+    } else {
+      const res = await fetch(`${pistonUrl}/runtimes`, { signal: AbortSignal.timeout(5000) })
+      components.push({
+        name: 'Code execution',
+        status: res.ok ? 'operational' : 'degraded',
+        latency: Date.now() - sandboxStart,
+      })
+    }
   } catch {
-    components.push({ name: 'Code Execution (Piston)', status: 'degraded', message: 'Using local executor' })
+    components.push({ name: 'Code execution', status: 'degraded' })
   }
 
-  // AI providers
-  if (process.env.OPENAI_API_KEY) {
-    components.push({ name: 'OpenAI API', status: 'operational' })
-  }
-  if (process.env.ANTHROPIC_API_KEY) {
-    components.push({ name: 'Anthropic API', status: 'operational' })
-  }
-  if (process.env.GEMINI_API_KEY) {
-    components.push({ name: 'Google Gemini API', status: 'operational' })
-  }
+  // AI vendors are deliberately NOT listed: naming the configured providers
+  // tells an attacker which keys to hunt for, and those entries were only
+  // env-presence guesses rather than real checks.
 
   // Email
   if (process.env.RESEND_API_KEY || process.env.SENDGRID_API_KEY) {
-    components.push({ name: 'Email Service', status: 'operational' })
+    components.push({ name: 'Email delivery', status: 'operational' })
   } else {
-    components.push({ name: 'Email Service', status: 'degraded', message: 'No provider configured' })
+    components.push({ name: 'Email delivery', status: 'degraded' })
   }
 
   const allOperational = components.every((c) => c.status === 'operational')

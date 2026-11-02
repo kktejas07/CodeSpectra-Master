@@ -18,7 +18,7 @@ import { isLocallySupported, localExecuteOnce } from '@/lib/local-executor'
  *   2. `PISTON_URL` env var
  *   3. `null` → caller should fall back to the local executor
  */
-async function resolvePistonUrl(): Promise<string | null> {
+export async function resolvePistonUrl(): Promise<string | null> {
   try {
     const secrets = await readServerSecrets()
     const fromDb = secrets.piston_url?.trim()
