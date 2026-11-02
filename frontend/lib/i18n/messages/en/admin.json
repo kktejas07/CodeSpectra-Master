@@ -3510,5 +3510,21 @@
   "practiceReview.actionFailed": "Couldn’t save that decision. Try again.",
   "practiceReview.reviewApproved": "Challenge approved",
   "practiceReview.reviewRejected": "Challenge rejected",
-  "practiceReview.approveAll": "Approve all"
+  "practiceReview.approveAll": "Approve all",
+  "assessments.aiPlaceholder": "Create with AI — e.g. \"Java medium 40% cutoff\" or \"Python advanced coding 90 min\"",
+  "hackathons.openRegistration": "Open Registration",
+  "hackathons.openRegistrationHint": "Allow students to self-register before the event starts",
+  "hackathons.registrationCap": "Registration Cap",
+  "hackathons.registrationCapHint": "Max students who can register (0 = no limit)",
+  "hackathons.registrationDeadline": "Registration Deadline",
+  "hackathons.registrationDeadlineHint": "Optional cutoff for new registrations",
+  "hackathons.registrationCapPlaceholder": "e.g. 500 (0 = unlimited)",
+  "llm.model": "Model",
+  "llm.defaultModel": "Default model",
+  "llm.customModelPlaceholder": "e.g. meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast",
+  "llm.modelPlaceholder": "e.g. provider/model-name",
+  "llm.gatewayBecomesPrimaryPrefix": "Once saved, this gateway becomes the",
+  "llm.primaryAiProvider": "primary AI provider",
+  "llm.gatewayBecomesPrimarySuffix": "for all features (agent, EDITH, hiring AI).",
+  "llm.gatewayFallbackNote": "With endpoint + key set, this gateway joins the automatic fallback chain and the Health tab probe."
 }
