@@ -214,10 +214,11 @@ async function getAvailableProviders(): Promise<{
     })
   }
 
-  // Custom OpenAI-compatible gateway (Settings → API Keys → Custom gateway).
+  // Custom OpenAI-compatible gateway (Settings → AI Tools → Custom gateway).
+  // ponytail: when configured (endpoint + key both set) this is the PLATFORM
+  // gateway — prepend it so it is tried FIRST before any fallback provider.
   // Dynamic on purpose: static entries would trip the provider-chain anti-rot
-  // test and probe a possibly-unset endpoint. Joins the chain tail (paid
-  // backstop position) only when endpoint + key are both configured.
+  // test and probe a possibly-unset endpoint.
   try {
     const { getApiKey } = await import('@/lib/ai/get-api-key')
     const customEndpoint = String(secrets.custom_endpoint || process.env.CUSTOM_ENDPOINT || '').trim().replace(/\/+$/, '')
@@ -226,7 +227,8 @@ async function getAvailableProviders(): Promise<{
     if (customEndpoint && /^https?:\/\//.test(customEndpoint)) {
       const customKey = await getApiKey('custom' as any)
       if (customKey?.key) {
-        available.push({
+        // Insert at the FRONT — this is the platform's primary provider.
+        available.unshift({
           provider: 'custom' as LLMProviderId,
           model: customModel,
           endpoint: customEndpoint,
