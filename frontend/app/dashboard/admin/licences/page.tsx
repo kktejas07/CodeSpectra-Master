@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { BadgeCheck, KeyRound, Loader2, RefreshCw, Upload, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +57,7 @@ export default function LicencesPage() {
   const err = useApiError()
 
   const [data, setData] = useState<ListResponse | null>(null)
+  const [orgChoices, setOrgChoices] = useState<{ id: string; name: string }[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [seats, setSeats] = useState<Seat[]>([])
@@ -71,6 +73,15 @@ export default function LicencesPage() {
       const res = await fetch(`/api/licences${q}`, { credentials: 'include' })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(err(j, t('licences.loadFailed')))
+      if (j.needs_org) {
+        // Superadmin without ?org= — offer the orgs to pick from.
+        setData(null)
+        const tr = await fetch('/api/admin/tenants', { credentials: 'include' })
+        const tj = tr.ok ? await tr.json().catch(() => ({ data: [] })) : { data: [] }
+        setOrgChoices((tj.data || []).map((x: { id: string; name?: string; slug?: string }) => ({ id: x.id, name: x.name || x.slug || x.id })))
+        return
+      }
+      setOrgChoices(null)
       setData(j)
       if (j.pricing?.min_seats) setBuySeats((s) => Math.max(s, j.pricing.min_seats))
       setSelected((cur) => cur ?? j.licences?.[0]?.id ?? null)
@@ -192,6 +203,27 @@ export default function LicencesPage() {
   }
 
   if (!gate.ready) return null
+
+  if (orgChoices) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title={t('licences.title')} description={t('licences.chooseOrgHint')} />
+        <Panel className="p-5">
+          {orgChoices.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('licences.chooseOrgEmpty')}</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {orgChoices.map((o) => (
+                <Button key={o.id} variant="outline" asChild>
+                  <Link href={`/dashboard/admin/licences?org=${encodeURIComponent(o.id)}`}>{o.name}</Link>
+                </Button>
+              ))}
+            </div>
+          )}
+        </Panel>
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6">

@@ -3526,5 +3526,7 @@
   "llm.gatewayBecomesPrimaryPrefix": "सहेजने के बाद यह गेटवे बन जाता है",
   "llm.primaryAiProvider": "प्राथमिक AI प्रदाता",
   "llm.gatewayBecomesPrimarySuffix": "सभी सुविधाओं के लिए (एजेंट, EDITH, हायरिंग AI)।",
-  "llm.gatewayFallbackNote": "एंडपॉइंट और कुंजी सेट होने पर यह गेटवे स्वचालित फ़ॉलबैक श्रृंखला और हेल्थ टैब जाँच में शामिल हो जाता है।"
+  "llm.gatewayFallbackNote": "एंडपॉइंट और कुंजी सेट होने पर यह गेटवे स्वचालित फ़ॉलबैक श्रृंखला और हेल्थ टैब जाँच में शामिल हो जाता है।",
+  "licences.chooseOrgHint": "लाइसेंस प्रबंधित करने के लिए संस्था चुनें।",
+  "licences.chooseOrgEmpty": "अभी कोई संस्था नहीं है। Admin → Organizations से बनाएं।"
 }

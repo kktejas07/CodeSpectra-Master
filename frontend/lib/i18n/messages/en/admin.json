@@ -3526,5 +3526,7 @@
   "llm.gatewayBecomesPrimaryPrefix": "Once saved, this gateway becomes the",
   "llm.primaryAiProvider": "primary AI provider",
   "llm.gatewayBecomesPrimarySuffix": "for all features (agent, EDITH, hiring AI).",
-  "llm.gatewayFallbackNote": "With endpoint + key set, this gateway joins the automatic fallback chain and the Health tab probe."
+  "llm.gatewayFallbackNote": "With endpoint + key set, this gateway joins the automatic fallback chain and the Health tab probe.",
+  "licences.chooseOrgHint": "Choose an organisation to manage its licences.",
+  "licences.chooseOrgEmpty": "No organisations yet. Create one under Admin → Organisations."
 }
