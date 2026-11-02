@@ -17,6 +17,7 @@ import { resolveModel } from '@/lib/ai/get-user-model'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 import { getMongoDb } from '@/lib/mongodb'
+import { resolveAiKey } from '@/lib/byok'
 
 export const runtime = 'nodejs'
 
@@ -118,16 +119,31 @@ export async function POST(req: NextRequest): Promise<Response> {
     return new Response(sseError('message required'), { status: 400, headers: { 'Content-Type': 'text/event-stream' } })
   }
 
-  // Charge 1 AI credit
-  const charged = await chargeAiFeature(user.id, 'edith_chat').catch(() => null)
-  if (!charged) {
-    return new Response(sseError('Could not check AI credits.'), { status: 503, headers: { 'Content-Type': 'text/event-stream' } })
-  }
-  if (!charged.ok) {
-    const err = outOfCredits({ cost: 1, balance: charged.balance })
-    return new Response(sseError(err.error), { status: 402, headers: { 'Content-Type': 'text/event-stream' } })
+  // Resolve which API key to use based on user's plan
+  // - Pro / Enterprise: use platform key pool (no credit charge needed here)
+  // - Free + BYOK: use their stored key
+  // - Free + no BYOK: return 402 with upgrade prompt
+  const aiKey = await resolveAiKey(user.id)
+  if (aiKey.source === 'none') {
+    return new Response(
+      sseError(aiKey.reason ?? 'No AI key configured. Add your API key in Settings → AI, or upgrade to Pro.'),
+      { status: 402, headers: { 'Content-Type': 'text/event-stream' } },
+    )
   }
 
+  // Only charge credits for platform (pro/enterprise) users — BYOK users pay their own provider
+  if (aiKey.source === 'platform') {
+    const charged = await chargeAiFeature(user.id, 'edith_chat').catch(() => null)
+    if (!charged) {
+      return new Response(sseError('Could not check AI credits.'), { status: 503, headers: { 'Content-Type': 'text/event-stream' } })
+    }
+    if (!charged.ok) {
+      const err = outOfCredits({ cost: 1, balance: charged.balance })
+      return new Response(sseError(err.error), { status: 402, headers: { 'Content-Type': 'text/event-stream' } })
+    }
+  }
+
+  // Resolve model settings — for BYOK users these may be unused if the backend honours the key override
   const { providerOverride, modelOverride, endpointOverride } = await resolveModel(user.id, 'chat_model')
 
   /* ── Determine context mode ──────────────────────── */
@@ -182,18 +198,28 @@ Response style:
       }
 
       try {
-        const upstream = backendChatStream(
-          { message, context_mode: 'none', session_id: body.session_id },
-          {
-            system,
-            providerOverride,
-            modelOverride,
-            endpointOverride: endpointOverride || undefined,
-            userId: user.id,
-          },
-        )
-        for await (const chunk of upstream) {
-          controller.enqueue(encoder.encode(chunk))
+        const upstream = await backendChatStream({
+          sessionId: body.session_id || `edith-${user.id}-${Date.now()}`,
+          systemMessage: system,
+          userMessage: message,
+          modelRole: 'fast',
+          // BYOK: override provider/key so the backend uses the user's own API key
+          providerOverride: aiKey.source === 'byok' ? aiKey.provider : (providerOverride || undefined),
+          modelOverride: modelOverride || undefined,
+          endpointOverride: endpointOverride || undefined,
+          apiKeyOverride: aiKey.source === 'byok' ? aiKey.key : undefined,
+        })
+
+        if (!upstream.ok || !upstream.body) {
+          controller.enqueue(sseChunk({ error: `EDITH upstream error: ${upstream.status}` }))
+        } else {
+          const reader = upstream.body.getReader()
+          const dec = new TextDecoder()
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            controller.enqueue(encoder.encode(dec.decode(value, { stream: true })))
+          }
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'EDITH encountered an error.'
