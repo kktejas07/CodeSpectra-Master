@@ -21,13 +21,22 @@ function nextReset(now = new Date()): Date {
   return d
 }
 
+export interface AiCreditBalance {
+  balance: number
+  plan: string
+  allowance: number
+  resets_at: string | null
+  /** Superadmins have no monthly limit — the UI shows ∞, never a number. */
+  unlimited: boolean
+}
+
 /** Current balance (starting a new period when due or when the plan changed). */
-export async function getUserAiCredits(userId: string): Promise<{ balance: number; plan: string; allowance: number; resets_at: string | null }> {
+export async function getUserAiCredits(userId: string): Promise<AiCreditBalance> {
   const col = await users()
   const user = (await col.findOne(userIdFilter(userId), {
     projection: { aiCredits: 1, creditsResetAt: 1, creditsPlan: 1, role: 1 },
   })) as { aiCredits?: unknown; creditsResetAt?: unknown; creditsPlan?: unknown; role?: string } | null
-  if (!user) return { balance: 0, plan: 'free', allowance: 0, resets_at: null }
+  if (!user) return { balance: 0, plan: 'free', allowance: 0, resets_at: null, unlimited: false }
 
   const ent = await getUserEntitlements(userId)
   const allowance = aiAllowanceFor(ent.plan)
@@ -37,7 +46,10 @@ export async function getUserAiCredits(userId: string): Promise<{ balance: numbe
   // treated them as free users (10/month) and 402'd the copilot and mock
   // interviews at zero. Unlimited = the balance never decreases.
   if (user.role === 'superadmin') {
-    return { balance: Number.MAX_SAFE_INTEGER, plan: ent.planKey, allowance: Number.MAX_SAFE_INTEGER, resets_at: null }
+    // `unlimited: true` is what the UI renders as ∞. The numeric sentinel stays
+    // so the gate checks (`balance < cost`) never trip, but no screen may print
+    // it — 9007199254740992 on the profile was that leak (2026-11-02).
+    return { balance: Number.MAX_SAFE_INTEGER, plan: ent.planKey, allowance: Number.MAX_SAFE_INTEGER, resets_at: null, unlimited: true }
   }
   const period = creditPeriod({
     balance: user.aiCredits,
@@ -60,6 +72,7 @@ export async function getUserAiCredits(userId: string): Promise<{ balance: numbe
     plan: ent.planKey,
     allowance,
     resets_at: resetsAt && Number.isFinite(resetsAt.getTime()) ? resetsAt.toISOString() : null,
+    unlimited: false,
   }
 }
 
