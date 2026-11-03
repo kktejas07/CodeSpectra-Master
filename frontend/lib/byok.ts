@@ -157,13 +157,29 @@ export async function resolveAiKey(userId: string): Promise<ResolvedKey> {
   const ent = await getUserEntitlements(userId)
   const plan = ent.planKey // 'free' | 'pro' | 'enterprise' | custom
 
-  // Paid plans always use the platform pool
-  if (plan !== 'free') {
-    const platformKey = process.env.CUSTOM_API_KEY || ''
-    return {
-      source: 'platform',
-      key: platformKey,
-      provider: 'custom',
+  // Platform operators are never gated (same rule as hasEntitlement): a
+  // superadmin on a free plan used to fall through to the BYOK branch and get
+  // "Free plan requires your own API key" — a 402 on the copilot (2026-11-02).
+  const { getMongoDb } = await import('@/lib/mongodb')
+  const caller = (await getMongoDb()
+    .then((db) => db.collection('user').findOne({ id: userId, role: 'superadmin' }, { projection: { role: 1 } }))
+    .catch(() => null)) as { role?: string } | null
+  const operator = caller?.role === 'superadmin'
+
+  // Paid plans (and operators) use the platform pool. The gateway key lives in
+  // platform_settings (`custom_api_key`), not an env var — reading only
+  // process.env.CUSTOM_API_KEY handed paid users an EMPTY key.
+  if (operator || plan !== 'free') {
+    const fromSettings = await import('@/lib/ai/get-api-key')
+      .then(({ getApiKey }) => getApiKey('custom' as never))
+      .then((k) => k?.key ?? '')
+      .catch(() => '')
+    const platformKey = fromSettings || process.env.CUSTOM_API_KEY || ''
+    if (platformKey) {
+      return { source: 'platform', key: platformKey, provider: 'custom' }
+    }
+    if (operator) {
+      return { source: 'none', key: '', provider: '', reason: 'No platform AI gateway is configured. Add one in Settings → AI.' }
     }
   }
 

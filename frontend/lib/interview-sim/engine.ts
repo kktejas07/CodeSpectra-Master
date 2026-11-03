@@ -54,7 +54,11 @@ async function callJson(system: string, user: string, feature: string, userId: s
     const out = res.raw || res.text || (res.json !== undefined ? JSON.stringify(res.json) : '')
     const cost = recorded !== undefined ? recorded / 1_000_000 : costUsd([{ provider: res.provider || '', model: res.model || overrides.modelOverride || '', inputTokens: res.usage?.input_tokens ?? estimateTokens(`${system}\n${user}`), outputTokens: res.usage?.output_tokens ?? estimateTokens(out) }])
     if (!res.ok) return { json: null, cost }
-    return { json: res.json !== undefined && res.json !== null ? res.json : extractJson(out), cost }
+    // An EMPTY json object must not win over the real payload: parsePlan({})
+    // yields no questions and the route answers 503 "interviewer is not
+    // available" while the model actually answered (same class as the Learn fix).
+    const usableJson = res.json && typeof res.json === 'object' && Object.keys(res.json as object).length > 0 ? res.json : undefined
+    return { json: usableJson ?? extractJson(out), cost }
   } catch (e) {
     logger.warn(`[interview-sim] ${feature} AI call failed: ${(e as Error)?.message?.slice(0, 160)}`)
     return { json: null, cost: 0 }
