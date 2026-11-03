@@ -62,6 +62,10 @@ export const CONNECT_HOSTS = [
   'https://cdn.jsdelivr.net',
   'https://cdnjs.cloudflare.com',
   'https://unpkg.com',
+  // AI mock-interview voice (lib/interviews/ai-mock-voice.ts): the browser
+  // fetches Google's TTS audio. Without this the fetch was refused and the
+  // interviewer was silent; speechSynthesis is the fallback.
+  'https://translate.google.com',
   'https://challenges.cloudflare.com',
   'https://cloudflareinsights.com',
   // Firebase Auth + Realtime Database
