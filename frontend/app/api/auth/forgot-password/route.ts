@@ -45,15 +45,27 @@ export async function POST(request: Request) {
     }
   }
 
-  // Per-email cap so one inbox can't be flooded.
+  // Short, non-reversible tag for diagnostics — the address itself never
+  // reaches the logs.
+  const tag = crypto.createHash('sha256').update(email).digest('hex').slice(0, 8)
+
+  // Per-email cap so one inbox can't be flooded. The old response was a bare
+  // { success: true } that sent NOTHING, so a user who never got the first
+  // mail kept "sending" reset links that were silently dropped for an hour
+  // (the "reset email never arrives" report, 2026-11-03). Still identical for
+  // registered and unknown addresses: only the throttle state is revealed.
   const emailCheck = await rateLimitRedis(`forgot-pw:email:${email}`, 3, 3600_000)
-  if (!emailCheck.ok) return NextResponse.json({ success: true })
+  if (!emailCheck.ok) {
+    console.info(`[forgot-password] outcome=throttled tag=${tag} retry_after=${emailCheck.retryAfterSec}`)
+    return NextResponse.json({ success: true, throttled: true, retry_after: emailCheck.retryAfterSec })
+  }
 
   const db = await getMongoDb()
   const user = await db.collection('user').findOne({ email })
 
   // Always return success to prevent email enumeration
   if (!user) {
+    console.info(`[forgot-password] outcome=unknown_address tag=${tag}`)
     return NextResponse.json({ success: true })
   }
 
@@ -79,9 +91,12 @@ export async function POST(request: Request) {
   // Same response whether or not the email exists or the send failed —
   // a 500 only for real accounts would reveal which emails are registered.
   try {
-    await sendEmail(email, template)
+    const sent = await sendEmail(email, template)
+    if (sent.success) console.info(`[forgot-password] outcome=sent tag=${tag}`)
+    else if (sent.suppressed) console.warn(`[forgot-password] outcome=suppressed tag=${tag}`)
+    else console.error(`[forgot-password] outcome=send_failed tag=${tag} error=${sent.error || 'unknown'}`)
   } catch (e) {
-    console.error('[forgot-password] send failed:', e)
+    console.error(`[forgot-password] outcome=send_failed tag=${tag}`, e)
   }
 
   return NextResponse.json({ success: true })

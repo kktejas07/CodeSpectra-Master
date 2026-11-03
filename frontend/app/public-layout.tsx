@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { CodeXml } from 'lucide-react'
+import { CodeXml, ChevronDown } from 'lucide-react'
 import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
@@ -37,6 +37,64 @@ const FOOTER_COLUMNS = [
   { title: 'public.footCompany', links: [['/about', 'public.footAbout'], ['/contact', 'public.footContact'], ['/careers', 'public.footCareers'], ['/security', 'public.footSecurity'], ['/open-source', 'public.footOpenSource'], ['/editorial-policy', 'public.footEditorial']] },
   { title: 'public.footLegal', links: [['/privacy', 'public.footPrivacy'], ['/terms', 'public.footTerms'], ['/cookies', 'public.footCookies'], ['/credits', 'public.footCredits']] },
 ] as const
+
+
+/**
+ * "More" dropdown (Events / Marketplace / News / Digest). Same behaviour as
+ * PublicLanguageMenu: outside click and Esc close it, focus returns to the
+ * trigger. Kept in this file so the header stays one component.
+ */
+function MoreMenu({ items, label }: { items: ReadonlyArray<{ href: string; label: string }>; label: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+        ref.current?.querySelector('button')?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="public-more-menu"
+        className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-cs-ink-soft transition-colors hover:text-cs-ink"
+      >
+        {label}
+        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
+      </button>
+      {open && (
+        <ul id="public-more-menu" className="absolute left-1/2 top-full z-[60] mt-1 min-w-44 -translate-x-1/2 rounded-xl border border-cs-grid bg-cs-sheet p-1 shadow-lg">
+          {items.map((l) => (
+            <li key={l.href}>
+              <Link
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-cs-ink-soft transition-colors hover:bg-cs-grid/40 hover:text-cs-ink"
+              >
+                {l.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export function PublicPageWrapper({
   children,
@@ -96,7 +154,7 @@ export function PublicPageWrapper({
         first.focus()
       }
     }
-    const mq = window.matchMedia('(min-width: 1024px)')
+    const mq = window.matchMedia('(min-width: 1280px)')
     const onMq = () => mq.matches && setMobileMenuOpen(false)
     document.addEventListener('keydown', onKey)
     mq.addEventListener('change', onMq)
@@ -114,18 +172,27 @@ export function PublicPageWrapper({
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const navLinks = [
+  // Ten links plus the actions cluster need ~1400px; the header column is
+  // 1200, so the row overflowed the content edge (right cluster hung outside
+  // the page column at 1920). Keep the six primary destinations inline and
+  // fold the rest into a "More" menu — nothing is lost, and the row fits the
+  // column at every width where the inline nav is shown (xl and up).
+  const primaryNav = [
     { href: lp('/features'), label: t('public.navFeatures') },
     { href: '/hackathons', label: t('public.navHackathons') },
     { href: '/jobs', label: t('public.navJobs') },
-    { href: lp('/events'), label: t('public.navEvents') },
     { href: lp('/pricing'), label: t('public.navPricing') },
-    { href: lp('/marketplace'), label: t('public.navMarketplace') },
     { href: lp('/learn'), label: t('public.navLearn') },
-    { href: lp('/news'), label: t('public.navNews') },
-    { href: lp('/digest'), label: t('public.navDigest') },
     { href: '/docs', label: t('public.navDocs') },
   ]
+  const moreNav = [
+    { href: lp('/events'), label: t('public.navEvents') },
+    { href: lp('/marketplace'), label: t('public.navMarketplace') },
+    { href: lp('/news'), label: t('public.navNews') },
+    { href: lp('/digest'), label: t('public.navDigest') },
+  ]
+  // Mobile menu keeps every destination, primary first.
+  const navLinks = [...primaryNav, ...moreNav]
   const footLink = 'text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200'
 
   return (
@@ -148,16 +215,19 @@ export function PublicPageWrapper({
             <BrandLogo />
           </Link>
 
-          <nav className="hidden items-center gap-0.5 lg:flex" aria-label={t('public.primaryNav')}>
-            {navLinks.map((l) => (
+          {/* Centred between the logo and the actions: `flex-1 justify-center`
+              keeps the link cluster optically centred now that it fits. */}
+          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 xl:flex" aria-label={t('public.primaryNav')}>
+            {primaryNav.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="rounded-md px-2.5 py-2 text-[15px] font-medium text-cs-ink-soft transition-colors hover:text-cs-ink xl:px-3"
+                className="whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-cs-ink-soft transition-colors hover:text-cs-ink"
               >
                 {l.label}
               </Link>
             ))}
+            <MoreMenu items={moreNav} label={t('public.navMore')} />
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -189,7 +259,7 @@ export function PublicPageWrapper({
               ref={menuButtonRef}
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cs-ink lg:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cs-ink xl:hidden"
               aria-label={mobileMenuOpen ? t('public.closeMenu') : t('public.openMenu')}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
@@ -202,7 +272,7 @@ export function PublicPageWrapper({
         {mobileMenuOpen && (
           <div
             id="mobile-menu"
-            className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-cs-grid bg-cs-paper px-4 pb-6 lg:hidden"
+            className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-cs-grid bg-cs-paper px-4 pb-6 xl:hidden"
           >
             <nav className="flex flex-col py-2" aria-label={t('public.mobileNav')}>
               {navLinks.map((l) => (
