@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  if (!body.api_key) return NextResponse.json({ error: 'api_key required' }, { status: 400 })
+  if (!body.api_key) return NextResponse.json({ error: 'Missing required fields', code: 'missing_fields' }, { status: 400 })
 
   const result = await saveByokKey(user.id, body.api_key)
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 })

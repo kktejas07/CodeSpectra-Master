@@ -1,17 +1,20 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Sparkles, Loader2, ArrowRight } from 'lucide-react'
+import { Sparkles, Loader2, Infinity as InfinityIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/client'
+import { creditBalanceLabel } from '@/lib/ai-credits-display'
 
 interface AICredits {
   balance: number
   plan: string
+  allowance?: number
+  /** Superadmins: no monthly cap — render ∞, never the numeric sentinel. */
+  unlimited?: boolean
 }
 
 export function AiCreditsWidget({ className }: { className?: string }) {
@@ -41,47 +44,54 @@ export function AiCreditsWidget({ className }: { className?: string }) {
 
   if (!credits) return null
 
-  const isPro = credits.plan.includes('pro') || credits.plan === 'enterprise'
-  const maxCredits = isPro ? (credits.plan === 'enterprise' ? 50 : 10) : 10
-  const percentage = Math.min(100, Math.max(0, (credits.balance / maxCredits) * 100))
-  
-  const isLow = credits.balance <= 1
+  const unlimited = credits.unlimited === true
+  // The allowance is the plan's own limit (free 10 / pro 1000 / enterprise
+  // 5000) — the old hardcoded 10/50 made every paid plan look nearly full.
+  const maxCredits = credits.allowance && credits.allowance > 0 ? credits.allowance : credits.balance || 1
+  const percentage = unlimited ? 100 : Math.min(100, Math.max(0, (credits.balance / maxCredits) * 100))
+  const isLow = !unlimited && credits.balance <= 1
+  const showFreeBadge = !unlimited && !credits.plan.includes('pro') && credits.plan !== 'enterprise'
 
   return (
     <Card className={cn("overflow-hidden border bg-card relative", className)}>
       {/* Background decoration */}
       <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-primary/15 rounded-full blur-2xl pointer-events-none" />
-      
+
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles aria-hidden className="h-4 w-4 text-primary" />
               <h3 className="text-base font-semibold">{t('common.aiCreditsTitle')}</h3>
-              {!isPro && (
+              {unlimited ? (
+                <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary/10 px-2 py-0.5 rounded-full text-primary">
+                  <InfinityIcon aria-hidden className="h-3 w-3" />
+                  {t('common.aiCreditsUnlimited')}
+                </span>
+              ) : showFreeBadge ? (
                 <span className="text-xs font-medium bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{t('common.aiCreditsFreePlan')}</span>
-              )}
+              ) : null}
             </div>
             <p className="text-sm text-muted-foreground">
               {t('common.aiCreditsUsedFor')}
             </p>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-bold tracking-tight">
-              {credits.balance}
-              <span className="text-lg text-muted-foreground font-normal">/{maxCredits}</span>
+            <div className="text-3xl font-bold tracking-tight" aria-label={unlimited ? t('common.aiCreditsUnlimited') : undefined}>
+              {creditBalanceLabel(credits)}
+              {!unlimited && <span className="text-lg text-muted-foreground font-normal">/{maxCredits}</span>}
             </div>
           </div>
         </div>
 
-        <Progress 
-          value={percentage} 
-          className={cn("h-2 mb-3", isLow ? "[&>div]:bg-red-500" : "[&>div]:bg-primary")} 
+        <Progress
+          value={percentage}
+          className={cn("h-2 mb-3", isLow ? "[&>div]:bg-red-500" : "[&>div]:bg-primary")}
         />
-        
+
         <div className="mt-4 bg-muted/50 p-3 rounded-lg border border-border/50 text-xs text-muted-foreground">
-          {t('common.aiCreditsReset')}
-          {!isPro && (
+          {unlimited ? t('common.aiCreditsUnlimitedBody') : t('common.aiCreditsReset')}
+          {showFreeBadge && (
             <span className="block mt-1">
               {rich('common.aiCreditsUpsell', { link: <Link href="/dashboard/pricing" className="text-primary font-semibold hover:underline">{t('common.aiCreditsGoPro')}</Link> })}
             </span>

@@ -27,18 +27,20 @@ import { estimateTokens, reportAiUsage } from '@/lib/ai/usage-meter'
 const backendBase = () => internalBackendUrl()
 
 async function getBackendSecrets(): Promise<{
-  anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string; groq: string
+  anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string; groq: string; custom: string; nvidia: string
 }> {
   try {
     const { getApiKey } = await import('@/lib/ai/get-api-key')
     
-    const [anthropicKey, geminiKey, openaiKey, openrouterKey, opencodeKey, groqKey] = await Promise.all([
+    const [anthropicKey, geminiKey, openaiKey, openrouterKey, opencodeKey, groqKey, customKey, nvidiaKey] = await Promise.all([
       getApiKey('anthropic'),
       getApiKey('gemini'),
       getApiKey('openai'),
       getApiKey('openrouter'),
       getApiKey('opencode'),
       getApiKey('groq'),
+      getApiKey('custom' as never),
+      getApiKey('nvidia' as never),
     ])
     
     return {
@@ -48,6 +50,8 @@ async function getBackendSecrets(): Promise<{
       openrouter: openrouterKey?.key || '',
       opencode: opencodeKey?.key || '',
       groq: groqKey?.key || '',
+      custom: customKey?.key || '',
+      nvidia: nvidiaKey?.key || '',
     }
   } catch {
     // Fallback to env vars only
@@ -58,6 +62,8 @@ async function getBackendSecrets(): Promise<{
       openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
       opencode: process.env.OPENCODE_API_KEY?.trim() || '',
       groq: process.env.GROQ_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '',
+      custom: process.env.CUSTOM_API_KEY?.trim() || '',
+      nvidia: process.env.NVIDIA_API_KEY?.trim() || '',
     }
   }
 }
@@ -75,7 +81,16 @@ async function getInternalSecret(): Promise<string> {
   }
 }
 
-async function backendHeaders(opts?: { apiKeyOverride?: string }): Promise<Record<string, string>> {
+/**
+ * `x-openai-api-key` is shared by every OpenAI-compatible provider
+ * (openai/openrouter/opencode/groq/custom/nvidia), and the backend checks it
+ * BEFORE the generic `x-api-key`. Filling it with the Groq key (the old
+ * groq-first branch) meant a request for OpenRouter was authenticated with a
+ * Groq key -> "API Error (401): Missing or invalid API key for OPENROUTER" on
+ * EDITH even though the OpenRouter key was valid (2026-11-02). Only the key of
+ * the provider this request actually targets may go in that header.
+ */
+async function backendHeaders(opts?: { apiKeyOverride?: string; provider?: string }): Promise<Record<string, string>> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
   const internalSecret = await getInternalSecret()
   if (internalSecret) h['x-internal-secret'] = internalSecret
@@ -84,15 +99,29 @@ async function backendHeaders(opts?: { apiKeyOverride?: string }): Promise<Recor
     h['x-openai-api-key'] = opts.apiKeyOverride
     h['x-gemini-api-key'] = opts.apiKeyOverride
     h['x-anthropic-api-key'] = opts.apiKeyOverride
+    return h
   }
   const keys = await getBackendSecrets()
-  if (keys.anthropic && !h['x-anthropic-api-key']) h['x-anthropic-api-key'] = keys.anthropic
-  if (keys.gemini && !h['x-gemini-api-key']) h['x-gemini-api-key'] = keys.gemini
-  if (keys.groq && !h['x-openai-api-key']) h['x-openai-api-key'] = keys.groq
-  if (keys.openai && !h['x-openai-api-key']) h['x-openai-api-key'] = keys.openai
-  const activeKey = keys.openai || keys.openrouter || keys.opencode || keys.anthropic || keys.gemini
-  if (activeKey && !h['x-api-key']) h['x-api-key'] = activeKey
-  if (activeKey && !h['x-openai-api-key']) h['x-openai-api-key'] = activeKey
+  // Distinct header names are unambiguous -> safe to send for provider fallbacks.
+  if (keys.anthropic) h['x-anthropic-api-key'] = keys.anthropic
+  if (keys.gemini) h['x-gemini-api-key'] = keys.gemini
+  const target = (opts?.provider || '').toLowerCase()
+  const sharedKey: Record<string, string> = {
+    openai: keys.openai,
+    openrouter: keys.openrouter,
+    opencode: keys.opencode,
+    omnirouter: keys.openai,
+    groq: keys.groq,
+    custom: keys.custom,
+    nvidia: keys.nvidia,
+  }
+  const key = target
+    ? sharedKey[target] || ''
+    : keys.openai || keys.openrouter || keys.opencode || keys.custom || keys.groq
+  if (key) {
+    h['x-openai-api-key'] = key
+    h['x-api-key'] = key
+  }
   return h
 }
 
@@ -119,7 +148,7 @@ interface ChatStreamArgs {
  * directly to the browser with minimal overhead.
  */
 export async function backendChatStream(args: ChatStreamArgs): Promise<Response> {
-  const headers = await backendHeaders({ apiKeyOverride: args.apiKeyOverride })
+  const headers = await backendHeaders({ apiKeyOverride: args.apiKeyOverride, provider: args.providerOverride })
   const res = await fetch(`${backendBase()}/internal/ai/chat`, {
     method: 'POST',
     headers,
@@ -410,7 +439,7 @@ export async function backendPost<T = unknown>(
 ): Promise<T> {
   const feature = opts?.feature || backendFeatureFor(path)
   if (path.startsWith('/internal/ai/')) await assertAiBudget(feature)
-  const headers = await backendHeaders({ apiKeyOverride: opts?.apiKeyOverride })
+  const headers = await backendHeaders({ apiKeyOverride: opts?.apiKeyOverride, provider: opts?.providerOverride })
   const started = Date.now()
   const res = await fetch(`${backendBase()}${path}`, {
     method: 'POST',

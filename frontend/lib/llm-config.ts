@@ -170,7 +170,10 @@ export const LLM_PROVIDERS: ProviderDef[] = [
       'mistralai/mistral-small-3.1-24b-instruct',
       'google/gemma-3-27b-it',
     ],
-    endpoint: 'https://api.brocode.live/v1',
+    // No baked-in endpoint on purpose: the operator's gateway URL comes from
+    // platform settings (Settings → AI Tools). Hardcoding a vendor here made
+    // every install quietly point at brocode.live (tests/provider-chain guards it).
+    endpoint: '',
     authType: 'bearer',
   },
 ] as const

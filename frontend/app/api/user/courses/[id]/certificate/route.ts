@@ -100,7 +100,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
         lessonsLeft > 0 ? `${lessonsLeft} lesson${lessonsLeft === 1 ? '' : 's'}` : null,
         quizzesLeft > 0 ? `${quizzesLeft} module quiz${quizzesLeft === 1 ? '' : 'zes'}` : null,
       ].filter(Boolean)
-      return NextResponse.json({ error: `Finish ${parts.join(' and ')} to get your certificate` }, { status: 400 })
+      return NextResponse.json({ error: 'Finish the course to get your certificate', code: 'certificate_finish_required', params: { parts: parts.join(' and ') } }, { status: 400 })
     }
 
     const quizScores = status.passedSections.map((i) => status.bestScores[i]).filter((v): v is number => typeof v === 'number')

@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest) {
   const validIds = new Set(MODEL_OPTIONS.map((m) => m.id))
   for (const [key, val] of Object.entries(body)) {
     if (val && !validIds.has(val as string)) {
-      return NextResponse.json({ error: `Invalid model: ${val}` }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid model', code: 'invalid_model', params: { model: val } }, { status: 400 })
     }
   }
 

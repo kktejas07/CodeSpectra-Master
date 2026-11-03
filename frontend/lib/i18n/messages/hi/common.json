@@ -80,5 +80,7 @@
   "themeToggle": "थीम बदलें",
   "themeLight": "लाइट",
   "themeDark": "डार्क",
-  "themeSystem": "सिस्टम"
+  "themeSystem": "सिस्टम",
+  "aiCreditsUnlimited": "असीमित",
+  "aiCreditsUnlimitedBody": "आपके खाते पर AI क्रेडिट की मासिक सीमा नहीं है।"
 }

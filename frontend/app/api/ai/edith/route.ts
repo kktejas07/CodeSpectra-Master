@@ -268,7 +268,7 @@ CodeSpectra is a developer intelligence platform for technical assessments, codi
         })
 
         if (!upstream.ok || !upstream.body) {
-          controller.enqueue(sseChunk({ error: `EDITH upstream error: ${upstream.status}` }))
+          controller.enqueue(sseChunk({ error: 'Upstream provider error', code: 'upstream_error', params: { status: upstream.status } }))
         } else {
           const reader = upstream.body.getReader()
           const dec = new TextDecoder()

@@ -19,6 +19,7 @@ import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { COURSE_LEVELS, INDUSTRIES, subjectsForIndustry, estimateCourse } from '@/lib/courses/syllabus'
 import { useT } from '@/lib/i18n/client'
 import { useApiError } from '@/lib/i18n/use-api-error'
+import { creditBalanceLabel } from '@/lib/ai-credits-display'
 
 const LEVELS = [...COURSE_LEVELS]
 
@@ -48,13 +49,17 @@ export default function GenerateCoursePage() {
   const upsellRef = useFocusTrap<HTMLDivElement>(showUpsell, () => setShowUpsell(false))
   
   const [userCredits, setUserCredits] = useState<number | null>(null)
+  // Superadmins have no cap: the API sends `unlimited`, and the raw
+  // MAX_SAFE_INTEGER sentinel must never be printed (2026-11-02).
+  const [unlimitedCredits, setUnlimitedCredits] = useState(false)
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
     fetch('/api/user/ai-credits')
       .then(res => res.json())
       .then(data => {
-        if (data.balance !== undefined) {
+        if (data.unlimited) setUnlimitedCredits(true)
+        if (data.balance !== undefined && !data.unlimited) {
           setUserCredits(data.balance)
         }
       })
@@ -129,7 +134,9 @@ export default function GenerateCoursePage() {
         throw new Error(apiError(genData, t('learning.generationFailed')))
       }
 
-      if (typeof genData.creditsCharged === 'number' && userCredits !== null) {
+      if (unlimitedCredits) {
+        // nothing to subtract — no monthly cap
+      } else if (typeof genData.creditsCharged === 'number' && userCredits !== null) {
         setUserCredits(Math.max(0, userCredits - genData.creditsCharged))
       } else {
         fetch('/api/user/ai-credits')
@@ -172,7 +179,7 @@ export default function GenerateCoursePage() {
               </Button>
               <div className="flex items-center gap-2 border border-border bg-card px-4 py-1.5 rounded-full" data-tour="course-generate-credits">
                 <Zap className="h-4 w-4 text-amber-500" aria-hidden />
-                <span className="text-sm font-medium tabular-nums">{t('learning.creditsValue', { value: userCredits !== null ? userCredits : '…' })}</span>
+                <span className="text-sm font-medium tabular-nums">{t('learning.creditsValue', { value: creditBalanceLabel({ balance: userCredits, unlimited: unlimitedCredits }) })}</span>
               </div>
             </>
           }
