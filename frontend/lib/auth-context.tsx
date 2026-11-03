@@ -131,7 +131,7 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>
   signInWithGithub: () => Promise<void>
   signOut: () => Promise<void>
-  sendPasswordReset: (email: string, turnstileToken?: string) => Promise<void>
+  sendPasswordReset: (email: string, turnstileToken?: string) => Promise<{ throttled?: boolean; retry_after?: number }>
   confirmPasswordReset: (code: string, newPassword: string) => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -459,6 +459,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Failed to send reset email')
+    // `throttled` means the per-address cap swallowed this request (nothing was
+    // sent). The page tells the user instead of pretending it went out.
+    return { throttled: json.throttled === true, retry_after: typeof json.retry_after === 'number' ? json.retry_after : undefined }
   }
 
   const confirmPasswordResetFn = async (code: string, newPassword: string) => {
