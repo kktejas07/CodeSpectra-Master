@@ -440,6 +440,25 @@ export function createVoiceManager(callbacks: {
     },
   })
 
+  /** Browser speech synthesis: resolves when the utterance ends (or fails). */
+  function speakLocally(text: string): Promise<void> {
+    return new Promise((resolve) => {
+      try {
+        const synth = typeof window !== 'undefined' ? window.speechSynthesis : null
+        if (!synth || !text.trim()) return resolve()
+        synth.cancel()
+        const u = new SpeechSynthesisUtterance(text)
+        // Interface language (lib/i18n sets <html lang>); en-IN is the default voice.
+        u.lang = (typeof document !== 'undefined' && document.documentElement.lang) || 'en-IN'
+        u.onend = () => resolve()
+        u.onerror = () => resolve()
+        synth.speak(u)
+      } catch {
+        resolve()
+      }
+    })
+  }
+
   const player = createAudioPlayer()
 
   function startWaveformLoop() {
@@ -507,8 +526,11 @@ export function createVoiceManager(callbacks: {
       if (blob) {
         await player.play(blob)
       } else {
-        // TTS failed — add a small delay so UI doesn't flash
-        await new Promise(r => setTimeout(r, 500))
+        // Google's endpoint is unofficial: CSP / CORS / rate limits make it fail
+        // silently, leaving the interview mute. Fall back to the browser's own
+        // speech synthesizer — no network, no CSP, always available in Chrome/
+        // Safari/Edge (2026-11-03).
+        await speakLocally(text)
       }
 
       state.isSpeaking = false

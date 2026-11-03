@@ -1,6 +1,9 @@
 import { backendComplete } from '@/lib/ai/backend'
 import { fenceUntrusted, neutraliseUntrusted, scanUntrusted, untrustedRule } from '@/lib/ai/untrusted-input'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
+import { extractJson, modelJson } from '@/lib/ai/model-json'
+
+export { extractJson, modelJson }
 import type {
   ParsedResume, Question, Evaluation, Report,
   ConversationMessage, CurrentQuestionState, TurnEvaluation,
@@ -36,19 +39,7 @@ export async function platformModelOverrides(): Promise<{
   }
 }
 
-export function extractJson(raw: string): Record<string, unknown> | null {
-  if (!raw) return null
-  try {
-    const trimmed = raw.trim()
-    const first = trimmed.charCodeAt(0)
-    if (first === 123 || first === 91) return JSON.parse(trimmed)
-    const match = trimmed.match(/\{[\s\S]*\}/)
-    if (match) return JSON.parse(match[0])
-  } catch {
-    return null
-  }
-  return null
-}
+
 
 function safeStr(v: unknown): string {
   return typeof v === 'string' ? v : ''
@@ -88,7 +79,7 @@ ${untrustedRule(['resume'])}`
     return { skills: [], experience: [], education: [], summary: '' }
   }
 
-  const parsed = (res.json as Record<string, unknown>) || extractJson(res.raw || res.text || '')
+  const parsed = modelJson(res)
   if (!parsed || typeof parsed !== 'object') {
     return { skills: [], experience: [], education: [], summary: '' }
   }
@@ -193,7 +184,7 @@ Return ONLY a valid JSON object:
     }
   }
 
-  const parsed = (res.json as Record<string, unknown>) || extractJson(res.raw || res.text || '')
+  const parsed = modelJson(res)
   if (!parsed || typeof parsed !== 'object') {
     return {
       greeting: `Hi! I'm excited to chat with you about this ${role} position. Let's dive in.`,
@@ -290,7 +281,7 @@ If you have enough data to make a fair assessment (${Math.min(turnCount, maxTurn
 
   if (!res.ok) return fallback
 
-  const parsed = (res.json as Record<string, unknown>) || extractJson(res.raw || res.text || '')
+  const parsed = modelJson(res)
   if (!parsed || typeof parsed !== 'object') return fallback
 
   const eval_ = parsed.evaluation && typeof parsed.evaluation === 'object' ? parsed.evaluation as Record<string, unknown> : null
@@ -370,7 +361,7 @@ Provide a fair, encouraging, and actionable report.`
 
   if (!res.ok) return fallbackReport
 
-  const parsed = (res.json as Record<string, unknown>) || extractJson(res.raw || res.text || '')
+  const parsed = modelJson(res)
   if (!parsed || typeof parsed !== 'object') return fallbackReport
 
   return {
