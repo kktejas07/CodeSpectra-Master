@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Loader2, MessageSquarePlus, Globe, Database, Zap, Shield } from 'lucide-react'
+import { Send, X, Loader2, MessageSquarePlus, Globe, Database, Zap, Shield, Bug, Search, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -125,7 +125,7 @@ export function GoEdith() {
               collectedSources.push(...parsed.sources)
             }
             if (parsed.error) {
-              acc += `\n\n⚠️ ${parsed.error}`
+              acc += `\n\n${parsed.error}`
             } else if (parsed.delta) {
               acc += parsed.delta
             }
@@ -318,11 +318,13 @@ export function GoEdith() {
 
 /* ── Empty state ── */
 function EdithEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
-  const examples = [
-    '🐛 Summarize my last code scan — what issues were found?',
-    '⚡ How do I add my own API key to skip credits?',
-    '🔍 What does Big-O notation mean and why does it matter?',
-    '🤖 What can the AI Agent do that regular chat cannot?',
+  // Icons, not emoji: an emoji prefix also used to be stripped with a regex
+  // before sending, which would have eaten the first word once removed.
+  const examples: { icon: typeof Bug; prompt: string }[] = [
+    { icon: Bug, prompt: 'Summarize my last code scan — what issues were found?' },
+    { icon: Zap, prompt: 'How do I add my own API key to skip credits?' },
+    { icon: Search, prompt: 'What does Big-O notation mean and why does it matter?' },
+    { icon: Bot, prompt: 'What can the AI Agent do that regular chat cannot?' },
   ]
   return (
     <div className="space-y-4 text-center pt-8">
@@ -336,18 +338,19 @@ function EdithEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
         </p>
       </div>
       <div className="space-y-2 pt-1">
-        {examples.map((p) => (
+        {examples.map(({ icon: Icon, prompt }) => (
           <button
-            key={p}
+            key={prompt}
             type="button"
-            onClick={() => onPick(p.replace(/^[^\s]+ /, ''))}
+            onClick={() => onPick(prompt)}
             className={cn(
-              'block w-full rounded-xl border border-amber-500/10 bg-amber-950/20 px-3 py-2.5',
+              'flex w-full items-start gap-2 rounded-xl border border-amber-500/10 bg-amber-950/20 px-3 py-2.5',
               'text-left text-xs text-amber-400/80 hover:border-amber-500/30 hover:bg-amber-950/40 hover:text-amber-300',
               'transition-all',
             )}
           >
-            {p}
+            <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/70" aria-hidden />
+            <span>{prompt}</span>
           </button>
         ))}
       </div>
