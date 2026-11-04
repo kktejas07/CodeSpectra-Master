@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     const col = await problems()
     const list = await col
-      .find(filter, { projection: { test_cases: 0, starter_code: 0, statement_md: 0 } })
+      .find(filter, { projection: { test_cases: 0, starter_code: 0, statement_md: 0, official_solution: 0 } })
       .sort({ created_at: -1 })
       .limit(limitParam || 0)
       .toArray()
