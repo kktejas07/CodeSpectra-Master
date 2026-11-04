@@ -629,5 +629,9 @@
   "lessons": "पाठ",
   "problemsLabel": "प्रश्न",
   "nSolved": "{count} हल किए",
-  "copied": "कॉपी हो गया"
+  "copied": "कॉपी हो गया",
+  "solutionLockedBody": "इसे अनलॉक करने के लिए एक प्रयास सबमिट करें (सही या गलत) — या अभी देखने के लिए {credits} AI क्रेडिट खर्च करें।",
+  "unlockForCredits": "{credits} क्रेडिट में अनलॉक करें",
+  "solutionUnlocked": "अधिकृत समाधान अनलॉक हो गया",
+  "solutionUnlockFailed": "समाधान अनलॉक नहीं हो सका"
 }

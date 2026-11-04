@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSuperAdmin, gateErrorBody, getAPIUser, isAdminCaller, isSuperAdminCaller, type APIUser } from '@/lib/route-auth'
-import { problems, submissions, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/problems'
+import { problems, submissions, solutionUnlocks, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
 import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
 import { checkProblemAccess, packLockedError } from '@/lib/entitlements'
+import { aiCreditCost } from '@/lib/entitlements-core'
 import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 /**
@@ -90,21 +91,32 @@ export async function GET(
           )
         }
       }
-      // Solved state drives the Solved badge and unlocks the official solution.
-      // `official_solution` is stripped for everyone who hasn't solved it yet.
+      // The official solution is a spoiler: reveal it only after the learner has
+      // actually tried the problem (any submission, right or wrong) or paid
+      // credits to unlock it. Editors read the full doc through ?edit=1 — the
+      // learner view must not hand them (or anyone) the answer up front.
       let solved = false
+      let attempted = false
+      let paidUnlock = false
       if (user) {
-        const sub = await (await submissions()).findOne(
-          { user_id: user.id, problem_id: doc.id, status: 'accepted' },
-          { projection: { _id: 1 } },
-        )
-        solved = !!sub
+        const [accepted, anyTry, unlock] = await Promise.all([
+          (await submissions()).findOne({ user_id: user.id, problem_id: doc.id, status: 'accepted' }, { projection: { _id: 1 } }),
+          (await submissions()).findOne({ user_id: user.id, problem_id: doc.id }, { projection: { _id: 1 } }),
+          (await solutionUnlocks()).findOne({ user_id: user.id, problem_id: doc.id }, { projection: { _id: 1 } }),
+        ])
+        solved = !!accepted
+        attempted = !!anyTry
+        paidUnlock = !!unlock
       }
-      const unlockSolution = solved || canEditProblem(user, doc)
+      const unlockSolution = attempted || paidUnlock
       const { official_solution, ...rest } = doc
       return NextResponse.json({
         ...rest,
         solved,
+        attempted,
+        solution_unlocked: paidUnlock,
+        solution_available: !!official_solution,
+        unlock_cost: aiCreditCost('solution_unlock'),
         ...(unlockSolution && official_solution ? { official_solution } : {}),
         test_cases: (doc.test_cases || []).filter((t) => t.is_sample),
         hidden_test_count:
