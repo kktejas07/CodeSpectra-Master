@@ -36,9 +36,9 @@ export function ThemeIllustration({
   return (
     <span className={cn('block', className)}>
       {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
-      <img src={`/illustrations/codespectra/${name}-light.svg`} {...common} className="block h-auto w-full dark:hidden" />
+      <img src={`/illustrations/codespectra/${name}-light.svg`} {...common} className="hidden h-auto w-full light:block" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/illustrations/codespectra/${name}-dark.svg`} {...common} className="hidden h-auto w-full dark:block" />
+      <img src={`/illustrations/codespectra/${name}-dark.svg`} {...common} className="block h-auto w-full light:hidden" />
     </span>
   )
 }

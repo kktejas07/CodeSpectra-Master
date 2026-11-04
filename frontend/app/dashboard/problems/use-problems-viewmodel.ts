@@ -10,6 +10,8 @@ export interface ProblemSummary {
   title: string
   difficulty: 'easy' | 'medium' | 'hard'
   topics: string[]
+  /** The signed-in learner has an accepted submission (server-computed). */
+  solved?: boolean
   /** In a problem pack this viewer hasn't unlocked (server-computed). */
   locked?: boolean
   unlock_pack?: { id: string; name: string } | null

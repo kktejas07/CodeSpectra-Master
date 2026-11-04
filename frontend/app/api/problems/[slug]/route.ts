@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAuth, requireSuperAdmin, gateErrorBody, getAPIUser, isAdminCaller, isSuperAdminCaller, type APIUser } from '@/lib/route-auth'
-import { problems, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/problems'
+import { problems, submissions, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
 import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
@@ -90,8 +90,22 @@ export async function GET(
           )
         }
       }
+      // Solved state drives the Solved badge and unlocks the official solution.
+      // `official_solution` is stripped for everyone who hasn't solved it yet.
+      let solved = false
+      if (user) {
+        const sub = await (await submissions()).findOne(
+          { user_id: user.id, problem_id: doc.id, status: 'accepted' },
+          { projection: { _id: 1 } },
+        )
+        solved = !!sub
+      }
+      const unlockSolution = solved || canEditProblem(user, doc)
+      const { official_solution, ...rest } = doc
       return NextResponse.json({
-        ...doc,
+        ...rest,
+        solved,
+        ...(unlockSolution && official_solution ? { official_solution } : {}),
         test_cases: (doc.test_cases || []).filter((t) => t.is_sample),
         hidden_test_count:
           (doc.test_cases || []).length -

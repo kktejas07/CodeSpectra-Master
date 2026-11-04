@@ -627,5 +627,7 @@
   "unlockedSuffix": " — अनलॉक",
   "reviewDrafts": "मसौदे देखें",
   "lessons": "पाठ",
-  "problemsLabel": "प्रश्न"
+  "problemsLabel": "प्रश्न",
+  "nSolved": "{count} हल किए",
+  "copied": "कॉपी हो गया"
 }

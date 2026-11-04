@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { readSseText } from '@/lib/ai/sse'
 import { CAREER_GOAL_OPTIONS, POPULAR_CAREER_GOALS } from '@/lib/career-goals'
 import { generateUsernameCandidate, isGenericUsername } from '@/lib/username'
 import { ArrowLeft, ArrowRight, Save, CheckCircle2, User, Briefcase, GraduationCap, Code2, Award, Link as LinkIcon, Camera, Sparkles, Plus, Trash2, Eye, Lightbulb, ShieldCheck, X } from 'lucide-react'
@@ -49,26 +50,6 @@ const STEPS = (t: Translator) => ([
   { id: 9, title: t('account.socialLinks'), icon: LinkIcon, required: false },
 ])
 
-// Parse the SSE stream returned by POST /api/ai/chat into plain text.
-async function parseAiChatStream(res: Response): Promise<string> {
-  const text = await res.text()
-  let out = ''
-  for (const rawLine of text.split('\n')) {
-    const line = rawLine.trim()
-    if (!line.startsWith('data:')) continue
-    const payload = line.slice(5).trim()
-    if (!payload || payload === '[DONE]') continue
-    let parsed: { delta?: string; error?: string } | null = null
-    try {
-      parsed = JSON.parse(payload) as { delta?: string; error?: string }
-    } catch {
-      continue
-    }
-    if (parsed?.error) throw new Error(parsed.error)
-    if (parsed?.delta) out += parsed.delta
-  }
-  return out.trim()
-}
 
 export default function EditProfileWizard() {
   const apiError = useApiError()
@@ -330,7 +311,7 @@ export default function EditProfileWizard() {
         } catch { /* non-JSON body — keep status message */ }
         throw new Error(errMsg)
       }
-      const text = await parseAiChatStream(res)
+      const text = await readSseText(res)
       if (!text) throw new Error(t('account.aiReturnedAnEmptyResponse'))
       apply(text)
       addToast({ type: 'success', title: t('account.aiDescriptionGenerated') })

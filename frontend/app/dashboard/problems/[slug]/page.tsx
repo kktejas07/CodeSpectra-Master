@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { readSseText } from '@/lib/ai/sse'
 import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useToast } from '@/lib/toast-context'
 import { useLockedFeatures } from '@/lib/use-page-guard'
@@ -49,6 +50,10 @@ interface Problem {
   hidden_test_count: number
   starter_code: Record<string, string>
   time_limit_ms: number
+  /** Accepted submission exists for the signed-in learner. */
+  solved?: boolean
+  /** Present only when the API allows it (solved, editor or superadmin). */
+  official_solution?: { explanation_md: string; code: Record<string, string>; verified_at?: string }
 }
 
 interface RunResult {
@@ -307,11 +312,14 @@ export default function ProblemDetailPage() {
           message: tr('practice.youAreACodingMentorHelp3a8', { title: problem.title, statement_md: problem.statement_md, aiMentorMessage }),
         }),
       })
-      const data = await res.json()
-      if (res.ok) {
-        setAiMentorResponse(data.response || data.message || 'No response received.')
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        setAiMentorResponse(j.error || 'Sorry, I could not process your request. Please try again.')
       } else {
-        setAiMentorResponse('Sorry, I could not process your request. Please try again.')
+        // /api/ai/chat answers with an SSE stream — res.json() threw, which is
+        // why the mentor always said "Network error" (2026-11-04).
+        const text = await readSseText(res)
+        setAiMentorResponse(text || 'No response received.')
       }
     } catch {
       setAiMentorResponse('Network error. Please try again.')
@@ -790,13 +798,39 @@ export default function ProblemDetailPage() {
              )}
              
              {leftTab === 'solution' && (
-                <div className="flex flex-col items-center justify-center h-full text-center space-y-3 opacity-60">
-                   <Code2 className="h-10 w-10 text-muted-foreground" />
-                   <div>
-                     <p className="font-bold">{tr('practice.officialSolutionLocked')}</p>
-                     <p className="text-xs text-muted-foreground">{tr('practice.solveTheProblemFirstToViewe83')}</p>
-                   </div>
-                </div>
+                problem.official_solution ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden />{tr('practice.solved')}
+                    </div>
+                    <Markdownish text={problem.official_solution.explanation_md} />
+                    {(() => {
+                      const code = problem.official_solution?.code || {}
+                      const source = code[language] || code.python || Object.values(code)[0] || ''
+                      if (!source) return null
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-muted-foreground">{(code[language] ? language : code.python ? 'python' : 'code').toUpperCase()}</span>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => {
+                              void navigator.clipboard?.writeText(source)
+                              addToast({ type: 'success', title: tr('practice.copied') })
+                            }}>{tr('practice.copy')}</Button>
+                          </div>
+                          <pre className="max-h-[60vh] overflow-auto rounded-lg border border-border/60 bg-muted/30 p-3 text-xs font-mono whitespace-pre">{source}</pre>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center space-y-3 opacity-60">
+                     <Code2 className="h-10 w-10 text-muted-foreground" />
+                     <div>
+                       <p className="font-bold">{tr('practice.officialSolutionLocked')}</p>
+                       <p className="text-xs text-muted-foreground">{tr('practice.solveTheProblemFirstToViewe83')}</p>
+                     </div>
+                  </div>
+                )
              )}
 
              {leftTab === 'submissions' && (
