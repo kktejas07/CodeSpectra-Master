@@ -22,9 +22,12 @@ function normalize(s: string): string {
 
 const SYSTEM = `You write official solutions for competitive-programming problems.
 The program reads from STDIN and writes the answer to STDOUT — no prompts, no extra text.
+The statement may show a LeetCode-style example; IGNORE that input shape. The judge feeds
+the exact stdin shown below, so the program must parse THAT.
 Return STRICT JSON only:
 {"explanation_md": "short approach + complexity, markdown", "code": {"python": "<full program>"}}
-The Python program must be self-contained (standard library only) and pass every test.`
+The Python program must be self-contained (standard library only) and reproduce every
+expected output exactly (same spacing/line breaks).`
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const gate = await requireSuperAdmin()
@@ -52,7 +55,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (tests.length === 0) { results.push({ slug: doc.slug, ok: false, reason: 'no test cases' }); continue }
       const res = await backendComplete({
         systemMessage: SYSTEM,
-        userMessage: `Problem: ${doc.title}\n\n${String(doc.statement_md || '').slice(0, 6000)}\n\nWrite the Python solution.`,
+        // The exact stdin/expected pair is the contract — the prose example is
+        // often LeetCode-shaped and does not match the judge (two-sum feeds
+        // "4\n2 7 11 15\n9", not "nums = [2,7,11,15]").
+        userMessage: `Problem: ${doc.title}\n\n${String(doc.statement_md || '').slice(0, 5000)}\n\nInput format: ${doc.input_format || '(read the stdin below)'}\nOutput format: ${doc.output_format || '(match the expected stdout exactly)'}\n\n${tests.slice(0, 2).map((t, i) => `Test ${i + 1}\n--- stdin ---\n${t.stdin}\n--- expected stdout ---\n${t.expected_stdout}`).join('\n\n')}\n\nWrite the Python program.`,
         modelRole,
         responseFormat: 'json',
         feature: 'problem-solution',
@@ -63,9 +69,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         endpointOverride: endpointOverride || undefined,
         apiKeyOverride,
       })
-      const json = (res.json && typeof res.json === 'object' ? res.json : {}) as { explanation_md?: unknown; code?: unknown }
+      const json = (res.json && typeof res.json === 'object' ? res.json : {}) as { explanation_md?: unknown; code?: unknown; solution?: unknown; python?: unknown }
       const codeObj = (json.code && typeof json.code === 'object' ? json.code : {}) as Record<string, unknown>
-      const source = typeof codeObj.python === 'string' ? codeObj.python : typeof json.code === 'string' ? json.code : ''
+      const source =
+        (typeof codeObj.python === 'string' && codeObj.python) ||
+        (typeof codeObj.python3 === 'string' && codeObj.python3) ||
+        (typeof json.code === 'string' && json.code) ||
+        (typeof json.solution === 'string' && json.solution) ||
+        (typeof json.python === 'string' && json.python) ||
+        ''
       if (!source) { results.push({ slug: doc.slug, ok: false, reason: 'model returned no code' }); continue }
 
       let allPassed = true
