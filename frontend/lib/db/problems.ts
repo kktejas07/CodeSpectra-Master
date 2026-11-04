@@ -104,3 +104,16 @@ export async function problems(): Promise<Collection<ProblemDoc>> {
 export async function submissions(): Promise<Collection<SubmissionDoc>> {
   return (await db()).collection<SubmissionDoc>('submissions')
 }
+
+/** A learner paid credits to reveal one problem's official solution. */
+export interface SolutionUnlockDoc {
+  id: string
+  user_id: string
+  problem_id: string
+  credits: number
+  created_at: string
+}
+
+export async function solutionUnlocks(): Promise<Collection<SolutionUnlockDoc>> {
+  return (await db()).collection<SolutionUnlockDoc>('problem_solution_unlocks')
+}

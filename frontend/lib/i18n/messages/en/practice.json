@@ -629,5 +629,9 @@
   "lessons": "lessons",
   "problemsLabel": "problems",
   "nSolved": "{count} solved",
-  "copied": "Copied"
+  "copied": "Copied",
+  "solutionLockedBody": "Submit an attempt (right or wrong) to unlock it — or spend {credits} AI credits to see it now.",
+  "unlockForCredits": "Unlock for {credits} credits",
+  "solutionUnlocked": "Official solution unlocked",
+  "solutionUnlockFailed": "Could not unlock the solution"
 }

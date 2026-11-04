@@ -1446,5 +1446,6 @@
   "upstream_error": "Upstream provider error ({status})",
   "invalid_model": "Invalid model: {model}",
   "certificate_finish_required": "Finish {parts} to get your certificate",
-  "ai_unavailable": "AI analysis is unavailable right now. Try again in a moment."
+  "ai_unavailable": "AI analysis is unavailable right now. Try again in a moment.",
+  "solution_missing": "This problem has no official solution yet"
 }

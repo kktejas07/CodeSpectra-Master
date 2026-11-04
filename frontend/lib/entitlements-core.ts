@@ -175,6 +175,7 @@ export const AI_CREDIT_COSTS = {
   course: 1,
   fixes: 1,
   edith_chat: 1,  // GO EDITH assistant messages
+  solution_unlock: 5,  // reveal one official solution before attempting it
 } as const
 
 export type AiCreditFeature = keyof typeof AI_CREDIT_COSTS
