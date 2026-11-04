@@ -124,6 +124,7 @@ export default function ProblemsListPage() {
   // this page yet, so we don't show them rather than showing zeros.
   const stats = useMemo(() => ({
     total: visible.length,
+    solved: visible.filter(p => p.solved).length,
     easyTotal: visible.filter(p => p.difficulty === 'easy').length,
     mediumTotal: visible.filter(p => p.difficulty === 'medium').length,
     hardTotal: visible.filter(p => p.difficulty === 'hard').length,
@@ -275,6 +276,7 @@ export default function ProblemsListPage() {
                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                      <div className="text-2xl font-black tabular-nums text-foreground leading-none">{stats.total}</div>
                      <div className="text-[11px] text-muted-foreground font-medium mt-1 max-w-[80px]">{stats.total === 1 ? tr('practice.problem') : tr('practice.problems')}</div>
+                     <div className="text-[11px] font-semibold text-green-600 dark:text-green-400 mt-0.5">{tr('practice.nSolved', { count: stats.solved })}</div>
                    </div>
                 </div>
                 <div className="flex-1 w-full space-y-4">
@@ -381,6 +383,10 @@ export default function ProblemsListPage() {
                                     <Link href={`/dashboard/problems/${p.slug}`} className="font-semibold text-foreground text-sm truncate block hover:text-primary transition-colors">
                                       {p.title}
                                     </Link>
+                                    {p.solved ? (
+                                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/40 bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
+                                        <CheckCircle2 className="h-3 w-3" aria-hidden />{' '}{tr('practice.solved')}</span>
+                                    ) : null}
                                     {p.locked ? (
                                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
                                         <Lock className="h-3 w-3" aria-hidden />{' '}{tr('practice.locked')}</span>

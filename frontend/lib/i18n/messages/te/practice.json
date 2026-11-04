@@ -627,5 +627,7 @@
   "unlockedSuffix": " — అన్‌లాక్ అయింది",
   "reviewDrafts": "డ్రాఫ్ట్‌లను సమీక్షించండి",
   "lessons": "పాఠాలు",
-  "problemsLabel": "ప్రశ్నలు"
+  "problemsLabel": "ప్రశ్నలు",
+  "nSolved": "{count} పరిష్కరించారు",
+  "copied": "కాపీ అయింది"
 }

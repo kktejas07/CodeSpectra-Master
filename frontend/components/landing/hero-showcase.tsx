@@ -198,7 +198,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                     loading={i === 0 ? 'eager' : 'lazy'}
                     fetchPriority={i === 0 ? 'high' : 'low'}
                     decoding="async"
-                    className="h-full w-full dark:hidden"
+                    className="hidden h-full w-full light:block"
                   />
                   {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
                   <img
@@ -210,7 +210,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                     loading={i === 0 ? 'eager' : 'lazy'}
                     fetchPriority={i === 0 ? 'high' : 'low'}
                     decoding="async"
-                    className="hidden h-full w-full dark:block"
+                    className="block h-full w-full light:hidden"
                   />
                 </div>
               ))}

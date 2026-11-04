@@ -627,5 +627,7 @@
   "unlockedSuffix": " — unlocked",
   "reviewDrafts": "Review drafts",
   "lessons": "lessons",
-  "problemsLabel": "problems"
+  "problemsLabel": "problems",
+  "nSolved": "{count} solved",
+  "copied": "Copied"
 }
