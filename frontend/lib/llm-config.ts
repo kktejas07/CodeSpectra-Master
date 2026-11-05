@@ -157,7 +157,27 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     label: 'Custom gateway (OpenAI-compatible)',
     free: false,
     models: [
-      // brocode.live model catalog (update as new models are added)
+      // brocode.live model catalog — verified live via GET /v1/models (2026-11-05).
+      // The operator's Settings → AI & LLM Provider pins one of these; the
+      // platform-override validator checks this list, so a stale catalog here
+      // silently disabled the configured model ("skipping dead model … not in
+      // known list") and fell back to dead providers. Strong models first —
+      // the gateway is the operator's chosen unlimited-token primary.
+      'claude-opus-5-5',
+      'claude-sonnet-5-5',
+      'claude-haiku-4-5-20251001',
+      'claude-opus-5',
+      'claude-sonnet-5',
+      'claude-sonnet-4-6',
+      'claude-sonnet-4-5-20250929',
+      'claude-haiku-5-5',
+      'claude-opus-4-8',
+      'claude-opus-4-7',
+      'claude-opus-4-6',
+      'claude-opus-4-5',
+      'claude-fable-5-1',
+      'claude-fable-5',
+      // Retired gateway models kept at the tail so older saved configs still resolve.
       'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast',
       'meta-llama/llama-4-scout-17b-16e-instruct',
       'meta-llama/llama-3.3-70b-instruct',

@@ -27,6 +27,11 @@ const PROVIDER_SECRETS_MAP: Record<string, string> = {
   gemini: 'gemini_api_key',
   groq: 'groq_api_key',
   nvidia: 'nvidia_api_key',
+  // brocode.live gateway (the operator's configured "unlimited" primary) — its
+  // key lives in the platform secrets as custom_api_key (Settings → AI & LLM
+  // Provider). Without this, a custom-provider override had no key and the
+  // backend fell back to whatever env key it had, breaking the configured LLM.
+  custom: 'custom_api_key',
 }
 
 /**
