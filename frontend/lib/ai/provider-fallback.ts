@@ -19,13 +19,15 @@ import { extractJson } from '@/lib/ai/model-json'
 
 // Provider fallback order (priority: free first, then paid).
 // ponytail: model IDs probed live 2026-10-30 (decrypted key → provider API):
-//   groq gpt-oss-120b / gpt-oss-20b     200  ✅ the only working capacity
-//   groq llama-3.3-70b-versatile        404  model removed — DROPPED
-//   nvidia (both entries)               404/410 models removed — DROPPED
-//   gemini gemini-3-flash-preview       400  key invalid
-//   cerebras / deepseek / openai        402/402/429 no credits
-//   openrouter                          401  user not found
-//   mistral                             429  throttled (may recover)
+//   custom brocode.live llama-4-maverick  200  ✅ primary provider (added 2026-11-06)
+//   custom brocode.live llama-4-scout     200  ✅ fast fallback
+//   groq gpt-oss-120b / gpt-oss-20b      200  ✅ secondary free capacity
+//   groq llama-3.3-70b-versatile         404  model removed — DROPPED
+//   nvidia (both entries)                404/410 models removed — DROPPED
+//   gemini gemini-3-flash-preview        400  key invalid
+//   cerebras / deepseek / openai         402/402/429 no credits
+//   openrouter                           401  user not found
+//   mistral                              429  throttled (may recover)
 // Keep this list honest: a dead model costs a wasted attempt on every call,
 // and a batch run burns its whole rate budget on entries that cannot work.
 export const PROVIDER_FALLBACK_CHAIN: {
@@ -35,7 +37,11 @@ export const PROVIDER_FALLBACK_CHAIN: {
   secretKey: string
   free: boolean
 }[] = [
-  // Free tiers first
+  // brocode.live first — platform primary provider (OpenAI-compatible, free tier)
+  { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast', endpoint: 'https://api.brocode.live/v1', secretKey: 'custom_api_key', free: true },
+  { provider: 'custom', model: 'meta-llama/llama-4-scout-17b-16e-instruct', endpoint: 'https://api.brocode.live/v1', secretKey: 'custom_api_key', free: true },
+  { provider: 'custom', model: 'meta-llama/llama-3.3-70b-instruct', endpoint: 'https://api.brocode.live/v1', secretKey: 'custom_api_key', free: true },
+  // Free tiers (secondary)
   { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
   { provider: 'groq', model: 'openai/gpt-oss-20b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
   { provider: 'gemini', model: 'gemini-3-flash-preview', secretKey: 'gemini_api_key', free: true },

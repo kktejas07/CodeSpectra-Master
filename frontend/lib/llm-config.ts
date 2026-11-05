@@ -204,9 +204,10 @@ export interface LLMConfig {
 }
 
 export const LLM_CONFIG_DEFAULTS: LLMConfig = {
-  provider: 'gemini',
-  model: 'gemini-3-flash-preview',
-  endpoint: '',
+  // ponytail: default to brocode.live (zero-config free tier) instead of Gemini (requires API key).
+  provider: 'custom',
+  model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast',
+  endpoint: 'https://api.brocode.live/v1',
   api_key: '',
   keys: {},
   taskOverrides: {},
