@@ -218,7 +218,12 @@ class DirectAiClient:
         payload = {
             "model": self.model,
             "messages": [{"role": "user", "content": content_parts}],
-            "max_tokens": 4000,
+            # ponytail: 4096 truncated long-form course-video scripts (12-22 slides
+            # x 140-180-word narration + code/mermaid => ~5-8k tokens) mid-JSON,
+            # surfacing as "missing slides/scenes array". 8192 is Claude 3.5
+            # Haiku's own max output — the Anthropic API hard-400s above it, so
+            # never exceed it here.
+            "max_tokens": 8192,
             "stream": True,
         }
         if self.system_message:
@@ -271,7 +276,12 @@ class DirectAiClient:
             "model": self.model,
             "messages": messages,
             "stream": True,
-            "max_tokens": 4096,
+            # ponytail: 4096 truncated long-form course-video scripts (12-22 slides
+            # x 140-180-word narration + code/mermaid => ~5k tokens) mid-JSON,
+            # surfacing as "AI video script missing slides/scenes array". 8192 fits
+            # a single-act script with headroom and is within every free-tier model's
+            # own output max (gpt-oss 32k, deepseek-chat 8k, mistral-small 8k).
+            "max_tokens": 8192,
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:

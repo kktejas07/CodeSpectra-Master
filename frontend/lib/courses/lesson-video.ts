@@ -29,6 +29,8 @@ export interface GeneratedLessonVideo {
   textContent: string
   script: VideoSlide[]
   audioBuffer: Buffer
+  /** False when the TTS voiceover failed and the MP4 is rendered silent. */
+  ttsOk?: boolean
   durationSeconds: number
   takeaways: string[]
   quickCheck: LessonQuickCheck
@@ -585,8 +587,17 @@ async function waitForGlobalCooldown() {
   }
 }
 
-/** Fail over across configured keys. Uses unified getApiKey() with round-robin. */
-async function completeWithFallback(args: Parameters<typeof backendComplete>[0]) {
+/**
+ * Fail over across configured keys. Uses unified getApiKey() with round-robin.
+ * `isValid` (optional) rejects answers that carry no error but also no usable
+ * payload — e.g. a free model that answered a slides-JSON request with prose.
+ * Without this the chain stops at the first "no-error" response and the caller
+ * sees "missing slides/scenes array"; with it, junk answers advance the chain.
+ */
+async function completeWithFallback(
+  args: Parameters<typeof backendComplete>[0],
+  isValid?: (res: { ok?: boolean; json?: unknown; text?: string; raw?: string }) => boolean,
+) {
   const primary = await platformModelOverrides()
   // ponytail: paid custom gateway (e.g. brocode Claude haiku) goes FIRST when
   // the admin configured endpoint + key — 10-60min video scripts are long
@@ -666,6 +677,14 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
         }
         continue
       }
+      if (isValid && !isValid(res)) {
+        // No error, but no usable payload (prose where JSON was asked, empty
+        // slides, …). Advance to the next provider instead of handing junk to
+        // the caller — that's what surfaces as "missing slides/scenes array".
+        last = `${id}: unusable answer`
+        console.log('[course-worker] unusable answer from', id, '— trying next provider')
+        continue
+      }
       return res
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -698,25 +717,39 @@ export async function generateLessonVideo(opts: {
     responseFormat: 'text',
     modelRole: 'fast',
     feature: 'course-video-text',
-  })
+  }, res => extractText(res).length >= 400)
   const textContent = extractText(textRes)
   if (textContent.length < 400) throw new Error('AI text lesson was too short — refusing to build a stub video')
 
   const parseSlides = (payload: unknown, min: number): VideoSlide[] =>
     withDurations(slidesFromAiJson(payload, min))
 
-  const runScriptCall = (userMessage: string) => completeWithFallback({
+  // Chain gate: an answer is only "done" when it carries enough slides for this
+  // step — same floor the downstream parser enforces, so the chain never wastes
+  // a retry on an answer the caller would reject anyway. Free models that reply
+  // in prose (or truncated JSON) rotate the chain instead of sinking the lesson
+  // at parse time. `min` is the step's own floor (single-call vs act chunk).
+  const makeScriptGate = (min: number) =>
+    (res: { ok?: boolean; json?: unknown; text?: string; raw?: string }) => {
+      try {
+        slidesFromAiJson(res.json ?? res.raw ?? res.text, min)
+        return true
+      } catch {
+        return false
+      }
+    }
+  const runScriptCall = (userMessage: string, min: number) => completeWithFallback({
     systemMessage: VIDEO_SYSTEM,
     userMessage,
     responseFormat: 'json',
     modelRole: 'fast',
     feature: 'course-video-script',
-  })
+  }, makeScriptGate(min))
 
   let slides: VideoSlide[]
   let chapters: LessonChapter[]
   if (minutes <= 15) {
-    const runScript = async () => runScriptCall(VIDEO_PROMPT(topic, techStack, textContent, minutes, ctx))
+    const runScript = async () => runScriptCall(VIDEO_PROMPT(topic, techStack, textContent, minutes, ctx), minTotal)
     let videoRes = await runScript()
 
     try {
@@ -739,7 +772,7 @@ export async function generateLessonVideo(opts: {
       if (rem > 0) rem--
       const info: ActInfo = { index: i + 1, total: acts.length, slides: budget, isLast: i === acts.length - 1, actTitle: acts[i].title }
       const floor = actMinSlides(budget)
-      const runAct = async () => runScriptCall(VIDEO_PROMPT(topic, techStack, acts[i].text, minutes, ctx, info))
+      const runAct = async () => runScriptCall(VIDEO_PROMPT(topic, techStack, acts[i].text, minutes, ctx, info), floor)
       let actRes = await runAct()
       let actSlides: VideoSlide[]
       try {
@@ -760,18 +793,41 @@ export async function generateLessonVideo(opts: {
 
   const extras = extractLessonExtras(slides)
   const fullSpoken = slides.map(s => s.spokenText).join(' ')
-  const audioBuffer = await synthesizeTts(fullSpoken)
-  // Word-count frame estimates drift from real Google TTS length — align visuals to the MP3.
-  const measured = await measureAudioDurationSeconds(audioBuffer)
-  const audioSeconds = measured > 0 ? measured : estimateSpokenSeconds(fullSpoken)
-  slides = alignSlideDurationsToAudio(slides, audioSeconds, 30)
-  const durationSeconds = slides.reduce((n, s) => n + s.durationInFrames, 0) / 30
+
+  // TTS is a free, no-key endpoint that rate-limits hard under bulk load. When
+  // the voiceover can't be produced we still ship a SILENT MP4 (the slides are
+  // already written) so the lesson gets a playable video attached to the course.
+  // Narration is a retry, not a gate — a lesson that never attaches is worse
+  // than one without audio.
+  let audioBuffer: Buffer
+  let ttsOk = true
+  try {
+    audioBuffer = await synthesizeTts(fullSpoken)
+  } catch (e) {
+    ttsOk = false
+    audioBuffer = Buffer.alloc(0)
+    console.warn('[course-video] TTS unavailable — rendering silent video:', e instanceof Error ? e.message : e)
+  }
+
+  let finalSlides = slides
+  let durationSeconds: number
+  if (ttsOk) {
+    // Word-count frame estimates drift from real Google TTS length — align visuals to the MP3.
+    const measured = await measureAudioDurationSeconds(audioBuffer)
+    const audioSeconds = measured > 0 ? measured : estimateSpokenSeconds(fullSpoken)
+    finalSlides = alignSlideDurationsToAudio(slides, audioSeconds, 30)
+    durationSeconds = finalSlides.reduce((n, s) => n + s.durationInFrames, 0) / 30
+  } else {
+    // Silent: keep the word-count-estimated frame durations from withDurations.
+    durationSeconds = slides.reduce((n, s) => n + s.durationInFrames, 0) / 30
+  }
 
   return {
     textContent,
-    script: slides,
+    script: finalSlides,
     audioBuffer,
-    durationSeconds: Math.max(60, Math.round(durationSeconds || audioSeconds)),
+    ttsOk,
+    durationSeconds: Math.max(60, Math.round(durationSeconds)),
     takeaways: extras.takeaways,
     quickCheck: extras.quickCheck,
     nextTeaser: extras.nextTeaser,
