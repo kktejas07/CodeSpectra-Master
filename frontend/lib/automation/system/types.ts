@@ -6,7 +6,7 @@ export interface SystemAutomation {
   id: string
   title: string
   description: string
-  group: 'Assessments' | 'Billing' | 'Hiring' | 'Events' | 'Engagement' | 'Operations'
+  group: 'Assessments' | 'Billing' | 'Hiring' | 'Events' | 'Engagement' | 'Operations' | 'AI Tools'
   /** Audit ids this closes (shown to admins). */
   refs: string[]
   /** Periodic sweep. */

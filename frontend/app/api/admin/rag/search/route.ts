@@ -4,16 +4,19 @@
  * ({ results: [{ text, source, score }] }) plus the new `hits`.
  */
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
+import { requireSuperAdminOrInternal } from '@/lib/route-auth'
 import { callerFromUser, logSearch } from '@/lib/rag/admin'
 import { searchKnowledge } from '@/lib/rag/search'
 
 export const dynamic = 'force-dynamic'
 
+/** System caller used when the request comes from internal automation (no session). */
+const AUTOMATION_CALLER = { userId: 'system', role: 'superadmin' as const, tenantId: null, name: 'Automation', email: 'system@internal' }
+
 export async function POST(request: Request) {
-  const gate = await requireSuperAdmin()
+  const gate = await requireSuperAdminOrInternal(request)
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
-  const caller = callerFromUser(gate.user)
+  const caller = 'internal' in gate && gate.internal ? AUTOMATION_CALLER : callerFromUser(gate.user)
   if (!caller) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   let query = ''

@@ -252,6 +252,25 @@ export async function requireSuperAdmin() {
 }
 
 /**
+ * Allows calls from the internal automation scheduler (lib/automation/system/*)
+ * in addition to real superadmin sessions. The internal scheduler uses the
+ * per-process internalCronToken() (lib/cron-auth.ts) so this never widens
+ * access to external callers — the token is never exposed outside the process.
+ *
+ * Usage: replace `requireSuperAdmin()` with this in routes that the AI Tools
+ * automations need to call (RAG reindex, search, hiring-agent sweep, etc.).
+ */
+export async function requireSuperAdminOrInternal(request: Request) {
+  // Check internal automation token first (no DB round-trip needed).
+  const { isCronAuthorized } = await import('@/lib/cron-auth')
+  if (isCronAuthorized(request)) return { user: null as APIUser | null, internal: true as const }
+  // Fall back to normal superadmin session check.
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return gate
+  return { user: gate.user, internal: false as const }
+}
+
+/**
  * SEC-009 / A-041: required admin 2FA applies to the admin API too, not only
  * to pages — after the same grace period a stolen admin password alone can no
  * longer drive /api/admin/*. The 2FA setup routes use requireAuth, so the

@@ -37,6 +37,7 @@ import { LEARNING_NUDGE_AUTOMATIONS } from './nudges-learning'
 import { BILLING_NUDGE_AUTOMATIONS } from './nudges-billing'
 import { HIRING_NUDGE_AUTOMATIONS } from './nudges-hiring'
 import { OPS_NUDGE_AUTOMATIONS } from './nudges-ops'
+import { AI_TOOL_AUTOMATIONS } from './ai-tools'
 
 export const SYSTEM_AUTOMATIONS: readonly SystemAutomation[] = [
   ...SIGNAL_AUTOMATIONS,
@@ -54,6 +55,8 @@ export const SYSTEM_AUTOMATIONS: readonly SystemAutomation[] = [
   ...BILLING_NUDGE_AUTOMATIONS,
   ...HIRING_NUDGE_AUTOMATIONS,
   ...OPS_NUDGE_AUTOMATIONS,
+  // Wave 16: AI Tools — 12 automations covering all AI admin modules.
+  ...AI_TOOL_AUTOMATIONS,
 ]
 
 /** Wrap a handler so each call records the automation's heartbeat. */
