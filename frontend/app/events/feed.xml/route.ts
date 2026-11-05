@@ -18,10 +18,12 @@ export async function GET() {
   const items = events.map((ev) => {
     const link = ev.internal && ev.url.startsWith('/') ? `${site}${ev.url}` : `${site}/events/${encodeURIComponent(ev.id)}`
     const when = ev.starts_at ? formatRange(ev.starts_at, ev.ends_at, 'UTC') + ' (UTC)' : 'Dates to be announced'
+    const pubDate = ev.starts_at ? new Date(ev.starts_at).toUTCString() : new Date().toUTCString()
     return `    <item>
       <title>${escapeHtml(ev.title)}</title>
       <link>${escapeHtml(link)}</link>
       <guid isPermaLink="false">codespectra-event-${escapeHtml(ev.id)}</guid>
+      <pubDate>${pubDate}</pubDate>
       <description>${escapeHtml(`${KIND_LABELS[ev.kind]} · ${when}. ${ev.summary}`)}</description>
       <category>${escapeHtml(KIND_LABELS[ev.kind])}</category>
     </item>`

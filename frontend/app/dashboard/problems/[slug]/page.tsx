@@ -1141,9 +1141,14 @@ export default function ProblemDetailPage() {
 }
 
 function Markdownish({ text }: { text: string }) {
+  // ponytail: controlled subset HTML — escape ALL special chars first, then
+  // re-introduce only the allowed tags via regex. Order matters: & must be first.
   const html = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
     .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-muted text-foreground font-mono text-sm border border-border/50">$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-foreground">$1</strong>')
     .replace(/\n\n/g, '</p><p class="mt-4">')
