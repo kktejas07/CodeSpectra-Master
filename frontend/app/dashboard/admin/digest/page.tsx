@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Eye, ExternalLink, Loader2, Newspaper, Play, Save } from 'lucide-react'
+import { Eye, ExternalLink, Loader2, Newspaper, Play, Save, Share2 } from 'lucide-react'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -107,6 +107,18 @@ export default function AdminDigestPage() {
     }
   }
 
+  const shareDigest = async (date: string) => {
+    setBusy(`share:${date}`)
+    try {
+      const d = await post({ action: 'share', date })
+      addToast({ type: 'success', title: `Queued ${d.queued ?? 0} social share entries` })
+    } catch {
+      addToast({ type: 'error', title: 'Failed to queue social shares' })
+    } finally {
+      setBusy('')
+    }
+  }
+
   const saveSettings = async () => {
     if (!form) return
     setBusy('save')
@@ -199,6 +211,11 @@ export default function AdminDigestPage() {
                         <div className="flex flex-wrap gap-2">
                           {d.status === 'published' && (
                             <Button asChild variant="outline" size="sm"><Link href={`/digest/${d.date}`} target="_blank">{t('digest.view')} <ExternalLink className="ml-1 h-3 w-3" aria-hidden /></Link></Button>
+                          )}
+                          {d.status === 'published' && (
+                            <Button size="sm" variant="outline" onClick={() => shareDigest(d.date)} disabled={!!busy} title="Queue social share entries for this digest">
+                              {busy === `share:${d.date}` ? <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden /> : <Share2 className="mr-1 h-3 w-3" aria-hidden />}Share
+                            </Button>
                           )}
                           {d.status !== 'published' ? (
                             <Button size="sm" onClick={() => setStatus(d.date, 'publish')} disabled={!!busy}>{t('digest.publish')}</Button>

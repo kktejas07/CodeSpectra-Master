@@ -7,6 +7,7 @@
  *       { action: 'settings', patch }        weights, quotas, N, time, auto-publish, AI caps
  *       { action: 'templates', patch }       heading / intro / outro / section headings per language
  *       { action: 'publish' | 'unpublish', date }
+ *       { action: 'share', date }            (re-)queue social share entries for a published digest
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -59,6 +60,7 @@ const Body = z.discriminatedUnion('action', [
   z.object({ action: z.literal('templates'), patch: DigestTemplatesPatchSchema }),
   z.object({ action: z.literal('publish'), date: z.string().refine(isDigestDate) }),
   z.object({ action: z.literal('unpublish'), date: z.string().refine(isDigestDate) }),
+  z.object({ action: z.literal('share'), date: z.string().refine(isDigestDate) }),
 ])
 
 export async function POST(req: NextRequest) {
@@ -93,9 +95,21 @@ export async function POST(req: NextRequest) {
       await audit('publish', b.date)
       return NextResponse.json({ ok: true, digest: d })
     }
-    const ok = await svc.unpublishDigest(b.date)
-    await audit('unpublish', b.date)
-    return NextResponse.json({ ok })
+    if (b.action === 'unpublish') {
+      const ok = await svc.unpublishDigest(b.date)
+      await audit('unpublish', b.date)
+      return NextResponse.json({ ok })
+    }
+    // action === 'share': (re-)queue social share entries for a published digest
+    {
+      const digest = await (await import('@/lib/digest/store')).getDigest(b.date)
+      if (!digest) return NextResponse.json(apiErrorFor('not_found'), { status: 404 })
+      if (digest.status !== 'published') return NextResponse.json({ error: 'Digest must be published before sharing.' }, { status: 422 })
+      const ids = await svc.queueShareEntries(digest)
+      if (ids.length) await (await import('@/lib/digest/store')).digestsCol().then((col) => col.updateOne({ date: b.date }, { $set: { social_ids: ids } }))
+      await audit('share', `${b.date}: ${ids.length} entries`)
+      return NextResponse.json({ ok: true, queued: ids.length })
+    }
   } catch (e) {
     console.error('[digest] admin POST:', (e as Error)?.message)
     return NextResponse.json(apiErrorFor('server_error'), { status: 500 })

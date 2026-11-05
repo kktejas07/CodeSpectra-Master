@@ -26,6 +26,8 @@ export interface IngestReport {
   errors: string[]
   blocked?: string
   ids: string[]
+  /** Human-readable titles of newly created drafts; parallel to `ids`. */
+  titles: string[]
 }
 
 export interface IngestDeps {
@@ -41,7 +43,7 @@ function fallbackBody(text: string, link: string): string {
 
 export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; deps?: IngestDeps } = {}): Promise<IngestReport> {
   const now = opts.now || new Date()
-  const rep: IngestReport = { created: 0, published: 0, skipped: 0, errors: [], ids: [] }
+  const rep: IngestReport = { created: 0, published: 0, skipped: 0, errors: [], ids: [], titles: [] }
   const store = await import('./store')
   const settings = await store.getSignalSettings()
   // Local mirror of the usage counters so the cap is re-checked after every item.
@@ -120,6 +122,7 @@ export async function runSignalsIngest(opts: { now?: Date; maxFeeds?: number; de
         rep.created++
         created++
         rep.ids.push(doc.id)
+        rep.titles.push(doc.title)
         if (shouldAutoPublish({ trusted: feed.trusted, autoPublishTrusted: settings.auto_publish_trusted, aiRewritten: Boolean(rewritten), flagged: flags.length > 0, factsVerified: factCheck?.ok === true })) {
           await publishDraft(doc, { by: 'signals-bot', auto: true })
           rep.published++

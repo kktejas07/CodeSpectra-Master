@@ -27,10 +27,10 @@ async function postImpl(req: NextRequest) {
   // Auto-draft: after ingesting new signals, kick off one blog draft in the
   // background (fire-and-forget) so the signals pipeline produces content
   // without blocking the cron window.
-  // ponytail: one draft per ingest run; the topic is the first newly-created
-  // signal id used as a seed — the service will rewrite it into a fresh title.
-  if (r.created > 0 && r.ids && r.ids.length > 0) {
-    const topic = String(r.ids[0])
+  // ponytail: one draft per ingest run; use the title of the first created
+  // signal as the topic so the blog draft is semantically meaningful.
+  if (r.created > 0 && r.titles && r.titles.length > 0) {
+    const topic = r.titles[0]
     runAutoDraft(topic, 'signals').catch((err: unknown) => {
       console.error('[signals-ingest] auto-draft fire-and-forget error:', err)
     })
