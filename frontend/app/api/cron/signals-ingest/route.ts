@@ -11,6 +11,7 @@ import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { withCronWindow } from '@/lib/automation/job-lease'
 import { runSignalsIngest } from '@/lib/signals/ingest'
+import { runAutoDraft } from '@/lib/admin/blog/auto-draft-service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,6 +23,19 @@ async function postImpl(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   const r = await runSignalsIngest()
+
+  // Auto-draft: after ingesting new signals, kick off one blog draft in the
+  // background (fire-and-forget) so the signals pipeline produces content
+  // without blocking the cron window.
+  // ponytail: one draft per ingest run; the topic is the first newly-created
+  // signal id used as a seed — the service will rewrite it into a fresh title.
+  if (r.created > 0 && r.ids && r.ids.length > 0) {
+    const topic = String(r.ids[0])
+    runAutoDraft(topic, 'signals').catch((err: unknown) => {
+      console.error('[signals-ingest] auto-draft fire-and-forget error:', err)
+    })
+  }
+
   return NextResponse.json({ ok: true, ...r })
 }
 

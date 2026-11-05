@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
+import { PROVIDER_FALLBACK_CHAIN } from '@/lib/ai/provider-fallback'
 
 export const runtime = 'nodejs'
 
 // Frontend proxy: browser → POST /api/learning/generate-course → backend /internal/ai/generate-course
-const FALLBACK_PROVIDERS = [
-  { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast', endpoint: 'https://api.brocode.live/v1' },
-  { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1' },
-  { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
-  { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
-  { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
-  { provider: 'opencode', model: 'deepseek-v4-flash-free', endpoint: undefined },
-]
+// ponytail: use the canonical chain from provider-fallback.ts instead of a stale inline copy.
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
@@ -38,10 +32,10 @@ export async function POST(req: NextRequest) {
     include_certificate: body.includeCertificate === true || body.include_certificate === true,
   }
 
-  const providers = [{ provider: providerOverride, model: modelOverride, modelRole }]
-  for (const fb of FALLBACK_PROVIDERS) {
+  const providers = [{ provider: providerOverride, model: modelOverride, endpoint: undefined as string | undefined, modelRole }]
+  for (const fb of PROVIDER_FALLBACK_CHAIN) {
     if (!providers.find((p) => p.provider === fb.provider)) {
-      providers.push({ provider: fb.provider, model: fb.model, modelRole })
+      providers.push({ provider: fb.provider, model: fb.model, endpoint: fb.endpoint, modelRole })
     }
   }
 
@@ -52,7 +46,7 @@ export async function POST(req: NextRequest) {
       const data = await backendPost<Record<string, unknown>>(
         '/internal/ai/generate-course',
         payload,
-        { providerOverride: p.provider, modelOverride: p.model, modelRole: p.modelRole },
+        { providerOverride: p.provider, modelOverride: p.model, modelRole: p.modelRole as 'reasoning' | 'fast' | undefined, endpointOverride: p.endpoint },
       )
       return NextResponse.json(data)
     } catch (e) {

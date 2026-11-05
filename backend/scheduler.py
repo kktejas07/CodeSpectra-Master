@@ -1,10 +1,51 @@
 import asyncio
 import logging
+import os
 from models.ai import GenerateCourseReq
 from services.ai import handle_generate_course
 
 # Run every 12 hours
 GENERATION_INTERVAL_SEC = 12 * 60 * 60
+
+# Topic rotation: each scheduler run picks the next topic in this list.
+# Override via SCHEDULER_TOPICS env var as a comma-separated list.
+# ponytail: rotating topics diversifies auto-generated content without
+# requiring a live database lookup; ceiling is SCHEDULER_TOPICS.
+_DEFAULT_TOPICS = [
+    ("Python", "Intermediate", "Advanced Data Structures in Python"),
+    ("JavaScript", "Beginner", "Modern JavaScript Fundamentals"),
+    ("TypeScript", "Intermediate", "TypeScript for Full-Stack Development"),
+    ("React", "Intermediate", "Building Scalable React Applications"),
+    ("Node.js", "Intermediate", "Server-Side Development with Node.js"),
+    ("SQL", "Beginner", "Relational Databases and SQL Essentials"),
+    ("Go", "Beginner", "Go Programming Fundamentals"),
+    ("Rust", "Intermediate", "Systems Programming with Rust"),
+    ("Docker", "Beginner", "Containerisation with Docker"),
+    ("Kubernetes", "Intermediate", "Container Orchestration with Kubernetes"),
+    ("System Design", "Advanced", "Designing Scalable Distributed Systems"),
+    ("Data Structures", "Intermediate", "Core Data Structures for Interviews"),
+    ("Algorithms", "Intermediate", "Algorithmic Thinking and Problem Solving"),
+    ("Machine Learning", "Intermediate", "Practical Machine Learning with Python"),
+    ("DevOps", "Intermediate", "CI/CD Pipelines and DevOps Practices"),
+]
+
+def _get_topics():
+    raw = os.environ.get("SCHEDULER_TOPICS", "").strip()
+    if raw:
+        # Format: "Python:Intermediate:Goal text, JS:Beginner:Goal text"
+        parsed = []
+        for item in raw.split("|"):
+            parts = item.strip().split(":", 2)
+            if len(parts) == 3:
+                parsed.append((parts[0].strip(), parts[1].strip(), parts[2].strip()))
+            elif len(parts) == 1 and parts[0]:
+                parsed.append((parts[0].strip(), "Intermediate", f"Core {parts[0].strip()} Skills"))
+        if parsed:
+            return parsed
+    return _DEFAULT_TOPICS
+
+# Track which topic to run next (simple in-memory rotation).
+_topic_index = 0
 
 
 class _SchedulerRequest:
@@ -21,15 +62,19 @@ class _SchedulerRequest:
 async def _run_once() -> None:
     """Run one course-generation cycle. Factored out so the loop and
     an on-startup immediate run share the same logic."""
-    logging.info("Running scheduled course generation...")
+    global _topic_index
+    topics = _get_topics()
+    technology, level, goal = topics[_topic_index % len(topics)]
+    _topic_index += 1
+    logging.info(f"Running scheduled course generation: {technology} / {level} / {goal}")
     # handle_generate_course(request, req: GenerateCourseReq) — the
     # real signature takes exactly two args. Construct the request
     # model properly; the scheduler has no HTTP request, so pass a
     # minimal stub exposing only .headers / .client.
     req = GenerateCourseReq(
-        technology="Python",
-        level="Intermediate",
-        goal="Advanced Data Structures in Python",
+        technology=technology,
+        level=level,
+        goal=goal,
         duration_hours=10,
     )
     await handle_generate_course(

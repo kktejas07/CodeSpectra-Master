@@ -10,6 +10,7 @@
 import { backendComplete, backendPost } from '@/lib/ai/backend'
 import { estimateTokens, reportAiUsage } from '@/lib/ai/usage-meter'
 import { resolveModel } from '@/lib/ai/get-user-model'
+import { PROVIDER_FALLBACK_CHAIN } from '@/lib/ai/provider-fallback'
 import { aiGeneratedProblems, newId, nowIso } from '@/lib/db/ai'
 import { problems } from '@/lib/db/problems'
 import type { ServiceUser } from './result'
@@ -27,21 +28,17 @@ export interface GenerateProblemInput {
   level?: string
 }
 
-const FALLBACK_PROVIDERS = [
-  { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1' },
-  { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
-  { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
-  { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
-  { provider: 'opencode', model: 'deepseek-v4-flash-free', endpoint: undefined },
-]
+// ponytail: removed stale inline FALLBACK_PROVIDERS; use canonical chain from provider-fallback.ts.
 
 /** Run the generator with provider fallback. null = every provider failed. No DB writes. */
 export async function generateCodingProblem(userId: string, body: GenerateProblemInput): Promise<Record<string, unknown> | null> {
   const { providerOverride, modelOverride, modelRole } = await resolveModel(userId, 'grade_model')
-  const providers = [{ provider: providerOverride, model: modelOverride, modelRole }]
-  for (const fb of FALLBACK_PROVIDERS) {
+  const providers: { provider: string | undefined; model: string | undefined; endpoint?: string; modelRole: string | undefined }[] = [
+    { provider: providerOverride, model: modelOverride, modelRole },
+  ]
+  for (const fb of PROVIDER_FALLBACK_CHAIN) {
     if (!providers.find(p => p.provider === fb.provider)) {
-      providers.push({ provider: fb.provider, model: fb.model, modelRole })
+      providers.push({ provider: fb.provider, model: fb.model, endpoint: fb.endpoint, modelRole })
     }
   }
 
@@ -58,7 +55,7 @@ export async function generateCodingProblem(userId: string, body: GenerateProble
           ...(body.tech_stack ? { tech_stack: body.tech_stack } : {}),
           ...(body.level ? { level: body.level } : {}),
         },
-        { providerOverride: p.provider, modelOverride: p.model, modelRole: p.modelRole },
+        { providerOverride: p.provider, modelOverride: p.model, modelRole: p.modelRole as 'reasoning' | 'fast' | undefined, endpointOverride: p.endpoint },
       )) as Record<string, unknown>
       // AGT-002: meter generation (backendPost reports no usage — estimate from sizes).
       const usage = (out?.usage && typeof out.usage === 'object' ? out.usage : {}) as Record<string, unknown>

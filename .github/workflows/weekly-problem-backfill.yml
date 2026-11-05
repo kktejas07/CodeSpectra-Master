@@ -1,0 +1,78 @@
+name: Weekly Problem Backfill
+
+# Runs every Monday at 03:17 UTC (jittered off the hour to avoid GH Actions
+# traffic spikes). Backfills coding problems for new technology topics so the
+# question bank stays fresh without manual admin action.
+#
+# ponytail: one workflow, one script call; the script owns topic selection and
+# de-dup logic. Ceiling: add topics to BACKFILL_TOPICS or extend the script.
+
+on:
+  schedule:
+    # 03:17 UTC every Monday
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      topics:
+        description: 'Comma-separated topics to backfill (leave empty for defaults)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry run (print topics, skip generation)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-problem-backfill
+  cancel-in-progress: false   # never cancel an in-flight backfill
+
+jobs:
+  backfill:
+    name: Backfill coding problems
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      # DB + AI credentials — same set the app uses; stored as repo secrets.
+      MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+      # AI provider keys (at least one is required; the script falls back
+      # through the canonical PROVIDER_FALLBACK_CHAIN).
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GOOGLE_GEMINI_API_KEY: ${{ secrets.GOOGLE_GEMINI_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      BROCODE_API_KEY: ${{ secrets.BROCODE_API_KEY }}
+      # How many verified problems to target (optional; default 100).
+      BACKFILL_COUNT: ${{ github.event.inputs.topics && '50' || '100' }}
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: frontend/.node-version
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Run backfill script
+        working-directory: frontend
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "[dry-run] Would run: yarn tsx scripts/backfill-problems.ts --count=$BACKFILL_COUNT"
+          else
+            yarn tsx scripts/backfill-problems.ts --count="${BACKFILL_COUNT:-100}"
+          fi
