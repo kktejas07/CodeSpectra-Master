@@ -1,11 +1,6 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-  const [page, setPage] = useState(1)
-  const DAY_PAGE_SIZE = 12
-  const totalPages = Math.max(1, Math.ceil(HUNDRED_DAYS.length / DAY_PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const pagedDays = HUNDRED_DAYS.slice((safePage - 1) * DAY_PAGE_SIZE, safePage * DAY_PAGE_SIZE)
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -53,6 +48,13 @@ export default function HundredDaysPage() {
   const [userRank, setUserRank] = useState<{points: number, rank: number}>({points: 0, rank: 0})
   
   const [solvedProblems, setSolvedProblems] = useState<Set<string>>(new Set())
+  // Pagination lives INSIDE the component: the first patch put these hooks at
+  // module scope, which throws React #321 and blanked the whole page (2026-11-02).
+  const DAY_PAGE_SIZE = 12
+  const [page, setPage] = useState(1)
+  const totalPages = Math.max(1, Math.ceil(HUNDRED_DAYS.length / DAY_PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pagedDays = HUNDRED_DAYS.slice((safePage - 1) * DAY_PAGE_SIZE, safePage * DAY_PAGE_SIZE)
 
   // Load progress from the server (it records every accepted sprint submission).
   useEffect(() => {

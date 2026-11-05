@@ -2669,6 +2669,25 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
     tips: ['Back to plan returns to your study plan.'],
   },
+  'practice-domain': {
+    title: 'Industry practice sets',
+    about: 'Pick an industry, tech stack and level — we generate coding problems grounded in that world and verify each one in the sandbox before it joins the library.',
+    features: [
+      {
+        title: 'Pick a coordinate',
+        text: 'Industry, tech stack / subject, and level. The set’s difficulty follows the level automatically.',
+      },
+      {
+        title: 'Verified problems',
+        text: 'Each problem is checked against its reference solution in the sandbox; only solvable problems are published and charged to you.',
+      },
+      {
+        title: 'Solve in the editor',
+        text: 'Every published problem links straight to its page in the Problems library with a full code editor and test runner.',
+      },
+    ],
+    tips: ['Problems that fail the sandbox gate are refunded automatically.'],
+  },
   leagues: {
     title: 'Leagues',
     about: 'Seasons across contests, codeathons, hackathons and the arena. Your college and your team climb the table with you.',

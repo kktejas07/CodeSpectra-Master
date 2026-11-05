@@ -336,7 +336,9 @@ def build_chat(
     elif provider == "nvidia" and not base_url:
         base_url = "https://integrate.api.nvidia.com/v1"
     elif provider == "custom" and not base_url:
-        from core.config import settings
+        # `settings` is imported at module level; importing it here made it a
+        # LOCAL name for the whole function, so the earlier uses above raised
+        # UnboundLocalError (500 on every AI route — CI caught it 2026-11-02).
         base_url = settings.CUSTOM_ENDPOINT or "https://www.brocode.live/api/v1"
     # Split comma-separated keys for multi-key rotation
     keys = [k.strip() for k in key.split(",") if k.strip()] if key else [""]

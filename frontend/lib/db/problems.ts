@@ -38,6 +38,16 @@ export interface ProblemDoc {
   time_limit_ms: number
   memory_limit_kb: number
   is_published: boolean
+  /**
+   * Official solution shown after the learner has an accepted submission
+   * (superadmins/editors see it too). `code` is language id → source; only
+   * verified entries (all test cases pass) are stored.
+   */
+  official_solution?: {
+    explanation_md: string
+    code: Record<string, string>
+    verified_at?: string
+  } | null
   visibility?: ProblemVisibility
   hackathon_id?: string | null
   created_by?: string | null
@@ -93,4 +103,17 @@ export async function problems(): Promise<Collection<ProblemDoc>> {
 
 export async function submissions(): Promise<Collection<SubmissionDoc>> {
   return (await db()).collection<SubmissionDoc>('submissions')
+}
+
+/** A learner paid credits to reveal one problem's official solution. */
+export interface SolutionUnlockDoc {
+  id: string
+  user_id: string
+  problem_id: string
+  credits: number
+  created_at: string
+}
+
+export async function solutionUnlocks(): Promise<Collection<SolutionUnlockDoc>> {
+  return (await db()).collection<SolutionUnlockDoc>('problem_solution_unlocks')
 }

@@ -1442,5 +1442,16 @@
   "order_refunded": "This order was refunded, so it can't be activated.",
   "payment_mismatch": "This payment doesn't match the order. If you were charged, contact support with your payment ID.",
   "qr_revoked": "This QR code has been revoked.",
-  "kyc_session_create_failed": "We couldn't start identity verification. Try again in a few minutes."
+  "kyc_session_create_failed": "We couldn't start identity verification. Try again in a few minutes.",
+  "upstream_error": "Upstream provider error ({status})",
+  "invalid_model": "Invalid model: {model}",
+  "certificate_finish_required": "Finish {parts} to get your certificate",
+  "ai_unavailable": "AI analysis is unavailable right now. Try again in a moment.",
+  "solution_missing": "This problem has no official solution yet",
+  "bad_industry": "Unknown industry",
+  "bad_level": "Unknown level",
+  "video_storage_required": "Object storage (Admin → Settings → Cloudflare) is required to generate problem videos.",
+  "video_no_problems": "No published problems found for those ids.",
+  "video_job_failed": "Could not queue the video job. Try again.",
+  "problem_ids_required": "problemIds is required"
 }

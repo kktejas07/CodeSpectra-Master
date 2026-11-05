@@ -140,7 +140,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!upstream.ok || !upstream.body) {
     await charge.refund()
     return NextResponse.json(
-      { error: `LLM upstream ${upstream.status}` },
+      { error: 'Upstream provider error', code: 'upstream_error', params: { status: upstream.status } },
       { status: 502 },
     )
   }

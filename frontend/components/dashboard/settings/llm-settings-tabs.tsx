@@ -1,5 +1,6 @@
 'use client'
 
+import { useAdminT } from '@/lib/i18n/admin'
 import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -144,6 +145,7 @@ function groupByCategory(providers: ProviderKey[]): Record<string, ProviderKey[]
 }
 
 export function LlmSettingsTabs() {
+  const { t: ta } = useAdminT()
   const addToast = useToast()
   const [activeTab, setActiveTab] = useState('keys')
   const [secretsDraft, setSecretsDraft] = useState<Record<string, string>>({})
@@ -629,11 +631,11 @@ export function LlmSettingsTabs() {
                                 <p className="text-[10px] text-muted-foreground">e.g. <code className="bg-muted px-1 rounded font-mono text-[10px]">https://api.brocode.live/v1</code></p>
                               </div>
                               <div className="grid gap-1.5">
-                                <Label className="text-[11px] text-muted-foreground">Model</Label>
-                                <Input aria-label="Model"
+                                <Label className="text-[11px] text-muted-foreground">{ta('llm.model')}</Label>
+                                <Input aria-label={ta('llm.model')}
                                   value={customModel}
                                   onChange={(e) => setCustomModel(e.target.value)}
-                                  placeholder="e.g. meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast"
+                                  placeholder={ta('llm.customModelPlaceholder')}
                                   className="h-8 text-xs font-mono"
                                   list="brocode-models"
                                 />
@@ -661,7 +663,7 @@ export function LlmSettingsTabs() {
                                 Save gateway
                               </Button>
                               <p className="text-[10px] text-muted-foreground">
-                                Once saved, this gateway becomes the <strong>primary AI provider</strong> for all features (agent, EDITH, hiring AI).
+                                {ta('llm.gatewayBecomesPrimaryPrefix')} <strong>{ta('llm.primaryAiProvider')}</strong> {ta('llm.gatewayBecomesPrimarySuffix')}
                               </p>
                             </div>
                           )}

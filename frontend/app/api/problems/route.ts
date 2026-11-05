@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { requireAdmin, getAPIUser, gateErrorBody } from '@/lib/route-auth'
 import { accessFor, getPackContext } from '@/lib/entitlements'
-import { problems, nowIso, newId, type ProblemDoc } from '@/lib/db/problems'
+import { problems, submissions, nowIso, newId, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { SEED_PROBLEMS_BULK } from '@/scripts/seed-problems-bulk'
 import { sanitizeRegex } from '@/lib/sanitize'
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     const col = await problems()
     const list = await col
-      .find(filter, { projection: { test_cases: 0, starter_code: 0, statement_md: 0 } })
+      .find(filter, { projection: { test_cases: 0, starter_code: 0, statement_md: 0, official_solution: 0 } })
       .sort({ created_at: -1 })
       .limit(limitParam || 0)
       .toArray()
@@ -111,16 +111,28 @@ export async function GET(request: NextRequest) {
       })
       // Pack locks for this viewer (the problem page and run / submit enforce them server-side).
       const viewer = await getAPIUser().catch(() => null)
+      // Solved marks: one query for the whole page (the list had no solved state
+      // at all, so an accepted submission never showed up as Solved).
+      let solvedIds = new Set<string>()
+      if (viewer) {
+        const ids = uniqueList.map((p) => p.id).filter(Boolean)
+        if (ids.length) {
+          const rows = await (await submissions())
+            .find({ user_id: viewer.id, status: 'accepted', problem_id: { $in: ids } }, { projection: { problem_id: 1 } })
+            .toArray()
+          solvedIds = new Set(rows.map((r) => String(r.problem_id)))
+        }
+      }
       const ctx = await getPackContext(viewer).catch((e) => {
         console.error('[problems] pack context failed:', e)
         return null
       })
-      const data = ctx
-        ? uniqueList.map((p) => {
-            const a = accessFor(ctx, { id: p.id, slug: p.slug, topics: p.topics })
-            return a.packIds.length ? { ...p, locked: a.locked, unlock_pack: a.locked ? a.unlockWith : null } : p
-          })
-        : uniqueList
+      const data = uniqueList.map((p) => {
+        const solved = solvedIds.has(String(p.id))
+        if (!ctx) return { ...p, solved }
+        const a = accessFor(ctx, { id: p.id, slug: p.slug, topics: p.topics })
+        return { ...p, solved, ...(a.packIds.length ? { locked: a.locked, unlock_pack: a.locked ? a.unlockWith : null } : {}) }
+      })
       return NextResponse.json({ data, count: data.length })
     }
   } catch (error) {

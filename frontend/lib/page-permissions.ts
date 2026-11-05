@@ -66,6 +66,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/ai-usage',
   '/dashboard/admin/question-generator',
   '/dashboard/admin/question-bot',
+  '/dashboard/admin/practice/domain',
   // Wave 15 assistants: switches, caps and run log (lib/assistants).
   '/dashboard/admin/assistants',
   '/dashboard/admin/interview-sim',
@@ -206,6 +207,8 @@ export const ALL_USER_ROUTES: string[] = [
   // Personalised study plan (APIs scope every read/write to the signed-in learner)
   '/dashboard/study-plan',
   '/dashboard/study-plan/practice/[id]',
+  // Industry / tech-stack / level practice problem sets (credit-gated API)
+  '/dashboard/practice/domain',
 
   // Events & Competitions
   '/dashboard/events',
@@ -425,6 +428,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/kyc': 'KYC verification',
   '/dashboard/arena': 'Arena',
   '/dashboard/problems': 'Problems',
+  '/dashboard/practice/domain': 'Practice sets',
   '/dashboard/tracks': 'Tracks',
   '/dashboard/scanner': 'Scanner',
   '/dashboard/agent': 'Agent',
@@ -522,6 +526,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/sso': 'SSO config',
   '/dashboard/admin/question-bank': 'Question bank',
   '/dashboard/admin/practice-review': 'Practice review',
+  '/dashboard/admin/practice/domain': 'Practice sets',
   '/dashboard/admin/hiring-manager-report': 'Hiring report',
   '/dashboard/admin/predictive-validity': 'Predictive validity',
   '/dashboard/admin/sme-review': 'SME review',

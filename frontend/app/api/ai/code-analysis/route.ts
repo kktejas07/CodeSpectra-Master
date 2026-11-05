@@ -50,5 +50,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await charge.refund()
     return NextResponse.json({ success: false, error: 'AI service unavailable' }, { status: 502 })
   }
+  // An empty object means the model answered nothing useful. Returning it as
+  // 200 left the AI-analysis tab blank; say so and give the credit back.
+  const hasAnalysis = result && (result.summary || result.time_complexity || result.efficiency_score !== undefined)
+  if (!hasAnalysis) {
+    await charge.refund()
+    return NextResponse.json({ error: 'AI analysis is unavailable right now. Try again in a moment.', code: 'ai_unavailable' }, { status: 502 })
+  }
   return NextResponse.json({ ...result, creditsCharged: charge.cost, balance: charge.balance })
 }

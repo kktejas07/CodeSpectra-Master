@@ -43,7 +43,7 @@ export interface SimUser { id: string; role?: string }
 
 async function callJson(system: string, user: string, feature: string, userId: string): Promise<{ json: unknown | null; cost: number }> {
   const { backendComplete } = await import('@/lib/ai/backend')
-  const { platformModelOverrides, extractJson } = await import('@/lib/interviews/ai-mock-engine')
+  const { platformModelOverrides, modelJson } = await import('@/lib/interviews/ai-mock-engine')
   const { costUsd } = await import('@/lib/agent/metering')
   const { estimateTokens, withUsageMeter } = await import('@/lib/ai/usage-meter')
   const overrides = await platformModelOverrides()
@@ -51,10 +51,13 @@ async function callJson(system: string, user: string, feature: string, userId: s
     // The recorder prices the call (lib/ai/usage-record); the token estimate is the fallback.
     let recorded: number | undefined
     const res = await withUsageMeter((u) => { if (typeof u.costMicros === 'number') recorded = (recorded ?? 0) + u.costMicros }, () => backendComplete({ systemMessage: system, userMessage: user, responseFormat: 'json', modelRole: 'fast', feature, userId, cache: false, ...overrides }))
-    const out = res.raw || res.text || (res.json !== undefined ? JSON.stringify(res.json) : '')
+    const out = res.raw || res.text || ''
     const cost = recorded !== undefined ? recorded / 1_000_000 : costUsd([{ provider: res.provider || '', model: res.model || overrides.modelOverride || '', inputTokens: res.usage?.input_tokens ?? estimateTokens(`${system}\n${user}`), outputTokens: res.usage?.output_tokens ?? estimateTokens(out) }])
     if (!res.ok) return { json: null, cost }
-    return { json: res.json !== undefined && res.json !== null ? res.json : extractJson(out), cost }
+    // The backend returns the model's answer in `raw` inside an envelope
+    // ({ ok, raw }); res.json is that envelope, not the plan. modelJson reads
+    // the payload — otherwise parsePlan saw no questions → 503 (2026-11-03).
+    return { json: modelJson(res), cost }
   } catch (e) {
     logger.warn(`[interview-sim] ${feature} AI call failed: ${(e as Error)?.message?.slice(0, 160)}`)
     return { json: null, cost: 0 }

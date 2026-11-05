@@ -475,5 +475,6 @@
   "subsConfirmedTitle": "Subscription confirmed",
   "subsConfirmTitle": "Confirm your subscription",
   "subsConfirmPrompt": "Press the button to start getting the updates you asked for.",
-  "subsConfirmButton": "Confirm subscription"
+  "subsConfirmButton": "Confirm subscription",
+  "navMore": "More"
 }

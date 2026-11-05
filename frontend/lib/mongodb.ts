@@ -79,8 +79,34 @@ function getClientPromise(): Promise<MongoClient> {
   return global._mongoClientPromise;
 }
 
+/**
+ * A cached MongoClient whose topology has closed (Mongo restart, network blip,
+ * container drain) answered "Topology is closed / Client must be connected"
+ * for every request until the process restarted — the intermittent login
+ * failures users saw (2026-11-03). Rebuild instead of serving a dead client.
+ */
+function isTopologyOpen(client: MongoClient): boolean {
+  try {
+    const t = (client as unknown as { topology?: { isConnected?: () => boolean } }).topology;
+    return typeof t?.isConnected === 'function' ? t.isConnected() : true;
+  } catch {
+    return true;
+  }
+}
+
+let reconnecting: Promise<MongoClient> | null = null;
+
 export async function getMongoClient(): Promise<MongoClient> {
-  return getClientPromise();
+  const client = await getClientPromise();
+  if (isTopologyOpen(client)) return client;
+  if (!reconnecting) {
+    console.warn("[mongodb] cached connection is closed — reconnecting");
+    global._mongoClientPromise = undefined;
+    reconnecting = getClientPromise().finally(() => {
+      reconnecting = null;
+    });
+  }
+  return reconnecting;
 }
 
 export async function getMongoDb(): Promise<Db> {

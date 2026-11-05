@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Loader2, MessageSquarePlus, Globe, Database, Zap, Shield } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
+import { Send, X, Loader2, MessageSquarePlus, Globe, Database, Zap, Shield, Bug, Search, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -22,6 +23,7 @@ type ContextMode = 'auto' | 'rag' | 'google' | 'none'
  * Streams via /api/ai/edith (SSE).
  */
 export function GoEdith() {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -125,7 +127,7 @@ export function GoEdith() {
               collectedSources.push(...parsed.sources)
             }
             if (parsed.error) {
-              acc += `\n\n⚠️ ${parsed.error}`
+              acc += `\n\n${parsed.error}`
             } else if (parsed.delta) {
               acc += parsed.delta
             }
@@ -171,8 +173,8 @@ export function GoEdith() {
         type="button"
         onClick={() => setOpen(true)}
         data-testid="go-edith-launcher"
-        title="GO EDITH — AI Assistant"
-        aria-label="Open GO EDITH AI assistant"
+        title={t('dashboard.edithPanelTitle')}
+        aria-label={t('dashboard.edithOpen')}
         className={cn(
           'fixed bottom-5 right-5 z-30 flex flex-col items-center justify-center gap-0.5',
           'h-14 w-14 rounded-2xl shadow-xl',
@@ -183,7 +185,7 @@ export function GoEdith() {
         )}
       >
         <Shield className="h-5 w-5" />
-        <span className="text-[9px] font-black tracking-widest leading-none">EDITH</span>
+        <span className="text-[9px] font-black tracking-widest leading-none">{t('dashboard.edithBadge')}</span>
       </button>
 
       {/* ── Slide-out panel ── */}
@@ -206,10 +208,10 @@ export function GoEdith() {
             </div>
             <div className="leading-tight">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold text-amber-300 tracking-wide">GO EDITH</span>
+                <span className="text-sm font-bold text-amber-300 tracking-wide">{t('dashboard.edithBrand')}</span>
                 <span className="inline-flex h-4 items-center rounded px-1 bg-amber-500/20 text-amber-400 text-[9px] font-bold tracking-widest">AI</span>
               </div>
-              <div className="text-[10px] text-amber-600/80 font-medium">Even Dead I&apos;m The Hero</div>
+              <div className="text-[10px] text-amber-600/80 font-medium">{t('dashboard.edithTagline')}</div>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -217,8 +219,8 @@ export function GoEdith() {
               variant="ghost"
               size="icon"
               onClick={newChat}
-              title="New conversation"
-              aria-label="New conversation"
+              title={t('dashboard.edithNewConversation')}
+              aria-label={t('dashboard.edithNewConversation')}
               className="h-8 w-8 text-amber-500/60 hover:text-amber-400 hover:bg-amber-500/10"
             >
               <MessageSquarePlus className="h-4 w-4" />
@@ -227,8 +229,8 @@ export function GoEdith() {
               variant="ghost"
               size="icon"
               onClick={() => setOpen(false)}
-              title="Close"
-              aria-label="Close EDITH"
+              title={t('dashboard.edithClose')}
+              aria-label={t('dashboard.edithCloseAssistant')}
               className="h-8 w-8 text-amber-500/60 hover:text-amber-400 hover:bg-amber-500/10"
             >
               <X className="h-4 w-4" />
@@ -289,7 +291,7 @@ export function GoEdith() {
                   void send()
                 }
               }}
-              placeholder="Ask EDITH anything — code, search, platform…"
+              placeholder={t('dashboard.edithPlaceholder')}
               rows={2}
               className={cn(
                 'flex-1 resize-none rounded-xl border bg-black/60 px-3 py-2 text-sm',
@@ -318,11 +320,14 @@ export function GoEdith() {
 
 /* ── Empty state ── */
 function EdithEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
-  const examples = [
-    '🐛 Summarize my last code scan — what issues were found?',
-    '⚡ How do I add my own API key to skip credits?',
-    '🔍 What does Big-O notation mean and why does it matter?',
-    '🤖 What can the AI Agent do that regular chat cannot?',
+  const { t } = useT()
+  // Icons, not emoji: an emoji prefix also used to be stripped with a regex
+  // before sending, which would have eaten the first word once removed.
+  const examples: { icon: typeof Bug; prompt: string }[] = [
+    { icon: Bug, prompt: 'Summarize my last code scan — what issues were found?' },
+    { icon: Zap, prompt: 'How do I add my own API key to skip credits?' },
+    { icon: Search, prompt: 'What does Big-O notation mean and why does it matter?' },
+    { icon: Bot, prompt: 'What can the AI Agent do that regular chat cannot?' },
   ]
   return (
     <div className="space-y-4 text-center pt-8">
@@ -330,24 +335,25 @@ function EdithEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
         <Shield className="h-7 w-7 text-amber-400" />
       </div>
       <div>
-        <p className="text-sm font-semibold text-amber-300">EDITH online.</p>
+        <p className="text-sm font-semibold text-amber-300">{t('dashboard.edithOnline')}</p>
         <p className="text-xs text-amber-700/80 mt-0.5">
-          LLM · RAG · Web Search — all at once.
+          {t('dashboard.edithCapabilities')}
         </p>
       </div>
       <div className="space-y-2 pt-1">
-        {examples.map((p) => (
+        {examples.map(({ icon: Icon, prompt }) => (
           <button
-            key={p}
+            key={prompt}
             type="button"
-            onClick={() => onPick(p.replace(/^[^\s]+ /, ''))}
+            onClick={() => onPick(prompt)}
             className={cn(
-              'block w-full rounded-xl border border-amber-500/10 bg-amber-950/20 px-3 py-2.5',
+              'flex w-full items-start gap-2 rounded-xl border border-amber-500/10 bg-amber-950/20 px-3 py-2.5',
               'text-left text-xs text-amber-400/80 hover:border-amber-500/30 hover:bg-amber-950/40 hover:text-amber-300',
               'transition-all',
             )}
           >
-            {p}
+            <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/70" aria-hidden />
+            <span>{prompt}</span>
           </button>
         ))}
       </div>
@@ -357,6 +363,7 @@ function EdithEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
 
 /* ── Message bubble ── */
 function EdithMessageBubble({ message }: { message: ChatMessage }) {
+  const { t } = useT()
   const isUser = message.role === 'user'
   return (
     <div className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
@@ -372,7 +379,7 @@ function EdithMessageBubble({ message }: { message: ChatMessage }) {
         {message.content || (message.pending ? (
           <span className="inline-flex items-center gap-1.5 text-amber-500/60 text-xs">
             <Loader2 className="h-3 w-3 animate-spin" />
-            EDITH processing…
+            {t('dashboard.edithProcessing')}
           </span>
         ) : null)}
       </div>

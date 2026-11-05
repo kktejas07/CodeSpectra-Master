@@ -19,14 +19,19 @@ export interface GenerateProblemInput {
   difficulty?: 'easy' | 'medium' | 'hard'
   topics?: string[]
   language_hint?: string
+  /** Domain framing (optional): the industry the role works in. */
+  industry?: string
+  /** Domain framing (optional): the tech stack the role works in. */
+  tech_stack?: string
+  /** Domain framing (optional): the career level the role is at. */
+  level?: string
 }
 
 const FALLBACK_PROVIDERS = [
-  { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast', endpoint: 'https://api.brocode.live/v1' },
-  { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1' },
+  { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1' },
   { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
-  { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
   { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
+  { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
   { provider: 'opencode', model: 'deepseek-v4-flash-free', endpoint: undefined },
 ]
 
@@ -49,6 +54,9 @@ export async function generateCodingProblem(userId: string, body: GenerateProble
           difficulty: body.difficulty || 'medium',
           topics: body.topics || [],
           language_hint: body.language_hint || 'python',
+          ...(body.industry ? { industry: body.industry } : {}),
+          ...(body.tech_stack ? { tech_stack: body.tech_stack } : {}),
+          ...(body.level ? { level: body.level } : {}),
         },
         { providerOverride: p.provider, modelOverride: p.model, modelRole: p.modelRole },
       )) as Record<string, unknown>
@@ -107,6 +115,8 @@ export interface SaveProblemOptions {
    * 'published' = pipeline: verified content that goes live immediately.
    */
   mode: 'legacy' | 'draft' | 'hackathon' | 'published'
+  /** Optional domain coordinate the problem was generated for (practice sets). */
+  domain?: { industry?: string; tech_stack?: string; level?: string }
 }
 
 /** Insert a generated problem. Returns its id + slug. */
@@ -152,6 +162,15 @@ export async function saveGeneratedProblem(
     // one organisation (AGT-006) — belong to that tenant, not the platform.
     if (user.tenantId) doc.tenant_id = user.tenantId
     if (result.tests_verified === false) doc.tests_verified = false
+    // Domain coordinate (practice sets): lets the practice page filter by the
+    // industry/stack/level the problem was generated for.
+    if (opts.domain && (opts.domain.industry || opts.domain.tech_stack || opts.domain.level)) {
+      doc.domain = {
+        industry: opts.domain.industry || null,
+        tech_stack: opts.domain.tech_stack || null,
+        level: opts.domain.level || null,
+      }
+    }
   }
   await probsCol.insertOne(doc as unknown as never)
   // RAG-003: copilot-created problems are searchable within a minute (not after the nightly sweep).
@@ -237,12 +256,28 @@ export async function checkTestsWithReference(
   }
 }
 
-/** Ask the model for a reference solution (Python) to the generated statement. */
-async function referenceSolution(result: Record<string, unknown>): Promise<{ language: string; code: string } | null> {
+/**
+ * A reference solution to run the tests against, in `primaryLanguage`.
+ *
+ * Root-cause fix: PREFER the generator's own `solution_code` — the backend writes
+ * it in the SAME call that authored the `test_cases`, so it is correlated with
+ * the expected outputs ("solution_code MUST pass all test_cases"). The old path
+ * re-solved the problem with a fresh, separate LLM call; that re-solve was
+ * uncorrelated and non-deterministically failed the sample tests, so otherwise
+ * valid problems were rejected by the sandbox gate. The fresh LLM call is now
+ * only the fallback for rows with no `solution_code`.
+ */
+async function referenceSolution(
+  result: Record<string, unknown>,
+  primaryLanguage = 'python',
+): Promise<{ language: string; code: string } | null> {
+  const own = String(result.solution_code ?? '').trim()
+  if (own) return { language: primaryLanguage, code: own }
+
   const tests = Array.isArray(result.test_cases) ? (result.test_cases as Record<string, unknown>[]) : []
   const samples = tests.filter((t) => t.is_sample).slice(0, 3)
   const res = await backendComplete({
-    systemMessage: 'You write correct, simple reference solutions for programming problems. Read stdin, write stdout. Return ONLY JSON: {"language":"python","code":"..."}',
+    systemMessage: `You write correct, simple reference solutions in ${primaryLanguage} for programming problems. Read stdin, write stdout. Return ONLY JSON: {"language":"${primaryLanguage}","code":"..."}`,
     userMessage: `Problem:\n${String(result.statement_md ?? '').slice(0, 6000)}\n\nInput format: ${String(result.input_format ?? '').slice(0, 1000)}\nOutput format: ${String(result.output_format ?? '').slice(0, 1000)}\n\nSample tests:\n${JSON.stringify(samples.map((t) => ({ stdin: t.stdin, expected_stdout: t.expected_stdout })))}`,
     responseFormat: 'json',
     modelRole: 'reasoning',
@@ -251,7 +286,7 @@ async function referenceSolution(result: Record<string, unknown>): Promise<{ lan
   }).catch(() => null)
   const j = (res?.ok && res.json && typeof res.json === 'object' ? res.json : null) as Record<string, unknown> | null
   const code = typeof j?.code === 'string' ? j.code : ''
-  return code.trim() ? { language: typeof j?.language === 'string' ? j.language : 'python', code } : null
+  return code.trim() ? { language: typeof j?.language === 'string' ? j.language : primaryLanguage, code } : null
 }
 
 /**
@@ -259,13 +294,17 @@ async function referenceSolution(result: Record<string, unknown>): Promise<{ lan
  * (Piston / local runner) and drop hidden tests with a wrong expected output.
  * Returns the (possibly filtered) result + a report for the preview.
  */
-export async function verifyGeneratedProblem(result: Record<string, unknown>): Promise<{ result: Record<string, unknown>; verification: TestVerification }> {
+export async function verifyGeneratedProblem(
+  result: Record<string, unknown>,
+  opts?: { language?: string },
+): Promise<{ result: Record<string, unknown>; verification: TestVerification }> {
   const tests = (Array.isArray(result.test_cases) ? result.test_cases : []).map((t) => {
     const o = (t && typeof t === 'object' ? t : {}) as Record<string, unknown>
     return { raw: o, stdin: String(o.stdin ?? ''), expected_stdout: String(o.expected_stdout ?? ''), is_sample: Boolean(o.is_sample ?? false) }
   })
+  const primaryLanguage = String(opts?.language || 'python').trim() || 'python'
   let reference: { language: string; code: string } | null = null
-  try { reference = await referenceSolution(result) } catch { reference = null }
+  try { reference = await referenceSolution(result, primaryLanguage) } catch { reference = null }
   const { executeOnce } = await import('@/lib/piston')
   const run: RunFn = async (o) => {
     const r = await executeOnce({ language: o.language, source: o.source, stdin: o.stdin })

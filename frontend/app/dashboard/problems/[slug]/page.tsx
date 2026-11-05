@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { readSseText } from '@/lib/ai/sse'
 import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useToast } from '@/lib/toast-context'
 import { useLockedFeatures } from '@/lib/use-page-guard'
@@ -49,6 +50,18 @@ interface Problem {
   hidden_test_count: number
   starter_code: Record<string, string>
   time_limit_ms: number
+  /** Accepted submission exists for the signed-in learner. */
+  solved?: boolean
+  /** Any submission exists — enough to unlock the official solution. */
+  attempted?: boolean
+  /** Revealed by paying credits (rather than by attempting). */
+  solution_unlocked?: boolean
+  /** The problem has a stored official solution. */
+  solution_available?: boolean
+  /** Credit price to reveal it without attempting. */
+  unlock_cost?: number
+  /** Present only when the API allows it (solved, editor or superadmin). */
+  official_solution?: { explanation_md: string; code: Record<string, string>; verified_at?: string }
 }
 
 interface RunResult {
@@ -132,6 +145,7 @@ export default function ProblemDetailPage() {
 
   const [submissionsList, setSubmissionsList] = useState<SubmissionRow[]>([])
   const [submissionsLoading, setSubmissionsLoading] = useState(false)
+  const [unlockingSolution, setUnlockingSolution] = useState(false)
   const [problemStats, setProblemStats] = useState<{ acceptance_rate: number | null; total_submissions: number } | null>(null)
   const [discussions, setDiscussions] = useState<DiscussionRow[]>([])
   const [discussionsLoading, setDiscussionsLoading] = useState(false)
@@ -307,11 +321,14 @@ export default function ProblemDetailPage() {
           message: tr('practice.youAreACodingMentorHelp3a8', { title: problem.title, statement_md: problem.statement_md, aiMentorMessage }),
         }),
       })
-      const data = await res.json()
-      if (res.ok) {
-        setAiMentorResponse(data.response || data.message || 'No response received.')
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        setAiMentorResponse(j.error || 'Sorry, I could not process your request. Please try again.')
       } else {
-        setAiMentorResponse('Sorry, I could not process your request. Please try again.')
+        // /api/ai/chat answers with an SSE stream — res.json() threw, which is
+        // why the mentor always said "Network error" (2026-11-04).
+        const text = await readSseText(res)
+        setAiMentorResponse(text || 'No response received.')
       }
     } catch {
       setAiMentorResponse('Network error. Please try again.')
@@ -410,6 +427,28 @@ export default function ProblemDetailPage() {
     setAnalysis(null)
   }
 
+  // Reveal the official solution before attempting: costs credits, recorded
+  // server-side so a refresh never charges twice.
+  async function unlockSolution() {
+    setUnlockingSolution(true)
+    try {
+      const res = await csrfFetch(`/api/problems/${slug}/solution-unlock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      const j = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) throw new Error(apiError(j, tr('practice.solutionUnlockFailed')))
+      const p = (await fetch(`/api/problems/${slug}`, { cache: 'no-store' }).then((r) => r.json())) as Problem
+      setProblem((prev) => (prev ? { ...prev, official_solution: p.official_solution, solution_unlocked: p.solution_unlocked, attempted: p.attempted, solved: p.solved } : prev))
+      addToast({ type: 'success', title: tr('practice.solutionUnlocked') })
+    } catch (e) {
+      addToast({ type: 'error', title: tr('practice.solutionUnlockFailed'), message: e instanceof Error ? e.message : undefined })
+    } finally {
+      setUnlockingSolution(false)
+    }
+  }
+
   async function runCustom() {
     if (!sourceRef.current.trim()) {
       setCustomError(tr('practice.writeSomeCodeFirst'))
@@ -454,6 +493,11 @@ export default function ProblemDetailPage() {
       if (!res.ok) throw new Error(json.error || (res.status === 429 ? tr('practice.tooManyRequestsWaitAMoment928') : tr('practice.somethingWentWrongStatusPleaseTryb1e', { status: res.status })))
       setResult(json)
       if (mode === 'submit') {
+        // Submitting IS a try: refresh the solution state (never reset source).
+        fetch(`/api/problems/${slug}`, { cache: 'no-store' })
+          .then((r) => r.json())
+          .then((p: Problem) => setProblem((prev) => (prev ? { ...prev, solved: p.solved, attempted: p.attempted, official_solution: p.official_solution, solution_unlocked: p.solution_unlocked } : prev)))
+          .catch(() => null)
         setAnalysisLoading(true)
         csrfFetch('/api/ai/code-analysis', {
           method: 'POST',
@@ -790,13 +834,49 @@ export default function ProblemDetailPage() {
              )}
              
              {leftTab === 'solution' && (
-                <div className="flex flex-col items-center justify-center h-full text-center space-y-3 opacity-60">
-                   <Code2 className="h-10 w-10 text-muted-foreground" />
-                   <div>
-                     <p className="font-bold">{tr('practice.officialSolutionLocked')}</p>
-                     <p className="text-xs text-muted-foreground">{tr('practice.solveTheProblemFirstToViewe83')}</p>
-                   </div>
-                </div>
+                problem.official_solution ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden />{tr('practice.solved')}
+                    </div>
+                    <Markdownish text={problem.official_solution.explanation_md} />
+                    {(() => {
+                      const code = problem.official_solution?.code || {}
+                      const source = code[language] || code.python || Object.values(code)[0] || ''
+                      if (!source) return null
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-muted-foreground">{(code[language] ? language : code.python ? 'python' : 'code').toUpperCase()}</span>
+                            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => {
+                              void navigator.clipboard?.writeText(source)
+                              addToast({ type: 'success', title: tr('practice.copied') })
+                            }}>{tr('practice.copy')}</Button>
+                          </div>
+                          <pre className="max-h-[60vh] overflow-auto rounded-lg border border-border/60 bg-muted/30 p-3 text-xs font-mono whitespace-pre">{source}</pre>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
+                     <Code2 className="h-10 w-10 text-muted-foreground opacity-60" />
+                     <div className="space-y-1">
+                       <p className="font-bold">{tr('practice.officialSolutionLocked')}</p>
+                       <p className="mx-auto max-w-sm text-xs text-muted-foreground">
+                         {problem.solution_available
+                           ? tr('practice.solutionLockedBody', { credits: problem.unlock_cost ?? 5 })
+                           : tr('practice.solveTheProblemFirstToViewe83')}
+                       </p>
+                     </div>
+                     {problem.solution_available ? (
+                       <Button size="sm" onClick={() => void unlockSolution()} disabled={unlockingSolution} className="gap-2">
+                         {unlockingSolution ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                         {tr('practice.unlockForCredits', { credits: problem.unlock_cost ?? 5 })}
+                       </Button>
+                     ) : null}
+                  </div>
+                )
              )}
 
              {leftTab === 'submissions' && (

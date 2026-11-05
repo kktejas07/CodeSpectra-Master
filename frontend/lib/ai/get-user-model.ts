@@ -92,6 +92,19 @@ export async function resolveModel(userId: string, feature: ModelPrefKey): Promi
   const cached = _cache.get(cacheKey)
   if (cached && cached.expires > Date.now()) return cached.value
   const value = await resolveModelInner(userId, feature)
+  // The custom gateway's URL lives in Settings -> AI (`platform_settings.secrets.custom_endpoint`),
+  // not in the routing config. Without it the backend falls back to its built-in
+  // default, which is not the operator's host (404 HTML from brocode) — so a
+  // custom-gateway selection silently broke every AI call.
+  if (value.providerOverride === 'custom' && !value.endpointOverride) {
+    try {
+      const { readServerSecrets } = await import('@/lib/server-secrets-cache')
+      const ep = (await readServerSecrets()).custom_endpoint
+      if (typeof ep === 'string' && ep.trim()) value.endpointOverride = ep.trim()
+    } catch {
+      /* keep the backend default */
+    }
+  }
   _cache.set(cacheKey, { value, expires: Date.now() + CACHE_TTL_MS })
   return value
 }

@@ -80,5 +80,7 @@
   "themeToggle": "Toggle theme",
   "themeLight": "Light",
   "themeDark": "Dark",
-  "themeSystem": "System"
+  "themeSystem": "System",
+  "aiCreditsUnlimited": "Unlimited",
+  "aiCreditsUnlimitedBody": "Your account has no monthly AI credit limit."
 }

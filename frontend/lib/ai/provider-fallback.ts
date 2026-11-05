@@ -15,6 +15,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { readServerSecrets, isMaskedSecret } from '@/lib/server-secrets-cache'
 import { type LLMProviderId } from '@/lib/llm-config'
 import { markKeyRateLimited, getRoundRobinKey } from '@/lib/ai/get-round-robin-key'
+import { extractJson } from '@/lib/ai/model-json'
 
 // Provider fallback order (priority: free first, then paid).
 // ponytail: model IDs probed live 2026-10-30 (decrypted key → provider API):
@@ -285,8 +286,17 @@ async function makeRequest(
     return { ok: false, text, status: res.status }
   }
 
-  const json = await res.json()
-  return { ok: true, json }
+  // The backend wraps completions as { ok, raw, text }: the model's JSON lives
+  // inside `raw` as TEXT. Returning the envelope as `json` made every caller
+  // that reads res.json (mock interview planner, course/blog generators) see a
+  // payload with no fields and fail — 503 "interviewer is not available".
+  const body = (await res.json()) as { ok?: boolean; raw?: string; text?: string; json?: unknown }
+  const text = typeof body.text === 'string' ? body.text : undefined
+  const raw = typeof body.raw === 'string' ? body.raw : undefined
+  const parsed = body.json && typeof body.json === 'object' && Object.keys(body.json as object).length > 0
+    ? body.json
+    : extractJson(raw || text || '')
+  return { ok: true, json: parsed ?? undefined, text, raw }
 }
 
 /**

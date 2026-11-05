@@ -51,12 +51,31 @@ export function formatDateTime(
 ): string {
   const d = toDate(value)
   if (!d) return MISSING
-  return new Intl.DateTimeFormat(intl, {
-    timeZone: resolveTimezone(tz),
+  return new Intl.DateTimeFormat(intl, withDefaults(opts, {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true,
+  }, tz)).format(d)
+}
+
+
+/**
+ * `Intl.DateTimeFormat` throws "Invalid option : option" when a style
+ * (`dateStyle`/`timeStyle`) is combined with granular fields
+ * (`day`/`month`/`year`/`hour`/`minute`). Callers legitimately pass either, and
+ * merging them over our defaults crashed whole pages at render time
+ * (/dashboard/settings, 2026-11-02). Style wins; granular fields are dropped.
+ */
+function withDefaults(
+  opts: Intl.DateTimeFormatOptions | undefined,
+  defaults: Intl.DateTimeFormatOptions,
+  tz?: string | null,
+): Intl.DateTimeFormatOptions {
+  const styled = opts && (opts.dateStyle !== undefined || opts.timeStyle !== undefined)
+  return {
+    timeZone: resolveTimezone(tz),
+    ...(styled ? {} : defaults),
     ...opts,
-  }).format(d)
+  }
 }
 
 /** e.g. "13 Oct 2026". */
@@ -69,11 +88,9 @@ export function formatDate(
 ): string {
   const d = toDate(value)
   if (!d) return MISSING
-  return new Intl.DateTimeFormat(intl, {
-    timeZone: resolveTimezone(tz),
+  return new Intl.DateTimeFormat(intl, withDefaults(opts, {
     day: '2-digit', month: 'short', year: 'numeric',
-    ...opts,
-  }).format(d)
+  }, tz)).format(d)
 }
 
 /** e.g. "07:05 pm". */
@@ -86,11 +103,9 @@ export function formatTime(
 ): string {
   const d = toDate(value)
   if (!d) return MISSING
-  return new Intl.DateTimeFormat(intl, {
-    timeZone: resolveTimezone(tz),
+  return new Intl.DateTimeFormat(intl, withDefaults(opts, {
     hour: '2-digit', minute: '2-digit', hour12: true,
-    ...opts,
-  }).format(d)
+  }, tz)).format(d)
 }
 
 /** `YYYY-MM-DD` for `value` in the platform timezone (date-picker / filters). */

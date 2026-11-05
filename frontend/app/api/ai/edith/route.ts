@@ -178,7 +178,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     // Regular users get superadmin role so the ACL lets them read public platform chunks.
     // The pipeline only requests public source types (doc, problem, course…) for regular users.
     const callerRole: 'superadmin' | 'tenant_admin' =
+      // role-scope: maps the caller onto the RAG ACL role for public chunks (not an authz check)
       user.role === 'superadmin' ? 'superadmin'
+      // role-scope: tenant admins read their own tenant's chunks under the same pipeline
       : user.role === 'tenant_admin' ? 'tenant_admin'
       : 'superadmin' // regular user → read platform public chunks
     const caller = { userId: user.id, role: callerRole, tenantId: user.tenantId ?? null }
@@ -266,7 +268,7 @@ CodeSpectra is a developer intelligence platform for technical assessments, codi
         })
 
         if (!upstream.ok || !upstream.body) {
-          controller.enqueue(sseChunk({ error: `EDITH upstream error: ${upstream.status}` }))
+          controller.enqueue(sseChunk({ error: 'Upstream provider error', code: 'upstream_error', params: { status: upstream.status } }))
         } else {
           const reader = upstream.body.getReader()
           const dec = new TextDecoder()

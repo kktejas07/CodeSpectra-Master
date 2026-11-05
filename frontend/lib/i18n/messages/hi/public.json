@@ -475,5 +475,6 @@
   "subsConfirmedTitle": "सदस्यता की पुष्टि हो गई",
   "subsConfirmTitle": "अपनी सदस्यता की पुष्टि करें",
   "subsConfirmPrompt": "आपने जो अपडेट माँगे हैं, उन्हें पाना शुरू करने के लिए बटन दबाएँ।",
-  "subsConfirmButton": "सदस्यता की पुष्टि करें"
+  "subsConfirmButton": "सदस्यता की पुष्टि करें",
+  "navMore": "अधिक"
 }

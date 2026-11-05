@@ -62,6 +62,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   } catch (e) {
     console.error('[ai/agent] unexpected error:', e)
-    return NextResponse.json({ error: 'An unexpected error occurred. Try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Try again.', code: 'server_error_retry' }, { status: 500 })
   }
 }

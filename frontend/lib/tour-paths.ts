@@ -172,6 +172,7 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/interview-sim': 'interview-sim',
   '/dashboard/interview-sim/[sessionId]': 'interview-sim-session',
   '/dashboard/study-plan/practice': 'study-plan-practice',
+  '/dashboard/practice/domain': 'practice-domain',
   '/dashboard/leagues': 'leagues',
   '/dashboard/passport': 'passport',
   '/dashboard/orders': 'orders',

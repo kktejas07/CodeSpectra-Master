@@ -77,6 +77,24 @@ class CsrfSession(requests.Session):
         return self.cookies.get(CSRF_COOKIE_NAME)
 
 
+def live_available(base_url: str = "http://localhost:3000", timeout: float = 2.0) -> bool:
+    """Return True if a live Next.js app is reachable at ``base_url``.
+
+    Any HTTP response (even 401/404) means the server is up; only a
+    connection error means it is not. Used by test modules to skip cleanly
+    in CI, where no deployed app is running.
+    """
+    try:
+        r = requests.get(
+            base_url.rstrip("/") + SESSION_PROBE_PATH,
+            headers={"Content-Type": "application/json"},
+            timeout=timeout,
+        )
+        return r.status_code < 500
+    except requests.RequestException:
+        return False
+
+
 def make_live_session(
     base_url: str = "http://localhost:3000", timeout: float = 10
 ) -> CsrfSession:

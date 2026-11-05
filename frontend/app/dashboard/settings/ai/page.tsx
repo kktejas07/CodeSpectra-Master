@@ -9,6 +9,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { useT } from '@/lib/i18n/client'
 /* ── BYOK panel ──────────────────────────────────────────────────────────── */
 function ByokPanel() {
+  const { t } = useT()
   const [hasKey, setHasKey] = useState<boolean | null>(null)
   const [provider, setProvider] = useState<string | undefined>()
   const [input, setInput] = useState('')
@@ -77,17 +78,17 @@ function ByokPanel() {
           <Key className="h-5 w-5" aria-hidden />
         </span>
         <div>
-          <p className="font-medium text-foreground">Your own API key (free plan)</p>
-          <p className="text-xs text-muted-foreground">Add an OpenAI, Groq, Gemini, or OpenRouter key to use AI features.</p>
+          <p className="font-medium text-foreground">{t('dashboard.aiSettingsOwnKeyTitle')}</p>
+          <p className="text-xs text-muted-foreground">{t('dashboard.aiSettingsOwnKeyBody')}</p>
         </div>
       </div>
 
       {hasKey === null ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Loading…</div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />{t('dashboard.aiSettingsLoading')}</div>
       ) : hasKey ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-foreground">Key saved</p>
+            <p className="text-sm font-medium text-foreground">{t('dashboard.aiSettingsKeySaved')}</p>
             {provider && <p className="text-xs text-muted-foreground">Provider: {provider}</p>}
           </div>
           <button
@@ -96,7 +97,7 @@ function ByokPanel() {
             className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
           >
             {removing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-            Remove
+            {t('dashboard.aiSettingsRemove')}
           </button>
         </div>
       ) : (
@@ -105,7 +106,7 @@ function ByokPanel() {
             type="password"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="sk-… or sk-or-v1-… or AIza… or gsk_…"
+            placeholder={t('dashboard.aiSettingsKeyPlaceholder')}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
           <button
@@ -114,7 +115,7 @@ function ByokPanel() {
             className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Save key
+            {t('dashboard.aiSettingsSaveKey')}
           </button>
         </div>
       )}
@@ -126,7 +127,7 @@ function ByokPanel() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Your key is encrypted at rest and never logged. <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">Get an OpenAI key ↗</a>
+        {t('dashboard.aiSettingsKeySecurity')} <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="underline">{t('dashboard.aiSettingsGetKey')}</a>
       </p>
     </Panel>
   )

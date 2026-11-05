@@ -113,6 +113,11 @@ class GenerateProblemReq(BaseModel):
     difficulty: str = "medium"
     topics: List[str] = Field(default_factory=list)
     language_hint: str = "python"
+    # Optional domain framing: problems are grounded in this industry/stack at
+    # this career level. The algorithmic substance still matches `difficulty`.
+    industry: Optional[str] = None
+    tech_stack: Optional[str] = None
+    level: Optional[str] = None
     model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None

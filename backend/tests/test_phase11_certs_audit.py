@@ -12,9 +12,9 @@ import os
 import pytest
 import requests
 
-from live_frontend import login_live, make_live_session
+from live_frontend import live_available, login_live, make_live_session
 
-BASE_URL = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000").rstrip("/")
+BASE_URL = os.environ.get("CODESPECTRA_LIVE_URL", "http://localhost:3000").rstrip("/")
 
 SUPER = ("qa@codespectra.dev", "QApass123!")
 USER = ("user@codespectra.dev", "CodeSpectra@2026")
@@ -22,6 +22,15 @@ USER = ("user@codespectra.dev", "CodeSpectra@2026")
 
 def _sign_in(email: str, password: str) -> requests.Session:
     return login_live(email, password, BASE_URL)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _require_live_server():
+    if not live_available(BASE_URL):
+        pytest.skip(
+            f"live app unreachable at {BASE_URL} — start the Next.js app "
+            "with a seeded MongoDB, or point CODESPECTRA_LIVE_URL at a deployment"
+        )
 
 
 @pytest.fixture(scope="module")

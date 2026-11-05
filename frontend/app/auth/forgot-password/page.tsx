@@ -25,6 +25,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [throttledFor, setThrottledFor] = useState<number | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const { sendPasswordReset } = useAuth();
@@ -36,7 +37,8 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      await sendPasswordReset(email.trim().toLowerCase(), turnstileToken || undefined);
+      const r = await sendPasswordReset(email.trim().toLowerCase(), turnstileToken || undefined);
+      setThrottledFor(r.throttled ? (r.retry_after ?? 3600) : null);
       setSent(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t("auth.resetSendFailed");
@@ -69,7 +71,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center space-y-4">
               <Illustration name="inbox" className="mx-auto w-40" />
               <p className="text-sm text-muted-foreground">
-                {t("auth.resetSentBody")}
+                {throttledFor ? t("auth.resetThrottled", { minutes: Math.max(1, Math.ceil(throttledFor / 60)) }) : t("auth.resetSentBody")}
               </p>
               <Button variant="outline" asChild className="mt-4">
                 <Link href="/auth/login">
