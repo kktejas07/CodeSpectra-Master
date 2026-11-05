@@ -91,6 +91,12 @@ export async function renderAndStoreLessonMp4(opts: {
     // a long-form lesson — the per-frame timeout does not bound that restart
     // wait. Without this, one crashing Chrome wedged the course worker for hours.
     const overallDeadlineMs = renderDeadlineMs(opts.videoMinutes ?? opts.script)
+    // ponytail: memory-tunable for constrained hosts. Production (Docker worker)
+    // runs the 720p/concurrency-1 defaults; a low-RAM box can set
+    // LESSON_RENDER_SCALE=0.5 (≈540p, ⅓ the per-frame memory) and/or
+    // LESSON_RENDER_CONCURRENCY=2 to trade RAM for wall-clock.
+    const scale = process.env.LESSON_RENDER_SCALE ? Number(process.env.LESSON_RENDER_SCALE) : 2 / 3
+    const concurrency = process.env.LESSON_RENDER_CONCURRENCY ? Number(process.env.LESSON_RENDER_CONCURRENCY) : 1
     const render = renderMedia({
       composition,
       serveUrl,
@@ -98,10 +104,10 @@ export async function renderAndStoreLessonMp4(opts: {
       outputLocation: outPath,
       inputProps,
       // 1920×1080 composition → 1280×720 file (Unstop-like VOD, faster encode)
-      scale: 2 / 3,
+      scale,
       crf: 28,
       jpegQuality: 70,
-      concurrency: 1,
+      concurrency,
       timeoutInMilliseconds: PER_FRAME_TIMEOUT_MS,
       chromiumOptions,
       ...(browserExecutable ? { browserExecutable } : {}),
