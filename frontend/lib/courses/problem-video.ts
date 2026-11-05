@@ -88,7 +88,9 @@ export function buildPracticeVideoJobDoc(opts: {
     totalItems: opts.lessonIds.length,
     completedItems: 0,
     failedItems: 0,
-    targetMinutes: 10,
+    // A single-problem walkthrough is short; 5min keeps the LLM script focused
+    // and the render cheap. (Catalog lessons use the 10min default.)
+    targetMinutes: 5,
     practiceLessonIds: opts.lessonIds,
     logs: [
       { timestamp: now, message: `Practice-question videos queued for ${opts.lessonIds.length} lesson(s)`, type: 'info' },
