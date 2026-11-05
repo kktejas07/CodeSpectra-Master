@@ -510,18 +510,20 @@ async def handle_generate_problem(
         elif isinstance(ev, StreamDone):
             break
     parsed = parse_json_response("".join(buf))
-    # Root-cause fix (2026-11-05): a provider error (404 model-removed, 401 bad
-    # key, rate-limit text) streams back as plain text; parse_json_response gets
-    # nothing and the old code normalized that into a PLACEHOLDER SKELETON
-    # (generate_default_test_cases "# Test case N input", empty solution_code)
-    # and returned it with HTTP 200. The caller's provider-fallback loop saw a
-    # "successful" response and stopped, so no live provider ever got a turn
-    # and every problem failed the sandbox gate. 502 instead: the next
-    # provider in the chain is the caller's job to try.
-    if not parsed:
+    # Root-cause fix (2026-11-05): a dead provider (404 model-removed, 401 bad
+    # key, rate-limit) streams back either plain error text OR a JSON error
+    # envelope ("{"error": {...}}"). The old code normalized ANY non-dict-or-{}
+    # into a PLACEHOLDER SKELETON (generate_default_test_cases "# Test case N
+    # input", empty solution_code) and returned it with HTTP 200. The caller's
+    # provider-fallback loop saw a "successful" 200 and stopped, so no live
+    # provider ever got a turn and every problem failed the sandbox gate.
+    # A real problem JSON always carries `statement_md` (it is a required field
+    # in the prompt); an error envelope or empty shell never does. Require it,
+    # else 502 — the caller's job is to try the next provider in the chain.
+    if not (isinstance(parsed, dict) and str(parsed.get("statement_md", "")).strip()):
         raise HTTPException(
             status_code=502,
-            detail="Problem generator returned no parseable JSON — the LLM provider failed. Try the next provider.",
+            detail="Problem generator returned no usable problem (no statement_md) — the LLM provider failed. Try the next provider.",
         )
 
     # Normalize so all required fields are ALWAYS present.
