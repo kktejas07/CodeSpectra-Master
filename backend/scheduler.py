@@ -18,32 +18,41 @@ class _SchedulerRequest:
     headers = {}
     client = None
 
+async def _run_once() -> None:
+    """Run one course-generation cycle. Factored out so the loop and
+    an on-startup immediate run share the same logic."""
+    logging.info("Running scheduled course generation...")
+    # handle_generate_course(request, req: GenerateCourseReq) — the
+    # real signature takes exactly two args. Construct the request
+    # model properly; the scheduler has no HTTP request, so pass a
+    # minimal stub exposing only .headers / .client.
+    req = GenerateCourseReq(
+        technology="Python",
+        level="Intermediate",
+        goal="Advanced Data Structures in Python",
+        duration_hours=10,
+    )
+    await handle_generate_course(
+        request=_SchedulerRequest(),  # type: ignore[arg-type]
+        req=req,
+    )
+    logging.info("Scheduled course generation completed.")
+
+
 async def _course_generation_loop():
     logging.info("Course generation scheduler started.")
+    # Run once immediately on startup so a fresh deployment generates
+    # content right away (not after the first 12-hour sleep).
+    try:
+        await _run_once()
+    except Exception as e:
+        logging.exception(f"Error in initial course generation: {e}")
+
     while True:
         try:
-            # We want to wait for 12 hours between runs, but we might want to do a run immediately?
-            # Actually, doing it immediately might slow down startup or we just wait 12 hours first.
             logging.info("Sleeping before next course generation...")
             await asyncio.sleep(GENERATION_INTERVAL_SEC)
-            
-            logging.info("Running scheduled course generation...")
-            # handle_generate_course(request, req: GenerateCourseReq) — the
-            # real signature takes exactly two args. Construct the request
-            # model properly; the scheduler has no HTTP request, so pass a
-            # minimal stub exposing only .headers / .client.
-            req = GenerateCourseReq(
-                technology="Python",
-                level="Intermediate",
-                goal="Advanced Data Structures in Python",
-                duration_hours=10,
-            )
-            await handle_generate_course(
-                request=_SchedulerRequest(),  # type: ignore[arg-type]
-                req=req,
-            )
-            logging.info("Scheduled course generation completed.")
-            
+            await _run_once()
         except asyncio.CancelledError:
             logging.info("Course generation scheduler cancelled.")
             break

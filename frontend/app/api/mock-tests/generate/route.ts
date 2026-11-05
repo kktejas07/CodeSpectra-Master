@@ -146,12 +146,12 @@ export async function POST(req: Request) {
     const { providerOverride, modelOverride, modelRole } = await resolveModel(gate.user.id, 'grade_model')
 
     const FALLBACK_PROVIDERS = [
-      { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast' },
-      { provider: 'groq', model: 'openai/gpt-oss-120b' },
-      { provider: 'gemini', model: 'gemini-2.0-flash' },
-      { provider: 'openai', model: 'gpt-4o-mini' },
-      { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet' },
-      { provider: 'opencode', model: 'deepseek-v4-flash-free' },
+      { provider: 'custom', model: 'meta-llama/llama-4-maverick-17b-128e-instruct-fp8-fast', endpoint: 'https://api.brocode.live/v1' },
+      { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1' },
+      { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
+      { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
+      { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
+      { provider: 'opencode', model: 'deepseek-v4-flash-free', endpoint: undefined },
     ]
 
     const providers = [{ provider: providerOverride, model: modelOverride, modelRole }]

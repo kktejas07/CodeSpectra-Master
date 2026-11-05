@@ -1,6 +1,7 @@
 'use client'
 import { useOrigin } from '@/hooks/use-browser-value'
 import { AiAnalyticsDashboard } from "./AiAnalyticsDashboard"
+import { sanitizeArticleHtml } from '@/lib/safe-html'
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -390,7 +391,7 @@ function EmailTemplatesSection() {
                 <div className="p-4 max-h-100 overflow-y-auto">
                   <div
                     className="prose prose-sm max-w-none dark:prose-invert [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mb-1"
-                    dangerouslySetInnerHTML={{ __html: preview.html }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(preview.html) }}
                   />
                 </div>
               </div>
