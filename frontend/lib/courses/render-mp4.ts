@@ -12,14 +12,22 @@ import { saveLessonMp4 } from '@/lib/courses/lesson-mp4'
 
 let bundleUrl: string | null = null
 
-/** Render timeout scales with lesson length: base 20min + ~1min per video
- * minute, capped at 90min (long-form 60-min lessons need far more than the
- * old fixed 20min). Accepts a minute count or a script to derive it from. */
-export function renderTimeoutMs(scriptOrMinutes: ScriptItem[] | number): number {
+/** Per-frame render timeout. A single frame is ~instant; 3min/frame is generous.
+ * (The old 20-90min value meant that when Chrome crashed mid-render, the stuck
+ * frame would sit for up to 90min at 0% CPU — the "2.5h hang in courses".) */
+const PER_FRAME_TIMEOUT_MS = 3 * 60 * 1000
+
+/** Overall render deadline (wall-clock for the whole lesson). Measured on the
+ * worker host: ~4.5x realtime for a healthy 720p encode, so a healthy N-minute
+ * render finishes in ~5N minutes. 15 min base + 12 min per video minute leaves
+ * wide headroom for slow hosts while still being FINITE — the point is that a
+ * crash-recovery deadlock (0% CPU, static file) fails in ~1-2h max instead of
+ * wedging the course worker forever. */
+export function renderDeadlineMs(scriptOrMinutes: ScriptItem[] | number): number {
   const minutes = typeof scriptOrMinutes === 'number'
     ? scriptOrMinutes
     : Math.max(1, Math.round(scriptOrMinutes.reduce((n, s) => n + (s.durationInFrames || 0), 0) / 30 / 60))
-  return Math.min(90, 20 + minutes) * 60 * 1000
+  return (15 + minutes * 12) * 60 * 1000
 }
 
 function chromePath(): string | undefined {
@@ -77,7 +85,13 @@ export async function renderAndStoreLessonMp4(opts: {
       chromiumOptions,
       ...(browserExecutable ? { browserExecutable } : {}),
     })
-    await renderMedia({
+    // Per-frame timeout is short (a frame is near-instant). The OVERALL render
+    // gets a separate wall-clock watchdog (Promise.race) because Remotion's
+    // crash-recovery ("killed browser, made new one") can deadlock at 0% CPU on
+    // a long-form lesson — the per-frame timeout does not bound that restart
+    // wait. Without this, one crashing Chrome wedged the course worker for hours.
+    const overallDeadlineMs = renderDeadlineMs(opts.videoMinutes ?? opts.script)
+    const render = renderMedia({
       composition,
       serveUrl,
       codec: 'h264',
@@ -88,10 +102,25 @@ export async function renderAndStoreLessonMp4(opts: {
       crf: 28,
       jpegQuality: 70,
       concurrency: 1,
-      timeoutInMilliseconds: renderTimeoutMs(opts.videoMinutes ?? opts.script),
+      timeoutInMilliseconds: PER_FRAME_TIMEOUT_MS,
       chromiumOptions,
       ...(browserExecutable ? { browserExecutable } : {}),
     })
+    let deadlineTimer: NodeJS.Timeout | undefined
+    const watchdog = new Promise<never>((_, reject) => {
+      deadlineTimer = setTimeout(
+        () => reject(new Error(`MP4 render exceeded ${Math.round(overallDeadlineMs / 60000)}min deadline (browser likely wedged)`)),
+        overallDeadlineMs,
+      )
+    })
+    try {
+      await Promise.race([render, watchdog])
+    } catch (e) {
+      // Fail fast on the deadline: don't let a wedged render block the worker.
+      throw e
+    } finally {
+      if (deadlineTimer) clearTimeout(deadlineTimer)
+    }
     const mp4 = await readFile(outPath)
     if (mp4.length < 1000) throw new Error('MP4 render produced an empty file')
     const stored = await saveLessonMp4(opts.courseId, opts.lessonId, mp4)
