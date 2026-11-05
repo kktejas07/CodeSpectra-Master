@@ -1447,5 +1447,11 @@
   "invalid_model": "Invalid model: {model}",
   "certificate_finish_required": "Finish {parts} to get your certificate",
   "ai_unavailable": "AI analysis is unavailable right now. Try again in a moment.",
-  "solution_missing": "This problem has no official solution yet"
+  "solution_missing": "This problem has no official solution yet",
+  "bad_industry": "Unknown industry",
+  "bad_level": "Unknown level",
+  "video_storage_required": "Object storage (Admin → Settings → Cloudflare) is required to generate problem videos.",
+  "video_no_problems": "No published problems found for those ids.",
+  "video_job_failed": "Could not queue the video job. Try again.",
+  "problem_ids_required": "problemIds is required"
 }

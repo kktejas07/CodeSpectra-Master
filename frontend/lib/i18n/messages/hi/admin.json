@@ -3528,5 +3528,22 @@
   "llm.gatewayBecomesPrimarySuffix": "सभी सुविधाओं के लिए (एजेंट, EDITH, हायरिंग AI)।",
   "llm.gatewayFallbackNote": "एंडपॉइंट और कुंजी सेट होने पर यह गेटवे स्वचालित फ़ॉलबैक श्रृंखला और हेल्थ टैब जाँच में शामिल हो जाता है।",
   "licences.chooseOrgHint": "लाइसेंस प्रबंधित करने के लिए संस्था चुनें।",
-  "licences.chooseOrgEmpty": "अभी कोई संस्था नहीं है। Admin → Organizations से बनाएं।"
+  "licences.chooseOrgEmpty": "अभी कोई संस्था नहीं है। Admin → Organizations से बनाएं।",
+  "practiceDomain.title": "प्रैक्टिस सेट",
+  "practiceDomain.body": "इंडस्ट्ररी / टेक-सटैक / लेवल कदामिंंग प्रश्न टो रबड-मांझ बरनाएँ। हर प्रश्न पब्लिश होनसे अघे सैंडबॉक्स मधे सत्यारित हो ज़ात हय।",
+  "practiceDomain.generate": "प्रैक्टिस सट बरनाएँ",
+  "practiceDomain.generating": "बरना जा रह हय…",
+  "practiceDomain.verifying": "सैंडबॉक्स मधे प्रश्न बरना जा र्हय, सत्यारित हो र्हय… इसमै रय 1-2 मिनट लागत हय।",
+  "practiceDomain.published": "लाइब्रेरी मधे पब्लिश होए",
+  "practiceDomain.specLabel": "सट",
+  "practiceDomain.nonePublished": "इ चाल मधे अपन प्रश्न सैंडबॉक्स गेट कदामिंंग न सत्यारित हो सके। लेवल / टॉपिक्स बदल कर फेर करे।",
+  "practiceDomain.empty": "एक कोऑर्डिनेट चुनके बरनाएँ — सत्यारित प्रश्न सिधे लाइब्रेरी मधे जात हय।",
+  "practiceDomain.learnerPage": "लर्नर पेज",
+  "practiceDomain.generateFailed": "प्रैक्टिस सट बरनाना फेर होए",
+  "practiceDomain.videosTitle": "वॉकथ्रू वीडियो",
+  "practiceDomain.videosBody": "पब्लिश की गयी प्रश्न के लिए AI वॉकथ्रू वीडियो क्यू रचयें: प्रत्न को इस स्टैक+लेवल कर्स में लैसन बनत हय, कर्स वर्कर MP4 रेंडर + अपलोड करत हय, और कर्स मधे जोड़ दत हय।",
+  "practiceDomain.videosCta": "{n} वीडियो बरनए",
+  "practiceDomain.videosQueuing": "क्यू चि हई…",
+  "practiceDomain.videosQueued": "कर्स वर्कर के लिए वीडियो क्यू हईं।",
+  "practiceDomain.videosFailed": "वीडियो बरनाना वफल हईं"
 }

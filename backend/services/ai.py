@@ -464,12 +464,34 @@ async def handle_generate_problem(
         "5. tags for categorization (e.g., \"two-pointers\", \"sliding-window\", \"dynamic-programming\")\n"
         "6. NO duplicate problems - generate unique problems"
     )
+    # Domain framing (industry / tech stack / career level) — optional. The
+    # algorithmic difficulty is set independently by `difficulty`; these fields
+    # only flavour the problem's real-world context so a problem for a
+    # "React Advanced frontend engineer" reads like their job, not generic DSA.
+    domain_lines: list[str] = []
+    if req.industry:
+        domain_lines.append(f"Industry / domain: {req.industry}")
+    if req.tech_stack:
+        domain_lines.append(f"Tech stack the role works in: {req.tech_stack}")
+    if req.level:
+        domain_lines.append(f"Career level: {req.level}")
+    domain_block = "\n".join(domain_lines)
+    domain_rule = (
+        "\n6. Ground the problem's scenario in the industry/tech-stack/level above "
+        "(familiar data shapes, realistic constraints, a plausible product or ops "
+        "context) WITHOUT changing the requested difficulty. The core algorithmic "
+        "challenge must still stand on its own for a coding interview.\n"
+        if domain_block
+        else ""
+    )
     user = (
         f"Generate a UNIQUE coding interview problem suitable for: {req.role}.\n"
         f"Difficulty: {req.difficulty}\n"
         f"Topics: {topics_s}\n"
-        f"Preferred language for starter code: {req.language_hint}\n"
+        + (f"{domain_block}\n" if domain_block else "")
+        + f"Preferred language for starter code: {req.language_hint}\n"
         "Avoid common LeetCode-named problems. Be creative and practical.\n"
+        f"{domain_rule}"
         "Return ONLY one JSON object with ALL fields specified above."
     )
     chat = build_chat(
@@ -487,7 +509,20 @@ async def handle_generate_problem(
             buf.append(ev.content)
         elif isinstance(ev, StreamDone):
             break
-    parsed = parse_json_response("".join(buf)) or {}
+    parsed = parse_json_response("".join(buf))
+    # Root-cause fix (2026-11-05): a provider error (404 model-removed, 401 bad
+    # key, rate-limit text) streams back as plain text; parse_json_response gets
+    # nothing and the old code normalized that into a PLACEHOLDER SKELETON
+    # (generate_default_test_cases "# Test case N input", empty solution_code)
+    # and returned it with HTTP 200. The caller's provider-fallback loop saw a
+    # "successful" response and stopped, so no live provider ever got a turn
+    # and every problem failed the sandbox gate. 502 instead: the next
+    # provider in the chain is the caller's job to try.
+    if not parsed:
+        raise HTTPException(
+            status_code=502,
+            detail="Problem generator returned no parseable JSON — the LLM provider failed. Try the next provider.",
+        )
 
     # Normalize so all required fields are ALWAYS present.
     if isinstance(parsed, dict):
