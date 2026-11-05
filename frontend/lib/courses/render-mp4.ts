@@ -49,20 +49,22 @@ export async function renderAndStoreLessonMp4(opts: {
   courseId: string
   lessonId: string
   script: ScriptItem[]
-  audio: Buffer
+  /** Omit or pass an empty buffer to render a SILENT MP4 (TTS unavailable). */
+  audio?: Buffer
   videoMinutes?: number
 }): Promise<{ bytes: number; stored: 'object' | 'mongo' }> {
   const dir = await mkdtemp(path.join(tmpdir(), 'cs-mp4-'))
-  const audioPath = path.join(dir, 'voice.mp3')
   const outPath = path.join(dir, 'lesson.mp4')
+  const hasAudio = Boolean(opts.audio && opts.audio.length > 0)
   try {
-    await writeFile(audioPath, opts.audio)
+    if (hasAudio) await writeFile(path.join(dir, 'voice.mp3'), opts.audio!)
     const serveUrl = await getBundle()
     const { renderMedia, selectComposition } = await import('@remotion/renderer')
     const inputProps = {
       script: opts.script,
-      // Remotion blocks file:// — use data URL for local TTS audio
-      audioUrl: `data:audio/mpeg;base64,${opts.audio.toString('base64')}`,
+      // Remotion blocks file:// — use data URL for local TTS audio. A silent
+      // lesson omits audioUrl so the <Audio> track isn't rendered.
+      ...(hasAudio ? { audioUrl: `data:audio/mpeg;base64,${opts.audio!.toString('base64')}` } : {}),
     }
     // Prefer Remotion's chrome-headless-shell (works on Alpine with gcompat + setpriv shim).
     // Only force system Chromium when REMOTION_BROWSER_EXECUTABLE is set.

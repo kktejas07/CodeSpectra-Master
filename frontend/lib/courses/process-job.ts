@@ -129,17 +129,30 @@ export async function processVideoJob(jobId: string): Promise<void> {
 
     const sections = course.sections || []
     const targetMinutes = normalizeTargetMinutes((job as any)?.targetMinutes ?? 10)
+    // Scoped practice-question job (lib/courses/problem-video.ts): render ONLY
+    // its lesson ids, never the whole catalog syllabus of that course.
+    const scopeIds: string[] | null = Array.isArray((job as any)?.practiceLessonIds)
+      ? ((job as any).practiceLessonIds as unknown[]).map(String)
+      : null
+    const lessonsFor = (s: any): any[] => {
+      const ls = Array.isArray(s?.lessons) ? s.lessons : []
+      return scopeIds ? ls.filter((l: any) => scopeIds.includes(String(l?.id))) : ls
+    }
     const completedTexts: { title: string; textContent: string }[] = []
     let completedItems = 0
     let failedItems = 0
-    const totalItems = sections.reduce((sum: number, s: any) => sum + (s.lessons?.length || 0), 0)
+    const totalItems = sections.reduce((sum: number, s: any) => sum + lessonsFor(s).length, 0)
 
     await addLog(`Starting detailed MP4 generation for ${totalItems} lessons (~${targetMinutes} min each: script + voiceover + render)`)
 
     for (let sIdx = 0; sIdx < sections.length; sIdx++) {
       const section = sections[sIdx]
+      // Scoped job: walk the FULL lesson array (so lIdx stays valid for the
+      // write-back below) but SKIP lessons outside the scope; unscoped jobs
+      // process everything as before.
       for (let lIdx = 0; lIdx < (section.lessons?.length || 0); lIdx++) {
         const lesson = section.lessons[lIdx]
+        if (scopeIds && !scopeIds.includes(String(lesson?.id))) continue
 
         if (lesson.videoUrl) {
           if (String(lesson.textContent || '')) {
@@ -171,6 +184,14 @@ export async function processVideoJob(jobId: string): Promise<void> {
           continue
         }
 
+        // Stage-tagged, bounded retry: one transient hiccup (a 429 storm, a
+        // Chrome/ffmpeg render timeout, a blip in object storage) retries with
+        // backoff instead of failing the whole lesson; a real failure names
+        // its stage so an admin can tell LLM/TTS/render/storage at a glance.
+        const stageOf = (e: unknown): string => String((e as { stage?: string })?.stage || '') || 'unknown'
+        const MAX_LESSON_ATTEMPTS = 3
+        let lessonDone = false
+        for (let attempt = 1; attempt <= MAX_LESSON_ATTEMPTS && !lessonDone; attempt++) {
         try {
           const topic = lesson.content || lesson.title
           const techStack = String(course.tags?.[0] || (course as any)?.techStack || 'programming')
@@ -185,18 +206,41 @@ export async function processVideoJob(jobId: string): Promise<void> {
           let audio = script?.length && lesson.audioUrl
             ? (await loadLessonAudio(job.courseId, lesson.id))?.data ?? null
             : null
+          let ttsOk = audio != null || Boolean(script?.length) // silent render is allowed
 
           if (script?.length && audio) {
             if (String(textContent || '')) completedTexts.push({ title: lessonTitle, textContent: String(textContent || '') })
             await addLog(`Rendering MP4: ${section.title} > ${lesson.title}`)
+          } else if (script?.length) {
+            // Script exists but audio is missing — render silent instead of
+            // regenerating the whole lesson for a TTS hiccup.
+            if (String(textContent || '')) completedTexts.push({ title: lessonTitle, textContent: String(textContent || '') })
+            ttsOk = false
+            await addLog(`Rendering MP4 (silent — no audio): ${section.title} > ${lesson.title}`, 'warning')
           } else {
             await addLog(`Generating: ${section.title} > ${lesson.title} (script + voiceover + MP4)`)
             console.log('[course-worker] lesson', lesson.title)
             const ctx = buildLessonContext(sections, sIdx, lIdx, course, completedTexts)
-            const generated = await generateLessonVideo({ topic, techStack, targetMinutes, context: ctx })
-            await saveLessonAudio(job.courseId, lesson.id, generated.audioBuffer)
+            let generated: Awaited<ReturnType<typeof generateLessonVideo>>
+            try {
+              generated = await generateLessonVideo({ topic, techStack, targetMinutes, context: ctx })
+            } catch (e: any) {
+              e.stage = 'llm'
+              throw e
+            }
+            ttsOk = generated.ttsOk !== false
+            if (ttsOk) {
+              try {
+                await saveLessonAudio(job.courseId, lesson.id, generated.audioBuffer)
+              } catch (e: any) {
+                e.stage = 'storage'
+                throw e
+              }
+            } else {
+              await addLog(`Voiceover unavailable — rendering silent: ${lesson.title}`, 'warning')
+            }
             script = stripQuizSlides(generated.script || [])
-            audio = generated.audioBuffer
+            audio = ttsOk ? generated.audioBuffer : null
             textContent = stripEmbeddedQuizzes(generated.textContent || "")
             durationSeconds = generated.durationSeconds
             takeaways = generated.takeaways || []
@@ -206,18 +250,34 @@ export async function processVideoJob(jobId: string): Promise<void> {
             completedTexts.push({ title: lessonTitle, textContent: String(textContent || '') })
           }
 
-          if (!script?.length || !audio) throw new Error('Missing script or audio for MP4 render')
+          if (!script?.length) {
+            const err = new Error('Missing script for MP4 render')
+            ;(err as any).stage = 'llm'
+            throw err
+          }
 
           const vtt = vttFromSlides(script)
-          await saveLessonCaptions(job.courseId, lesson.id, vtt)
+          try {
+            await saveLessonCaptions(job.courseId, lesson.id, vtt)
+          } catch {
+            // Captions are a nicety, not a gate — never fail the lesson over a VTT write.
+          }
 
           const { renderAndStoreLessonMp4 } = await import('@/lib/courses/render-mp4')
-          const mp4 = await renderAndStoreLessonMp4({
-            courseId: job.courseId,
-            lessonId: lesson.id,
-            script,
-            audio,
-          })
+          let mp4: { bytes: number; stored: 'object' | 'mongo' }
+          try {
+            mp4 = await renderAndStoreLessonMp4({
+              courseId: job.courseId,
+              lessonId: lesson.id,
+              script,
+              ...(audio ? { audio } : {}),
+            })
+          } catch (e: any) {
+            // Remotion/Chrome failures vs object-storage failures, by message.
+            const msg = String(e.message || '')
+            ;(e as any).stage = /chrome|render|ffmpeg|mp4/i.test(msg) ? 'render' : 'storage'
+            throw e
+          }
 
           const latest = await db.collection('courses').findOne({ id: job.courseId })
           const updatedSections = [...(latest?.sections || sections)]
@@ -227,7 +287,8 @@ export async function processVideoJob(jobId: string): Promise<void> {
               ...l,
               textContent,
               script,
-              audioUrl: lessonAudioPath(job.courseId, lesson.id),
+              // Silent lessons have no stored audio — don't point audioUrl at a 404.
+              audioUrl: ttsOk ? lessonAudioPath(job.courseId, lesson.id) : null,
               videoUrl: lessonVideoPath(job.courseId, lesson.id),
               captionsUrl: lessonCaptionsPath(job.courseId, lesson.id),
               videoType: 'ai',
@@ -246,13 +307,26 @@ export async function processVideoJob(jobId: string): Promise<void> {
           )
 
           completedItems++
+          lessonDone = true
           await addLog(
             `Completed: ${lesson.title} (MP4 ${(mp4.bytes / 1_000_000).toFixed(1)}MB ${mp4.stored === 'object' ? 'object storage' : 'Mongo'})`,
             'success',
           )
         } catch (e: any) {
-          failedItems++
-          await addLog(`Failed: ${lesson.title} — ${e.message}`, 'error')
+          if (attempt < MAX_LESSON_ATTEMPTS) {
+            // Transient hiccup: back off past most per-minute 429 windows,
+            // park the shared cooldown, and retry this lesson.
+            const waitMs = 30_000 * attempt
+            await addLog(
+              `Retrying ${lesson.title} in ${Math.round(waitMs / 1000)}s — [${stageOf(e)}] ${e.message} (attempt ${attempt}/${MAX_LESSON_ATTEMPTS})`,
+              'warning',
+            )
+            await new Promise(r => setTimeout(r, waitMs))
+          } else {
+            failedItems++
+            await addLog(`Failed: ${lesson.title} — [${stageOf(e)}] ${e.message} (after ${MAX_LESSON_ATTEMPTS} attempts)`, 'error')
+          }
+        }
         }
 
         await db.collection('generation_jobs').updateOne(
@@ -263,7 +337,11 @@ export async function processVideoJob(jobId: string): Promise<void> {
         await new Promise(r => setTimeout(r, 500))
       }
 
-      // Unstop-style: quiz after module videos
+      // Unstop-style: quiz after module videos. Practice-question jobs are
+      // scoped — they attached question lessons, they don't (re)grade every
+      // catalog module.
+      if (scopeIds) continue
+
       try {
         const latest = await db.collection('courses').findOne({ id: job.courseId })
         const sec = (latest?.sections || [])[sIdx]

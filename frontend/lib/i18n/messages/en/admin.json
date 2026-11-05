@@ -3528,5 +3528,22 @@
   "llm.gatewayBecomesPrimarySuffix": "for all features (agent, EDITH, hiring AI).",
   "llm.gatewayFallbackNote": "With endpoint + key set, this gateway joins the automatic fallback chain and the Health tab probe.",
   "licences.chooseOrgHint": "Choose an organisation to manage its licences.",
-  "licences.chooseOrgEmpty": "No organisations yet. Create one under Admin → Organisations."
+  "licences.chooseOrgEmpty": "No organisations yet. Create one under Admin → Organisations.",
+  "practiceDomain.title": "Practice sets",
+  "practiceDomain.body": "Bulk-generate industry / tech-stack / level coding problems. Each is verified in the sandbox before publishing — unverified content never goes live.",
+  "practiceDomain.generate": "Generate practice set",
+  "practiceDomain.generating": "Generating…",
+  "practiceDomain.verifying": "Generating and verifying problems in the sandbox… this takes a couple of minutes.",
+  "practiceDomain.published": "published to the library",
+  "practiceDomain.specLabel": "Set",
+  "practiceDomain.nonePublished": "No problems survived the sandbox gate this run. Adjust the level/topics and try again.",
+  "practiceDomain.empty": "Pick a coordinate and generate — verified problems publish straight to the library.",
+  "practiceDomain.learnerPage": "Learner page",
+  "practiceDomain.generateFailed": "Practice set generation failed",
+  "practiceDomain.videosTitle": "Walkthrough videos",
+  "practiceDomain.videosBody": "Queue AI walkthrough videos for the published problems: each becomes a lesson on this stack+level course, the course worker renders + uploads the MP4, and attaches it back to the course.",
+  "practiceDomain.videosCta": "Generate {n} video(s)",
+  "practiceDomain.videosQueuing": "Queuing…",
+  "practiceDomain.videosQueued": "Videos queued for the course worker.",
+  "practiceDomain.videosFailed": "Video generation failed"
 }

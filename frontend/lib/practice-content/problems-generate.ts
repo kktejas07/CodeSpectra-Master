@@ -47,14 +47,27 @@ export async function generateVerifiedProblem(opts: {
   user: ServiceUser
   difficulty?: 'easy' | 'medium' | 'hard'
   topics?: string[]
+  role?: string
+  language_hint?: string
+  industry?: string
+  tech_stack?: string
+  level?: string
 }): Promise<GeneratedProblemResult> {
   const raw = await generateCodingProblem(opts.user.id, {
     difficulty: opts.difficulty,
     topics: opts.topics,
+    role: opts.role,
+    language_hint: opts.language_hint,
+    industry: opts.industry,
+    tech_stack: opts.tech_stack,
+    level: opts.level,
   })
   if (!raw) return { ok: false, reason: 'every provider failed' }
 
-  const { result, verification } = await verifyGeneratedProblem(raw)
+  // Verify against the generator's own solution_code in the primary language
+  // (threaded through so a non-Python hint still verifies; falls back to a
+  // fresh LLM reference only when solution_code is absent).
+  const { result, verification } = await verifyGeneratedProblem(raw, { language: opts.language_hint })
   const kept = Array.isArray(result.test_cases) ? result.test_cases.length : 0
   const gate = problemPublishable(verification, kept)
 
@@ -70,7 +83,16 @@ export async function generateVerifiedProblem(opts: {
     return { ok: false, reason: `duplicate title — already on ${owner.collection}` }
   }
 
-  const saved = await saveGeneratedProblem(opts.user, { ...result, tests_verified: true }, { mode: 'published' })
+  const saved = await saveGeneratedProblem(
+    opts.user,
+    { ...result, tests_verified: true },
+    {
+      mode: 'published',
+      ...(opts.industry || opts.tech_stack || opts.level
+        ? { domain: { industry: opts.industry, tech_stack: opts.tech_stack, level: opts.level } }
+        : {}),
+    },
+  )
   try { await logGeneratedProblem(opts.user.id, result, saved.id) } catch { /* logging is best effort */ }
   return { ok: true, id: saved.id, slug: saved.slug, verification }
 }

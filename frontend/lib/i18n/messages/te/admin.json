@@ -3528,5 +3528,22 @@
   "llm.gatewayBecomesPrimarySuffix": "అన్ని ఫీచర్లకు (ఏజెంట్, EDITH, హైరింగ్ AI).",
   "llm.gatewayFallbackNote": "ఎండ్‌పాయింట్ మరియు కీ సెట్ చేస్తే, ఈ గేట్‌వే ఆటోమేటిక్ ఫాల్‌బ్యాక్ చైన్ మరియు హెల్త్ ట్యాబ్ ప్రోబ్‌లో చేరుతుంది.",
   "licences.chooseOrgHint": "లైసెన్స్‌లు నిర్వహించడానికి సంస్థను ఎంచుకోండి.",
-  "licences.chooseOrgEmpty": "ఇంకా సంస్థలు లేవు. Admin → Organizations లో సృష్టించండి."
+  "licences.chooseOrgEmpty": "ఇంకా సంస్థలు లేవు. Admin → Organizations లో సృష్టించండి.",
+  "practiceDomain.title": "ప్రాక్టీస్ సెట్లు",
+  "practiceDomain.body": "ఇండస్ట్రీ / టెక్-స్టాక్ / స్థాయి క్రింది కోడింగ్ ప్రశ్నలను సృష్టించు. ప్రతి ప్రశ్న ప్రచురణకు ముందు సాండ్‌బాక్స్‌లో ధృవీకరింపబడుతుంది.",
+  "practiceDomain.generate": "ప్రాక్టీస్ సెట్ సృష్టించు",
+  "practiceDomain.generating": "సృష్టించబడుతోంది…",
+  "practiceDomain.verifying": "సాండ్‌బాక్స్‌లో ప్రశ్నలు సృష్టించబడుతున్నవి, ధృవీకరింపబడుతున్నవి… దీనికి 1-2 నిమిషాలు పడుతుంది.",
+  "practiceDomain.published": "లైబ్రరీలో ప్రచురింపబడినవి",
+  "practiceDomain.specLabel": "సెట్",
+  "practiceDomain.nonePublished": "ఈ యంత్రాంగంలో సాండ్‌బాక్స్ గేట్‌ను ఎటువంటి ప్రశ్నలు ధృవీకరింపబడలేదు. స్థాయి / అంశాలను మార్చి మళ్ళీ ప్రయత్నించండి.",
+  "practiceDomain.empty": "కూర్డానేట్‌ను ఎంచుకుని సృష్టించండి — ధృవీకరించిన ప్రశ్నలు నేరుగా లైబ్రరీలో చేరుతాయి.",
+  "practiceDomain.learnerPage": "శిక్షణదారు పేజీ",
+  "practiceDomain.generateFailed": "ప్రాక్టీస్ సెట్ సృష్టించడం విఫలమైంది",
+  "practiceDomain.videosTitle": "వాక్‌త్రూ వీడియోలు",
+  "practiceDomain.videosBody": "ప్రచురణ సాధించిన ప్రశ్నలకొరకు AI వాక్‌త్రూ వీడియోలనె క్యూ చేయండి: ప్రత్యేకం ఈ స్టాక్+లెవల్ కోర్సులో పాఠానికే మారుతుంది, కోర్సు వర్కర్ MP4 రెండర్ చేసి అప్‌లోడ్ చేస్తాంది, కూర్సులో జోడుతుంది.",
+  "practiceDomain.videosCta": "{n} వీడియోలను సృష్టించండి",
+  "practiceDomain.videosQueuing": "క్యూ చేయ్తోంది…",
+  "practiceDomain.videosQueued": "కోర్సు వర్కర్కొరకు వీడియోలు క్యూ చేయబడ్డాయి.",
+  "practiceDomain.videosFailed": "వీడియో సృష్టించడం విఫలమయింది"
 }
