@@ -68,7 +68,7 @@ export interface LessonContext {
   nextTitle?: string
 }
 
-export const LESSON_DURATION_TIERS = [10, 15, 30, 60]
+export const LESSON_DURATION_TIERS = [5, 10, 15, 30, 60]
 
 /** Snap any input to the nearest supported tier (default 10). */
 export function normalizeTargetMinutes(raw: unknown): number {
