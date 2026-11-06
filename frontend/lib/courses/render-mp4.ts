@@ -103,6 +103,18 @@ export async function renderAndStoreLessonMp4(opts: {
     // LESSON_RENDER_CONCURRENCY=2 to trade RAM for wall-clock.
     const scale = process.env.LESSON_RENDER_SCALE ? Number(process.env.LESSON_RENDER_SCALE) : 2 / 3
     const concurrency = process.env.LESSON_RENDER_CONCURRENCY ? Number(process.env.LESSON_RENDER_CONCURRENCY) : 1
+    // CRITICAL: keep Remotion's shared-memory frame capture OFF.
+    // Remotion 4.0.537 introduced a raw-frame fast path that hands JPEG frames
+    // to ffmpeg through shared-memory pools. On this worker image (Ubuntu
+    // container, 64MB /dev/shm, musl compositor under gcompat) it stalls after
+    // roughly 2-3k frames: Chrome sits at ~100% CPU, the Node render loop waits
+    // on a promise forever, and pre-encode.mp4 stops growing at a fixed byte
+    // count. That was the "0 videos generated" failure — every lesson wedged,
+    // and the old 12-hour deadline never reaped it.
+    // Measured with the stalled lesson's own 15-slide/23,701-frame script:
+    // default path froze at ~2800 frames; with disableSharedMemoryCapture it
+    // rendered 4000 frames in 402s (~10 fps) with no stall.
+    const disableSharedMemoryCapture = true
     // A rejected watchdog promise does NOT stop Remotion — Chrome + ffmpeg keep
     // rendering at 100% CPU and starve the next lesson on a single-replica
     // worker. `cancel()` actually tears the browser down.
@@ -118,6 +130,7 @@ export async function renderAndStoreLessonMp4(opts: {
       crf: 28,
       jpegQuality: 70,
       concurrency,
+      disableSharedMemoryCapture,
       timeoutInMilliseconds: PER_FRAME_TIMEOUT_MS,
       chromiumOptions,
       cancelSignal,
