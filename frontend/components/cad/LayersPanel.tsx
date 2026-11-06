@@ -93,9 +93,10 @@ export function LayersPanel() {
                   value={layer.name}
                   onChange={(e) => updateLayer(layer.id, { name: e.target.value })}
                   onClick={(e) => e.stopPropagation()}
+                  aria-label={t('exam.layer')}
                   className="h-5 border-none bg-transparent p-0 text-xs font-medium focus-visible:ring-0"
                 />
-                <span className="shrink-0 text-[9px] text-muted-foreground/60 tabular-nums">
+                <span className="shrink-0 text-[9px] text-muted-foreground tabular-nums">
                   {count}
                 </span>
                 <div className="ml-auto flex items-center gap-0.5">
@@ -146,17 +147,18 @@ export function LayersPanel() {
 
               {/* Row 2: Opacity slider */}
               <div className="mt-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <span className="w-8 text-[9px] text-muted-foreground/60">{t('exam.op')}</span>
+                <span className="w-8 text-[9px] text-muted-foreground">{t('exam.op')}</span>
                 <input
                   type="range"
                   min={0}
                   max={1}
                   step={0.05}
                   value={layer.opacity}
+                  aria-label={`${t('exam.opacity')}: ${layer.name}`}
                   onChange={(e) => updateLayer(layer.id, { opacity: parseFloat(e.target.value) })}
                   className="h-1 w-full cursor-pointer accent-primary"
                 />
-                <span className="w-8 text-right text-[9px] tabular-nums text-muted-foreground/60">
+                <span className="w-8 text-right text-[9px] tabular-nums text-muted-foreground">
                   {Math.round(layer.opacity * 100)}%
                 </span>
               </div>
