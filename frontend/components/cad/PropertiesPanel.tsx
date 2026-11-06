@@ -46,12 +46,12 @@ export function PropertiesPanel() {
         {selectedIds.length > 1 ? (
           <div className="flex flex-col items-center gap-1">
             <span className="font-medium">{t('exam.countObjectsSelected', { count: selectedIds.length })}</span>
-            <span className="text-[10px] opacity-60">{t('exam.selectOneToEditProperties')}</span>
+            <span className="text-[10px] text-muted-foreground">{t('exam.selectOneToEditProperties')}</span>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
             <span>{t('exam.noSelection')}</span>
-            <span className="text-[10px] opacity-60">{t('exam.clickAnObjectToViewProperties')}</span>
+            <span className="text-[10px]">{t('exam.clickAnObjectToViewProperties')}</span>
           </div>
         )}
       </div>
