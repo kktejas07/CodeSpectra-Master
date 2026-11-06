@@ -27,16 +27,48 @@ const TENANT_ID: string | null = process.env.TENANT_ID || null  // null = platfo
 function newId() { return randomUUID() }
 function nowIso() { return new Date().toISOString() }
 
+/**
+ * Pipeline: applied → résumé screening → AI bot screen → assessment (dynamic) →
+ *           virtual interview → HR round → offer → hired / rejected
+ *
+ * Note: assessment exam_id is null — the stage will be skipped/pending until
+ * a recruiter links a real exam, OR if the AI auto-generates one from the
+ * candidate's résumé + job title (future: ai_exam_gen flag).
+ * For demo purposes the stage is included so the UI shows the full pipeline.
+ */
 function defaultPipeline() {
   return [
-    { id: 's_applied',   type: 'applied',          name: 'Applied',           advance: 'auto',   on_fail: 'review', notify: { email: true } },
-    { id: 's_screening', type: 'screening',         name: 'Résumé Screening',  advance: 'auto',   on_fail: 'review', config: { kind: 'screening' } },
-    { id: 's_botscreen', type: 'bot_screen',        name: 'AI Screening',      advance: 'auto',   on_fail: 'review', config: { kind: 'bot_screen' } },
-    { id: 's_vint',      type: 'virtual_interview', name: 'Virtual Interview', advance: 'manual', on_fail: 'review' },
-    { id: 's_hr',        type: 'hr_round',          name: 'HR Round',          advance: 'manual', on_fail: 'review' },
-    { id: 's_offer',     type: 'offer',             name: 'Offer',             advance: 'manual', on_fail: 'review' },
-    { id: 's_hired',     type: 'hired',             name: 'Hired',             advance: 'manual' },
-    { id: 's_rejected',  type: 'rejected',          name: 'Rejected',          advance: 'manual' },
+    { id: 's_applied',    type: 'applied',          name: 'Applied',              advance: 'auto',   on_fail: 'review', notify: { email: true } },
+    { id: 's_screening',  type: 'screening',         name: 'Résumé Screening',     advance: 'auto',   on_fail: 'review', config: { kind: 'screening' } },
+    {
+      id: 's_botscreen', type: 'bot_screen', name: 'AI Phone Screen', advance: 'approval', on_fail: 'review', sla_days: 7,
+      config: {
+        kind: 'bot_screen',
+        channels: ['whatsapp_chat', 'whatsapp_call', 'phone_call'],
+        language: 'en-IN',
+        pass_score: 60,
+        max_attempts: 3,
+        questions: [
+          { id: 'q_notice',   text: 'What is your notice period in days?',           type: 'number' },
+          { id: 'q_relocate', text: 'Are you open to relocating for this role?',      type: 'yes_no' },
+          { id: 'q_expected', text: 'What is your expected annual salary (in LPA)?',  type: 'number' },
+          { id: 'q_exp',      text: 'How many years of relevant experience do you have?', type: 'number' },
+        ],
+      },
+    },
+    {
+      id: 's_assessment', type: 'assessment', name: 'Technical Assessment', advance: 'auto', on_fail: 'reject', sla_days: 10,
+      notify: { email: true },
+      config: { kind: 'assessment', exam_id: null, pass_score: 60, deadline_days: 7 },
+    },
+    { id: 's_vint',      type: 'virtual_interview', name: 'Virtual Interview', advance: 'approval', on_fail: 'review', sla_days: 14, notify: { email: true },
+      config: { kind: 'interview', mode: 'virtual', provider: 'livekit', duration_min: 45, panel_ids: [], self_schedule: true, pass_rule: 'majority_yes',
+        scorecard: [{ id: 'sc1', label: 'Technical Skills', weight: 0.4 }, { id: 'sc2', label: 'Communication', weight: 0.3 }, { id: 'sc3', label: 'Culture Fit', weight: 0.3 }] } },
+    { id: 's_hr',        type: 'hr_round',          name: 'HR Round',          advance: 'approval', on_fail: 'review', sla_days: 14,
+      config: { kind: 'hr_round', questions: [], pass_score: 60 } },
+    { id: 's_offer',     type: 'offer',             name: 'Offer',             advance: 'approval', on_fail: 'review', notify: { email: true }, config: { kind: 'offer', template: null } },
+    { id: 's_hired',     type: 'hired',             name: 'Hired',             advance: 'auto',   on_fail: 'review', notify: { email: true } },
+    { id: 's_rejected',  type: 'rejected',          name: 'Rejected',          advance: 'auto',   on_fail: 'reject', notify: { email: true } },
   ]
 }
 
