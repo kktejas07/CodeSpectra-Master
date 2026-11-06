@@ -339,5 +339,10 @@
   "edithPlaceholder": "EDITH ని ఏదైనా అడగండి — కోడ్, శోధన, ప్లాట్‌ఫారమ్…",
   "edithOnline": "EDITH ఆన్‌లైన్‌లో ఉంది.",
   "edithCapabilities": "LLM · RAG · వెబ్ శోధన — ఒకేసారి.",
-  "edithProcessing": "EDITH ప్రాసెస్ చేస్తోంది…"
+  "edithProcessing": "EDITH ప్రాసెస్ చేస్తోంది…",
+  "edithAttachFiles": "ఫైల్లు అటాచ్ చేయండి (కోడ్, మార్క్డౌన్, JSON, CSV…) — 4 ఫైల్లు వరకు, 200 KB ప్రతి ఫైలు",
+  "edithFileTooBig": "200 KB వరకు మాత్రమే ఫైల్లు అటాచ్ చేయవచ్చు.",
+  "edithFileUnsupported": "టెక్స్ట్ ఆధారిత ఫైల్లు మాత్రమే (కోడ్, మార్క్డౌన్, JSON, CSV…) అటాచ్ చేయవచ్చు.",
+  "edithMaxFiles": "ఒకేసారి 4 ఫైల్లు వరకు అటాచ్ చేయండి.",
+  "edithFileReadError": "{name} చదవడం సాధ్యం కాలేదు."
 }

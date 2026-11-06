@@ -2,10 +2,19 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useT } from '@/lib/i18n/client'
-import { Send, X, Loader2, MessageSquarePlus, Globe, Database, Zap, Shield, Bug, Search, Bot } from 'lucide-react'
+import { Send, X, Loader2, MessageSquarePlus, Globe, Database, Zap, Shield, Bug, Search, Bot, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useBrowserVoice, speakableText } from '@/components/voice/use-browser-voice'
+import { VoiceInputButton, VoiceListeningBar } from '@/components/voice/voice-input-button'
+
+interface AttachedFile {
+  id: string
+  name: string
+  size: number
+  content: string
+}
 
 interface ChatMessage {
   id: string
@@ -13,6 +22,23 @@ interface ChatMessage {
   content: string
   pending?: boolean
   sources?: Array<{ title: string; url: string }>
+  files?: Array<{ name: string; size: number }>
+}
+
+/* Text-based files we can inline into the prompt (anything binary is rejected). */
+const TEXT_EXT = new Set(['js','jsx','ts','tsx','mjs','cjs','py','ipynb','java','c','cpp','cc','h','hpp','cs','go','rs','rb','php','kt','scala','swift','sh','bash','zsh','ps1','sql','html','htm','css','scss','less','vue','svelte','json','jsonc','yaml','yml','toml','xml','csv','tsv','md','mdx','txt','ini','conf','cfg','env','log'])
+const MAX_ATTACH = 4
+const MAX_FILE_BYTES = 200 * 1024
+
+function isAttachable(f: File): boolean {
+  const ext = (f.name.toLowerCase().split('.').pop() || '')
+  if (TEXT_EXT.has(ext)) return true
+  // Unknown extension: accept obvious text types the OS flagged.
+  return /^text\/.+$/.test(f.type) || f.type === 'application/json' || f.type === 'application/xml'
+}
+
+function newFileId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
 type ContextMode = 'auto' | 'rag' | 'google' | 'none'
@@ -30,9 +56,22 @@ export function GoEdith() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [contextMode, setContextMode] = useState<ContextMode>('auto')
+  const [attachments, setAttachments] = useState<AttachedFile[]>([])
+  const [readAloud, setReadAloud] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Voice: browser speech recognition in the interface language (nothing is
+  // recorded or stored — the mic only opens on explicit press).
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const voice = useBrowserVoice({
+    onFinal: (heard) => {
+      setInput((prev) => (prev.trim() ? `${prev.trim()} ${heard}` : heard))
+      requestAnimationFrame(() => inputRef.current?.focus())
+    },
+  })
 
   useEffect(() => {
     if (!open) return
@@ -59,13 +98,74 @@ export function GoEdith() {
   const newChat = useCallback(() => {
     setMessages([])
     setSessionId(null)
-  }, [])
+    setAttachments([])
+    voice.stopSpeaking()
+  }, [voice])
+
+  // Read the newest finished reply aloud (opt-in), once per message — mirrors
+  // the agent copilot. Strips markdown so the synthesiser doesn't read "```.
+  const spokenRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!readAloud || !voice.tts) return
+    const last = [...messages].reverse().find((m) => m.role === 'assistant')
+    if (!last || last.pending || spokenRef.current === last.id) return
+    spokenRef.current = last.id
+    const said = speakableText(last.content)
+    if (said) voice.speak(said)
+  }, [messages, readAloud, voice])
+
+  /* ── File attachments ─────────────────────────────── */
+  async function addFiles(list: FileList | File[] | null) {
+    if (!list || !list.length) return
+    const picked = Array.from(list)
+    for (const f of picked) {
+      // Enforce the caps, but keep the ones that fit.
+      if (!isAttachable(f) || f.size > MAX_FILE_BYTES || attachments.length + 1 > MAX_ATTACH) continue
+      try {
+        const content = await f.text()
+        setAttachments((prev) =>
+          prev.length >= MAX_ATTACH ? prev : [...prev, { id: newFileId(), name: f.name, size: f.size, content }],
+        )
+      } catch {
+        setAttachments((prev) =>
+          prev.length >= MAX_ATTACH
+            ? prev
+            : [...prev, { id: newFileId(), name: f.name, size: f.size, content: `(couldn't read ${f.name})` }],
+        )
+      }
+    }
+    // Clear the input so re-selecting the same file works.
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((prev) => prev.filter((a) => a.id !== id))
+  }
+
+  /** Inline the attached files into the prompt so EDITH can read them. */
+  function filesBlock(files: AttachedFile[]): string {
+    if (!files.length) return ''
+    return (
+      '\n\n' +
+      files
+        .map((f) => `── FILE: ${f.name} ──\n${f.content}\n── END ${f.name} ──`)
+        .join('\n\n')
+    )
+  }
 
   async function send() {
     const text = input.trim()
-    if (!text || busy) return
+    const files = attachments
+    if ((!text && !files.length) || busy) return
     setInput('')
-    const userMsg: ChatMessage = { id: `u-${Date.now()}`, role: 'user', content: text }
+    setAttachments([])
+    // Keep the transcript text even if the user attached files with no words.
+    const userMsg: ChatMessage = {
+      id: `u-${Date.now()}`,
+      role: 'user',
+      content: text || '(files attached)',
+      files: files.length ? files.map((f) => ({ name: f.name, size: f.size })) : undefined,
+    }
     const placeholder: ChatMessage = {
       id: `a-${Date.now()}`,
       role: 'assistant',
@@ -74,6 +174,7 @@ export function GoEdith() {
     }
     setMessages((m) => [...m, userMsg, placeholder])
     setBusy(true)
+    const fullMessage = (text || 'Analyze the attached files.') + filesBlock(files)
 
     const controller = new AbortController()
     abortRef.current = controller
@@ -84,7 +185,7 @@ export function GoEdith() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: sessionId,
-          message: text,
+          message: fullMessage,
           context_mode: contextMode,
         }),
         signal: controller.signal,
@@ -281,8 +382,34 @@ export function GoEdith() {
           }}
           className="border-t border-amber-500/20 bg-black/40 px-3 py-3"
         >
+          <VoiceListeningBar voice={voice} />
+          {/* Attached files — removable chips above the input */}
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5" data-testid="edith-attachments">
+              {attachments.map((f) => (
+                <span
+                  key={f.id}
+                  className={cn(
+                    'inline-flex max-w-full items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-950/30 px-2 py-1 text-[11px] text-amber-300/90',
+                  )}
+                >
+                  <Paperclip className="h-3 w-3 shrink-0 text-amber-500/70" aria-hidden />
+                  <span className="truncate">{f.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(f.id)}
+                    aria-label={`Remove ${f.name}`}
+                    className="ml-0.5 rounded p-0.5 text-amber-500/50 hover:bg-amber-500/10 hover:text-amber-300"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <textarea
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -302,9 +429,26 @@ export function GoEdith() {
               disabled={busy}
             />
             <Button
+              type="button"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              aria-label={t('dashboard.edithAttachFiles')}
+              title={t('dashboard.edithAttachFiles')}
+              data-testid="edith-attach"
+              disabled={busy}
+              className="h-10 w-10 rounded-xl border border-amber-500/30 bg-amber-950/30 text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-300 disabled:opacity-40 shrink-0"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <VoiceInputButton
+              voice={voice}
+              disabled={busy}
+              className="h-10 w-10 rounded-xl border border-amber-500/30 bg-amber-950/30 text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-300 disabled:opacity-40"
+            />
+            <Button
               type="submit"
               size="icon"
-              disabled={busy || !input.trim()}
+              disabled={busy || (!input.trim() && !attachments.length)}
               aria-label={busy ? 'Sending…' : 'Send to EDITH'}
               data-testid="edith-send"
               className="h-10 w-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 text-black hover:opacity-90 disabled:opacity-40 shrink-0"
@@ -312,6 +456,32 @@ export function GoEdith() {
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            aria-hidden
+            tabIndex={-1}
+            onChange={(e) => void addFiles(e.target.files)}
+            data-testid="edith-file-input"
+          />
+          {/* Read replies aloud (opt-in) */}
+          {voice.tts && (
+            <label className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-amber-600/70">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 accent-amber-500"
+                checked={readAloud}
+                onChange={(e) => {
+                  setReadAloud(e.target.checked)
+                  if (!e.target.checked) voice.stopSpeaking()
+                }}
+              />
+              {t('dashboard.readRepliesAloud')}
+            </label>
+          )}
         </form>
       </aside>
     </>
@@ -383,6 +553,23 @@ function EdithMessageBubble({ message }: { message: ChatMessage }) {
           </span>
         ) : null)}
       </div>
+      {/* Attached-file chips (user messages) */}
+      {isUser && message.files && message.files.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 max-w-[90%]">
+          {message.files.map((f, i) => (
+            <span
+              key={i}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-950/30',
+                'px-2 py-1 text-[10px] text-amber-500/80',
+              )}
+            >
+              <Paperclip className="h-2.5 w-2.5 shrink-0" aria-hidden />
+              <span className="truncate max-w-[110px]">{f.name}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {/* Source cards */}
       {!isUser && message.sources && message.sources.length > 0 && (
         <div className="flex flex-wrap gap-1.5 max-w-[90%]">

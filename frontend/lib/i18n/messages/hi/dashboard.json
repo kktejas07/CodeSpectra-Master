@@ -339,5 +339,10 @@
   "edithPlaceholder": "EDITH से कुछ भी पूछें — कोड, खोज, प्लेटफ़ॉर्म…",
   "edithOnline": "EDITH ऑनलाइन है।",
   "edithCapabilities": "LLM · RAG · वेब खोज — एक साथ।",
-  "edithProcessing": "EDITH प्रोसेस कर रहा है…"
+  "edithProcessing": "EDITH प्रोसेस कर रहा है…",
+  "edithAttachFiles": "फ़ाइलें जोड़ें (कोड, मार्कडाउन, JSON, CSV…) — 4 फ़ाइल तक, 200 KB प्रति फ़ाइल",
+  "edithFileTooBig": "केवल 200 KB तक की फ़ाइलें जोड़ी जा सकती हैं।",
+  "edithFileUnsupported": "केवल टेक्स्ट-आधारित फ़ाइलें (कोड, मार्कडाउन, JSON, CSV…) जोड़ी जा सकती हैं।",
+  "edithMaxFiles": "एक साथ 4 फ़ाइल तक जोड़ें।",
+  "edithFileReadError": "{name} नहीं पढ़ा जा सका।"
 }

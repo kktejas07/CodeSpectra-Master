@@ -339,5 +339,10 @@
   "edithPlaceholder": "Ask EDITH anything — code, search, platform…",
   "edithOnline": "EDITH online.",
   "edithCapabilities": "LLM · RAG · Web Search — all at once.",
-  "edithProcessing": "EDITH processing…"
+  "edithProcessing": "EDITH processing…",
+  "edithAttachFiles": "Attach files (code, markdown, JSON, CSV…) — up to 4 files, 200 KB each",
+  "edithFileTooBig": "Only files up to 200 KB can be attached.",
+  "edithFileUnsupported": "Only text-based files (code, markdown, JSON, CSV…) can be attached.",
+  "edithMaxFiles": "Attach up to 4 files at a time.",
+  "edithFileReadError": "Couldn't read {name}."
 }
