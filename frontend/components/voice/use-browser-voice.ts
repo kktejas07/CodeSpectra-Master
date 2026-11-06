@@ -56,6 +56,9 @@ export function useBrowserVoice(opts: { locale?: Locale; onFinal?: (text: string
   const [interim, setInterim] = useState('')
   const [speaking, setSpeaking] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Failure kind — "blocked" shows the browser-permission fix card proactively. */
+  const [errorKind, setErrorKind] = useState<'blocked' | 'stopped' | 'unavailable' | null>(null)
+  const [micPermission, setMicPermission] = useState<'unknown' | 'granted' | 'prompt' | 'denied'>('unknown')
   const [caps, setCaps] = useState({ stt: false, tts: false })
   const recRef = useRef<RecognitionLike | null>(null)
   const onFinalRef = useRef(opts.onFinal)
@@ -64,6 +67,34 @@ export function useBrowserVoice(opts: { locale?: Locale; onFinal?: (text: string
   useEffect(() => {
     setCaps({ stt: !!recognitionCtor(), tts: typeof window !== 'undefined' && 'speechSynthesis' in window })
   }, [])
+
+  // Probe the browser's mic permission up front: a "denied" state means Chrome
+  // will NEVER re-prompt (allow/block dialogs only appear for "prompt"), so the
+  // user must unblock it in site settings — surface that before they click.
+  // Follows live changes so the card clears itself when the user fixes it.
+  useEffect(() => {
+    let status: PermissionStatus | null = null
+    let cancelled = false
+    const apply = () => {
+      if (cancelled || !status) return
+      setMicPermission(status.state as 'granted' | 'prompt' | 'denied')
+      if (status.state === 'denied') {
+        setErrorKind('blocked')
+        setError(t('errors.micBlocked'))
+      } else if (status.state === 'granted' && !listening) {
+        setErrorKind(null)
+        setError(null)
+      }
+    }
+    navigator.permissions?.query({ name: 'microphone' as PermissionName })
+      .then((s) => {
+        status = s
+        s.onchange = apply
+        apply()
+      })
+      .catch(() => { /* some browsers have no "microphone" descriptor — keep the click-time path */ })
+    return () => { cancelled = true; if (status) status.onchange = null }
+  }, [listening, t])
 
   useEffect(() => () => {
     recRef.current?.abort()
@@ -76,9 +107,10 @@ export function useBrowserVoice(opts: { locale?: Locale; onFinal?: (text: string
 
   const start = useCallback(() => {
     setError(null)
+    setErrorKind(null)
     setInterim('')
     const Ctor = recognitionCtor()
-    if (!Ctor) { setError(t('errors.voiceUnavailable')); return }
+    if (!Ctor) { setError(t('errors.voiceUnavailable')); setErrorKind('unavailable'); return }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
     const rec = new Ctor()
     rec.continuous = false
@@ -96,7 +128,14 @@ export function useBrowserVoice(opts: { locale?: Locale; onFinal?: (text: string
     }
     rec.onerror = (e) => {
       if (e.error === 'no-speech' || e.error === 'aborted') return
-      setError(e.error === 'not-allowed' || e.error === 'service-not-allowed' ? t('errors.micBlocked') : t('errors.sttStopped'))
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        setMicPermission('denied')
+        setErrorKind('blocked')
+        setError(t('errors.micBlocked'))
+      } else {
+        setErrorKind('stopped')
+        setError(t('errors.sttStopped'))
+      }
     }
     rec.onend = () => {
       setListening(false)
@@ -136,5 +175,19 @@ export function useBrowserVoice(opts: { locale?: Locale; onFinal?: (text: string
     setSpeaking(false)
   }, [caps.tts])
 
-  return { supported: caps.stt, tts: caps.tts, listening, interim, speaking, error, start, stop, speak, stopSpeaking, tag }
+  return {
+    supported: caps.stt,
+    tts: caps.tts,
+    listening,
+    interim,
+    speaking,
+    error,
+    errorKind,
+    micPermission,
+    start,
+    stop,
+    speak,
+    stopSpeaking,
+    tag,
+  }
 }

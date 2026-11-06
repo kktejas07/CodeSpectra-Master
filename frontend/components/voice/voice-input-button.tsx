@@ -72,21 +72,57 @@ export function VoiceInputButton({ voice, disabled, className }: { voice: Return
   )
 }
 
-/** "Listening…" strip with the live transcript, shown above the composer while the mic is open. */
+/**
+ * Strip above the composer: the live transcript while the mic is open, and —
+ * when the browser's mic permission is "blocked" — a fix-it card telling the
+ * user WHERE to unblock it (Chrome stops re-prompting once blocked, so the
+ * only path is site settings / macOS privacy).
+ */
 export function VoiceListeningBar({ voice }: { voice: ReturnType<typeof useBrowserVoice> }) {
   const { t } = useT()
-  if (!voice.listening && !voice.error) return null
-  return (
-    <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm" role="status">
-      {voice.listening ? (
-        <>
-          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-red-600 motion-reduce:animate-none" aria-hidden />
-          <span className="font-medium text-foreground">{t('common.voiceListening')}</span>
-          <span className="min-w-0 truncate text-muted-foreground">{voice.interim}</span>
-        </>
-      ) : (
+  if (voice.listening) {
+    return (
+      <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm" role="status">
+        <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-red-600 motion-reduce:animate-none" aria-hidden />
+        <span className="font-medium text-foreground">{t('common.voiceListening')}</span>
+        <span className="min-w-0 truncate text-muted-foreground">{voice.interim}</span>
+      </div>
+    )
+  }
+  if (voice.errorKind === 'blocked') {
+    return (
+      <div className="mx-auto mb-2 max-w-3xl rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2.5 text-sm" role="alert">
+        <div className="font-medium text-foreground">{t('errors.micBlockedFixTitle')}</div>
+        <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-muted-foreground">
+          <li>{t('errors.micBlockedFix1')}</li>
+          <li>{t('errors.micBlockedFix2')}</li>
+          <li>{t('errors.micBlockedFix3')}</li>
+        </ol>
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-md border border-foreground/20 px-2 py-1 text-xs font-medium hover:bg-foreground/10"
+          >
+            {t('errors.micBlockedFixReload')}
+          </button>
+          <button
+            type="button"
+            onClick={voice.start}
+            className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:underline"
+          >
+            {t('common.tryAgain')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+  if (voice.error) {
+    return (
+      <div className="mx-auto mb-2 flex max-w-3xl items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 px-3 py-2 text-sm" role="status">
         <span className="text-destructive">{voice.error}</span>
-      )}
-    </div>
-  )
+      </div>
+    )
+  }
+  return null
 }

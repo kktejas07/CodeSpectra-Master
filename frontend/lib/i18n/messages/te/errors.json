@@ -15,5 +15,10 @@
   "sectionDidNotLoad": "ఈ భాగం లోడ్ కాలేదు. మీ పని సేవ్ అయింది — మళ్లీ ప్రయత్నించండి, లేదా హోమ్‌కు వెళ్లండి.",
   "reference": "రిఫరెన్స్:",
   "goHome": "హోమ్‌కు వెళ్లండి",
-  "checkStatus": "సిస్టమ్ స్టేటస్ చూడండి"
+  "checkStatus": "సిస్టమ్ స్టేటస్ చూడండి",
+  "micBlockedFixTitle": "ఈ సైటుకి మైక్రోఫోన్ బ్లాక్ అయింది — మీరు బ్రౌజర్ సెటింగ్స్ లో మార్చేవరకూ allow/block ప్రాంప్ట్ మళ్ళీ చూపబడవు",
+  "micBlockedFix1": "అడ్రస్ బార్ కుడివైపు padlock/shield ఐకాన్‌ను క్లిక్ చేయండి → Site settings",
+  "micBlockedFix2": "మైక్రోఫోన్ ఆన్ (Allowed) చేయండి. Chrome: Settings → Privacy and security → Site settings → Microphone → ఈ సైట్‌ను “Not allowed” నుండి “Allowed” లోకి తీసుకెళ్లండి",
+  "micBlockedFix3": "Mac లో, System Settings → Privacy & Security → Microphone లో చూడండి — మీ బ్రౌజర్ ఆన్ ఉందో చూసుకోండి",
+  "micBlockedFixReload": "ప్రయోగించడానికి రీలోడ్ చేయండి"
 }

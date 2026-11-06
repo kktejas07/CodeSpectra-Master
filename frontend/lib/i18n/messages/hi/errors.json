@@ -15,5 +15,10 @@
   "sectionDidNotLoad": "यह हिस्सा लोड नहीं हुआ। आपका काम सेव है — फिर कोशिश करें या होम पर जाएँ।",
   "reference": "रेफ़रेंस:",
   "goHome": "होम पर जाएँ",
-  "checkStatus": "सिस्टम स्टेटस देखें"
+  "checkStatus": "सिस्टम स्टेटस देखें",
+  "micBlockedFixTitle": "इस साइट क ले माइक्रोफ़ोन ब्लॉक हए — जब तक आप ब्राउज़र सेटिंग्स म बदल न, Allow/Block प्रॉम्पट फिर नई ख़ुलतई",
+  "micBlockedFix1": "एड्रेस बार के बाएं पैर क padlock/shield icon क क्लिक करेन → Site settings",
+  "micBlockedFix2": "माइक्रोफ़ोन खोलें (Allowed)। Chrome: Settings → Privacy and security → Site settings → Microphone → इ साइट को “Not allowed” से “Allowed” म ले जएन",
+  "micBlockedFix3": "Mac स, System Settings → Privacy & Security → Microphone म चैक करेन — आप ब्राउज़र खाल होवे",
+  "micBlockedFixReload": "लागू चें के लिए रीलोड"
 }
