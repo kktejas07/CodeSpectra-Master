@@ -105,7 +105,7 @@ const SEED_JOBS = [
     skills: ['Python', 'SQL', 'Pandas', 'Scikit-learn', 'Statistics', 'Tableau'] },
 ]
 
-export async function POST(request: NextRequest) {
+async function runSeed(request: NextRequest) {
   // Allow superadmin session OR cron secret for one-shot use
   const { searchParams } = new URL(request.url)
   const secret = searchParams.get('secret')
@@ -161,3 +161,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true, created, skipped: skipped.length, skipped_titles: skipped, jobs: results })
 }
+
+export async function GET(request: NextRequest) { return runSeed(request) }
+export async function POST(request: NextRequest) { return runSeed(request) }
