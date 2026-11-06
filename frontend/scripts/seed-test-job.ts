@@ -107,7 +107,8 @@ async function main() {
   await client.connect()
   console.log('Connected:', MONGODB_URI.replace(/:\/\/.*@/, '://***@'))
 
-  const col = client.db(DB_NAME).collection('ats_jobs')
+  const db = client.db(DB_NAME)
+  const col = db.collection('ats_jobs')
   const now = new Date().toISOString()
 
   // Idempotency
@@ -123,7 +124,7 @@ async function main() {
   }
 
   const id = randomUUID()
-  await col.insertOne({
+  const atsDoc = {
     id,
     tenant_id: TENANT_ID,
     title: TEST_JOB_TITLE,
@@ -155,14 +156,39 @@ Feel free to apply with any résumé to test the pipeline.`,
     created_by: 'system-seed',
     created_at: now,
     updated_at: now,
+  }
+  await col.insertOne(atsDoc)
+
+  // Mirror into job_postings so the public /jobs board shows this job
+  const legacyId = randomUUID()
+  await db.collection('job_postings').insertOne({
+    id: legacyId,
+    ats_job_id: id,
+    tenant_id: TENANT_ID,
+    title: TEST_JOB_TITLE,
+    company: 'CodeSpectra',
+    location: 'Remote',
+    job_type: 'Full-time',
+    experience_level: '3–7 years',
+    description: atsDoc.description,
+    requirements: atsDoc.requirements,
+    skills: atsDoc.skills,
+    salary: null,
+    benefits: null,
+    applicants: 0,
+    is_active: true,
+    created_by: 'system-seed',
+    created_at: now,
+    updated_at: now,
   })
 
   console.log(`\n✅  Test job created!`)
   console.log(`    Title : ${TEST_JOB_TITLE}`)
   console.log(`    ID    : ${id}`)
   console.log(`    Tenant: ${TENANT_ID ?? '(platform-level / superadmin)'}`)
-  console.log(`\n    Public URL: /jobs/${id}`)
-  console.log(`    Admin URL : /dashboard/jobs/${id}`)
+  console.log(`\n    Public URL : /jobs/${id}`)
+  console.log(`    Legacy ID  : ${legacyId}`)
+  console.log(`    Admin URL  : /dashboard/jobs/${id}`)
   console.log(`\n    Pipeline stages:`)
   for (const s of pipeline) {
     console.log(`      ${s.type.padEnd(20)} ${s.name}`)

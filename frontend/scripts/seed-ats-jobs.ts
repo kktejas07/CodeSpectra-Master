@@ -202,6 +202,43 @@ const SEED_JOBS = [
   },
 ]
 
+const EMPLOYMENT_LABEL: Record<string, string> = {
+  full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', internship: 'Internship',
+}
+
+function experienceLabel(min: number | null, max: number | null): string | null {
+  if (min === null && max === null) return null
+  if (min !== null && max !== null) return `${min}–${max} years`
+  return min !== null ? `${min}+ years` : `Up to ${max} years`
+}
+
+/** Mirror an ats_jobs doc into job_postings so the public /jobs board shows it. */
+async function mirrorToJobPostings(db: ReturnType<import('mongodb').MongoClient['db']>, atsDoc: Record<string, unknown>) {
+  const legacyId = newId()
+  const locationStr = [atsDoc.location, atsDoc.work_mode === 'remote' ? 'Remote' : atsDoc.work_mode === 'hybrid' ? 'Hybrid' : null].filter(Boolean).join(' · ') || null
+  await db.collection('job_postings').insertOne({
+    id: legacyId,
+    ats_job_id: atsDoc.id,
+    tenant_id: atsDoc.tenant_id,
+    title: atsDoc.title,
+    company: 'CodeSpectra',
+    location: locationStr,
+    job_type: atsDoc.employment_type ? (EMPLOYMENT_LABEL[atsDoc.employment_type as string] ?? null) : null,
+    experience_level: experienceLabel(atsDoc.experience_min as number | null, atsDoc.experience_max as number | null),
+    description: atsDoc.description || null,
+    requirements: atsDoc.requirements || null,
+    skills: atsDoc.skills || [],
+    salary: null,
+    benefits: null,
+    applicants: 0,
+    is_active: true,
+    created_by: atsDoc.created_by,
+    created_at: atsDoc.created_at,
+    updated_at: atsDoc.updated_at,
+  })
+  return legacyId
+}
+
 async function main() {
   const client = new MongoClient(MONGODB_URI)
   await client.connect()
@@ -247,8 +284,10 @@ async function main() {
       updated_at: now,
     }
 
-    const res = await col.insertOne(doc)
-    console.log(`✅  Created: ${job.title}  id=${doc.id}  _id=${res.insertedId}`)
+    await col.insertOne(doc)
+    // Mirror into job_postings so the public /jobs board shows this job
+    const legacyId = await mirrorToJobPostings(db, doc)
+    console.log(`✅  Created: ${job.title}  id=${doc.id}  legacy_id=${legacyId}`)
     created++
   }
 
