@@ -16,9 +16,20 @@ async function main() {
   let working = false
   let currentJobId: string | null = null
 
+  // Liveness MUST NOT depend on the job loop. This file used to call
+  // `await tick()` before `setInterval` existed — and `tick()` awaits
+  // processVideoJob(), so the FIRST job of every process ran to completion
+  // before the interval was ever registered. That job produced exactly one
+  // heartbeat (written before it was claimed) and then went silent for hours,
+  // so the admin UI showed "Worker Offline" (WORKER_ONLINE_MS = 20s) while the
+  // worker was rendering normally. A dedicated timer fixes it regardless of how
+  // long processVideoJob blocks.
+  const beat = () => { writeWorkerHeartbeat(currentJobId).catch(() => {}) }
+  setInterval(beat, 4000)
+  beat()
+
   const tick = async () => {
     try {
-      await writeWorkerHeartbeat(currentJobId)
       if (working) return
       const claimed = await claimNextPendingJob()
       if (!claimed) return

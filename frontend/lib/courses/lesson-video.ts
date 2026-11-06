@@ -386,7 +386,24 @@ export function withDurations(slides: Omit<VideoSlide, 'durationInFrames'>[]): V
   return slides.map(s => ({ ...s, durationInFrames: durationFramesFromSpoken(s.spokenText) }))
 }
 
-const TEXT_SYSTEM = `You are an expert course instructor writing Unstop-style textbook lessons. Return clean Markdown only — no preamble.`
+// ponytail: brocode.live enables server-side web search for every request and
+// it CANNOT be disabled ("automatic and server-side — no setup" per their
+// docs). On long lesson prompts the model would rather search than write, and
+// once it exhausts the per-reply tool budget it returns the literal marker
+//
+//   [web_search: …] (not executed: the limit for server-side tool calls …)
+//
+// instead of the lesson — which surfaced as "All LLM providers failed" /
+// "AI video script missing slides/scenes array" on ~40% of script calls.
+// Telling it explicitly that it has no tools is the only lever we control.
+const NO_TOOLS = `HARD RULES (override everything else):
+- You have no tools. Never call web search or look anything up; answer from your own knowledge only.
+- Do not think out loud, plan, or narrate what you are about to do.
+- Your entire reply is the requested output and nothing else.`
+
+const TEXT_SYSTEM = `You are an expert course instructor writing Unstop-style textbook lessons. Return clean Markdown only — no preamble.
+
+${NO_TOOLS}`
 
 function contextBlock(ctx: LessonContext, techStack: string): string {
   const lines: string[] = []
@@ -428,7 +445,9 @@ ${exampleRule}
 - Do NOT embed quiz questions with answers, answer keys, or "Quiz N" blocks — quizzes are a separate interactive step after the module videos.`
 }
 
-const VIDEO_SYSTEM = `You are an expert video-lesson scriptwriter. Return ONLY valid JSON, no markdown.`
+const VIDEO_SYSTEM = `You are an expert video-lesson scriptwriter. Return ONLY valid JSON, no markdown.
+
+${NO_TOOLS}`
 
 interface ActInfo {
   index: number
@@ -784,8 +803,19 @@ export async function generateLessonVideo(opts: {
       bounds.push({ title: acts[i].title, startIndex: slides.length })
       slides.push(...actSlides)
     }
+    // Near-miss tolerance: each act is asked for 12 slides and the floor is the
+    // SUM of those budgets (60), so four acts landing on 11 plus one on 12
+    // (56) used to throw away a complete, TTS-ready 56-slide script over a 7%
+    // shortfall — the failure the job log showed as
+    // "Need at least 60 slides for a 60-min lesson, got 56". The lesson length
+    // that actually ships comes from the measured voiceover, not this count, so
+    // a small shortfall is just a slightly shorter lesson, not a broken one.
+    const hardFloor = Math.max(5, Math.round(minTotal * 0.9))
+    if (slides.length < hardFloor) {
+      throw new Error(`Need at least ${hardFloor} slides for a ${minutes}-min lesson, got ${slides.length}`)
+    }
     if (slides.length < minTotal) {
-      throw new Error(`Need at least ${minTotal} slides for a ${minutes}-min lesson, got ${slides.length}`)
+      console.warn(`[course-video] short script: ${slides.length}/${minTotal} slides for a ${minutes}-min lesson — accepting`)
     }
     slides = slides.map((s, i) => ({ ...s, id: `slide-${i + 1}` }))
     chapters = chaptersFromScript(slides, bounds)

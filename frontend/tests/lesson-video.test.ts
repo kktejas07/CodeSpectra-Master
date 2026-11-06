@@ -12,6 +12,7 @@ import {
   splitTextForTts,
 } from '@/lib/courses/tts'
 import { isStaleRunning, STALE_RUNNING_MS, finalJobStatus } from '@/lib/courses/process-job'
+import { renderDeadlineMs } from '@/lib/courses/render-mp4'
 
 const fiveSlides = {
   slides: [
@@ -183,5 +184,16 @@ describe('stale running jobs', () => {
     expect(finalJobStatus(12, 0)).toBe('completed')
     expect(finalJobStatus(8, 4)).toBe('failed')
     expect(finalJobStatus(0, 0)).toBe('failed')
+  })
+})
+
+describe('render deadline', () => {
+  // 2026-11-06: the deadline used to be (15 + minutes*12) minutes. A queued
+  // 60-min lesson therefore granted 12.25 HOURS of wall clock, so a wedged
+  // Chrome (static pre-encode.mp4, 90% CPU, zero frames) blocked the single
+  // worker replica for hours instead of failing and moving on.
+  it('bounds the worst case for a 60-min lesson', () => {
+    expect(renderDeadlineMs(60)).toBe(75 * 60 * 1000)
+    expect(renderDeadlineMs(10)).toBe(58 * 60 * 1000)
   })
 })

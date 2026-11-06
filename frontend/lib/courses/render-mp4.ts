@@ -17,17 +17,23 @@ let bundleUrl: string | null = null
  * frame would sit for up to 90min at 0% CPU — the "2.5h hang in courses".) */
 const PER_FRAME_TIMEOUT_MS = 3 * 60 * 1000
 
+/** Hard ceiling for a single lesson render. The formula below is already
+ * generous; this stops a 60-min script from being granted hours of wall clock. */
+const MAX_RENDER_DEADLINE_MS = 75 * 60 * 1000
+
 /** Overall render deadline (wall-clock for the whole lesson). Measured on the
- * worker host: ~4.5x realtime for a healthy 720p encode, so a healthy N-minute
- * render finishes in ~5N minutes. 15 min base + 12 min per video minute leaves
- * wide headroom for slow hosts while still being FINITE — the point is that a
- * crash-recovery deadlock (0% CPU, static file) fails in ~1-2h max instead of
- * wedging the course worker forever. */
+ * worker host: 6000 frames render in ~306s (~20 fps) with no audio, so a
+ * healthy N-minute lesson needs roughly 1.3N minutes at 30fps.
+ *
+ * History: this used to be `(15 + N*12)` minutes. For the 60-min lessons the
+ * admin UI queued that is 12.25 HOURS — so a genuinely wedged Chrome (static
+ * pre-encode.mp4, 90% CPU, zero frames) was never reaped and blocked the single
+ * worker replica for hours at a time. Bounded by MAX_RENDER_DEADLINE_MS now. */
 export function renderDeadlineMs(scriptOrMinutes: ScriptItem[] | number): number {
   const minutes = typeof scriptOrMinutes === 'number'
     ? scriptOrMinutes
     : Math.max(1, Math.round(scriptOrMinutes.reduce((n, s) => n + (s.durationInFrames || 0), 0) / 30 / 60))
-  return (15 + minutes * 12) * 60 * 1000
+  return Math.min(MAX_RENDER_DEADLINE_MS, (8 + minutes * 5) * 60 * 1000)
 }
 
 function chromePath(): string | undefined {
@@ -67,7 +73,7 @@ export async function renderAndStoreLessonMp4(opts: {
   try {
     if (hasAudio) await writeFile(path.join(dir, 'voice.mp3'), opts.audio!)
     const serveUrl = await getBundle()
-    const { renderMedia, selectComposition } = await import('@remotion/renderer')
+    const { renderMedia, selectComposition, makeCancelSignal } = await import('@remotion/renderer')
     const inputProps = {
       script: opts.script,
       // Remotion blocks file:// — use data URL for local TTS audio. A silent
@@ -97,6 +103,10 @@ export async function renderAndStoreLessonMp4(opts: {
     // LESSON_RENDER_CONCURRENCY=2 to trade RAM for wall-clock.
     const scale = process.env.LESSON_RENDER_SCALE ? Number(process.env.LESSON_RENDER_SCALE) : 2 / 3
     const concurrency = process.env.LESSON_RENDER_CONCURRENCY ? Number(process.env.LESSON_RENDER_CONCURRENCY) : 1
+    // A rejected watchdog promise does NOT stop Remotion — Chrome + ffmpeg keep
+    // rendering at 100% CPU and starve the next lesson on a single-replica
+    // worker. `cancel()` actually tears the browser down.
+    const { cancelSignal, cancel } = makeCancelSignal()
     const render = renderMedia({
       composition,
       serveUrl,
@@ -110,12 +120,16 @@ export async function renderAndStoreLessonMp4(opts: {
       concurrency,
       timeoutInMilliseconds: PER_FRAME_TIMEOUT_MS,
       chromiumOptions,
+      cancelSignal,
       ...(browserExecutable ? { browserExecutable } : {}),
     })
     let deadlineTimer: NodeJS.Timeout | undefined
     const watchdog = new Promise<never>((_, reject) => {
       deadlineTimer = setTimeout(
-        () => reject(new Error(`MP4 render exceeded ${Math.round(overallDeadlineMs / 60000)}min deadline (browser likely wedged)`)),
+        () => {
+          cancel()
+          reject(new Error(`MP4 render exceeded ${Math.round(overallDeadlineMs / 60000)}min deadline (browser likely wedged)`))
+        },
         overallDeadlineMs,
       )
     })
