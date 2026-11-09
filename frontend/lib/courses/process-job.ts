@@ -13,6 +13,9 @@ export function finalJobStatus(completedItems: number, failedItems: number): 'co
 }
 
 export const STALE_RUNNING_MS = 3 * 60 * 60 * 1000
+/** A running job whose worker stopped beating for this long is an orphan.
+ *  Workers stamp the job's heartbeatAt every 4s → 2 min = 30 missed beats. */
+export const ORPHAN_JOB_MS = 2 * 60 * 1000
 export const WORKER_ONLINE_MS = 20_000
 const HEARTBEAT_ID = 'course-video-worker'
 const BUSY_STATUSES = ['pending', 'running'] as const
@@ -35,7 +38,19 @@ export async function findBusyJob(): Promise<{ id: string; courseTitle?: string;
 
 export async function requeueOrphanRunningJobs(): Promise<number> {
   const db = await getMongoDb()
-  const running = await db.collection('generation_jobs').find({ status: 'running' }).toArray()
+  // Only genuinely abandoned work. Workers now stamp the running job's
+  // heartbeatAt every 4s (see writeWorkerHeartbeat), so 2 minutes = 30 missed
+  // beats. Blanket-requeueing every 'running' job would be fine for one
+  // replica but, with several, a starting replica would steal healthy jobs
+  // from its siblings.
+  const cutoff = new Date(Date.now() - ORPHAN_JOB_MS).toISOString()
+  const running = await db.collection('generation_jobs').find({
+    status: 'running',
+    $or: [
+      { heartbeatAt: { $lt: cutoff } },
+      { heartbeatAt: { $exists: false }, startedAt: { $lt: cutoff } },
+    ],
+  }).toArray()
   for (const job of running) {
     await db.collection('generation_jobs').updateOne(
       { id: job.id },
@@ -83,12 +98,18 @@ export async function recoverStaleRunningJobs(): Promise<number> {
   return stale.length
 }
 
-/** Atomically take the oldest pending job if nothing else is running. 1 job at a time. */
+/** Atomically take the oldest pending job. One job per worker process.
+ *
+ * The old version also bailed out when ANY job was running anywhere
+ * (`if (running) return null`), which made every replica past the first sit
+ * idle — extra replicas bought zero throughput. The atomic findOneAndUpdate on
+ * `status: 'pending'` is already enough to hand each worker a distinct job.
+ */
 export async function claimNextPendingJob(): Promise<{ id: string } | null> {
   const db = await getMongoDb()
-  await recoverStaleRunningJobs()
-  const running = await db.collection('generation_jobs').findOne({ status: 'running' })
-  if (running) return null
+  // Recover work abandoned by a dead/restarted replica before claiming, so a
+  // killed render returns to the queue in ~2 min instead of waiting 3 hours.
+  await requeueOrphanRunningJobs()
 
   const claimed = await db.collection('generation_jobs').findOneAndUpdate(
     { status: 'pending' },
@@ -417,18 +438,27 @@ export async function processVideoJob(jobId: string): Promise<void> {
 
 export async function writeWorkerHeartbeat(currentJobId?: string | null): Promise<void> {
   const db = await getMongoDb()
+  const at = new Date().toISOString()
   await db.collection('generation_worker_heartbeat').updateOne(
     { id: HEARTBEAT_ID },
     {
       $set: {
         id: HEARTBEAT_ID,
-        at: new Date().toISOString(),
+        at,
         hostname: process.env.HOSTNAME || 'course-worker',
         currentJobId: currentJobId || null,
       },
     },
     { upsert: true },
   )
+  // Per-job liveness. Without this the job's heartbeatAt only moved once per
+  // lesson (~30 min), so a healthy long render and a dead worker looked the
+  // same and orphan detection had to wait out a 3-hour window.
+  if (currentJobId) {
+    await db.collection('generation_jobs')
+      .updateOne({ id: currentJobId, status: 'running' }, { $set: { heartbeatAt: at } })
+      .catch(() => {})
+  }
 }
 
 export async function readWorkerStatus(): Promise<{
