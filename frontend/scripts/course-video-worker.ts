@@ -11,7 +11,7 @@ async function main() {
   const { claimNextPendingJob, processVideoJob, writeWorkerHeartbeat, requeueOrphanRunningJobs } = await import('../lib/courses/process-job')
   const orphans = await requeueOrphanRunningJobs()
   if (orphans) console.log('[course-worker] requeued', orphans, 'orphan running job(s)')
-  console.log('[course-worker] started, polling generation_jobs (one job at a time)')
+  console.log('[course-worker] started, polling generation_jobs (one job per worker)')
 
   let working = false
   let currentJobId: string | null = null

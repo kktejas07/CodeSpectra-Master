@@ -53,6 +53,23 @@ function courseMediaStats(course: any) {
   return { total, mp4Ready, scriptOnly, pending: Math.max(0, total - mp4Ready) }
 }
 
+/** Rough ETA per lesson when there is no history yet (~30 min measured on prod). */
+const LESSON_MS = 30 * 60_000
+
+/** Remaining time for a running job, from its own measured pace. */
+function jobEta(job: GenerationJob): string | null {
+  if (job.status !== 'running') return null
+  const remaining = Math.max(0, job.totalItems - job.completedItems - job.failedItems)
+  if (!remaining) return null
+  const elapsed = Date.now() - Date.parse(job.startedAt || '')
+  const per = job.completedItems > 0 && elapsed > 0 ? elapsed / job.completedItems : LESSON_MS
+  const ms = per * remaining
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.round((ms % 3_600_000) / 60_000)
+  if (h > 0) return `${h}h ${m}m`
+  return `${Math.max(1, m)}m`
+}
+
 export default function CourseGeneratorTab() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
@@ -72,6 +89,17 @@ export default function CourseGeneratorTab() {
   const [workerHint, setWorkerHint] = useState('')
   const [workerStuck, setWorkerStuck] = useState(false)
   const [runningJobTitle, setRunningJobTitle] = useState('')
+  const [liveJobs, setLiveJobs] = useState<Array<{
+    id: string
+    courseTitle: string
+    progress: number
+    completedItems: number
+    totalItems: number
+    failedItems: number
+    heartbeatAgeMs: number | null
+    currentLesson: string | null
+  }>>([])
+  const [fleet, setFleet] = useState<{ rendering: number; running: number }>({ rendering: 0, running: 0 })
 
   // Course state
   const [existingCourses, setExistingCourses] = useState<any[]>([])
@@ -110,7 +138,10 @@ export default function CourseGeneratorTab() {
       loadJobs()
       loadWorker()
     }, 5000)
-    return () => clearInterval(interval)
+    // Lesson counts / "videos ready" move every ~30 min; a slower refresh keeps
+    // the numbers live without shipping the whole catalog every 5 seconds.
+    const coursesInterval = setInterval(() => { void loadExistingCourses() }, 60_000)
+    return () => { clearInterval(interval); clearInterval(coursesInterval) }
   }, [])
 
   const loadJobs = async () => {
@@ -128,6 +159,8 @@ export default function CourseGeneratorTab() {
       if (typeof data.online === 'boolean') setWorkerOnline(data.online)
       if (data.hint) setWorkerHint(data.hint)
       setWorkerStuck(Boolean(data.stuck))
+      setLiveJobs(Array.isArray(data.runningJobs) ? data.runningJobs : [])
+      if (data.fleet) setFleet({ rendering: Number(data.fleet.rendering) || 0, running: Number(data.fleet.running) || 0 })
       setRunningJobTitle(data.runningJob?.courseTitle ? `${data.runningJob.courseTitle} (${data.runningJob.progress || 0}%)` : '')
     } catch {
       setWorkerOnline(false)
@@ -257,7 +290,7 @@ export default function CourseGeneratorTab() {
       const jobData = await jobRes.json()
       if (!jobRes.ok) throw new Error(jobData.error || 'Failed to queue video job')
 
-      addToast({ type: 'success', title: 'Queued — course worker will generate videos (one job at a time)' })
+      addToast({ type: 'success', title: 'Queued — the worker will start generating videos automatically' })
       loadJobs()
       loadExistingCourses()
     } catch (e: any) {
@@ -370,8 +403,17 @@ export default function CourseGeneratorTab() {
 
   if (!gate.ready) return null
 
-  const runningJobs = jobs.filter(j => j.status === 'running' || j.status === 'pending')
-  const completedJobs = jobs.filter(j => j.status === 'completed' || j.status === 'failed')
+  // "Videos ready" is the number that matters, not "jobs completed": one job
+  // covers a whole course (~30 lessons, ~12h), so a completed-jobs counter
+  // reads 0 for a day while videos are actually being produced.
+  const mediaTotals = existingCourses.reduce(
+    (acc, c) => {
+      const m = courseMediaStats(c)
+      return { total: acc.total + m.total, mp4: acc.mp4 + m.mp4Ready }
+    },
+    { total: 0, mp4: 0 },
+  )
+  const liveById = new Map(liveJobs.map(j => [j.id, j]))
 
   const llmStrip = (() => {
     const link = (
@@ -468,7 +510,7 @@ export default function CourseGeneratorTab() {
               {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Zap className="h-4 w-4" /> Generate course</>}
             </Button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Full syllabus + curriculum for this subject/level, then MP4, audio, and captions (~{targetMinutes} min/lesson, one job at a time).
+              Full syllabus + curriculum for this subject/level, then MP4, audio, and captions (~{targetMinutes} min/lesson, one lesson at a time per worker).
             </p>
             {preview && (
               <div className="rounded-2xl border border-border/60 bg-muted/30 p-3 space-y-2">
@@ -493,10 +535,32 @@ export default function CourseGeneratorTab() {
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2 w-2 rounded-full ${workerOnline ? 'bg-green-500' : workerOnline === false ? 'bg-red-500' : 'bg-muted-foreground'}`} />
               <span className="text-sm font-medium">
-                {workerOnline === null ? 'Checking…' : workerOnline ? 'Online — jobs start automatically' : 'Offline'}
+                {workerOnline === null
+                  ? 'Checking…'
+                  : workerOnline
+                    ? `Online — ${fleet.rendering || 0} rendering${fleet.running ? ` (${fleet.running} job${fleet.running === 1 ? '' : 's'})` : ''}`
+                    : 'Offline'}
               </span>
             </div>
-            {runningJobTitle && (
+            {liveJobs.length > 0 && (
+              <ul className="space-y-1.5">
+                {liveJobs.map(j => (
+                  <li key={j.id} className="rounded-lg bg-muted/40 px-2.5 py-1.5">
+                    <p className="text-[11px] font-medium truncate">{j.courseTitle}</p>
+                    <p className="text-[11px] text-muted-foreground tabular-nums">
+                      lesson {Math.min(j.completedItems + 1, j.totalItems || 1)}/{j.totalItems}
+                      {j.heartbeatAgeMs !== null && j.heartbeatAgeMs > 90_000 && (
+                        <span className="text-amber-700 dark:text-amber-300"> · heartbeat {Math.round(j.heartbeatAgeMs / 1000)}s old</span>
+                      )}
+                    </p>
+                    {j.currentLesson && (
+                      <p className="text-[11px] text-muted-foreground truncate">{j.currentLesson}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {runningJobTitle && liveJobs.length === 0 && (
               <p className="text-[11px] text-muted-foreground">Running: {runningJobTitle}</p>
             )}
             {workerHint && (
@@ -518,20 +582,23 @@ export default function CourseGeneratorTab() {
             </h2>
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="p-2.5 rounded-xl bg-muted/40">
+                <p className="text-lg font-bold tabular-nums text-green-700 dark:text-green-400">
+                  {mediaTotals.mp4.toLocaleString()}
+                  <span className="text-xs font-normal text-muted-foreground">/{mediaTotals.total.toLocaleString()}</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground">Videos ready</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-muted/40">
+                <p className="text-lg font-bold tabular-nums text-primary">{fleet.rendering}</p>
+                <p className="text-[11px] text-muted-foreground">Rendering now</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-muted/40">
+                <p className="text-lg font-bold tabular-nums">{jobs.filter(j => j.status === 'pending').length}</p>
+                <p className="text-[11px] text-muted-foreground">Jobs queued</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-muted/40">
                 <p className="text-lg font-bold tabular-nums">{existingCourses.length}</p>
                 <p className="text-[11px] text-muted-foreground">Courses</p>
-              </div>
-              <div className="p-2.5 rounded-xl bg-muted/40">
-                <p className="text-lg font-bold tabular-nums">{jobs.length}</p>
-                <p className="text-[11px] text-muted-foreground">Jobs</p>
-              </div>
-              <div className="p-2.5 rounded-xl bg-muted/40">
-                <p className="text-lg font-bold tabular-nums text-green-700 dark:text-green-400">{completedJobs.filter(j => j.status === 'completed').length}</p>
-                <p className="text-[11px] text-muted-foreground">Completed</p>
-              </div>
-              <div className="p-2.5 rounded-xl bg-muted/40">
-                <p className="text-lg font-bold tabular-nums text-primary">{runningJobs.length}</p>
-                <p className="text-[11px] text-muted-foreground">Running</p>
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
@@ -684,7 +751,15 @@ export default function CourseGeneratorTab() {
                               <p className="text-xs tabular-nums text-muted-foreground">
                                 MP4 {job.completedItems}/{job.totalItems}
                                 {job.failedItems > 0 && <span className="text-red-600 dark:text-red-400 ml-2">{job.failedItems} failed</span>}
+                                {job.status === 'running' && jobEta(job) && (
+                                  <span className="ml-2 text-muted-foreground">~{jobEta(job)} left</span>
+                                )}
                               </p>
+                              {job.status === 'running' && liveById.get(job.id)?.currentLesson && (
+                                <p className="text-[11px] text-muted-foreground truncate max-w-[22rem]">
+                                  Now: {liveById.get(job.id)!.currentLesson}
+                                </p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -713,10 +788,20 @@ export default function CourseGeneratorTab() {
                         </div>
 
                         {job.status === 'running' && (
-                          <div className="px-3 pb-3">
-                            <div className="w-full bg-muted rounded-full h-1.5">
-                              <div className="bg-primary h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none" style={{ width: `${job.progress}%` }} />
+                          <div className="px-3 pb-3 space-y-1">
+                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                              {job.progress > 0 ? (
+                                <div className="bg-primary h-1.5 rounded-full transition-all duration-300 motion-reduce:transition-none" style={{ width: `${job.progress}%` }} />
+                              ) : (
+                                // A course job is ~30 lessons and each MP4 takes
+                                // ~30 min, so progress is legitimately 0% for the
+                                // first half hour. A 0-width bar read as "broken".
+                                <div className="h-1.5 w-full bg-primary/40 animate-pulse motion-reduce:animate-none" />
+                              )}
                             </div>
+                            <p className="text-[11px] text-muted-foreground tabular-nums">
+                              {job.progress}% · lesson {Math.min(job.completedItems + 1, job.totalItems || 1)}/{job.totalItems}
+                            </p>
                           </div>
                         )}
 

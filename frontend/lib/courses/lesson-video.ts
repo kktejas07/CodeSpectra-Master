@@ -669,7 +669,14 @@ async function completeWithFallback(
     ...PROVIDER_MODELS.filter(p => p.provider !== 'nvidia'),
   ]
   const start = rest.length ? (rr++ % rest.length) : 0
-  const chain = [...(customFirst ? [customFirst] : []), ...nvidia, ...rest.slice(start), ...rest.slice(0, start)]
+  // The custom gateway (brocode.live) has unlimited tokens that reset every 5h,
+  // so retrying IT is free — while the free tiers below are mostly dead
+  // (nvidia/gemini 404) and cost 30-60s of dead time per lesson. Two extra
+  // retries absorb its occasional prose-instead-of-JSON answer. The free chain
+  // stays as a last-resort backstop if the gateway is genuinely unreachable.
+  const chain = customFirst
+    ? [customFirst, customFirst, customFirst, ...nvidia, ...rest.slice(start), ...rest.slice(0, start)]
+    : [...nvidia, ...rest.slice(start), ...rest.slice(0, start)]
   const seen = new Set<string>()
   let last = 'No LLM provider with a key is configured'
   let waitedRateLimit = false
@@ -678,13 +685,20 @@ async function completeWithFallback(
   const { getApiKey } = await import('@/lib/ai/get-api-key')
 
   // Honor a cooldown parked by an earlier lesson's 429 before trying at all.
-  await waitForGlobalCooldown()
+  // The paid gateway has no such limit, so it must never sleep through a
+  // cooldown a free tier parked — that was up to 60s of dead time per lesson.
+  if (!customFirst) await waitForGlobalCooldown()
 
   for (const p of chain) {
     if (!p.provider || !p.model) continue
     const id = `${p.provider}:${p.model}`
-    if (seen.has(id)) continue
+    // Free tiers get exactly one shot each; the gateway appears three times in
+    // the chain above so `seen` must not swallow its retries.
+    if (seen.has(id) && p.provider !== 'custom') continue
     seen.add(id)
+
+    // Free tiers still obey a cooldown parked by a sibling lesson's 429.
+    if (p.provider !== 'custom') await waitForGlobalCooldown()
 
     // Get API key using unified utility (supports round-robin)
     const fromPrimary = p.provider === primary.providerOverride ? primary.apiKeyOverride : ''

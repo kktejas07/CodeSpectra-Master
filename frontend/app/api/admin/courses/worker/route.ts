@@ -13,20 +13,43 @@ export async function GET() {
 
   const status = await readWorkerStatus()
   const db = await getMongoDb()
-  const running = await db.collection('generation_jobs').findOne(
-    { status: 'running' },
-    { projection: { id: 1, courseTitle: 1, progress: 1 } },
-  )
+  const runningDocs = await db
+    .collection('generation_jobs')
+    .find({ status: 'running' }, { projection: { id: 1, courseTitle: 1, progress: 1, completedItems: 1, totalItems: 1, failedItems: 1, heartbeatAt: 1, logs: { $slice: -1 } } })
+    .toArray()
+  const running = runningDocs[0]
+  const now = Date.now()
+  const runningJobs = runningDocs.map((j: any) => ({
+    id: j.id,
+    courseTitle: j.courseTitle,
+    progress: j.progress || 0,
+    completedItems: j.completedItems || 0,
+    totalItems: j.totalItems || 0,
+    failedItems: j.failedItems || 0,
+    heartbeatAgeMs: j.heartbeatAt ? now - Date.parse(String(j.heartbeatAt)) : null,
+    currentLesson: String((j.logs || [])[0]?.message || '').replace(/^Generating:\s*/, '') || null,
+  }))
+  // One replica stamps the shared heartbeat doc (last writer wins), so the
+  // number of workers actually rendering is the number of running jobs whose
+  // per-job heartbeat is fresh — not the doc's single currentJobId.
+  const renderingNow = runningJobs.filter(j => j.heartbeatAgeMs !== null && j.heartbeatAgeMs < 60_000).length
 
-  const stuck = Boolean(running && (!status.online || !status.currentJobId))
+  // "Stuck" must be judged per job: every replica writes the SAME heartbeat doc
+  // (last writer wins), so an idle replica overwrites currentJobId with null
+  // while six renders are healthy. Per-job heartbeatAt is the real signal.
+  const stuck = runningJobs.some(j => j.heartbeatAgeMs === null || j.heartbeatAgeMs > 120_000)
   return NextResponse.json({
     ...status,
     stuck,
+    fleet: { rendering: renderingNow, running: runningJobs.length },
+    runningJobs,
     runningJob: running ? { id: running.id, courseTitle: running.courseTitle, progress: running.progress } : null,
     hint: status.online
       ? (stuck
         ? 'A job is marked running but the worker is idle. Click Unstick hung job.'
-        : 'Worker is polling. Pending jobs start automatically.')
+        : renderingNow > 1
+          ? `${renderingNow} workers are rendering in parallel. Each video is one lesson at a time; jobs start automatically.`
+          : 'Worker is polling. Pending jobs start automatically.')
       : 'Worker is offline. Restart the course-worker app in Dokploy, or click Unstick hung job after it is back.',
   })
 }

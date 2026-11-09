@@ -45,11 +45,20 @@ export async function GET(request: NextRequest) {
 
   try {
     const db = await getMongoDb()
-    const jobs = await db.collection('generation_jobs')
-      .find(courseId ? { courseId } : {})
-      .sort({ startedAt: -1 })
-      .limit(50)
-      .toArray()
+    // Active work must never be pushed out of the list by 50 newer finished
+    // jobs — requeued jobs keep their original (older) startedAt, so a plain
+    // "newest 50" could hide every job that is actually running.
+    const [activeRaw, recent] = await Promise.all([
+      db.collection('generation_jobs').find(courseId ? { courseId, status: { $in: ['pending', 'running'] } } : { status: { $in: ['pending', 'running'] } }).sort({ startedAt: 1 }).toArray(),
+      db.collection('generation_jobs')
+        .find(courseId ? { courseId, status: { $nin: ['pending', 'running'] } } : { status: { $nin: ['pending', 'running'] } })
+        .sort({ startedAt: -1 })
+        .limit(50)
+        .toArray(),
+    ])
+    // Running jobs first, then the queue, then recent history.
+    const rank = (s: string) => (s === 'running' ? 0 : s === 'pending' ? 1 : 2)
+    const jobs = [...activeRaw, ...recent].sort((a: any, b: any) => rank(a.status) - rank(b.status)).slice(0, 100)
 
     // Old worker marked mixed/zero-success runs as completed. Surface them as failed.
     const normalized = jobs.map((job: any) => {
@@ -90,6 +99,22 @@ export async function POST(request: NextRequest) {
 
     if (force) await clearCourseVideos(courseId)
 
+    // One job per course. Without this, repeated clicks on Generate queue
+    // duplicates for the same course — 24 of them once, each re-rendering the
+    // same lessons once a second worker picked it up.
+    const existing = await db.collection('generation_jobs').findOne(
+      { courseId, status: { $in: ['pending', 'running'] } },
+      { sort: { startedAt: 1 } },
+    )
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        job: existing,
+        deduped: true,
+        message: 'This course already has a queued or running job — it will generate the videos.',
+      })
+    }
+
     const job: GenerationJob = {
       id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       courseId,
@@ -107,7 +132,7 @@ export async function POST(request: NextRequest) {
         type: 'info',
       }, {
         timestamp: new Date().toISOString(),
-        message: 'Queued — waiting for course-worker (one job at a time)',
+        message: 'Queued — course-worker will pick this up automatically',
         type: 'info',
       }],
       startedAt: new Date().toISOString(),
