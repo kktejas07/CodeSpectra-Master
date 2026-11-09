@@ -138,7 +138,6 @@ import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
-import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import { GoEdith } from '@/components/ai/go-edith'
 import { canShowInNav } from '@/lib/page-access-map'
 import { fetchLockedPages } from '@/lib/use-page-guard'
@@ -190,7 +189,6 @@ export default function DashboardLayout({
   const [allowedRoutes, setAllowedRoutes] = useState<Set<string>>(new Set())
   const [permsLoaded, setPermsLoaded] = useState(false)
   const [lockedPages, setLockedPages] = useState<string[]>([])
-  const [chatbotEnabled, setChatbotEnabled] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
 
@@ -244,22 +242,6 @@ export default function DashboardLayout({
         }
       })
       .catch(() => {})
-  }, [])
-
-  // Fetch public platform settings
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/platform/settings')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!cancelled && data?.settings) {
-          if (typeof data.settings.enable_chatbot === 'boolean') {
-            setChatbotEnabled(data.settings.enable_chatbot)
-          }
-        }
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
   }, [])
 
   // Fetch DB permissions to find routes where read was explicitly removed
@@ -1287,8 +1269,7 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
-      {/* Floating Chatbot */}
-      {chatbotEnabled && <AskCodeSpectra />}
+      {/* Floating AI assistant (EDITH) */}
       <GoEdith />
 
       {/* Real-time FCM push → XP toasts / notification popups */}

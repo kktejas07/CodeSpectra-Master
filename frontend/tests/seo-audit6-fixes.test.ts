@@ -22,7 +22,7 @@ describe('SEO-051: team invite links are never indexed', () => {
 })
 
 describe('SEO-046: Enter does not send while an IME is composing', () => {
-  for (const f of ['components/support/support-assistant.tsx', 'components/ai/ask-codespectra.tsx', 'app/dashboard/community/groups/[id]/page.tsx', 'components/agent/agent-copilot.tsx']) {
+  for (const f of ['components/support/support-assistant.tsx', 'components/ai/go-edith.tsx', 'app/dashboard/community/groups/[id]/page.tsx', 'components/agent/agent-copilot.tsx']) {
     it(f, () => {
       for (const m of read(f).matchAll(/e\.key === 'Enter'[^\n]*/g)) expect(m[0]).toContain('isComposing')
     })

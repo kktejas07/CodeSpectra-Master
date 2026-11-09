@@ -1656,19 +1656,6 @@ function SystemSettingsInner() {
                 onCheckedChange={(v) => setForm((f) => ({ ...f, enable_sso_login: v }))}
               />
             </div>
-            <div className="flex items-center justify-between gap-4 py-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="enable_chatbot" className="text-foreground">
-                  {tx('settings.askCodespectraChatbot')}
-                </Label>
-                <p className="text-sm text-muted-foreground">{tx('settings.enableTheGlobalAiCoding')}</p>
-              </div>
-              <Switch
-                id="enable_chatbot"
-                checked={form.enable_chatbot}
-                onCheckedChange={(v) => setForm((f) => ({ ...f, enable_chatbot: v }))}
-              />
-            </div>
           </div>
           <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
             <Button

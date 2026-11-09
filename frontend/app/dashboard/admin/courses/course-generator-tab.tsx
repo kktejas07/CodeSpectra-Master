@@ -548,9 +548,11 @@ export default function CourseGeneratorTab() {
                   <li key={j.id} className="rounded-lg bg-muted/40 px-2.5 py-1.5">
                     <p className="text-[11px] font-medium truncate">{j.courseTitle}</p>
                     <p className="text-[11px] text-muted-foreground tabular-nums">
-                      lesson {Math.min(j.completedItems + 1, j.totalItems || 1)}/{j.totalItems}
+                      {`lesson ${Math.min(j.completedItems + 1, j.totalItems || 1)}/${j.totalItems}`}
                       {j.heartbeatAgeMs !== null && j.heartbeatAgeMs > 90_000 && (
-                        <span className="text-amber-700 dark:text-amber-300"> · heartbeat {Math.round(j.heartbeatAgeMs / 1000)}s old</span>
+                        <span className="text-amber-700 dark:text-amber-300">
+                          {` · heartbeat ${Math.round(j.heartbeatAgeMs / 1000)}s old`}
+                        </span>
                       )}
                     </p>
                     {j.currentLesson && (
@@ -752,7 +754,7 @@ export default function CourseGeneratorTab() {
                                 MP4 {job.completedItems}/{job.totalItems}
                                 {job.failedItems > 0 && <span className="text-red-600 dark:text-red-400 ml-2">{job.failedItems} failed</span>}
                                 {job.status === 'running' && jobEta(job) && (
-                                  <span className="ml-2 text-muted-foreground">~{jobEta(job)} left</span>
+                                  <span className="ml-2 text-muted-foreground">{`~${jobEta(job)} left`}</span>
                                 )}
                               </p>
                               {job.status === 'running' && liveById.get(job.id)?.currentLesson && (
@@ -800,7 +802,7 @@ export default function CourseGeneratorTab() {
                               )}
                             </div>
                             <p className="text-[11px] text-muted-foreground tabular-nums">
-                              {job.progress}% · lesson {Math.min(job.completedItems + 1, job.totalItems || 1)}/{job.totalItems}
+                              {`${job.progress}% · lesson ${Math.min(job.completedItems + 1, job.totalItems || 1)}/${job.totalItems}`}
                             </p>
                           </div>
                         )}
