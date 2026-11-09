@@ -73,7 +73,10 @@ RUN NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_HEAP_MB} yarn build && rm -rf
 # 127.0.0.1, not localhost: inside the container `localhost` resolves to ::1
 # first, the server listens on 0.0.0.0 only, and every probe fails — so Swarm
 # marks a perfectly healthy task unhealthy and Traefik serves 502 (2026-10-30).
-HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s CMD wget -q -O- http://127.0.0.1:80/api/health >/dev/null 2>&1 || exit 1
+# The same image also runs the course worker, which serves no HTTP — the plain
+# wget probe killed every worker task 60s after start. The script probes HTTP
+# for the web role and the process for COURSE_WORKER=1.
+HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s CMD sh scripts/healthcheck.sh
 # Port 80 as non-root: Docker grants the bind via net.ipv4.ip_unprivileged_port_start=0
 # (default since Docker 20.10). Override PORT if your runtime doesn't.
 ENV PORT=80

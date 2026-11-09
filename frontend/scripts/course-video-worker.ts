@@ -24,7 +24,23 @@ async function main() {
   // so the admin UI showed "Worker Offline" (WORKER_ONLINE_MS = 20s) while the
   // worker was rendering normally. A dedicated timer fixes it regardless of how
   // long processVideoJob blocks.
-  const beat = () => { writeWorkerHeartbeat(currentJobId).catch(() => {}) }
+  // Orphan sweeping must NOT live only in the claim path. `tick()` returns
+  // early while this replica is rendering, so when every replica is busy
+  // nobody ever calls claimNextPendingJob() — and a job whose worker died
+  // stays "running" forever, blocking its course. (Seen live: a deploy killed
+  // a worker mid-lesson and the job sat 40 min with a 40-min-old heartbeat
+  // while six other replicas rendered happily.) One indexed update per minute
+  // is cheap; ORPHAN_JOB_MS is 2 min, so the sweep is still conservative.
+  let lastSweep = 0
+  const beat = () => {
+    writeWorkerHeartbeat(currentJobId).catch(() => {})
+    if (Date.now() - lastSweep > 60_000) {
+      lastSweep = Date.now()
+      requeueOrphanRunningJobs()
+        .then((n) => n && console.log('[course-worker] requeued', n, 'orphan running job(s)'))
+        .catch(() => {})
+    }
+  }
   setInterval(beat, 4000)
   beat()
 
