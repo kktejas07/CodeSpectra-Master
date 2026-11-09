@@ -89,9 +89,32 @@ export function slidesForMinutes(minutes: number): number {
   return SLIDE_TARGETS[m] ?? Math.min(60, Math.round(m * 1.5))
 }
 
-/** Narration word budget ≈ minutes×150wpm. */
+/** Narration word budget ≈ minutes×150wpm (READING speed — see TEXT_PROMPT). */
 export function wordsForMinutes(minutes: number): number {
   return normalizeTargetMinutes(minutes) * 150
+}
+
+/** Google Translate TTS speaks ~115-120 wpm, not the 150 used for reading.
+ *
+ * Scripts budgeted at 150 wpm therefore overshot every lesson by ~30%: a
+ * 10-min target asked for 15 slides × 160 words = 2400 words, which TTS turned
+ * into ~21-26 min of audio (observed: 19 slides → 47,161 frames → 26.2 min).
+ * That tripled render time AND made every "10 min" lesson 2.5x too long. */
+export const TTS_WPM = 120
+
+/** Words the narrator should actually speak for a lesson of `minutes`. */
+export function spokenWordsForMinutes(minutes: number): number {
+  return Math.round(normalizeTargetMinutes(minutes) * TTS_WPM)
+}
+
+/** Per-slide narration budget that makes the whole lesson land on `minutes`.
+ *
+ * The prompt used to hard-code "140-180 words" per slide regardless of slide
+ * count or target length, which is where the 2.5x overshoot came from. */
+export function wordsPerSlide(minutes: number): { lo: number; hi: number } {
+  const slides = Math.max(1, slidesForMinutes(normalizeTargetMinutes(minutes)))
+  const budget = spokenWordsForMinutes(minutes) / slides
+  return { lo: Math.round(budget * 0.85), hi: Math.round(budget * 1.15) }
 }
 
 /** Minimum acceptable slides ≈ minutes×1.2 (floor 5), never above the slide target. */
@@ -479,6 +502,9 @@ const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string, minu
   const countRule = !act
     ? `Write ${slidesForMinutes(m)} slides total (at least ${minSlidesForMinutes(m)}).`
     : `Write ${act.slides} slides total (at least ${actMinSlides(act.slides)}).`
+  // Budget narration from the lesson length, not a fixed per-slide count.
+  const perSlide = wordsPerSlide(m)
+  const spokenSpec = `${perSlide.lo}-${perSlide.hi} words`
   const openRules = !act || act.index === 1
     ? `- First slide type MUST be "title": hook headline + payoff subtitle — no greetings, no "welcome".
 - Second slide: on-screen outcomes ("By the end you will…" bullets, same points the narrator speaks).
@@ -500,7 +526,7 @@ Output JSON ONLY:
       "type": "title",
       "title": "Short on-screen headline",
       "content": ["One-line subtitle"],
-      "spokenText": "140-180 words the narrator speaks while this slide is on screen. Conversational, like a patient teacher. Teach, do not tease."
+      "spokenText": "${spokenSpec} the narrator speaks while this slide is on screen. Conversational, like a patient teacher. Teach, do not tease."
     }
   ]
 }
@@ -512,7 +538,7 @@ ${openRules}
 - One "Myth vs reality" misconceptions slide ("Most people think X — actually Y").
 ${closeRules}
 ${slideRules}
-- Each spokenText MUST be 140-180 words (this is what makes the video hit its target length).
+- Each spokenText MUST be ${spokenSpec} (${slidesForMinutes(m)} slides × that budget ≈ a ${m}-minute lesson at TTS pace).
 - On-screen "content" is 3-5 short bullets that summarize THE SAME points the narrator is speaking — never put unrelated bullets while spokenText teaches something else.
 - spokenText must teach the slide title + those bullets (same topic); do not digress to a different concept mid-slide.
 - Do not say "we will skip" or "as you already know".

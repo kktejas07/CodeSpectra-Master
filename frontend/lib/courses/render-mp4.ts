@@ -2,15 +2,52 @@
  * Render the Unstop-style Remotion composition to an H264 MP4.
  * ponytail: 720p scale (Unstop was ~720p/20fps VOD). Chrome lives on the worker image.
  */
-import { mkdtemp, writeFile, readFile, rm } from 'fs/promises'
+import { mkdtemp, readFile, rm } from 'fs/promises'
 import { tmpdir } from 'os'
 import path from 'path'
-import { pathToFileURL } from 'url'
 import { existsSync } from 'fs'
+import { createServer, type Server } from 'http'
+import type { AddressInfo } from 'net'
 import type { ScriptItem } from '@/app/remotion/CourseVideo'
 import { saveLessonMp4 } from '@/lib/courses/lesson-mp4'
 
 let bundleUrl: string | null = null
+
+/** Serve the voiceover over loopback for the duration of one render.
+ *
+ * Why not a data URL: `<Audio src="data:audio/mpeg;base64,…">` made Chrome
+ * re-parse the whole base64 payload on every frame. Render throughput tracked
+ * the payload size exactly — 4.8MB audio → ~10 fps, 9.6MB → ~6 fps, and the
+ * 16.7MB narration of a real lesson dropped to a crawl that looked like a
+ * deadlock (Chrome pinned at 100% CPU, pre-encode.mp4 growing a few KB/minute).
+ * Same asset over loopback measured 3.2x faster (94s vs 303s) because Chrome
+ * fetches and decodes it once. */
+export async function serveAudio(audio: Buffer): Promise<{ url: string; close: () => Promise<void> }> {
+  const server: Server = createServer((req, res) => {
+    if (!req.url || !req.url.startsWith('/voice.mp3')) {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+    res.writeHead(200, {
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': audio.length,
+      'Accept-Ranges': 'none',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'public, max-age=3600',
+    })
+    res.end(audio)
+  })
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const { port } = server.address() as AddressInfo
+  return {
+    url: `http://127.0.0.1:${port}/voice.mp3`,
+    close: () => new Promise<void>(resolve => server.close(() => resolve())),
+  }
+}
 
 /** Per-frame render timeout. A single frame is ~instant; 3min/frame is generous.
  * (The old 20-90min value meant that when Chrome crashed mid-render, the stuck
@@ -70,15 +107,15 @@ export async function renderAndStoreLessonMp4(opts: {
   const dir = await mkdtemp(path.join(tmpdir(), 'cs-mp4-'))
   const outPath = path.join(dir, 'lesson.mp4')
   const hasAudio = Boolean(opts.audio && opts.audio.length > 0)
+  let audioServer: { url: string; close: () => Promise<void> } | undefined
   try {
-    if (hasAudio) await writeFile(path.join(dir, 'voice.mp3'), opts.audio!)
+    if (hasAudio) audioServer = await serveAudio(opts.audio!)
     const serveUrl = await getBundle()
     const { renderMedia, selectComposition, makeCancelSignal } = await import('@remotion/renderer')
     const inputProps = {
       script: opts.script,
-      // Remotion blocks file:// — use data URL for local TTS audio. A silent
-      // lesson omits audioUrl so the <Audio> track isn't rendered.
-      ...(hasAudio ? { audioUrl: `data:audio/mpeg;base64,${opts.audio!.toString('base64')}` } : {}),
+      // A silent lesson omits audioUrl so the <Audio> track isn't rendered.
+      ...(audioServer ? { audioUrl: audioServer.url } : {}),
     }
     // Prefer Remotion's chrome-headless-shell (works on Alpine with gcompat + setpriv shim).
     // Only force system Chromium when REMOTION_BROWSER_EXECUTABLE is set.
@@ -159,6 +196,7 @@ export async function renderAndStoreLessonMp4(opts: {
     const stored = await saveLessonMp4(opts.courseId, opts.lessonId, mp4)
     return { bytes: mp4.length, stored }
   } finally {
+    if (audioServer) await audioServer.close().catch(() => {})
     await rm(dir, { recursive: true, force: true }).catch(() => {})
   }
 }

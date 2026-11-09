@@ -3,7 +3,7 @@
  * Run: npx vitest run tests/lesson-video.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { slidesFromAiJson, withDurations, normalizeBullets } from '@/lib/courses/lesson-video'
+import { slidesFromAiJson, withDurations, normalizeBullets, wordsPerSlide, spokenWordsForMinutes, slidesForMinutes } from '@/lib/courses/lesson-video'
 import {
   alignSlideDurationsToAudio,
   durationFramesFromSpoken,
@@ -195,5 +195,28 @@ describe('render deadline', () => {
   it('bounds the worst case for a 60-min lesson', () => {
     expect(renderDeadlineMs(60)).toBe(75 * 60 * 1000)
     expect(renderDeadlineMs(10)).toBe(58 * 60 * 1000)
+  })
+})
+
+
+describe('narration budget', () => {
+  // 2026-11-09: the video prompt hard-coded "140-180 words" per slide no matter
+  // how long the lesson was. A 10-min target (15 slides) therefore asked for
+  // ~2400 words; Google TTS speaks ~120wpm, so the audio came out ~21-26 min
+  // (observed: 19 slides → 47,161 frames → 26.2 min) and every render took
+  // 50-75 min instead of ~15.
+  it('budgets a 10-min lesson to ~10 min of speech, not 26', () => {
+    const per = wordsPerSlide(10)
+    const total = (per.lo + per.hi) / 2 * slidesForMinutes(10)
+    const minutes = total / 120
+    expect(minutes).toBeGreaterThan(8.5)
+    expect(minutes).toBeLessThan(11.5)
+  })
+
+  it('scales the budget with the target length', () => {
+    expect(spokenWordsForMinutes(10)).toBe(1200)
+    expect(spokenWordsForMinutes(30)).toBe(3600)
+    // A 60-min lesson must not ask for 140-180 words per slide either.
+    expect(wordsPerSlide(60).hi).toBeLessThan(180)
   })
 })

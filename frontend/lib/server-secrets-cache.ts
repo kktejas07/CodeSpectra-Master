@@ -249,6 +249,7 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
     return result || {}
   }
   const p = (async () => {
+    let ok = true
     try {
       const col = await settingsCol()
       const doc = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
@@ -257,13 +258,25 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
       cached = plain as ServerSecretsRecord
       if (needsMigration) void migratePlaintextSecrets(col, stored, plain as Record<string, unknown>)
     } catch (e) {
+      ok = false
       console.error('[CodeSpectra] server secrets load:', e)
-      cached = {}
     } finally {
-      cacheValid = true
-      cacheAt = Date.now()
+      if (ok) {
+        cacheValid = true
+        cacheAt = Date.now()
+      } else if (cached !== null) {
+        // Serve the last good snapshot and retry on the next call. Storing `{}`
+        // here made every provider look unconfigured for the full 30s TTL —
+        // the "No LLM provider with a key is configured" burst in the course
+        // worker after a Mongo/decrypt blip.
+        cacheAt = 0
+      } else {
+        // Never had a good read: don't mark the cache valid, so the next call
+        // retries instead of serving an empty secret set for 30s.
+        cacheValid = false
+      }
     }
-    return cached!
+    return cached || {}
   })()
   inflight = p
   const result = await p
