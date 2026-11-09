@@ -146,7 +146,7 @@ const BRANDING_KEYS: GeneralKey[] = [
   'privacy_policy_url',
   'terms_of_service_url',
 ]
-const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login', 'enable_chatbot']
+const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login']
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard', 'enforce_admin_2fa', 'admin_2fa_grace_days', 'identity_media_retention_days', 'bgv_simulated_vendor']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']

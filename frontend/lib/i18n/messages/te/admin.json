@@ -704,8 +704,6 @@
   "settings.systemLevelEmailsWhenMail": "సిస్టమ్ ఈమెయిల్స్ (mail కాన్ఫిగర్ అయినప్పుడు)",
   "settings.maintenanceMode": "Maintenance mode",
   "settings.showSingleSignOnSaml": "లాగిన్ పేజీలో Single Sign-On (SAML/OIDC) ఆప్షన్ చూపించండి",
-  "settings.askCodespectraChatbot": "Ask CodeSpectra chatbot",
-  "settings.enableTheGlobalAiCoding": "అందరు యూజర్లకు గ్లోబల్ AI coding assistant ఆన్ చేయండి",
   "settings.saveOperations": "కార్యకలాపాల సెట్టింగ్‌లు సేవ్ చేయండి",
   "settings.signUpFlowsLeaderboardVisibility": "సైన్-అప్ flows, leaderboard దృశ్యత, ధృవీకరణ సెట్టింగ్‌లు.",
   "settings.requireEmailVerification": "ఈమెయిల్ ధృవీకరణ తప్పనిసరి",

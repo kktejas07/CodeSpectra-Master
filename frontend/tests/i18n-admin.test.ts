@@ -21,7 +21,7 @@ const INTENTIONALLY_ENGLISH = new Set([
   'qbank.codingMcq', 'qbank.branch', 'qbank.advancedFieldsJson', 'qbank.pairsMatrixTableHotspotScale', 'patterns.sections', 'patterns.cutOff',
   'contests.format', 'contest.judging', 'contest.leaderboard', 'feed.format', 'feed.timeZone', 'assess.assessments', 'settings.privacyPolicyUrl',
   'settings.termsOfServiceUrl', 'settings.brandingOverlay', 'settings.postalServerUrl', 'settings.postalApiKey', 'settings.webhookSigningKeyPublic',
-  'settings.maintenanceMode', 'settings.askCodespectraChatbot', 'settings.integrations', 'settings.dynamic', 'settings.codeExecutionBackendPiston',
+  'settings.maintenanceMode', 'settings.integrations', 'settings.dynamic', 'settings.codeExecutionBackendPiston',
   'settings.inProcess', 'settings.githubAppPatToken', 'settings.internalBackendAuthSecret', 'settings.routes', 'settings.environmentVariable',
   'settings.clientId', 'settings.clientSecret', 'settings.firebaseAuthSdk', 'settings.firebaseConsoleProjectSettingsGeneral',
   'settings.razorpayDashboardSettingsApiKeys', 'settings.keyId', 'settings.keySecret', 'settings.phonepeDeveloperPortal', 'settings.merchantId',

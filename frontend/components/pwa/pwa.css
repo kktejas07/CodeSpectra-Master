@@ -27,7 +27,7 @@ body {
     height: calc(4rem + env(safe-area-inset-bottom));
   }
   .cs-pwa-float,
-  [data-testid='ask-codespectra-launcher'] {
+  [data-testid='go-edith-launcher'] {
     bottom: calc(5rem + env(safe-area-inset-bottom));
   }
 }

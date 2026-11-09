@@ -704,8 +704,6 @@
   "settings.systemLevelEmailsWhenMail": "सिस्टम ईमेल (जब mail सेट हो)",
   "settings.maintenanceMode": "Maintenance mode",
   "settings.showSingleSignOnSaml": "लॉगिन पेज पर Single Sign-On (SAML/OIDC) विकल्प दिखाएँ",
-  "settings.askCodespectraChatbot": "Ask CodeSpectra chatbot",
-  "settings.enableTheGlobalAiCoding": "सभी यूज़र के लिए ग्लोबल AI coding assistant चालू करें",
   "settings.saveOperations": "संचालन सेटिंग्स सेव करें",
   "settings.signUpFlowsLeaderboardVisibility": "साइन-अप flows, leaderboard की दृश्यता और वेरिफ़िकेशन सेटिंग्स।",
   "settings.requireEmailVerification": "ईमेल वेरिफ़िकेशन ज़रूरी",

@@ -51,8 +51,6 @@ export type GeneralPlatformSettings = {
   maintenance_mode: boolean
   require_email_verification: boolean
   show_public_leaderboard: boolean
-  /** Whether the Ask CodeSpectra chatbot is available globally */
-  enable_chatbot: boolean
   /** Platform-wide currency for pricing display */
   platform_currency: string
   /** How to notify users when an admin creates an account without setting a password. */
@@ -124,7 +122,6 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   // SEC-006: on by default; legacy accounts are grandfathered (lib/auth-policy).
   require_email_verification: true,
   show_public_leaderboard: true,
-  enable_chatbot: true,
   platform_currency: 'USD',
   admin_new_user_email_delivery: 'postal_recovery',
   enable_sso_login: false,

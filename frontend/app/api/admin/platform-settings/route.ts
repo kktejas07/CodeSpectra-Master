@@ -136,7 +136,6 @@ export async function PATCH(request: Request) {
     'require_email_verification',
     'show_public_leaderboard',
     'enable_sso_login',
-    'enable_chatbot',
     'admin_new_user_email_delivery',
     'platform_currency',
     'locked_pages',
@@ -176,7 +175,6 @@ export async function PATCH(request: Request) {
         k === 'require_email_verification' ||
         k === 'show_public_leaderboard' ||
         k === 'enable_sso_login' ||
-        k === 'enable_chatbot' ||
         k === 'video_player_autoplay' ||
         k === 'video_player_muted' ||
         k === 'video_player_captions_default' ||

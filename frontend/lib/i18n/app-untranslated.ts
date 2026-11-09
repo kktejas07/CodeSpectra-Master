@@ -23,7 +23,7 @@ export const APP_INTENTIONALLY_ENGLISH: ReadonlySet<string> = new Set([
   "community.provider_google_meet",
   "community.provider_teams",
   "community.provider_zoom",
-  "dash.askCodespectra",
+
   "dash.whatsappOpenwa",
   "hiring.accessToken",
   "hiring.apiKey",
