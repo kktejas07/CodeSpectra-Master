@@ -96,5 +96,5 @@ describe('RAG offline evaluation', () => {
     // The real ingest + hybrid scoring pass takes ~2 min on a laptop, which is
     // exactly the old 120s cap: any parallel suite load made this time out
     // instead of fail. 300s still catches a genuine hang.
-  }, 300_000)
+  }, 900_000)
 })

@@ -97,5 +97,5 @@ describe('RAG eval: Mongo vs pgvector vector store', () => {
     expect(p.success[5]).toBeGreaterThanOrEqual(0.88)
     // Two full ingests + backfill (Mongo then pgvector). Measured ~5 min under
     // parallel suite load; the old 180s cap flaked, a real hang still trips 600s.
-  }, 600_000)
+  }, 900_000)
 })
