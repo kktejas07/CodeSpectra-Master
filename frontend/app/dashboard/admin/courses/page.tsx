@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Loader2, Trash2, Pencil, BookOpen, Search, Users, Layers } from 'lucide-react'
+import { Plus, Loader2, Trash2, Pencil, BookOpen, Search, Users, Layers, Film } from 'lucide-react'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -18,6 +18,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { COURSE_STATUS_META, type CourseStatus } from '@/lib/courses/course-status'
 import CourseGeneratorTab from './course-generator-tab'
 
 interface Course {
@@ -33,7 +34,21 @@ interface Course {
   enrolled: number
   category: string
   tags: string[]
+  sections?: Array<{ title?: string; lessons?: Array<{ id?: string; videoUrl?: string; url?: string }> }>
+  _status?: CourseStatus
+  _job?: {
+    status: string
+    startedAt: string
+    completedItems: number
+    totalItems: number
+    failedItems: number
+  }
 }
+
+/** The status options shown in the table filter, keyed by `CourseStatus`. */
+const STATUS_FILTERS: CourseStatus[] = [
+  'ready', 'incomplete', 'queued', 'processing', 'failed', 'cancelled',
+]
 
 const CATEGORIES = ['Coding', 'Design', 'Business', 'Marketing', 'Data Science', 'AI']
 const LEVELS = ['beginner', 'intermediate', 'advanced']
@@ -87,6 +102,46 @@ export default function AdminCoursesPage() {
     setCourses((prev) => prev.filter((c) => !ids.includes(c.id)))
   }
 
+  /** Queue video generation for each course (new, draft, failed or incomplete). */
+  const handleGenerateVideos = async (ids: string[]) => {
+    let queued = 0, skipped = 0, errs = 0
+    for (const id of ids) {
+      const course = courses.find((c) => c.id === id)
+      const totalItems = (course?.sections || []).reduce((n, s: any) => n + (s.lessons?.length || 0), 0)
+      try {
+        const res = await csrfFetch('/api/admin/courses/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            courseId: id,
+            courseTitle: course?.title || id,
+            type: 'video',
+            totalItems,
+            force: false,
+          }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (json.deduped) { skipped++; continue }
+        if (!res.ok) {
+          errs++
+          addToast({ type: 'error', title: `${course?.title || id}: ${json.error || 'failed to queue'}` })
+          continue
+        }
+        queued++
+      } catch {
+        errs++
+      }
+    }
+    addToast({
+      type: errs && !queued ? 'error' : 'success',
+      title: `Queued ${queued} video job${queued !== 1 ? 's' : ''}` +
+        (skipped ? ` · ${skipped} already queued/running` : '') +
+        (errs ? ` · ${errs} failed` : ''),
+    })
+    void fetchData()
+  }
+
   const handleCreate = async () => {
     if (!form.title.trim()) {
       addToast({ type: 'error', title: 'Title is required' })
@@ -130,6 +185,43 @@ export default function AdminCoursesPage() {
     { key: 'instructor', header: 'Instructor', cell: (r) => r.instructor },
     { key: 'enrolled', header: 'Enrolled', cell: (r) => <span className="tabular-nums">{r.enrolled?.toString() || '0'}</span> },
     {
+      key: 'status',
+      header: 'Status',
+      cell: (r) => {
+        const st = r._status || 'ready'
+        const meta = COURSE_STATUS_META[st]
+        const job = r._job
+        const detail =
+          st === 'processing' && job ? `${job.completedItems}/${job.totalItems}` :
+          st === 'queued' ? 'in queue' :
+          st === 'failed' && job?.failedItems ? `${job.failedItems} failed` :
+          st === 'incomplete' ? 'videos missing' :
+          ''
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <Badge variant="outline" className={`text-xs ${meta.className}`}>{meta.label}</Badge>
+            {detail && <span className="text-[11px] text-muted-foreground tabular-nums">{detail}</span>}
+          </span>
+        )
+      },
+    },
+    {
+      key: 'videos',
+      header: 'Videos',
+      cell: (r) => {
+        const total = (r.sections as any[] | undefined)?.reduce((n, s) => n + (s.lessons?.length || 0), 0) || 0
+        const job = r._job
+        if (!total && !job) return <span className="text-xs text-muted-foreground">—</span>
+        const ready = job ? job.completedItems : total
+        return (
+          <span className="inline-flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
+            <Film className="h-3.5 w-3.5" aria-hidden />
+            {total ? `${ready}/${total}` : `${job?.completedItems ?? 0}/${job?.totalItems ?? 0}`}
+          </span>
+        )
+      },
+    },
+    {
       key: 'actions',
       header: '',
       cell: (r) => (
@@ -141,6 +233,13 @@ export default function AdminCoursesPage() {
   ]
 
   const bulkActions: BulkAction[] = [
+    {
+      label: 'Generate / Retry videos',
+      variant: 'outline',
+      icon: <Film className="w-3.5 h-3.5 mr-1" />,
+      onClick: handleGenerateVideos,
+      clearSelection: false,
+    },
     { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
   ]
 
@@ -200,6 +299,11 @@ export default function AdminCoursesPage() {
           searchPlaceholder="Search courses..."
           searchKeys={['title', 'category', 'instructor']}
           filters={[
+            {
+              label: 'Status',
+              key: '_status',
+              options: STATUS_FILTERS.map(s => ({ label: COURSE_STATUS_META[s].label, value: s })),
+            },
             {
               label: 'Level',
               key: 'level',

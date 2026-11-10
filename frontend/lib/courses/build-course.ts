@@ -8,23 +8,13 @@ import {
   slugify,
 } from '@/lib/courses/syllabus'
 import { fallbackModuleQuiz } from '@/lib/courses/module-quiz'
+import { resolveCourseCover } from '@/lib/courses/course-images'
 
-const IMAGE_MAP: Record<string, string> = {
-  java: '/courses/java.jpg',
-  python: '/courses/python.jpg',
-  javascript: '/courses/javascript.jpg',
-  'c++': '/courses/cpp.jpg',
-  react: '/courses/web.jpg',
-  'node.js': '/courses/web.jpg',
-  sql: '/courses/sql.jpg',
-  docker: '/courses/devops.jpg',
-  git: '/courses/git.jpg',
-  default: '/courses/web.jpg',
-}
-
-function courseImage(techStack: string): string {
-  const key = Object.keys(IMAGE_MAP).find(k => techStack.toLowerCase().includes(k)) || 'default'
-  return IMAGE_MAP[key] || IMAGE_MAP.default
+function courseImage(techStack: string, category: string): string {
+  // ponytail: central cover resolver (course-images.ts) — the old inline
+  // IMAGE_MAP did `includes('java')` first, so "JavaScript" got the Java
+  // cover and every non-listed subject fell back to one stale web.jpg.
+  return resolveCourseCover({ techStack, category })
 }
 
 /** Build a full course document from the catalog (+ optional AI sections). */
@@ -87,7 +77,7 @@ export function buildCatalogCourse(
       sessions: mapped.length,
       category: ai.category || plan.industry || 'Coding',
       tags: ai.tags || [techStack, level, plan.industry, plan.family],
-      image: courseImage(techStack),
+      image: courseImage(techStack, ai.category || plan.industry || 'Coding'),
       whatYoullLearn: ai.whatYoullLearn || plan.modules.slice(0, 6).map(m => `${techStack}: ${m}`),
       duration: ai.duration || `${plan.estimatedHours} hours`,
       curriculumPlan: {

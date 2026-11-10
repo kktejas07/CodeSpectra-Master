@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Loader2, Clock, Pause,
   RotateCcw, Trash2, Eye, ChevronDown, ChevronUp, Zap, BookOpen,
-  RefreshCw, BarChart3, RotateCw, Film, CheckCircle2, Circle,
+  RefreshCw, BarChart3, RotateCw, Film, CheckCircle2, Circle, Check,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -85,6 +85,8 @@ export default function CourseGeneratorTab() {
   const [jobs, setJobs] = useState<GenerationJob[]>([])
   const [generating, setGenerating] = useState(false)
   const [expandedJob, setExpandedJob] = useState<string | null>(null)
+  const [jobStatusFilter, setJobStatusFilter] = useState<'all' | 'active' | 'failed' | 'cancelled' | 'completed'>('all')
+  const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set())
   const [workerOnline, setWorkerOnline] = useState<boolean | null>(null)
   const [workerHint, setWorkerHint] = useState('')
   const [workerStuck, setWorkerStuck] = useState(false)
@@ -382,6 +384,67 @@ export default function CourseGeneratorTab() {
         setJobs(jobs.filter(j => j.id !== jobId))
         addToast({ type: 'success', title: 'Job deleted' })
       } catch {}
+    })
+    setConfirmOpen(true)
+  }
+
+  // ---- Bulk select on the jobs list (retry / delete what you picked) ----
+  const toggleJobSelected = (jobId: string) => {
+    setSelectedJobs(prev => {
+      const next = new Set(prev)
+      if (next.has(jobId)) next.delete(jobId)
+      else next.add(jobId)
+      return next
+    })
+  }
+
+  const matchesJobFilter = (job: GenerationJob) => {
+    switch (jobStatusFilter) {
+      case 'active': return job.status === 'pending' || job.status === 'running'
+      case 'completed': return job.status === 'completed'
+      case 'failed': return job.status === 'failed'
+      case 'cancelled': return job.status === 'cancelled'
+      default: return true
+    }
+  }
+
+  const bulkRetryJobs = async (jobIds: string[]) => {
+    let ok = 0
+    for (const id of jobIds) {
+      try {
+        const res = await csrfFetch('/api/admin/courses/worker', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ jobId: id, action: 'retry' }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (res.ok && data.ok) ok++
+      } catch {}
+    }
+    addToast({
+      type: ok ? 'success' : 'error',
+      title: ok ? `Requeued ${ok} of ${jobIds.length} job(s) — keeps already-rendered videos` : 'No jobs could be requeued',
+    })
+    setSelectedJobs(new Set())
+    loadJobs()
+    loadWorker()
+  }
+
+  const confirmBulkDeleteJobs = () => {
+    const ids = [...selectedJobs]
+    setConfirmTitle('Delete jobs')
+    setConfirmMessage(`Delete ${ids.length} selected job record(s)? Running jobs are kept. This cannot be undone.`)
+    setConfirmAction(() => async () => {
+      let ok = 0
+      for (const id of ids) {
+        try {
+          const res = await csrfFetch(`/api/admin/courses/jobs?jobId=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+          if (res.ok) { ok++; setJobs(prev => prev.filter(j => j.id !== id)) }
+        } catch {}
+      }
+      addToast({ type: 'success', title: `Deleted ${ok} of ${ids.length} job record(s)` })
+      setSelectedJobs(new Set())
     })
     setConfirmOpen(true)
   }
@@ -727,10 +790,10 @@ export default function CourseGeneratorTab() {
             {/* Jobs Tab */}
             <TabsContent value="jobs" className="mt-4">
               <Panel className="p-5">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-semibold">Generation jobs</h2>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" title="Delete failed jobs" aria-label="Delete failed jobs" onClick={handleDeleteFailedJobs}>
+                    <Button variant="ghost" size="sm" title="Delete all failed jobs" aria-label="Delete all failed jobs" onClick={handleDeleteFailedJobs}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                     <Button variant="ghost" size="sm" onClick={loadJobs} aria-label="Refresh jobs">
@@ -739,14 +802,66 @@ export default function CourseGeneratorTab() {
                   </div>
                 </div>
 
-                {jobs.length === 0 ? (
-                  <EmptyState illustration="courses" variant="sessions" title="No jobs yet" description="Generate a course and its video job will appear here." className="border-0 bg-transparent py-6 md:py-8" />
+                {/* Status filter — hides cancelled/failed history that "clutters" the list */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                  {([
+                    { v: 'all', label: 'All' },
+                    { v: 'active', label: 'Queued + Running' },
+                    { v: 'completed', label: 'Completed' },
+                    { v: 'failed', label: 'Failed' },
+                    { v: 'cancelled', label: 'Cancelled' },
+                  ] as const).map(({ v, label }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setJobStatusFilter(v)}
+                      aria-pressed={jobStatusFilter === v}
+                      className={`px-3 py-1 rounded-full border text-xs font-medium transition-colors ${
+                        jobStatusFilter === v
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border/70 bg-card text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Bulk toolbar — appears when rows are selected */}
+                {selectedJobs.size > 0 && (
+                  <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 mb-3">
+                    <span className="text-xs font-medium tabular-nums">{selectedJobs.size} selected</span>
+                    <div className="flex-1" />
+                    <Button variant="outline" size="sm" onClick={() => bulkRetryJobs([...selectedJobs])}>
+                      <RotateCw className="w-3.5 h-3.5 mr-1" />Retry selected
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={confirmBulkDeleteJobs}>
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />Delete selected
+                    </Button>
+                  </div>
+                )}
+
+                {jobs.filter(matchesJobFilter).length === 0 ? (
+                  <EmptyState illustration="courses" variant="sessions" title="No jobs match" description={jobStatusFilter === 'all' ? 'Generate a course and its video job will appear here.' : 'No jobs in this state yet.'} className="border-0 bg-transparent py-6 md:py-8" />
                 ) : (
                   <div className="space-y-3">
-                    {jobs.map(job => (
-                      <div key={job.id} className="border border-border/60 rounded-2xl overflow-hidden">
+                    {jobs.filter(matchesJobFilter).map(job => (
+                      <div key={job.id} className={`border rounded-2xl overflow-hidden ${selectedJobs.has(job.id) ? 'border-primary/40' : 'border-border/60'}`}>
                         <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-primary" role="button" tabIndex={0} aria-expanded={expandedJob === job.id} onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedJob(expandedJob === job.id ? null : job.id) } }}>
                           <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggleJobSelected(job.id) }}
+                              aria-label={selectedJobs.has(job.id) ? 'Deselect job' : 'Select job'}
+                              aria-pressed={selectedJobs.has(job.id)}
+                              className={`h-4 w-4 shrink-0 rounded border flex items-center justify-center transition-colors ${
+                                selectedJobs.has(job.id)
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border bg-transparent hover:border-primary/50'
+                              }`}
+                            >
+                              {selectedJobs.has(job.id) && <Check className="h-3 w-3" />}
+                            </button>
                             <StatusBadge status={job.status} />
                             <div>
                               <p className="text-sm font-medium">{job.courseTitle}</p>
