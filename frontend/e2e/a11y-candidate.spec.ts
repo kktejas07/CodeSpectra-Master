@@ -18,6 +18,7 @@
  */
 import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { tabPass } from './helpers/tab-pass'
 
 /** Same id as scripts/fixtures/a11y-assessment.ts (A11Y_EXAM_ID; checked in tests/seo-audit6-fixes.test.ts). */
 const A11Y_EXAM_ID = 'a11y-all-question-types'
@@ -41,29 +42,6 @@ async function expectNoCritical(page: Page, label: string) {
   const serious = axe.violations.filter((v) => v.impact === 'serious' && v.id !== 'color-contrast')
   if (serious.length) console.warn(`[a11y] ${label} serious:`, serious.map((v) => `${v.id} ×${v.nodes.length}`).join(', '))
   expect(critical.map((v) => `${v.id}: ${v.help} @ ${page.url()} :: ${(v.nodes[0]?.html ?? '').slice(0, 300)}`), label).toEqual([])
-}
-
-async function tabPass(page: Page, stops = 40) {
-  const seen: string[] = []
-  const problems: string[] = []
-  for (let i = 0; i < stops; i++) {
-    await page.keyboard.press('Tab')
-    const f = await page.evaluate(() => {
-      const el = document.activeElement as HTMLElement | null
-      if (!el || el === document.body) return null
-      const r = el.getBoundingClientRect()
-      const cs = getComputedStyle(el)
-      const ring = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || (cs.boxShadow && cs.boxShadow !== 'none')
-      const label = (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().replace(/\s+/g, ' ').slice(0, 60)
-      return { key: `${el.tagName}:${label}:${Math.round(r.x)}:${Math.round(r.y)}`, label, hidden: r.width === 0 || r.height === 0 || cs.visibility === 'hidden', ring: !!ring }
-    })
-    if (!f) { problems.push(`stop ${i + 1}: focus on <body> (lost)`); break }
-    if (f.hidden) problems.push(`stop ${i + 1}: hidden element focused (${f.label})`)
-    if (!f.ring) problems.push(`stop ${i + 1}: no visible focus indicator (${f.label})`)
-    if (seen.includes(f.key)) break // wrapped around: the whole page was reachable
-    seen.push(f.key)
-  }
-  return { stops: seen.length, problems }
 }
 
 for (const path of PAGES) {
