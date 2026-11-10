@@ -20,9 +20,13 @@ echo "==> [2/3] vitest run"
 # only surfaced on GitHub Actions. Capture to a log and check the real status.
 # Local runs share the box with a Remotion render, and CPU starvation blows the
 # 5s per-test default at random (different tests "fail" every run; the same
-# files pass in isolation in seconds). Give slow local machines 20s — CI keeps
-# the strict 5s default, so real hangs still go red there.
-if ! (cd "$ROOT/frontend" && npx vitest run --testTimeout=20000 > /tmp/gate-vitest.log 2>&1); then
+# files pass in isolation in seconds). Cap the worker pool so each file gets a
+# fair slice and give slow tests 60s — CI keeps the strict 5s default and the
+# full worker pool, so real hangs still go red there.
+# The two RAG eval files are full corpus ingests (2-5 min each, ~60% of local
+# wall time). They still run in CI; locally they only made the gate too slow to
+# use as a pre-push check.
+if ! (cd "$ROOT/frontend" && npx vitest run --testTimeout=60000 --maxWorkers=4 --exclude 'tests/rag-eval-*.test.ts' > /tmp/gate-vitest.log 2>&1); then
   tail -60 /tmp/gate-vitest.log
   echo "VITEST FAILED — see /tmp/gate-vitest.log"
   exit 1

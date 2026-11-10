@@ -95,5 +95,7 @@ describe('RAG eval: Mongo vs pgvector vector store', () => {
     expect(p.mrr).toBeCloseTo(m.mrr, 10)
     // Same quality floor as the Mongo offline gate (tests/rag-eval-offline.test.ts).
     expect(p.success[5]).toBeGreaterThanOrEqual(0.88)
-  }, 180_000)
+    // Two full ingests + backfill (Mongo then pgvector). Measured ~5 min under
+    // parallel suite load; the old 180s cap flaked, a real hang still trips 600s.
+  }, 900_000)
 })

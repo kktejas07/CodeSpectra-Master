@@ -1,4 +1,7 @@
-import '@testing-library/jest-dom'
+// `/vitest` is the entry that augments vitest's own `expect` types. Since the
+// vitest 5 bump the bare import only augments Jest globals, so `next build`
+// type-checked the test files and every jest-dom matcher vanished.
+import '@testing-library/jest-dom/vitest'
 import React from 'react'
 import { vi } from 'vitest'
 

@@ -80,7 +80,10 @@ export class StripeAdapter implements PaymentGatewayAdapter {
         })
       } else session = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
+        // Stripe 23 removed `payment_method_types` from Checkout.SessionCreateParams;
+        // `allowed_payment_method_types` is the allow-list replacement (same intent:
+        // card only, no wallets/PayPal we can't reconcile).
+        allowed_payment_method_types: ['card'],
         customer_email: email,
         client_reference_id: orderId,
         line_items: [{
