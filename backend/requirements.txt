@@ -1,13 +1,13 @@
-fastapi==0.161.1
+fastapi==0.162.2
 uvicorn==0.54.0
 cryptography>=50.0.2
 python-dotenv>=1.2.4
 pymongo==4.19.0
-pydantic>=2.14.1
+pydantic>=2.14.3
 bcrypt==5.0.0
 motor==3.7.1
-pytest>=9.1.1
-pytest-asyncio>=1.4.0
+pytest>=9.2.0
+pytest-asyncio>=1.4.1
 PyJWT>=2.15.1
 requests>=2.34.2
 httpx>=0.28.1

@@ -93,5 +93,8 @@ describe('RAG offline evaluation', () => {
     const hiring = keyword.results.filter((r) => r.id.startsWith('hr-'))
     expect(hiring.length).toBeGreaterThanOrEqual(5)
     expect(hiring.every((r) => r.success[5])).toBe(true)
-  }, 120_000)
+    // The real ingest + hybrid scoring pass takes ~2 min on a laptop, which is
+    // exactly the old 120s cap: any parallel suite load made this time out
+    // instead of fail. 300s still catches a genuine hang.
+  }, 300_000)
 })
