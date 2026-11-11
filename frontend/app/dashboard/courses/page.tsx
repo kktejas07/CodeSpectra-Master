@@ -18,6 +18,7 @@ import {
   FlaskConical, Cloud, Network, Lightbulb, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { isCourseComplete } from '@/lib/courses/course-images'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/difficulty-levels'
@@ -138,7 +139,10 @@ function LearningPageInner() {
           }
           if (!prev || richness(c) > richness(prev)) best.set(key, c)
         }
-        setCourses([...best.values()])
+        // Users see only fully-completed courses (every lesson has a playable
+        // video). WIP courses still generating videos are held back.
+        const visible = [...best.values()].filter((c: any) => isCourseComplete(c))
+        setCourses(visible)
       })
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false))

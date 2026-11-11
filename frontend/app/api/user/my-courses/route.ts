@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { courseCompletionStatus } from '@/app/api/user/courses/_lib/course-rules'
+import { effectiveCourseCover } from '@/lib/courses/course-images'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,7 @@ export async function GET() {
     const courses = await db
       .collection('courses')
       .find({ id: { $in: ids } })
-      .project({ id: 1, title: 1, description: 1, category: 1, level: 1, thumbnail: 1, image: 1, sections: 1 })
+      .project({ id: 1, title: 1, description: 1, category: 1, tags: 1, level: 1, thumbnail: 1, image: 1, sections: 1 })
       .toArray()
     const byId = new Map(courses.map((c) => [String(c.id), c]))
 
@@ -50,7 +51,7 @@ export async function GET() {
           description: c.description || '',
           category: c.category || '',
           level: c.level || '',
-          thumbnail: c.thumbnail || c.image || null,
+          thumbnail: c.thumbnail || effectiveCourseCover(c as any) || null,
           enrolledAt: en?.enrolledAt || null,
           progressPercent,
           lessonsDone: status.lessonsDone,

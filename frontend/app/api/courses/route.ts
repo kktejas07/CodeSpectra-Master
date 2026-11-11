@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { publicCourse } from '@/app/api/user/courses/_lib/course-rules'
+import { effectiveCourseCover } from '@/lib/courses/course-images'
 
 // Every course has its own unique, purpose-built thumbnail and full curriculum structure
 const SEED_COURSES = [
@@ -296,7 +297,7 @@ export async function GET(request: NextRequest) {
     const courses = await col.find({}).toArray()
     const unique = dedupeCoursesByTitle(courses as any[])
 
-    // Real enrolled count per course from course_enrollments
+    // Real enrolled count per course from course_enrollments.
     const enriched = await Promise.all(
       unique.map(async (c) => {
         const enrolledCount = await enrollments.countDocuments({ courseId: c.id })
@@ -307,12 +308,18 @@ export async function GET(request: NextRequest) {
             : 0
         return {
           ...publicCourse(c),
+          // Correct stale covers assigned by the old buggy matcher; keep
+          // custom posters (generated SVG data URLs) untouched.
+          image: effectiveCourseCover(c),
           enrolled: enrolledCount || (c.enrolled as number) || 0,
           sessions: Number(c.sessions) || sectionCount || 0,
         }
       }),
     )
 
+    // All courses (incl. WIP ones still generating videos) are returned so
+    // that the wishlist / my-courses pages can hydrate saved & enrolled items.
+    // The public catalog page filters to fully-completed courses only.
     return NextResponse.json({ data: enriched })
   } catch (e) {
     console.error('[courses]', e)

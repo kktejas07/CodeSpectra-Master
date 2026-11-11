@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { publicCourse } from '@/app/api/user/courses/_lib/course-rules'
+import { effectiveCourseCover } from '@/lib/courses/course-images'
 
 export async function GET(
   request: NextRequest,
@@ -24,7 +25,11 @@ export async function GET(
     })) > 0
 
     // Quiz answer keys stay on the server; quizzes are graded by /api/user/courses/[id]/quiz-submit.
-    return NextResponse.json({ data: { ...publicCourse(course), enrolled, userEnrolled } })
+    const published = publicCourse(course)
+    // Correct stale covers assigned by the old buggy matcher; keep custom
+    // posters (generated SVG data URLs) untouched.
+    ;(published as Record<string, unknown>).image = effectiveCourseCover(course as any)
+    return NextResponse.json({ data: { ...published, enrolled, userEnrolled } })
   } catch (e) {
     console.error('[courses/[id]]', e)
     return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
