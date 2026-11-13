@@ -28,8 +28,7 @@ SuperAdmin pages require:
 - **Config**: Requires `.env` variables:
   - `UPSTASH_REDIS_REST_URL`
   - `UPSTASH_REDIS_REST_TOKEN`
-- **Missing**: No SuperAdmin UI to configure Redis/settings
-- **Audit Note**: "Upstash Redis config exists in `.env.example` but isn't wired yet"
+- **UI**: SuperAdmin settings page has a Redis section (dashboard/admin/settings → Redis)
 
 ## �� 🛠��️ Common Patterns
 - **Adding Admin Page**: 
@@ -57,8 +56,9 @@ SuperAdmin pages require:
 - Understanding the problem fully before solving
 - Anything explicitly requested
 
-## �� 🔧 Development Commands
+## 🔧 Development Commands
 - Frontend dev: `yarn dev` (from `/frontend`)
 - Backend dev: `uvicorn server:app --reload` (from `/backend`)
 - Build: `yarn build` (frontend)
 - Verify types: Included in build step
+- Seed compare pages: `MONGODB_URI=<uri> npx tsx scripts/seed-comparisons.ts` (from `/frontend`)
