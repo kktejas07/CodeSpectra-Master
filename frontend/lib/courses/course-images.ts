@@ -57,29 +57,48 @@ export function courseHaystack(course: {
     .join(' ')
 }
 
+/** URL of a shipped subject image. They live under /public/courses, so the
+ * public path needs the directory — `/java.jpg` 404s. */
+function coverUrl(key: string): string {
+  return `/courses/${key}.jpg`
+}
+
 /** The cover a course *should* have, based on its subject — independent of what's stored. */
 export function resolveCourseCover(course: Parameters<typeof courseHaystack>[0]): string {
   const hay = courseHaystack(course)
-  for (const rule of COVER_RULES) if (rule.re.test(hay)) return `/${rule.cover}.jpg`
-  return `/${DEFAULT_COVER}.jpg`
+  for (const rule of COVER_RULES) if (rule.re.test(hay)) return coverUrl(rule.cover)
+  return coverUrl(DEFAULT_COVER)
 }
 
 /**
  * A stored cover only counts as a custom poster if it is NOT one of the generic
  * /public/courses jpgs (e.g. a generated SVG data URL). Those are preserved.
  */
+/** Every value that means "this is one of the shared subject images", not a poster. */
+const GENERIC_COVERS = new Set(
+  COURSE_COVERS.flatMap((c) => [`/courses/${c}.jpg`, `/${c}.jpg`]),
+)
+
 export function isCustomCover(stored?: string | null): boolean {
   if (!stored) return false
-  return !COURSE_COVERS.some(c => stored === `/${c}.jpg`)
+  return !GENERIC_COVERS.has(stored)
 }
 
 /**
- * The cover to actually display for a course: keep a custom poster, but correct
- * any of the generic covers that were assigned by the old buggy matcher.
+ * The cover to actually display for a course.
+ *
+ * Order: a real poster (uploaded or generated) wins; then the shipped subject
+ * art when the course's subject matched a rule (java.jpg for Java, sql.jpg for
+ * SQL…); otherwise the per-course rendered poster. The last case is the fix for
+ * the old fallback that pointed every Mechanical/Electrical course at the
+ * web-dev mascot.
  */
-export function effectiveCourseCover(course: { image?: string | null } & Parameters<typeof courseHaystack>[0]): string {
+export function effectiveCourseCover(course: { id?: string; image?: string | null } & Parameters<typeof courseHaystack>[0]): string {
   if (isCustomCover(course.image)) return course.image!
-  return resolveCourseCover(course)
+  const art = resolveCourseCover(course)
+  if (art !== `/courses/${DEFAULT_COVER}.jpg`) return art
+  if (course.id) return `/api/courses/${encodeURIComponent(course.id)}/cover`
+  return art
 }
 
 /** Count lessons that have a playable MP4 (`videoUrl`) vs total, per the generator UI. */
