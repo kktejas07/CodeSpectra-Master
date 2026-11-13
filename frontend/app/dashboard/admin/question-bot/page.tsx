@@ -45,7 +45,7 @@ interface Overview {
 
 const TYPE_LABEL: Record<BotQuestionType, string> = { mcq: 'Multiple choice', coding: 'Coding' }
 const STATUS_VARIANT: Record<string, string> = {
-  ok: 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400',
+  ok: 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400',
   partial: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
   failed: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400',
   running: 'border-primary/30 bg-primary/10 text-primary',

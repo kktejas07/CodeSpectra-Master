@@ -384,7 +384,7 @@ export default function ProblemsListPage() {
                                       {p.title}
                                     </Link>
                                     {p.solved ? (
-                                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/40 bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
+                                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-green-500/40 bg-green-500/10 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:text-green-400">
                                         <CheckCircle2 className="h-3 w-3" aria-hidden />{' '}{tr('practice.solved')}</span>
                                     ) : null}
                                     {p.locked ? (

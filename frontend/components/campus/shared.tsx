@@ -20,13 +20,13 @@ export function Field({ id, label, hint, children, className }: { id: string; la
 }
 
 const TONE: Record<string, string> = {
-  verified: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  live: 'bg-green-500/15 text-green-700 dark:text-green-400',
+  verified: 'bg-green-500/15 text-green-800 dark:text-green-400',
+  live: 'bg-green-500/15 text-green-800 dark:text-green-400',
   upcoming: 'bg-primary/10 text-primary',
   ended: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
   final: 'bg-muted text-muted-foreground',
-  open: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  accepted: 'bg-green-500/15 text-green-700 dark:text-green-400',
+  open: 'bg-green-500/15 text-green-800 dark:text-green-400',
+  accepted: 'bg-green-500/15 text-green-800 dark:text-green-400',
   offered: 'bg-primary/10 text-primary',
   shortlisted: 'bg-primary/10 text-primary',
   in_process: 'bg-primary/10 text-primary',

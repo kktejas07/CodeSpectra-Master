@@ -232,7 +232,7 @@ export function StorageSettingsSection() {
             <p className="text-sm text-muted-foreground">{t('storage.intro')}</p>
           </div>
         </div>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.configured ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}`}>
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.configured ? 'bg-green-500/15 text-green-800 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}`}>
           {status.configured ? t('storage.statusOn', { bucket: status.bucket || '', host: status.endpoint_host || '' }) : t('storage.statusOff')}
         </span>
       </div>

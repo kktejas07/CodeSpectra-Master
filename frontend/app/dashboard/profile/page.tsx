@@ -554,7 +554,7 @@ export default function ProfilePage() {
                   <p className="text-xs font-medium text-muted-foreground">{tr('account.totalFixes')}</p>
                   <p className="font-bold tabular-nums text-foreground text-base">{stats?.fixes ?? 0}</p>
                 </div>
-                {Number(stats?.fixes) > 0 && <span className="text-xs font-bold tabular-nums text-green-700 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">+{stats?.fixes}</span>}
+                {Number(stats?.fixes) > 0 && <span className="text-xs font-bold tabular-nums text-green-800 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">+{stats?.fixes}</span>}
               </div>
             </div>
           </Card>

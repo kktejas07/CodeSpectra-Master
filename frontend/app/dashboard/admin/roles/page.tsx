@@ -322,7 +322,7 @@ export default function RolesPage() {
                     </select>
                   </td>
                   <td className="py-2.5 px-4"><Badge variant="outline" className="text-[11px] capitalize">{u.plan || 'free'}</Badge></td>
-                  <td className="py-2.5 px-4"><Badge variant="outline" className={u.status === 'active' ? 'border-green-500/30 bg-green-500/10 text-[11px] capitalize text-green-700 dark:text-green-400' : 'bg-muted text-[11px] capitalize text-muted-foreground'}>{u.status || 'active'}</Badge></td>
+                  <td className="py-2.5 px-4"><Badge variant="outline" className={u.status === 'active' ? 'border-green-500/30 bg-green-500/10 text-[11px] capitalize text-green-800 dark:text-green-400' : 'bg-muted text-[11px] capitalize text-muted-foreground'}>{u.status || 'active'}</Badge></td>
                   <td className="py-2.5 px-4 text-right">
                     <Button variant="ghost" size="sm" className="text-destructive h-7 text-xs" onClick={() => deleteUser(u.id)} aria-label={ta('rolesAdm.deleteUser')} title={ta('rolesAdm.deleteUser')}><Trash2 className="h-3 w-3" /></Button>
                   </td>

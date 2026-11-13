@@ -135,7 +135,7 @@ export default function MyResumesPage() {
     { key: 'name', header: t('career.file'), cell: (r) => <span className="font-medium">{r.file_name}</span> },
     { key: 'size', header: t('career.size'), cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
     { key: 'status', header: t('career.status'), cell: (r) => (
-      <Badge className={`capitalize ${r.status === 'processed' ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}`}>
+      <Badge className={`capitalize ${r.status === 'processed' ? 'bg-green-500/15 text-green-800 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}`}>
         {r.status || t('career.pending')}
       </Badge>
     )},

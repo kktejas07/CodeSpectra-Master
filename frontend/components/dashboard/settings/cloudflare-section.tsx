@@ -106,7 +106,7 @@ export function CloudflareSettingsSection() {
           </div>
         </div>
         {savedZoneId && hasSavedToken ? (
-          <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-400 px-2.5 py-0.5 text-xs font-medium">
+          <span className="rounded-full bg-green-500/15 text-green-800 dark:text-green-400 px-2.5 py-0.5 text-xs font-medium">
             ✓ Active
           </span>
         ) : (
@@ -325,7 +325,7 @@ function ObjectStorageCard() {
           </p>
         </div>
         {ready ? (
-          <span className="shrink-0 rounded-full bg-green-500/15 text-green-700 dark:text-green-400 px-2.5 py-0.5 text-xs font-medium">✓ Ready</span>
+          <span className="shrink-0 rounded-full bg-green-500/15 text-green-800 dark:text-green-400 px-2.5 py-0.5 text-xs font-medium">✓ Ready</span>
         ) : (
           <span className="shrink-0 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 text-xs font-medium">Not configured</span>
         )}

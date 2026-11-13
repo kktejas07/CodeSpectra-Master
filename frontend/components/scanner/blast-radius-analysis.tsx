@@ -89,7 +89,7 @@ function HealthBadge({ health }: { health: D3Component['health'] }) {
     ? 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30'
     : health === 'warning'
     ? 'bg-yellow-500/20 text-amber-700 dark:text-amber-400 border-yellow-500/30'
-    : 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30'
+    : 'bg-green-500/20 text-green-800 dark:text-green-400 border-green-500/30'
   return <Badge variant="outline" className={`text-xs ${cls}`}>{health}</Badge>
 }
 

@@ -29,7 +29,7 @@ function pageLocale(): Locale {
 /**
  * Root-level error UI. Replaces the root layout, so no globals.css, fonts or
  * theme class reach it — everything is inline. Colours follow the stored
- * theme (same key and dark default as app/layout.tsx); "system" follows the OS.
+ * theme (same key and light default as app/layout.tsx); "system" follows the OS.
  */
 
 const CSS = `

@@ -61,12 +61,12 @@ export function DailyChallengeWidget() {
             <span className="text-xs font-medium text-primary">{tr('dash.dailyChallenge2')}{' '}<span className="tabular-nums">{data.today}</span>
             </span>
             {data.solved_today && (
-              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">{tr('dash.solvedToday')}</span>
+              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:text-green-400">{tr('dash.solvedToday')}</span>
             )}
             <span
               className={cn(
                 'rounded-full px-2 py-0.5 text-[11px] font-medium capitalize',
-                data.problem.difficulty === 'easy' && 'bg-green-500/15 text-green-700 dark:text-green-400',
+                data.problem.difficulty === 'easy' && 'bg-green-500/15 text-green-800 dark:text-green-400',
                 data.problem.difficulty === 'medium' && 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
                 data.problem.difficulty === 'hard' && 'bg-red-500/15 text-red-700 dark:text-red-400',
               )}

@@ -229,7 +229,7 @@ export function HackathonDetail({ slug, initial }: { slug: string; initial: Hack
           </button>
           
           <div className="flex items-center gap-2">
-            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className={cn('px-3 py-1 text-xs backdrop-blur-md', isLive ? 'border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400' : isClosed ? '' : 'bg-background/80 text-foreground')}>
+            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className={cn('px-3 py-1 text-xs backdrop-blur-md', isLive ? 'border-green-500/30 bg-green-500/15 text-green-800 dark:text-green-400' : isClosed ? '' : 'bg-background/80 text-foreground')}>
               {isLive ? 'Live' : isClosed ? 'Closed' : 'Open'}
             </Badge>
           </div>
@@ -260,7 +260,7 @@ export function HackathonDetail({ slug, initial }: { slug: string; initial: Hack
                   </div>
                 )}
                 {isLive && !isClosed && (
-                  <div className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm font-medium text-green-700 dark:text-green-400">
+                  <div className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm font-medium text-green-800 dark:text-green-400">
                     <Timer className="h-4 w-4" />
                     <span>Ends in <Countdown targetIso={hackathon.ends_at} /></span>
                   </div>

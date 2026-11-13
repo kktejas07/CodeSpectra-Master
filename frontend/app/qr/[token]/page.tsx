@@ -352,7 +352,7 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
           {data.hackathon?.status && (
             <Badge
               variant={live ? 'default' : 'secondary'}
-              className={live ? 'capitalize border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400' : 'capitalize'}
+              className={live ? 'capitalize border-green-500/30 bg-green-500/15 text-green-800 dark:text-green-400' : 'capitalize'}
             >
               {data.hackathon.status}
             </Badge>

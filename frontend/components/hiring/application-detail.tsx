@@ -363,7 +363,7 @@ function StageBlock({ stage, detail, seesComp, role, onChanged }: { stage: Pipel
       <header className="mb-2 flex items-center justify-between gap-2">
         <h3 className="font-semibold text-foreground">{stage.name}</h3>
         {result && (
-          <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', result.outcome === 'pass' ? 'bg-green-500/15 text-green-700 dark:text-green-400' : result.outcome === 'fail' ? 'bg-red-500/15 text-red-700 dark:text-red-400' : 'bg-muted text-muted-foreground')}>
+          <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', result.outcome === 'pass' ? 'bg-green-500/15 text-green-800 dark:text-green-400' : result.outcome === 'fail' ? 'bg-red-500/15 text-red-700 dark:text-red-400' : 'bg-muted text-muted-foreground')}>
             {result.outcome === 'pass' ? t('hiring.passed') : result.outcome === 'fail' ? t('hiring.didNotPass') : result.outcome === 'pending' ? t('hiring.inProgress') : t('hiring.skipped')}
             {result.score != null && <span className="tabular-nums"> · {Math.round(result.score)}</span>}
           </span>

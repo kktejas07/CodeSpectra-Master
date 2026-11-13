@@ -485,7 +485,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
         <div className="flex items-center gap-3">
           {/* Progress / Mark Complete */}
           {isDone ? (
-            <div className="hidden sm:flex items-center gap-2 text-green-700 dark:text-green-400 font-medium text-sm px-3 py-1.5 bg-green-500/10 rounded-full">
+            <div className="hidden sm:flex items-center gap-2 text-green-800 dark:text-green-400 font-medium text-sm px-3 py-1.5 bg-green-500/10 rounded-full">
               <CheckCircle className="h-4 w-4" />{' '}{tr('learning.completed')}</div>
           ) : !isQuizMode ? (
             <p className="hidden sm:block text-xs text-muted-foreground">{tr('learning.watchToTheEndOrReadc10')}</p>

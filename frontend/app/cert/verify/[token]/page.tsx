@@ -171,7 +171,7 @@ export default function CertVerifyPage() {
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Award className="w-5 h-5" /></span>
             <div>
-              <Badge variant="outline" className="border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400 mb-1">
+              <Badge variant="outline" className="border-green-500/40 bg-green-500/10 text-green-800 dark:text-green-400 mb-1">
                 Valid · issued by {data.issuer || 'CodeSpectra'}
               </Badge>
               <h1 className="text-2xl font-bold tracking-tight leading-tight text-foreground" data-testid="cert-verify-title">

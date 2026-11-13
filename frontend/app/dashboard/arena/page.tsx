@@ -27,7 +27,7 @@ interface ArenaChallenge {
 }
 
 const difficultyColors: Record<string, string> = {
-  easy: 'text-green-700 dark:text-green-400 bg-green-500/10 border-green-500/30',
+  easy: 'text-green-800 dark:text-green-400 bg-green-500/10 border-green-500/30',
   medium: 'text-amber-700 dark:text-amber-400 bg-amber-500/10 border-amber-500/30',
   hard: 'text-red-700 dark:text-red-400 bg-red-500/10 border-red-500/30',
 }

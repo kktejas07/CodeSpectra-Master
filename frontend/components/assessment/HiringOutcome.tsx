@@ -24,7 +24,7 @@ const TONE: Record<OutcomeStatus, string> = {
   shortlisted: 'border-primary/30 bg-primary/10 text-primary',
   interviewed: 'border-primary/30 bg-primary/5 text-foreground',
   offered: 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300',
-  hired: 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400',
+  hired: 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400',
   rejected: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400',
   withdrew: 'border-border bg-muted text-muted-foreground',
 }

@@ -66,7 +66,7 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
                 </div>
               )}
             </div>
-            <Badge variant="outline" className="text-green-700 dark:text-green-400 border-green-500/40 bg-green-500/10">
+            <Badge variant="outline" className="text-green-800 dark:text-green-400 border-green-500/40 bg-green-500/10">
               Verified on CodeSpectra
             </Badge>
           </>

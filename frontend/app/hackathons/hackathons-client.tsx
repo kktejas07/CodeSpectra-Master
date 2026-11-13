@@ -24,7 +24,7 @@ function formatDate(iso: string) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'active' || status === 'live') return <Badge className="border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400">Live</Badge>
+  if (status === 'active' || status === 'live') return <Badge className="border-green-500/30 bg-green-500/15 text-green-800 dark:text-green-400">Live</Badge>
   if (status === 'upcoming' || status === 'open') return <Badge className="border-cs-accent/30 bg-cs-accent/10 text-cs-accent-text">Upcoming</Badge>
   return <Badge variant="outline" className="text-muted-foreground">Ended</Badge>
 }

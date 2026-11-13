@@ -36,7 +36,7 @@ interface Draft {
 interface DraftPage { items: Draft[]; total: number; page: number; pageSize: number; byDomain: Record<string, number>; labels: Record<string, string> }
 
 const selectCls = 'h-9 rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-const scoreCls = (n: number) => (n >= 85 ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' : n >= 70 ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400')
+const scoreCls = (n: number) => (n >= 85 ? 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400' : n >= 70 ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400')
 
 export function QuestionDraftsReview() {
   const addToast = useToast()

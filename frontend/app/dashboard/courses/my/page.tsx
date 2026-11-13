@@ -166,7 +166,7 @@ export default function MyCoursesPage() {
                       {c.title}
                     </Link>
                     {c.completed ? (
-                      <Badge variant="outline" className="shrink-0 gap-1 border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400">
+                      <Badge variant="outline" className="shrink-0 gap-1 border-green-500/40 bg-green-500/10 text-green-800 dark:text-green-400">
                         <CheckCircle2 className="h-3 w-3" aria-hidden />{' '}{t('learning.completed')}</Badge>
                     ) : null}
                   </div>

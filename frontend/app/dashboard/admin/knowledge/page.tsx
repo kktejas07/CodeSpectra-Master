@@ -71,7 +71,7 @@ const STATUS_LABEL: Record<Status, string> = { queued: 'Queued', indexing: 'Inde
 const STATUS_CLASS: Record<Status, string> = {
   queued: 'border-border bg-muted text-muted-foreground',
   indexing: 'border-primary/30 bg-primary/10 text-primary',
-  ready: 'border-green-600/30 bg-green-500/10 text-green-700 dark:text-green-400',
+  ready: 'border-green-600/30 bg-green-500/10 text-green-800 dark:text-green-400',
   failed: 'border-red-600/30 bg-red-500/10 text-red-700 dark:text-red-400',
 }
 const UPLOAD_KINDS = [

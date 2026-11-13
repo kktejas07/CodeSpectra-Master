@@ -99,7 +99,7 @@ export default async function VerifyPassportPage({ params }: Props) {
     <PublicPageWrapper>
       <div className="mx-auto max-w-[1000px] space-y-6 px-4 py-10 sm:px-6">
         <div className="rounded-3xl border border-border/70 bg-card p-6">
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-400">
+          <p className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-800 dark:text-green-400">
             <ShieldCheck className="h-4 w-4" aria-hidden /> Authentic and current
           </p>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-foreground">{r.name}</h1>

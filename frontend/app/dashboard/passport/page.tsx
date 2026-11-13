@@ -436,7 +436,7 @@ function InvitesPanel({ data, reload, addToast, confirm }: { data: PassportRespo
                       <p className="font-semibold text-foreground">{inv.tenant_name} · {td(`account.inviteTargetLabels:${inv.target_type}`, INVITE_TARGET_LABELS[inv.target_type])}</p>
                       <p className="text-sm text-muted-foreground">{t('account.targetTitleFromRecruiterNameValue', { target_title: inv.target_title, recruiter_name: inv.recruiter_name, value: day(inv.created_at) })}</p>
                     </div>
-                    <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium capitalize', inv.status === 'accepted' ? 'bg-green-500/10 text-green-700 dark:text-green-400' : inv.status === 'pending' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{inv.status}</span>
+                    <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium capitalize', inv.status === 'accepted' ? 'bg-green-500/10 text-green-800 dark:text-green-400' : inv.status === 'pending' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground')}>{inv.status}</span>
                   </div>
                   {inv.message && <p className="whitespace-pre-line rounded-xl bg-muted/40 p-3 text-sm text-foreground">{inv.message}</p>}
                   {inv.status === 'accepted' && inv.fulfilment && (

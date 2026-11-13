@@ -105,7 +105,7 @@ export default function JobsForYouPage() {
                 {j.match.missing.length ? <p className="text-sm text-muted-foreground">{t('career.jmMissing')} {j.match.missing.join(', ')}</p> : null}
                 <div className="flex flex-wrap gap-2">
                   {j.applied
-                    ? <span className="inline-flex min-h-11 items-center rounded-xl bg-green-500/15 px-4 text-sm font-medium text-green-700 dark:text-green-400">{t('career.jmApplied')}</span>
+                    ? <span className="inline-flex min-h-11 items-center rounded-xl bg-green-500/15 px-4 text-sm font-medium text-green-800 dark:text-green-400">{t('career.jmApplied')}</span>
                     : <Button className="min-h-11" onClick={() => setApplyFor(j)}><Briefcase className="mr-2 h-4 w-4" aria-hidden />{t('career.jmApply')}</Button>}
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5" aria-hidden />{fmt.relative(j.created_at)}</span>
                 </div>
