@@ -595,11 +595,7 @@
       "title=\"Delete course\"",
       "aria-label=\"Delete course\"",
       "Generation jobs",
-      "title=\"Delete failed jobs\"",
-      "aria-label=\"Delete failed jobs\"",
       "aria-label=\"Refresh jobs\"",
-      "title=\"No jobs yet\"",
-      "description=\"Generate a course and its video job will appear here.\"",
       "failed",
       "title=\"Retry remaining lessons (keep successful videos)\"",
       "aria-label=\"Retry remaining lessons\"",
@@ -613,7 +609,13 @@
       "min/lesson, one lesson at a time per worker).",
       "Videos ready",
       "Rendering now",
-      "Jobs queued"
+      "Jobs queued",
+      "title=\"Delete all failed jobs\"",
+      "aria-label=\"Delete all failed jobs\"",
+      "selected",
+      "Retry selected",
+      "Delete selected",
+      "title=\"No jobs match\""
     ]
   },
   "app/dashboard/admin/courses/page.tsx": {
