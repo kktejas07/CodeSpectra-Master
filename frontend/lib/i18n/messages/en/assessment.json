@@ -226,5 +226,6 @@
   "debriefFinish": "Finish debrief",
   "resultBetterThan": "🏆 Better than {percent}% of candidates",
   "resultTopicBreakdown": "Topic breakdown",
-  "resultShareLinkedIn": "Share on LinkedIn"
+  "resultShareLinkedIn": "Share on LinkedIn",
+  "debriefSaveFailed": "Could not save your answer. You can skip the debrief."
 }

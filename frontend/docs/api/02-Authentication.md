@@ -177,12 +177,14 @@ Seed three developer accounts (superadmin only).
 
 **Auth**: Requires `superadmin` role.
 
-**Creates/Updates three accounts:**
-| Email | Password | Role |
-|-------|----------|------|
-| `superadmin@codespectra.com` | `SuperAdmin123!` | `superadmin` |
-| `admin@codespectra.com` | `TenantAdmin123!` | `tenant_admin` |
-| `demo@codespectra.com` | `DemoPass123!` | `user` |
+**Creates/Updates three accounts**, all with the password from the `SEED_PASSWORD` environment variable (12+ characters; there is no built-in default, and the endpoint answers 400 without it):
+| Email | Role |
+|-------|------|
+| `superadmin@codespectra.com` | `superadmin` |
+| `admin@codespectra.com` | `tenant_admin` |
+| `demo@codespectra.com` | `user` |
+
+Disabled in production unless `SEED_DEV_ENABLED=1`.
 
 **Success Response (200):**
 ```json

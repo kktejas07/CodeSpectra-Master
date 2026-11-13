@@ -377,7 +377,7 @@ export default function ExamResultsPage() {
   // AI debrief session for the candidate under review
   const [debriefSession, setDebriefSession] = useState<{
     questions: Array<{ id: string; text: string; order: number }>
-    answers: Array<{ question_id: string; text: string; answered_at: string }>
+    answers: Array<{ question_id: string; text: string; answered_at: string; skipped?: boolean }>
     status: string
   } | null>(null)
   const [debriefLoading, setDebriefLoading] = useState(false)
@@ -2557,7 +2557,7 @@ export default function ExamResultsPage() {
                         <Sparkles className="w-4 h-4 text-primary shrink-0" />
                         <span className="font-semibold text-sm flex-1">{tx('assessForm.debriefResponses')}</span>
                         <Badge variant="outline" className="text-xs shrink-0">
-                          {tx('assessForm.debriefAnsweredCount', { answered: debriefSession.answers.length, total: debriefSession.questions.length })}
+                          {tx('assessForm.debriefAnsweredCount', { answered: debriefSession.answers.filter(a => !a.skipped && a.text.trim() !== '').length, total: debriefSession.questions.length })}
                         </Badge>
                         {debriefSession.status === 'skipped' && (
                           <Badge variant="outline" className="text-xs text-muted-foreground shrink-0">{tx('assessForm.debriefSkipped')}</Badge>
@@ -2574,7 +2574,7 @@ export default function ExamResultsPage() {
                                   Q{idx + 1}
                                 </p>
                                 <p className="text-sm font-medium">{q.text}</p>
-                                {ans ? (
+                                {ans && !ans.skipped && ans.text.trim() !== '' ? (
                                   <p className="text-sm text-foreground bg-muted/40 rounded-md px-3 py-2 whitespace-pre-wrap">{ans.text}</p>
                                 ) : (
                                   <p className="text-xs text-muted-foreground italic">{tx('assessForm.debriefNoAnswer')}</p>

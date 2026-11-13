@@ -1473,5 +1473,6 @@
   "sonar_url_credentials": "URLలో యూజర్‌నేమ్ లేదా పాస్‌వర్డ్ ఉండకూడదు.",
   "sonar_token_required": "టోకెన్ నమోదు చేయండి.",
   "sonar_token_reenter": "URL మార్చినప్పుడు టోకెన్‌ను మళ్లీ నమోదు చేయండి.",
-  "sonar_token_auth": "SonarQube టోకెన్‌తో కనెక్ట్ అవుతుంది. దీన్ని Connected apps లో సెటప్ చేయండి."
+  "sonar_token_auth": "SonarQube టోకెన్‌తో కనెక్ట్ అవుతుంది. దీన్ని Connected apps లో సెటప్ చేయండి.",
+  "seed_password_required": "ఈ ఎండ్‌పాయింట్ ఉపయోగించడానికి SEED_PASSWORD (12 లేదా అంతకంటే ఎక్కువ అక్షరాలు) సెట్ చేయండి."
 }

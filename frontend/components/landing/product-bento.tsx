@@ -9,12 +9,16 @@
  * an interview line) is decorative; its human sentences come from landing.json
  * so /hi and /te tiles read in one language (SEO-048). Code stays English.
  *
- * Three cards use AnimatedIcon (lottie-web light, lazy-loaded on scroll/hover)
- * for Proctoring, Contests, and Skill Passport — the manifest has good
- * semantic matches (check-circle, bolt). Lottie fetches only on interaction;
- * the still SVG frame is used for SSR/no-JS/reduced-motion.
+ * Card icons are the CodeSpectra feature icons (components/icons/product-icons),
+ * one per product area. The Contests card keeps the animated bolt
+ * (AnimatedIcon: lottie-web light, lazy-loaded on scroll/hover; the still SVG
+ * frame is used for SSR/no-JS/reduced-motion).
  */
-import { Bot, Building2, GraduationCap, Languages, ListChecks, MessageCircle, ShieldCheck, Swords, BadgeCheck, Users } from 'lucide-react'
+import {
+  AssessmentIcon, CampusIcon, CompanyTestsIcon, ContestIcon, InterviewIcon, LanguagesIcon, MentorIcon,
+  PassportIcon, PhonePracticeIcon, ProctoringIcon,
+} from '@/components/icons/product-icons'
+import { BadgeCheck, ShieldCheck } from 'lucide-react'
 import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { BentoAction, BentoBody, BentoCard, BentoCta, BentoFeature, BentoGrid, BentoIcon, BentoProof, BentoText, BentoTitle, BentoWell, Meter } from '@/components/bento'
 import { BANK_QUESTION_TYPES } from '@/lib/question-types'
@@ -263,7 +267,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         </BentoWell>
         <BentoBody className="flex-none">
           <div className="flex items-center gap-3">
-            <BentoIcon><ListChecks /></BentoIcon>
+            <BentoIcon><AssessmentIcon /></BentoIcon>
             <BentoTitle className="min-w-0">{t('landing.bentoAssessTitle', { n: n.questionTypes })}</BentoTitle>
           </div>
           <BentoText className="mt-2">{t('landing.bentoAssessBody')}</BentoText>
@@ -280,7 +284,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         span={3}
         smSpan={2}
         href="/dashboard/interview-sim"
-        icon={<Bot />}
+        icon={<InterviewIcon />}
         title={t('landing.bentoInterviewTitle')}
         text={t('landing.bentoInterviewBody')}
         visual={<InterviewVisual ready={t('landing.bentoInterviewReady')} question={t('landing.bentoSampleInterviewQ')} />}
@@ -290,7 +294,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
       <BentoFeature
         span={3}
         smSpan={2}
-        icon={<AnimatedIcon name="check-circle" size={18} />}
+        icon={<ProctoringIcon />}
         title={t('landing.bentoProctorTitle')}
         text={t('landing.bentoProctorBody')}
         visual={<ProctorVisual checks={checks} trust={t('landing.bentoProctorTrust')} />}
@@ -300,7 +304,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
       <BentoFeature
         span={2}
         href={lp('/companies')}
-        icon={<Building2 />}
+        icon={<CompanyTestsIcon />}
         title={t('landing.bentoCompanyTitle', { n: n.companyPatterns })}
         text={t('landing.bentoCompanyBody')}
         visual={<PatternBars />}
@@ -321,7 +325,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         span={2}
         smSpan={2}
         href="/dashboard/passport"
-        icon={<AnimatedIcon name="check-circle" size={18} />}
+        icon={<PassportIcon />}
         title={t('landing.bentoPassportTitle')}
         text={t('landing.bentoPassportBody')}
         visual={<PassportVisual levels={levels} verified={t('landing.bentoVerified')} />}
@@ -330,7 +334,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
       <BentoFeature
         span={2}
         href="/dashboard/campus"
-        icon={<GraduationCap />}
+        icon={<CampusIcon />}
         title={t('landing.bentoCampusTitle')}
         text={t('landing.bentoCampusBody')}
         visual={<CampusVisual drive={t('landing.bentoCampusDrive')} eligible={t('landing.bentoCampusEligible')} role={t('landing.bentoSampleRole')} backlogs={t('landing.bentoSampleBacklogs')} />}
@@ -339,7 +343,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
       <BentoFeature
         span={2}
         href={lp('/mentors')}
-        icon={<Users />}
+        icon={<MentorIcon />}
         title={t('landing.bentoMentorsTitle')}
         text={t('landing.bentoMentorsBody')}
         visual={<MentorsVisual slot={t('landing.bentoMentorsSlot')} minutes={t('landing.bentoSampleMinutes', { n: 45 })} />}
@@ -349,7 +353,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         span={2}
         smSpan={2}
         href="/dashboard/settings/whatsapp-practice"
-        icon={<MessageCircle />}
+        icon={<PhonePracticeIcon />}
         title={t('landing.bentoWhatsappTitle')}
         text={t('landing.bentoWhatsappBody')}
         visual={<WhatsappVisual correct={t('landing.bentoWhatsappCorrect')} question={t('landing.bentoSampleWhatsappQ')} />}
@@ -357,7 +361,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
 
       <BentoFeature
         span={2}
-        icon={<Languages />}
+        icon={<LanguagesIcon />}
         title={t('landing.bentoLangTitle')}
         text={t('landing.bentoLangBody')}
         visual={<LanguagesVisual />}
@@ -394,14 +398,14 @@ export function PricingFeatureBento({ locale }: { locale: Locale }) {
   const n = PLATFORM_COUNTS
   return (
     <BentoGrid cols={6}>
-      <BentoFeature span={3} smSpan={2} tone="tint" icon={<ListChecks />} title={t('landing.bentoAssessTitle', { n: n.questionTypes })} text={t('landing.bentoAssessBody')} href={lp('/features')} action={t('landing.bentoAssessAction')} />
-      <BentoFeature span={3} smSpan={2} icon={<ShieldCheck />} title={t('landing.bentoProctorTitle')} text={t('landing.bentoProctorBody')} />
-      <BentoFeature span={2} icon={<Bot />} title={t('landing.bentoInterviewTitle')} text={t('landing.bentoInterviewBody')} />
-      <BentoFeature span={2} icon={<Building2 />} title={t('landing.bentoCompanyTitle', { n: n.companyPatterns })} text={t('landing.bentoCompanyBody')} href={lp('/companies')} />
-      <BentoFeature span={2} smSpan={2} icon={<Swords />} title={t('landing.bentoContestTitle', { n: n.contestFormats })} text={t('landing.bentoContestBody')} href={lp('/contests')} />
-      <BentoFeature span={2} icon={<BadgeCheck />} title={t('landing.bentoPassportTitle')} text={t('landing.bentoPassportBody')} />
-      <BentoFeature span={2} icon={<GraduationCap />} title={t('landing.bentoCampusTitle')} text={t('landing.bentoCampusBody')} />
-      <BentoFeature span={2} smSpan={2} icon={<Languages />} title={t('landing.bentoLangTitle')} text={t('landing.bentoLangBody')} />
+      <BentoFeature span={3} smSpan={2} tone="tint" icon={<AssessmentIcon />} title={t('landing.bentoAssessTitle', { n: n.questionTypes })} text={t('landing.bentoAssessBody')} href={lp('/features')} action={t('landing.bentoAssessAction')} />
+      <BentoFeature span={3} smSpan={2} icon={<ProctoringIcon />} title={t('landing.bentoProctorTitle')} text={t('landing.bentoProctorBody')} />
+      <BentoFeature span={2} icon={<InterviewIcon />} title={t('landing.bentoInterviewTitle')} text={t('landing.bentoInterviewBody')} />
+      <BentoFeature span={2} icon={<CompanyTestsIcon />} title={t('landing.bentoCompanyTitle', { n: n.companyPatterns })} text={t('landing.bentoCompanyBody')} href={lp('/companies')} />
+      <BentoFeature span={2} smSpan={2} icon={<ContestIcon />} title={t('landing.bentoContestTitle', { n: n.contestFormats })} text={t('landing.bentoContestBody')} href={lp('/contests')} />
+      <BentoFeature span={2} icon={<PassportIcon />} title={t('landing.bentoPassportTitle')} text={t('landing.bentoPassportBody')} />
+      <BentoFeature span={2} icon={<CampusIcon />} title={t('landing.bentoCampusTitle')} text={t('landing.bentoCampusBody')} />
+      <BentoFeature span={2} smSpan={2} icon={<LanguagesIcon />} title={t('landing.bentoLangTitle')} text={t('landing.bentoLangBody')} />
     </BentoGrid>
   )
 }

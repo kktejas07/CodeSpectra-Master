@@ -291,6 +291,11 @@ export default function ExamPage() {
       )
     }
 
+    // The server's verdict when present; otherwise the exam's own pass mark (70% only if it has none).
+    const passMark = Number((exam as { passing_score?: unknown }).passing_score)
+    const didPass = (results as { passed?: boolean | null }).passed
+      ?? (results.total > 0 && (results.score / results.total) * 100 >= (Number.isFinite(passMark) && passMark > 0 ? passMark : 70))
+
     // If released, display premium, clean results list
     return (
       <div className="p-6 space-y-8">
@@ -306,7 +311,7 @@ export default function ExamPage() {
             </p>
           )}
           <p className="text-sm font-medium text-white/85">
-            {((results as { passed?: boolean | null }).passed ?? (results.score / results.total >= 0.7))
+            {didPass
               ? t('practice.greatWorkYouPassed')
               : t('practice.keepPracticingToImproveYourScore')}
           </p>
@@ -464,15 +469,14 @@ export default function ExamPage() {
             <Button onClick={() => router.push(certificateUrl)} className="flex-1 gap-2">{t('practice.viewCertificate')}{' '}<ChevronRight className="h-4 w-4" />
             </Button>
           )}
-          {((results as { passed?: boolean | null }).passed ?? (results.score / results.total >= 0.7)) && (
+          {/* Shares the public certificate page — the results page itself is behind sign-in. */}
+          {didPass && certificateUrl && (
             <Button
               variant="outline"
               className="flex-1 gap-2 border-[#0A66C2]/30 text-[#0A66C2] hover:bg-[#0A66C2]/5 dark:text-[#4D94FF]"
               onClick={() => {
-                const scoreText = results.total > 0 ? ` (${Math.round((results.score / results.total) * 100)}%)` : ''
-                const text = `I just passed the "${exam.title}"${scoreText} assessment on CodeSpectra!`
-                const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&summary=${encodeURIComponent(text)}`
-                window.open(url, '_blank', 'noopener,noreferrer,width=600,height=600')
+                const shareUrl = new URL(certificateUrl, window.location.origin).toString()
+                window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`, '_blank', 'noopener,noreferrer,width=600,height=600')
               }}
             >
               <Linkedin className="h-4 w-4" aria-hidden />

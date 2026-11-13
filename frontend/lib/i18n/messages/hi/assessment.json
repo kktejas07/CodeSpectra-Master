@@ -226,5 +226,6 @@
   "debriefFinish": "डीब्रीफ़ समाप्त करें",
   "resultBetterThan": "🏆 {percent}% उम्मीदवारों से बेहतर",
   "resultTopicBreakdown": "विषय-वार विवरण",
-  "resultShareLinkedIn": "LinkedIn पर साझा करें"
+  "resultShareLinkedIn": "LinkedIn पर साझा करें",
+  "debriefSaveFailed": "आपका उत्तर सहेजा नहीं जा सका। आप डीब्रीफ़ छोड़ सकते हैं।"
 }

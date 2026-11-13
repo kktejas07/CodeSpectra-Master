@@ -13,6 +13,7 @@ import { apiErrorFor } from '@/lib/api-errors'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ids'
 import { limitRequest } from '@/lib/rate-limit'
+import { finalDebriefStatus, nextDebriefQuestion } from '@/lib/assessment/debrief'
 import type { DebriefSessionDoc } from '@/lib/db/content'
 
 export const runtime = 'nodejs'
@@ -61,25 +62,18 @@ export async function POST(
     // Append the answer
     const newAnswer = { question_id: questionId, text, answered_at: nowIso() }
     const updatedAnswers = [...session.answers, newAnswer]
-    const allAnswered = updatedAnswers.length >= session.questions.length
+    const next = nextDebriefQuestion({ questions: session.questions, answers: updatedAnswers })
 
     await col.updateOne(
-      { id: sessionId },
+      // Guarded on the question still being unanswered, so a double submit can't add it twice.
+      { id: sessionId, user_id: userId, status: 'active', 'answers.question_id': { $ne: questionId } },
       {
         $push: { answers: newAnswer },
-        ...(allAnswered
-          ? { $set: { status: 'completed', completed_at: nowIso() } }
-          : {}),
+        ...(next ? {} : { $set: { status: finalDebriefStatus(updatedAnswers), completed_at: nowIso() } }),
       },
     )
 
-    if (allAnswered) {
-      return NextResponse.json({ done: true })
-    }
-
-    // Return next unanswered question
-    const answered = new Set(updatedAnswers.map((a: { question_id: string }) => a.question_id))
-    const next = session.questions.find((q: { id: string }) => !answered.has(q.id)) ?? null
+    if (!next) return NextResponse.json({ done: true })
     return NextResponse.json({ done: false, question: next, answered: updatedAnswers.length, total: session.questions.length })
   } catch (e) {
     console.error('[debrief] answer error', e)

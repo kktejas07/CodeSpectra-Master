@@ -1473,5 +1473,6 @@
   "sonar_url_credentials": "The URL must not contain a username or password.",
   "sonar_token_required": "Enter the token.",
   "sonar_token_reenter": "Enter the token again when you change the URL.",
-  "sonar_token_auth": "SonarQube connects with a token. Set it up in Connected apps."
+  "sonar_token_auth": "SonarQube connects with a token. Set it up in Connected apps.",
+  "seed_password_required": "Set SEED_PASSWORD (12 or more characters) to use this endpoint."
 }

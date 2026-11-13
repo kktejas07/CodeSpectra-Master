@@ -1529,9 +1529,9 @@ export default function ExamReviewPage() {
                   <Label>{t === 'drag_drop' ? 'Labels (target → label)' : 'Pairs (left → right)'}</Label>
                   {(editingQuestion.pairs || []).map((p, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <Input value={p.left} placeholder={`Item ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], left: e.target.value }; setQ({ pairs: next }) }} />
+                      <Input aria-label={`Item ${i + 1}`} value={p.left} placeholder={`Item ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], left: e.target.value }; setQ({ pairs: next }) }} />
                       <span className="text-muted-foreground">→</span>
-                      <Input value={p.right} placeholder={`Match ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], right: e.target.value }; setQ({ pairs: next }) }} />
+                      <Input aria-label={`Match ${i + 1}`} value={p.right} placeholder={`Match ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], right: e.target.value }; setQ({ pairs: next }) }} />
                       <Button aria-label={ta('assessForm.remove')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.remove')} onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
                         <X className="h-4 w-4" />
                       </Button>
@@ -1552,7 +1552,7 @@ export default function ExamReviewPage() {
                     <div className="flex flex-wrap gap-2">
                       {m.columns.map((c, i) => (
                         <div key={i} className="flex items-center gap-1">
-                          <Input className="w-32" value={c} onChange={(e) => { const cols = [...m.columns]; cols[i] = e.target.value; setQ({ matrix: { ...m, columns: cols } }) }} />
+                          <Input aria-label={`Column ${i + 1}`} className="w-32" value={c} onChange={(e) => { const cols = [...m.columns]; cols[i] = e.target.value; setQ({ matrix: { ...m, columns: cols } }) }} />
                           <Button aria-label={ta('assessForm.removeColumn')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeColumn')} onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
                             <X className="h-4 w-4" />
                           </Button>
@@ -1565,7 +1565,7 @@ export default function ExamReviewPage() {
                     <Label>{ta('assessForm.rowsChooseTheCorrectColumnPer')}</Label>
                     {m.rows.map((r, ri) => (
                       <div key={ri} className="flex items-center gap-2">
-                        <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...m.rows]; rows[ri] = e.target.value; setQ({ matrix: { ...m, rows } }) }} />
+                        <Input aria-label={`Row ${ri + 1}`} value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...m.rows]; rows[ri] = e.target.value; setQ({ matrix: { ...m, rows } }) }} />
                         <Select value={ans[ri] || ''} onValueChange={(v) => { const next = [...ans]; next[ri] = v; setQ({ answer: next.map(s => s || '').join(', ') }) }}>
                           <SelectTrigger className="w-40"><SelectValue placeholder={ta('assessForm.correct')} /></SelectTrigger>
                           <SelectContent>
@@ -1592,7 +1592,7 @@ export default function ExamReviewPage() {
                     <Label>{ta('assessForm.rowsLabelCorrectValue')}</Label>
                     {tb.rows.map((r, ri) => (
                       <div key={ri} className="flex items-center gap-2">
-                        <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...tb.rows]; rows[ri] = e.target.value; setQ({ table: { ...tb, rows } }) }} />
+                        <Input aria-label={`Row ${ri + 1}`} value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...tb.rows]; rows[ri] = e.target.value; setQ({ table: { ...tb, rows } }) }} />
                         <Input value={ans[ri] || ''} placeholder={ta('assessForm.correctValue')} onChange={(e) => { const next = [...ans]; next[ri] = e.target.value; setQ({ answer: next.map(s => s || '').join(', ') }) }} />
                         <Button aria-label={ta('assessForm.removeRow')} variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title={ta('assessForm.removeRow')} onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
                           <X className="h-4 w-4" />
