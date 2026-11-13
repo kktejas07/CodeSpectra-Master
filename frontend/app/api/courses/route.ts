@@ -312,7 +312,9 @@ export async function GET(request: NextRequest) {
           // custom posters (generated SVG data URLs) untouched.
           image: effectiveCourseCover(c),
           enrolled: enrolledCount || (c.enrolled as number) || 0,
-          sessions: Number(c.sessions) || sectionCount || 0,
+          // The real module count; the stored `sessions` on legacy seed
+          // courses is a made-up marketing number ("24 sessions" for 3 modules).
+          sessions: sectionCount || Number(c.sessions) || 0,
         }
       }),
     )
