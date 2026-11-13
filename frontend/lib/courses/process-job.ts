@@ -114,7 +114,9 @@ export async function claimNextPendingJob(): Promise<{ id: string } | null> {
   const claimed = await db.collection('generation_jobs').findOneAndUpdate(
     { status: 'pending' },
     { $set: { status: 'running', startedAt: new Date().toISOString() } },
-    { sort: { startedAt: 1 }, returnDocument: 'after' },
+    // `priority` lets a batch jump the queue (e.g. a subject the catalog needs
+    // to be complete); jobs without the field sort after everything else.
+    { sort: { priority: -1, startedAt: 1 }, returnDocument: 'after' },
   )
   if (!claimed) return null
   const id = (claimed as { id?: string }).id

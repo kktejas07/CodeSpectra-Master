@@ -57,6 +57,35 @@ const LANGUAGE: FamilyTracks = {
   ]),
 }
 
+/**
+ * C is not C++ and not C#: no classes, no exceptions, no GC. A "complete C
+ * course" has to teach pointers, manual memory, structs and the preprocessor —
+ * the generic LANGUAGE track teaches OOP and would leave a C learner without
+ * the one thing the language is about.
+ */
+const C_LANG: FamilyTracks = {
+  beginner: t(s => `${s} Fundamentals`, 'From zero to idiomatic C: toolchain, pointers, memory.', [
+    'Environment and toolchain', 'Syntax, types, and values', 'Control flow',
+    'Functions, scope, and storage classes', 'Pointers and addresses',
+    'Arrays and strings', 'Structs, unions, and enums',
+    'Dynamic memory: malloc, calloc, realloc, free', 'File I/O and the preprocessor',
+  ]),
+  intermediate: t(s => `${s} Data Structures & Algorithms`, 'Pointer-based DSA in C.', [
+    'Linked lists', 'Stacks and queues', 'Hash tables and maps', 'Trees, BST, and heaps',
+    'Graphs', 'Sorting algorithms', 'Searching and binary search', 'Recursion and backtracking',
+  ]),
+  advanced: t(s => `${s} Advanced`, 'Memory discipline, undefined behaviour, POSIX threads.', [
+    'Manual memory management and ownership', 'Undefined behaviour, alignment, and strict aliasing',
+    'Bit manipulation and low-level I/O', 'Concurrency and POSIX threads',
+    'Profiling, performance, and complexity', 'Testing, sanitizers, and build systems',
+  ]),
+  expert: t(s => `${s} Expert`, 'Systems programming, sockets, hardening.', [
+    'Systems programming: processes, signals, syscalls', 'Networking and sockets',
+    'Design patterns in C: opaque pointers, vtables, callbacks',
+    'Profiling, debugging, and hardening: gdb, valgrind, ASan', 'Capstone project',
+  ]),
+}
+
 const FRONTEND: FamilyTracks = {
   beginner: t(s => `${s} Fundamentals`, 'UI building blocks. Not backend or DSA.', [
     'Project setup and tooling', 'Language and runtime basics', 'Rendering and the component model',
@@ -640,6 +669,7 @@ export const CATALOG_SUBJECTS: CatalogSubject[] = [
   { name: 'Python', industry: 'software', family: 'language' },
   { name: 'JavaScript', industry: 'software', family: 'language' },
   { name: 'TypeScript', industry: 'software', family: 'language' },
+  { name: 'C', industry: 'software', family: 'language', tracks: C_LANG },
   { name: 'C#', industry: 'software', family: 'language' },
   { name: '.NET', industry: 'software', family: 'language' },
   { name: 'C++', industry: 'software', family: 'language' },
@@ -760,8 +790,14 @@ function norm(s: string): string {
 }
 
 export function findSubject(name: string): CatalogSubject | undefined {
+  const raw = (name || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  if (!raw) return undefined
+  // Exact, punctuation-preserving match first: `norm` strips '#', so "C" and
+  // "C#" both collapse to "c" and C# would otherwise answer for C.
+  const exact = CATALOG_SUBJECTS.find(s => s.name.toLowerCase().trim() === raw)
+    || CATALOG_SUBJECTS.find(s => (s.aliases || []).some(a => a.toLowerCase().trim() === raw))
+  if (exact) return exact
   const n = norm(name)
-  if (!n) return undefined
   return CATALOG_SUBJECTS.find(s => {
     if (norm(s.name) === n) return true
     return (s.aliases || []).some(a => norm(a) === n)
