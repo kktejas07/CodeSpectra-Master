@@ -7,6 +7,7 @@ import { DeviceShowcase } from '@/components/visuals'
 import type { Locale } from '@/lib/i18n/config'
 import { publicT } from '@/lib/i18n/public-server'
 import { publicPageMetadata } from '@/lib/i18n/public-page'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export const companiesMetadata = (locale: Locale) => publicPageMetadata('/companies', locale, { kind: 'company' })
 
@@ -28,6 +29,7 @@ export function CompaniesView({ locale }: { locale: Locale }) {
           industries={industries}
         />
       </div>
+      <PageAnswer path="/companies" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

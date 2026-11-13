@@ -25,6 +25,7 @@ import { getSiteOrigin } from '@/lib/seo/settings'
 import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT, type PublicTranslator } from '@/lib/i18n/public-server'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export type SP = Promise<Record<string, string | string[] | undefined>>
 
@@ -156,6 +157,7 @@ export async function DigestListView({ locale }: { locale: Locale }) {
           <p className="px-2 text-xs leading-relaxed text-muted-foreground">{t('hubs.digestNote')}</p>
         </aside>
       </div>
+      <PageAnswer path="/digest" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

@@ -23,6 +23,7 @@ import { buildMetadata } from '@/lib/seo/metadata'
 import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT, type PublicTranslator } from '@/lib/i18n/public-server'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 // Learn hub for every language (English: app/learn/page.tsx, hi / te:
 // app/[lang]/learn). Posts are shown in the language they were written in;
@@ -235,6 +236,7 @@ export async function LearnView({ searchParams, locale }: { searchParams: SP; lo
           <NotifyBox topic="blog" />
         </section>
       </div>
+      <PageAnswer path="/learn" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

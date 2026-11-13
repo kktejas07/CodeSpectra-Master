@@ -3575,5 +3575,19 @@
   "atsInt.connectLever": "Lever जोड़ें",
   "atsInt.leverKeyHelp": "अपनी Lever API कुंजी दर्ज करें। यह Settings → Integrations → API Credentials में मिलेगी।",
   "atsInt.leverUserId": "Lever यूज़र ID",
-  "atsInt.leverUserIdHelp": "उस Lever यूज़र की ID जो भेजे गए उम्मीदवारों का ओनर होगा (perform_as के रूप में भेजी जाती है)। Opportunity बनाने के लिए Lever को यह चाहिए।"
+  "atsInt.leverUserIdHelp": "उस Lever यूज़र की ID जो भेजे गए उम्मीदवारों का ओनर होगा (perform_as के रूप में भेजी जाती है)। Opportunity बनाने के लिए Lever को यह चाहिए।",
+  "aiRef.title": "AI रेफ़रल",
+  "aiRef.description": "ChatGPT, Perplexity, Gemini, Claude या Copilot जैसे AI असिस्टेंट से आई विज़िट और वे पेज जिन पर वे पहुँचीं।",
+  "aiRef.summary": "{total} में से {ai} विज़िट · {pct}%",
+  "aiRef.loading": "लोड हो रहा है…",
+  "aiRef.error": "AI रेफ़रल लोड नहीं हो सके। फिर कोशिश करें।",
+  "aiRef.period": "अवधि",
+  "aiRef.range7": "पिछले 7 दिन",
+  "aiRef.range30": "पिछले 30 दिन",
+  "aiRef.range90": "पिछले 90 दिन",
+  "aiRef.none": "इस अवधि में AI असिस्टेंट से कोई विज़िट नहीं आई।",
+  "aiRef.byAssistant": "असिस्टेंट के अनुसार",
+  "aiRef.landings": "वे पेज जिन पर विज़िट पहुँचीं",
+  "aiRef.noLandings": "इस अवधि के लिए लैंडिंग पेज का ब्योरा नहीं है।",
+  "aiRef.blindSpots": "यहाँ नहीं गिने जाते: Google AI Overviews और AI Mode (ये सामान्य Google विज़िट की तरह आते हैं) और वे असिस्टेंट जो रेफ़रर नहीं भेजते (ये डायरेक्ट विज़िट की तरह आते हैं)।"
 }

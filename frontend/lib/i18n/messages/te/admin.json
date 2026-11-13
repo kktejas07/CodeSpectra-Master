@@ -3575,5 +3575,19 @@
   "atsInt.connectLever": "Lever కనెక్ట్ చేయండి",
   "atsInt.leverKeyHelp": "మీ Lever API కీని నమోదు చేయండి. ఇది Settings → Integrations → API Credentials లో ఉంటుంది.",
   "atsInt.leverUserId": "Lever యూజర్ ID",
-  "atsInt.leverUserIdHelp": "పంపిన అభ్యర్థులకు ఓనర్‌గా ఉండే Lever యూజర్ ID (perform_as గా పంపబడుతుంది). Opportunity సృష్టించడానికి Leverకు ఇది అవసరం."
+  "atsInt.leverUserIdHelp": "పంపిన అభ్యర్థులకు ఓనర్‌గా ఉండే Lever యూజర్ ID (perform_as గా పంపబడుతుంది). Opportunity సృష్టించడానికి Leverకు ఇది అవసరం.",
+  "aiRef.title": "AI రెఫరల్స్",
+  "aiRef.description": "ChatGPT, Perplexity, Gemini, Claude లేదా Copilot వంటి AI అసిస్టెంట్‌ల నుంచి వచ్చిన సందర్శనలు, అవి చేరిన పేజీలు.",
+  "aiRef.summary": "{total} సందర్శనల్లో {ai} · {pct}%",
+  "aiRef.loading": "లోడ్ అవుతోంది…",
+  "aiRef.error": "AI రెఫరల్స్ లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి.",
+  "aiRef.period": "కాలం",
+  "aiRef.range7": "గత 7 రోజులు",
+  "aiRef.range30": "గత 30 రోజులు",
+  "aiRef.range90": "గత 90 రోజులు",
+  "aiRef.none": "ఈ కాలంలో AI అసిస్టెంట్‌ల నుంచి సందర్శనలు లేవు.",
+  "aiRef.byAssistant": "అసిస్టెంట్ వారీగా",
+  "aiRef.landings": "సందర్శకులు చేరిన పేజీలు",
+  "aiRef.noLandings": "ఈ కాలానికి ల్యాండింగ్ పేజీ వివరాలు లేవు.",
+  "aiRef.blindSpots": "ఇక్కడ లెక్కలోకి రానివి: Google AI Overviews, AI Mode (ఇవి సాధారణ Google సందర్శనలుగా వస్తాయి), రెఫరర్ పంపని అసిస్టెంట్‌లు (ఇవి డైరెక్ట్ సందర్శనలుగా వస్తాయి)."
 }

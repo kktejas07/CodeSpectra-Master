@@ -9,6 +9,7 @@ import { computeHackathonStatus } from '@/lib/services/hackathons'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { HackathonsList, type Hackathon } from './hackathons-client'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +48,7 @@ export default async function PublicHackathonsPage() {
         ]}
       />
       <HackathonsList initial={items} />
+      <PageAnswer path="/hackathons" locale={'en'} className="pb-16" />
     </PublicPageWrapper>
   )
 }

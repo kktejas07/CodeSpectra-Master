@@ -10,6 +10,7 @@ import { getAppOrigin } from '@/lib/app-origin'
 import type { Locale } from '@/lib/i18n/config'
 import { publicT } from '@/lib/i18n/public-server'
 import { publicPageMetadata } from '@/lib/i18n/public-page'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export function eventsMetadata(locale: Locale): Metadata {
   const m = publicPageMetadata('/events', locale, { kind: 'event' })
@@ -31,6 +32,7 @@ export async function EventsView({ locale }: { locale: Locale }) {
         <AskBox className="mb-8" locale={locale === 'hi' || locale === 'te' ? locale : 'en'} />
         <EventsExplorer events={events} origin={getAppOrigin()} />
       </div>
+      <PageAnswer path="/events" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

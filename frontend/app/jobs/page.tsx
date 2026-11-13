@@ -12,6 +12,7 @@ import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { publicRoute } from '@/lib/seo/public-routes'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { JobsBoard, type JobPosting, type JobsQuery } from './jobs-board-client'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,6 +66,7 @@ export default async function JobsPage({ searchParams }: { searchParams: SP }) {
         ]}
       />
       <JobsBoard initialJobs={jobs} initialQuery={query} />
+      <PageAnswer path="/jobs" locale={'en'} className="pb-16" />
     </PublicPageWrapper>
   )
 }

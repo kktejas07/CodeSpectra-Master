@@ -17,6 +17,8 @@ import { AlertTriangle, Bot, CheckCircle2, ExternalLink, Globe2, Info, KeyRound,
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { AI_CRAWLERS, DEFAULT_SEO_SETTINGS, slugifyComparison, type ComparisonPage, type SeoSettings } from '@/lib/seo/settings-shared'
 import type { HealthReport } from '@/lib/seo/health'
+import type { AiReferralReport } from '@/lib/seo/ai-referrals'
+import { useAdminT } from '@/lib/i18n/admin'
 
 const lines = (v: string) => v.split('\n').map((s) => s.trim()).filter(Boolean)
 const pipeRows = (v: string) => lines(v).map((l) => l.split('|').map((x) => x.trim()))
@@ -123,6 +125,8 @@ export function SeoSettingsSection() {
           {msg.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" />}{msg.text}
         </div>
       ) : null}
+
+      <AiReferralsPanel />
 
       <HealthPanel report={health} loading={healthLoading} onRefresh={loadHealth} />
 
@@ -240,6 +244,72 @@ export function SeoSettingsSection() {
         </Button>
       </div>
     </div>
+  )
+}
+
+const AI_RANGES = [['7d', 'aiRef.range7'], ['30d', 'aiRef.range30'], ['90d', 'aiRef.range90']] as const
+
+/** Visits referred by AI assistants, from the analytics rollups (no extra tracking). */
+function AiReferralsPanel() {
+  const { t } = useAdminT()
+  const [preset, setPreset] = useState<(typeof AI_RANGES)[number][0]>('30d')
+  const [report, setReport] = useState<AiReferralReport | null>(null)
+  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
+
+  useEffect(() => {
+    let live = true
+    setState('loading')
+    fetch(`/api/admin/seo/ai-referrals?preset=${preset}`, { credentials: 'include' })
+      .then(async (r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
+      .then((d: AiReferralReport) => { if (live) { setReport(d); setState('ready') } })
+      .catch(() => { if (live) setState('error') })
+    return () => { live = false }
+  }, [preset])
+
+  const max = Math.max(1, ...(report?.engines.map((e) => e.sessions) ?? []))
+  return (
+    <Section title={t('aiRef.title')} icon={<Bot className="h-5 w-5 text-primary" />} description={t('aiRef.description')}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {state === 'ready' && report ? (
+          <p className="text-lg font-semibold tabular-nums">{t('aiRef.summary', { ai: report.ai_sessions.toLocaleString(), total: report.total_sessions.toLocaleString(), pct: report.share_pct })}</p>
+        ) : <p className="text-sm text-muted-foreground" role="status">{state === 'loading' ? t('aiRef.loading') : t('aiRef.error')}</p>}
+        <div className="flex gap-1.5" role="group" aria-label={t('aiRef.period')}>
+          {AI_RANGES.map(([id, label]) => (
+            <Button key={id} type="button" size="sm" variant={preset === id ? 'default' : 'outline'} aria-pressed={preset === id} onClick={() => setPreset(id)}>{t(label)}</Button>
+          ))}
+        </div>
+      </div>
+      {state === 'ready' && report ? (
+        report.ai_sessions === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('aiRef.none')}</p>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <p className="mb-2 text-sm font-medium">{t('aiRef.byAssistant')}</p>
+              <ul className="space-y-2">
+                {report.engines.map((e) => (
+                  <li key={e.id} className="text-sm">
+                    <div className="flex justify-between gap-3"><span>{e.label}</span><span className="tabular-nums">{e.sessions.toLocaleString()}</span></div>
+                    <div className="mt-1 h-1.5 rounded-full bg-muted" aria-hidden><div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(2, Math.round((e.sessions / max) * 100))}%` }} /></div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium">{t('aiRef.landings')}</p>
+              {report.landings.length ? (
+                <ul className="space-y-1.5 text-sm">
+                  {report.landings.map((l) => (
+                    <li key={l.path} className="flex justify-between gap-3"><a href={l.path} target="_blank" rel="noopener" className="min-w-0 truncate text-primary hover:underline">{l.path}</a><span className="tabular-nums">{l.sessions.toLocaleString()}</span></li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-muted-foreground">{t('aiRef.noLandings')}</p>}
+            </div>
+          </div>
+        )
+      ) : null}
+      <p className="flex gap-2 text-xs text-muted-foreground"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />{t('aiRef.blindSpots')}</p>
+    </Section>
   )
 }
 

@@ -14,6 +14,7 @@ import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT } from '@/lib/i18n/public-server'
 import { publicPageMetadata } from '@/lib/i18n/public-page'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export const contestsMetadata = (locale: Locale) => publicPageMetadata('/contests', locale, { kind: 'hackathon' })
 
@@ -54,6 +55,7 @@ export async function ContestsView({ locale }: { locale: Locale }) {
         ]}
       />
       <ContestsList items={items} />
+      <PageAnswer path="/contests" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

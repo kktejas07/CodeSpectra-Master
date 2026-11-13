@@ -23,6 +23,7 @@ import type { Locale } from '@/lib/i18n/config'
 import { formatDate } from '@/lib/i18n/format'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT, type PublicTranslator } from '@/lib/i18n/public-server'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 // News hub for every language (English: app/news/page.tsx, hi / te:
 // app/[lang]/news). Headlines and summaries stay in the language they were
@@ -159,6 +160,7 @@ export async function NewsView({ searchParams, locale }: { searchParams: SP; loc
           </p>
         </aside>
       </div>
+      <PageAnswer path="/news" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }
