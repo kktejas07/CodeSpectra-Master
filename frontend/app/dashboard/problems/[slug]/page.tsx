@@ -529,7 +529,7 @@ export default function ProblemDetailPage() {
   const difficultyTone = useMemo(() => {
     if (!problem) return ''
     return problem.difficulty === 'easy'
-      ? 'text-green-700 dark:text-green-400 bg-green-500/10'
+      ? 'text-green-800 dark:text-green-400 bg-green-500/10'
       : problem.difficulty === 'medium'
         ? 'text-orange-700 dark:text-orange-400 bg-orange-500/10'
         : 'text-red-700 dark:text-red-400 bg-red-500/10'
@@ -1194,7 +1194,7 @@ function ResultsPanel({ result, running }: { result: RunResponse | null, running
                       </div>
                       <div>
                          <div className="text-xs font-semibold text-muted-foreground mb-1">{t('practice.expectedOutput')}</div>
-                         <pre className="text-sm font-mono bg-green-500/10 text-green-700 dark:text-green-400 p-2 rounded border border-green-500/20 whitespace-pre-wrap">{r.expected ?? '—'}</pre>
+                         <pre className="text-sm font-mono bg-green-500/10 text-green-800 dark:text-green-400 p-2 rounded border border-green-500/20 whitespace-pre-wrap">{r.expected ?? '—'}</pre>
                       </div>
                    </div>
                 )}

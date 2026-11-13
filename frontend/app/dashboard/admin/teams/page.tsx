@@ -179,7 +179,7 @@ export default function TeamsManagement() {
                   <span className="tabular-nums">{ta('teamsAdm.members2', { members: team.members })}</span>
                   <span>Admin: {team.admin}</span>
                 </div>
-                <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${team.status === 'active' ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${team.status === 'active' ? 'bg-green-500/10 text-green-800 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
                   {team.status}
                 </span>
               </div>

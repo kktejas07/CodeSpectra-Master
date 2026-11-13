@@ -217,7 +217,7 @@ export default function CouponsAdminPage() {
     ) },
     { key: 'usage', header: 'Usage', cell: (r) => <span className="tabular-nums">{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
     { key: 'status', header: 'Status',
-      cell: (r) => r.active ? <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">{ta('couponAdm.active')}</Badge> : <Badge variant="secondary">{ta('couponAdm.inactive')}</Badge> },
+      cell: (r) => r.active ? <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400">{ta('couponAdm.active')}</Badge> : <Badge variant="secondary">{ta('couponAdm.inactive')}</Badge> },
     { key: 'expiry', header: 'Expiry', cell: (r) => <span className="text-muted-foreground text-xs">{r.valid_until ? formatDate(r.valid_until) : 'Never'}</span> },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center gap-1">

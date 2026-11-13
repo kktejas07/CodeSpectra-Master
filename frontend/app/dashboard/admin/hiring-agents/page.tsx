@@ -51,7 +51,7 @@ const PARAM_KEYS: Record<LoopId, string[]> = {
   integrity: ['hold_threshold', 'max_cases'],
 }
 const STATUS_TONE: Record<string, string> = {
-  ok: 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400',
+  ok: 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400',
   partial: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
   failed: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400',
   blocked: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400',

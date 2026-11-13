@@ -32,7 +32,7 @@ interface DeviceAuditModalProps {
 }
 
 function verdictColor(t: Translator, verdict: DetectedDevice['verdict']) {
-  if (verdict === 'safe') return { badge: 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30', icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />, label: t('exam.safe') }
+  if (verdict === 'safe') return { badge: 'bg-green-500/15 text-green-800 dark:text-green-400 border-green-500/30', icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />, label: t('exam.safe') }
   if (verdict === 'warn') return { badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30', icon: <AlertTriangle className="h-4 w-4 text-amber-500" />, label: t('exam.review2') }
   return { badge: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30', icon: <XCircle className="h-4 w-4 text-red-500" />, label: t('exam.blocked') }
 }

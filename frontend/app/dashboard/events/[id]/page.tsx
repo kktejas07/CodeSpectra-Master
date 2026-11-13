@@ -871,7 +871,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           actions={(isLive && !isClosed) || isUpcoming ? (
             <>
               {isLive && !isClosed && (
-                <span className="flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium tabular-nums text-green-700 dark:text-green-400">
+                <span className="flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium tabular-nums text-green-800 dark:text-green-400">
                   <Timer className="w-3.5 h-3.5" aria-hidden />{' '}{tr('compete.endsIn')}{' '}<Countdown targetIso={event.ends_at} />
                 </span>
               )}

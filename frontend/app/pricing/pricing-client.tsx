@@ -142,7 +142,7 @@ export function PricingClient({ initialPlans, faqs, features }: { initialPlans: 
             }`}
           >
             {t('publicPages.annual')}
-            <span className={`rounded-full px-2 py-0.5 text-xs ${annual ? 'bg-white/20 text-current' : 'bg-green-500/15 text-green-700 dark:text-green-400'}`}>
+            <span className={`rounded-full px-2 py-0.5 text-xs ${annual ? 'bg-white/20 text-current' : 'bg-green-500/15 text-green-800 dark:text-green-400'}`}>
               {t('publicPages.savePct', { pct: annualSavingsPct })}
             </span>
           </button>

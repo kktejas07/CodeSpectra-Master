@@ -852,7 +852,7 @@ export default function AdminCodeathonsPage() {
                           className={cn(
                             'text-[10px] px-1.5 py-0',
                             p.difficulty === 'Hard' ? 'border-red-500/40 text-red-700 dark:text-red-400 bg-red-500/10' :
-                            p.difficulty === 'Easy' ? 'border-green-500/40 text-green-700 dark:text-green-400 bg-green-500/10' :
+                            p.difficulty === 'Easy' ? 'border-green-500/40 text-green-800 dark:text-green-400 bg-green-500/10' :
                             'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10'
                           )}
                         >
@@ -1121,7 +1121,7 @@ export default function AdminCodeathonsPage() {
             r.status === 'draft'
               ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
               : r.status === 'active'
-              ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
+              ? 'bg-green-500/15 text-green-800 dark:text-green-400 border-green-500/30'
               : r.status === 'upcoming'
               ? 'bg-primary/10 text-primary border-primary/30'
               : 'bg-muted text-muted-foreground border-border'
@@ -1144,7 +1144,7 @@ export default function AdminCodeathonsPage() {
             r.difficulty === 'Hard'
               ? 'border-red-500/40 text-red-700 dark:text-red-400 bg-red-500/10'
               : r.difficulty === 'Easy'
-              ? 'border-green-500/40 text-green-700 dark:text-green-400 bg-green-500/10'
+              ? 'border-green-500/40 text-green-800 dark:text-green-400 bg-green-500/10'
               : 'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10'
           }
         >
@@ -1518,7 +1518,7 @@ export default function AdminCodeathonsPage() {
                     <Badge
                       className={
                         selectedSubmission.status === 'accepted'
-                          ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
+                          ? 'bg-green-500/15 text-green-800 dark:text-green-400 border-green-500/30'
                           : 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30'
                       }
                     >
@@ -1671,7 +1671,7 @@ export default function AdminCodeathonsPage() {
                               className={cn(
                                 'text-[10px]',
                                 s.status === 'accepted'
-                                  ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
+                                  ? 'bg-green-500/15 text-green-800 dark:text-green-400 border-green-500/30'
                                   : 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30'
                               )}
                             >

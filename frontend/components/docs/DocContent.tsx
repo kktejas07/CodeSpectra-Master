@@ -91,7 +91,9 @@ function DocMarkdown({ content, section }: { content: string; section: ServeSect
           const inline = !className
           return inline ? (
             <code
-              className="rounded-md bg-cs-accent/8 px-1.5 py-0.5 font-mono text-[13px] text-cs-ink"
+              // A fenced block with no language also lands here; inside the dark <pre> it must keep the
+              // block's light text (in the light theme text-cs-ink on bg-zinc-950 was 1.06:1).
+              className="rounded-md bg-cs-accent/8 px-1.5 py-0.5 font-mono text-[13px] text-cs-ink [pre_&]:bg-transparent [pre_&]:p-0 [pre_&]:text-inherit"
               {...props}
             >
               {children}

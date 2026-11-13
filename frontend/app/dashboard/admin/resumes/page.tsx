@@ -59,7 +59,7 @@ export default function AdminResumesPage() {
     { key: 'name', header: 'File', cell: (r) => <span className="font-medium">{r.file_name}</span> },
     { key: 'size', header: 'Size', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
     { key: 'status', header: 'Status', cell: (r) => (
-      <Badge variant="outline" className={r.status === 'processed' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'}>
+      <Badge variant="outline" className={r.status === 'processed' ? 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'}>
         {r.status || 'pending'}
       </Badge>
     )},

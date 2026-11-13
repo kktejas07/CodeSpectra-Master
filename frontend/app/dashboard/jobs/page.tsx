@@ -34,7 +34,7 @@ const STATUS_CONFIG = (t: Translator): Record<AppliedJob['status'], { label: str
   submitted:   { label: t('career.submitted'),   color: 'bg-primary/10 text-primary',                                 icon: Hourglass },
   in_review:   { label: t('career.inReview'),   color: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',        icon: Clock },
   rejected:    { label: t('career.rejected'),    color: 'bg-red-500/15 text-red-700 dark:text-red-400',              icon: XCircle },
-  accepted:    { label: t('career.accepted'),    color: 'bg-green-500/15 text-green-700 dark:text-green-400',        icon: CheckCircle },
+  accepted:    { label: t('career.accepted'),    color: 'bg-green-500/15 text-green-800 dark:text-green-400',        icon: CheckCircle },
   withdrawn:   { label: t('career.withdrawn'),   color: 'bg-muted text-muted-foreground',                            icon: XCircle },
 })
 

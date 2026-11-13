@@ -110,7 +110,7 @@ export function BentoPill({ children, tone = 'muted', className }: { children: R
         'inline-flex max-w-full items-center gap-1 truncate rounded-full px-2.5 py-1 text-xs font-medium',
         tone === 'muted' && 'border border-border/80 bg-background/70 text-foreground',
         tone === 'accent' && 'bg-primary/10 text-primary',
-        tone === 'live' && 'bg-green-500/12 text-green-700 dark:text-green-400',
+        tone === 'live' && 'bg-green-500/12 text-green-800 dark:text-green-400',
         tone === 'warn' && 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
         className,
       )}

@@ -333,7 +333,7 @@ export function ProctoringWrapper({
 
           {/* Face Match Status */}
           {idPhoto && faceMatchRef.current && (
-            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 font-bold text-[11px] ${faceMatchRef.current.matched ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
+            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 font-bold text-[11px] ${faceMatchRef.current.matched ? 'bg-green-500/10 text-green-800 dark:text-green-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
               <Camera className="h-3.5 w-3.5" />{' '}{tr('exam.face')}{' '}{faceMatchRef.current.matched ? tr('exam.verified') : tr('exam.doesntMatchN', { n: Math.round(faceMatchRef.current.score * 100) })}
             </div>
           )}
@@ -356,7 +356,7 @@ export function ProctoringWrapper({
             <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-bold text-[11px]" title={tr('exam.noCameraWasAvailableSoYour6a5')}>
               <UserCheck className="h-3.5 w-3.5" />{' '}{tr('exam.idSentForReview')}</div>
           ) : identityStatus === 'verified' || kycVerified ? (
-            <div className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-green-700 dark:text-green-400 font-bold text-[11px]">
+            <div className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-green-800 dark:text-green-400 font-bold text-[11px]">
               <UserCheck className="h-3.5 w-3.5" /> {identityStatus === 'verified' ? tr('exam.identityCheckDone') : tr('exam.idVerified')}
             </div>
           ) : (

@@ -42,7 +42,7 @@ interface ProfileResponse {
 }
 
 const DIFF_TONE: Record<Difficulty, string> = {
-  easy: 'border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400',
+  easy: 'border-green-500/40 bg-green-500/10 text-green-800 dark:text-green-400',
   medium: 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400',
   hard: 'border-destructive/40 bg-destructive/10 text-destructive',
 }

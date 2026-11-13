@@ -1667,7 +1667,7 @@ export default function ExamResultsPage() {
             >
               <Badge
                 variant="secondary"
-                className={jevConfigured ? 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' : 'gap-1 bg-muted text-muted-foreground'}
+                className={jevConfigured ? 'gap-1 bg-green-500/10 text-green-800 dark:text-green-400 border-green-500/20' : 'gap-1 bg-muted text-muted-foreground'}
               >
                 <ShieldAlert className="w-3.5 h-3.5" aria-hidden /> {jevConfigured ? 'Second-opinion check on' : 'Second-opinion check off'}
               </Badge>
@@ -1677,7 +1677,7 @@ export default function ExamResultsPage() {
             <Badge
               variant="secondary"
               title={`Checked ${fmtDateTime(exam.plagiarismReport.checked_at)} · ${exam.plagiarismReport.pairs} pair(s), ${exam.plagiarismReport.aiFlags} AI flag(s), ${exam.plagiarismReport.bankMatches} bank match(es)`}
-              className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' : 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20'}
+              className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20' : 'gap-1 bg-green-500/10 text-green-800 dark:text-green-400 border-green-500/20'}
             >
               <ShieldAlert className="w-3.5 h-3.5" /> {tx('assessForm.plagiarism')} {exam.plagiarismReport.score}/100
             </Badge>
@@ -1814,7 +1814,7 @@ export default function ExamResultsPage() {
                   <p className="text-muted-foreground truncate">{s.email}</p>
                 </div>
                 {s.has_draft === true && (
-                  <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 shrink-0">{tx('assessForm.draftSaved')}</Badge>
+                  <Badge variant="secondary" className="bg-green-500/10 text-green-800 dark:text-green-400 shrink-0">{tx('assessForm.draftSaved')}</Badge>
                 )}
                 {s.has_draft === false && (
                   <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0">{tx('assessForm.noDraft')}</Badge>
@@ -2232,7 +2232,7 @@ export default function ExamResultsPage() {
                                 {modelAnswer && (
                                   <div>
                                     <span className="text-xs font-medium text-green-600 dark:text-green-400 block mb-1">{tx('assessForm.modelAnswerRubric2')}</span>
-                                    <pre className="text-xs font-mono bg-green-500/5 border border-green-500/20 text-green-700 dark:text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-green-500/5 border border-green-500/20 text-green-800 dark:text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
                                   </div>
                                 )}
 
@@ -2866,7 +2866,7 @@ export default function ExamResultsPage() {
                 className="h-9 w-24 rounded-md border border-border bg-background px-2 text-sm"
               />
               <div className="flex gap-2 text-xs">
-                <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{tx('assessForm.pass', { length: passPreview.length })}</Badge>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-800 dark:text-green-400">{tx('assessForm.pass', { length: passPreview.length })}</Badge>
                 <Badge variant="secondary" className="bg-red-500/10 text-red-600 dark:text-red-400">{tx('assessForm.below', { length: failPreview.length })}</Badge>
                 <Badge variant="secondary">{tx('assessForm.releasing', { length: releasablePreview.length })}</Badge>
               </div>

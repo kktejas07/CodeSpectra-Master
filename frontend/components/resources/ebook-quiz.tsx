@@ -72,7 +72,7 @@ export function EbookQuiz({ questions, onComplete }: EbookQuizProps) {
         <h3 className="text-xl font-bold text-foreground">{t('learning.quizComplete')}</h3>
         <div className="text-4xl font-bold tabular-nums text-primary">{score}/{questions.length}</div>
         <p className="tabular-nums text-muted-foreground">{t('learning.percentageCorrect', { percentage })}</p>
-        <Badge variant={percentage >= 70 ? 'default' : 'secondary'} className={percentage >= 70 ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}>
+        <Badge variant={percentage >= 70 ? 'default' : 'secondary'} className={percentage >= 70 ? 'bg-green-500/15 text-green-800 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}>
           {percentage >= 70 ? t('learning.greatJob') : t('learning.keepPracticing')}
         </Badge>
         <Button onClick={handleRestart} variant="outline">

@@ -215,7 +215,7 @@ export default function AdminJobsPage() {
     !job.is_active ? 'bg-muted text-muted-foreground'
     : new Date(job.created_at).getTime() > Date.now() - 604800000
       ? 'border-primary/30 bg-primary/10 text-primary'
-      : 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400'
+      : 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400'
 
   const getStatusLabel = (job: JobPosting) =>
     !job.is_active ? 'Closed' : new Date(job.created_at).getTime() > Date.now() - 604800000 ? 'New' : 'Active'

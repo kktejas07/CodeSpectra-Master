@@ -222,7 +222,7 @@ export default function CandidateInviteLandingPage() {
               <p className="text-xs text-muted-foreground">{t('assessment.checkDetails')}</p>
             </div>
           </div>
-          <span className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 font-medium">
+          <span className="flex items-center gap-1.5 text-xs text-green-800 dark:text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 font-medium">
             <ShieldCheck className="h-3.5 w-3.5" /> {t('assessment.inviteVerified')}
           </span>
         </div>

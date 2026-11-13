@@ -24,7 +24,7 @@ export function FormatIcon({ format, className }: { format: ContestFormat; class
 
 export function PhaseBadge({ phase, label }: { phase: ContestPhase; /** Translated label (public pages); defaults to English. */ label?: string }) {
   const tone =
-    phase === 'live' ? 'border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400'
+    phase === 'live' ? 'border-green-500/30 bg-green-500/15 text-green-800 dark:text-green-400'
       : phase === 'registration' ? 'border-primary/30 bg-primary/10 text-primary'
         : phase === 'draft' ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
           : 'text-muted-foreground'

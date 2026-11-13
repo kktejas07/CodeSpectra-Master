@@ -221,7 +221,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
             <span className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className={
                 problem.difficulty === 'Hard' ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400' :
-                problem.difficulty === 'Easy' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' :
+                problem.difficulty === 'Easy' ? 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400' :
                 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
               }>
                 {problem.difficulty}

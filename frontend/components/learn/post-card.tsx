@@ -26,7 +26,7 @@ export const ENGLISH_CARD_LABELS: CardLabels = {
 }
 
 const LEVEL_STYLE: Record<string, string> = {
-  beginner: 'bg-green-500/10 text-green-700 dark:text-green-400',
+  beginner: 'bg-green-500/10 text-green-800 dark:text-green-400',
   intermediate: 'bg-primary/10 text-primary',
   advanced: 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
 }

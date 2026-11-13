@@ -148,7 +148,7 @@ export default function InterviewFeedbackPage() {
 
   const statusColors: Record<string, string> = {
     scheduled: 'bg-primary/10 text-primary',
-    in_progress: 'bg-green-500/10 text-green-700 dark:text-green-400',
+    in_progress: 'bg-green-500/10 text-green-800 dark:text-green-400',
     completed: 'bg-muted text-muted-foreground',
     cancelled: 'bg-destructive/10 text-destructive',
   }

@@ -33,7 +33,7 @@ export function ProCredentialVerify({ c, locale }: { c: PublicCredentialView | n
   return (
     <Frame>
       <p className={good
-        ? 'inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-700 dark:text-green-400'
+        ? 'inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-sm font-medium text-green-800 dark:text-green-400'
         : 'inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-800 dark:text-amber-300'}>
         {good ? <ShieldCheck className="h-4 w-4" aria-hidden /> : <ShieldAlert className="h-4 w-4" aria-hidden />} {badge}
       </p>

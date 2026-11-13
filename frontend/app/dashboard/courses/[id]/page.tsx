@@ -734,7 +734,7 @@ const handleEnroll = async () => {
                                   {/* Status icon */}
                                   <div className={cn(
                                     'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold',
-                                    isDone ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'
+                                    isDone ? 'bg-green-500/15 text-green-800 dark:text-green-400' : 'bg-muted text-muted-foreground'
                                   )}>
                                     {isDone ? <CheckCircle className="h-4 w-4" /> :
                                      isLocked ? <Lock className="h-3.5 w-3.5" /> :
@@ -770,7 +770,7 @@ const handleEnroll = async () => {
                                 <HelpCircle className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-sm font-medium">{tr('learning.moduleQuiz')}</span>
                                 {isModuleComplete(sIdx) && (
-                                  <Badge className="text-xs tabular-nums bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30">{tr('learning.passed')}{' '}{progress?.quizScores?.[sIdx] || 0}%
+                                  <Badge className="text-xs tabular-nums bg-green-500/15 text-green-800 dark:text-green-400 border-green-500/30">{tr('learning.passed')}{' '}{progress?.quizScores?.[sIdx] || 0}%
                                   </Badge>
                                 )}
                               </div>

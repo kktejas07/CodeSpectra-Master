@@ -108,7 +108,7 @@ export function OfflinePractice() {
             role="status"
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
-              online ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+              online ? 'bg-green-500/15 text-green-800 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
             )}
           >
             {online ? <Wifi className="h-3.5 w-3.5" aria-hidden /> : <CloudOff className="h-3.5 w-3.5" aria-hidden />}

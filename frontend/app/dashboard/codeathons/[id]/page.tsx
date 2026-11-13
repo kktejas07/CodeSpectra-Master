@@ -379,7 +379,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
             <span className="flex flex-col gap-2">
               <span className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className={`capitalize ${
-                  codeathon.status === 'active' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' :
+                  codeathon.status === 'active' ? 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400' :
                   codeathon.status === 'upcoming' ? 'border-primary/30 bg-primary/10 text-primary' :
                   'border-border bg-muted text-muted-foreground'
                 }`}>
@@ -570,7 +570,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="outline" className={
                             p.difficulty === 'Hard' ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400' :
-                            p.difficulty === 'Easy' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' :
+                            p.difficulty === 'Easy' ? 'border-green-500/30 bg-green-500/10 text-green-800 dark:text-green-400' :
                             'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                           }>
                             {p.difficulty}

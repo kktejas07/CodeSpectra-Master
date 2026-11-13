@@ -117,7 +117,7 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
                   <Label>{t('roleDialog.status')}</Label>
                   <div className="flex items-center gap-3 pt-2">
                     <Switch checked={status} onCheckedChange={setStatus} />
-                    <Badge className={status ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}>
+                    <Badge className={status ? 'bg-green-500/15 text-green-800 dark:text-green-400' : 'bg-muted text-muted-foreground'}>
                       {status ? t('roleDialog.active') : t('roleDialog.inactive')}
                     </Badge>
                   </div>

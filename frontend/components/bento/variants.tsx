@@ -58,7 +58,7 @@ export function BentoStat({
             <span
               className={cn(
                 'ml-auto shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
-                delta.tone === 'up' && 'bg-green-500/12 text-green-700 dark:text-green-400',
+                delta.tone === 'up' && 'bg-green-500/12 text-green-800 dark:text-green-400',
                 delta.tone === 'down' && 'bg-red-500/10 text-red-700 dark:text-red-400',
                 (!delta.tone || delta.tone === 'flat') && 'bg-muted text-muted-foreground',
               )}

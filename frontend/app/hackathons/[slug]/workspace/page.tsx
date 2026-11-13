@@ -559,7 +559,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <Link href={`/hackathons/${slug}`} className="truncate text-sm text-muted-foreground hover:text-foreground">← {hackathon.name}</Link>
-            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className={isLive ? 'border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400' : ''}>
+            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className={isLive ? 'border-green-500/30 bg-green-500/15 text-green-800 dark:text-green-400' : ''}>
               {isLive ? <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" />Live</span> : isClosed ? 'Closed' : 'Upcoming'}
             </Badge>
           </div>
@@ -715,7 +715,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             <span className="text-xs text-muted-foreground tabular-nums">{task.points} pts</span>
                             {task.required && <span className="text-[10px] text-muted-foreground">Required</span>}
                             {sub && status !== 'accepted' && (
-                              <Badge variant="default" className="text-[10px] bg-green-500/15 text-green-700 dark:text-green-400 hover:bg-green-500/20">
+                              <Badge variant="default" className="text-[10px] bg-green-500/15 text-green-800 dark:text-green-400 hover:bg-green-500/20">
                                 {status === 'pending' ? 'Solution submitted' : status === 'under_review' ? 'Under review' : status}
                               </Badge>
                             )}

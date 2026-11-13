@@ -162,7 +162,7 @@ function PassportVisual({ levels, verified }: { levels: string[]; verified: stri
       <div className="w-full max-w-[260px] rounded-2xl border border-border bg-card p-3.5 shadow-sm">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-foreground" lang="en">Python</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/12 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-500/12 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:text-green-400">
             <BadgeCheck className="h-3 w-3" />
             {verified}
           </span>
