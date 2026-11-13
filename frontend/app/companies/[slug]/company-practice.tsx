@@ -74,9 +74,9 @@ export function CompanyPractice({ companySlug, companyName }: { companySlug: str
             </div>
           </div>
 
-          <ol className="mt-4 grid gap-2 sm:grid-cols-2">
+          <ol className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {p.sections.map((s, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 rounded-xl bg-cs-accent/5 px-3 py-2 text-sm text-cs-ink">
+              <li key={i} className="flex min-w-0 items-center justify-between gap-3 rounded-xl bg-cs-accent/5 px-3 py-2 text-sm text-cs-ink">
                 <span className="min-w-0 truncate">{s.name}</span>
                 <span className="inline-flex shrink-0 items-center gap-1 tabular-nums text-cs-ink-soft"><Timer className="h-3.5 w-3.5" aria-hidden />{s.questionCount} · {s.timeMinutes}m</span>
               </li>

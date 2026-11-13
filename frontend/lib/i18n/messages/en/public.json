@@ -476,5 +476,9 @@
   "subsConfirmTitle": "Confirm your subscription",
   "subsConfirmPrompt": "Press the button to start getting the updates you asked for.",
   "subsConfirmButton": "Confirm subscription",
-  "navMore": "More"
+  "navMore": "More",
+  "heroSlideOverviewTab": "Overview",
+  "heroSlideOverviewTitle": "From every applicant to a shortlist",
+  "heroSlideOverviewBody": "One proctored, auto-scored test ranks everyone and marks the top of the list.",
+  "heroSlideOverviewAlt": "One hundred applicants pass through a proctored, auto-scored assessment and come out as a ranked list with the top twenty shortlisted."
 }

@@ -1,11 +1,14 @@
 /**
  * Landing page body, shared by / (English) and /hi, /te (app/[lang]/page.tsx).
+ * Order: statement hero + stats → what it is → sample ranked report → why →
+ * practice patterns → three ways in → how a screening runs → platform → learn,
+ * events, FAQ → candidates → closing call to action.
  * Copy: `landing` catalog (server-only) + `public` for client sections.
  */
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { ResultsSheet } from '@/components/landing/results-sheet'
-import { LandingHero } from '@/components/landing/landing-hero'
+import { PatternList, StatementHero, WaysIn, WhySection } from '@/components/landing/landing-sections'
 import { ProductBento } from '@/components/landing/product-bento'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { DeviceShowcase } from '@/components/visuals'
@@ -86,7 +89,8 @@ export async function LandingView({ locale }: { locale: Locale }) {
           webPageJsonLd({ site, path: lp('/'), name: `${SITE_NAME}: ${copy.title}`, description: copy.description, speakable: SPEAKABLE_SELECTORS, inLanguage: locale }),
         ]}
       />
-      <LandingHero />
+      {/* Statement hero: headline, four ways in, three counted stats */}
+      <StatementHero locale={locale} />
 
       {/* Answer-first definition for search snippets, answer engines and voice */}
       <section className="border-b border-cs-grid">
@@ -113,6 +117,13 @@ export async function LandingView({ locale }: { locale: Locale }) {
           </div>
         </div>
       </section>
+
+      <WhySection locale={locale} />
+
+      {/* Company practice patterns — the list a candidate can act on straight away */}
+      <PatternList locale={locale} />
+
+      <WaysIn locale={locale} />
 
       {/* How a screening runs — a genuine sequence, so numbered */}
       <section className="border-b border-cs-grid">
