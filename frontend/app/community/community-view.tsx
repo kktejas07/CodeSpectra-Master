@@ -22,6 +22,7 @@ import { communityT, type LooseT } from '@/lib/community/i18n-server'
 import { categoriesCached, categoryCached, threadCached, threadsCached } from '@/lib/community/public-cache'
 import type { ThreadSort, ThreadSummary } from '@/lib/community/service'
 import { isThreadId } from '@/lib/community/pure'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export type SP = Promise<Record<string, string | string[] | undefined>>
 
@@ -93,6 +94,7 @@ export async function CommunityHome({ locale, searchParams }: { locale: Locale; 
           <Link href="/dashboard/community" className="block rounded-2xl border border-cs-grid bg-cs-sheet p-4 text-sm text-cs-ink hover:border-cs-accent/50"><span className="font-semibold">{t('studyGroups')}</span><span className="mt-1 block text-cs-ink-soft">{t('studyGroupsLead')}</span></Link>
         </aside>
       </div>
+      <PageAnswer path="/community" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

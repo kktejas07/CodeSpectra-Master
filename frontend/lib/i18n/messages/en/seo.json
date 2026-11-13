@@ -40,5 +40,20 @@
   "title:/certifications": "Proctored certifications",
   "description:/certifications": "Earn a proctored CodeSpectra certification: verifiable online, valid for a fixed period and easy to add to LinkedIn.",
   "title:/digest": "Daily digest: hackathons, contests, tech news",
-  "description:/digest": "A daily digest for developers and students: open hackathons, coding contests, tech news and Learn posts, picked by score and checked before publishing."
+  "description:/digest": "A daily digest for developers and students: open hackathons, coding contests, tech news and Learn posts, picked by score and checked before publishing.",
+  "answerLabel": "In short",
+  "answer:/jobs": "The CodeSpectra job board lists open software, QA and engineering roles. You can search by title, company or skill and apply online.",
+  "answer:/hackathons": "CodeSpectra hackathons are team events: you form a team, solve the problem, submit your repository, and judges score every team on one shared rubric.",
+  "answer:/contests": "CodeSpectra hosts contests in several formats: CTFs, datathons, prompt-a-thons, debug-a-thons, code golf, ideathons, system design jams and open-source sprints.",
+  "answer:/events": "This board lists upcoming hackathons, codeathons, buildathons, CTFs and coding contests from around the world. You can filter by format, country and deadline.",
+  "answer:/learn": "Learn is a free library of explainers on algorithms, system design, design patterns and engineering practice, with runnable code and practice problems.",
+  "answer:/marketplace": "The marketplace sells books, courses, e-books and templates, and lets you book mentoring and mock interviews with CodeSpectra and approved sellers.",
+  "answer:/mentors": "Mentors are verified engineers you can book for paid 1:1 sessions: mock interviews, code reviews, resume reviews and career guidance.",
+  "answer:/community": "The community forum is where you ask questions about courses, cohorts and company exams, share solution write-ups after you solve a problem, and join small study groups.",
+  "answer:/certifications": "A CodeSpectra certification is earned in a proctored exam. It can be verified online, is valid for a fixed period and can be added to LinkedIn.",
+  "answer:/leagues": "Leagues are quarterly tables that rank colleges and teams from the released results of contests, codeathons, hackathons and the arena on CodeSpectra.",
+  "answer:/companies": "These guides explain how top tech companies interview: the rounds, the difficulty mix and sample questions, with practice on CodeSpectra.",
+  "answer:/news": "Daily tech news for developers and students: cloud releases, security advisories, language releases, AI and India tech careers, summarised from primary sources.",
+  "answer:/digest": "The daily digest puts open hackathons, coding contests, tech news and Learn posts on one page, picked by score and checked before publishing.",
+  "answerCompany": "The commonly reported {company} interview process has {count} stages: {steps}. This guide covers each stage with tips, the difficulty mix and sample questions."
 }

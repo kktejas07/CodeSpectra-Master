@@ -16,6 +16,7 @@ import type { PublicProgram } from '@/lib/pro-certs/types'
 import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT, type PublicTranslator } from '@/lib/i18n/public-server'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 // Proctored certification catalog for every language (English: app/certifications,
 // hi / te: app/[lang]/certifications). Cached list (lib/pro-certs/public-cache.ts),
@@ -68,6 +69,7 @@ export async function CertificationsView({ locale }: { locale: Locale }) {
           </ul>
         )}
       </div>
+      <PageAnswer path="/certifications" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

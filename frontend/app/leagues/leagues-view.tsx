@@ -19,6 +19,7 @@ import { formatDate } from '@/lib/i18n/format'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT } from '@/lib/i18n/public-server'
 import { publicPageMetadata } from '@/lib/i18n/public-page'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export type LeaguesSP = Promise<{ season?: string }>
 
@@ -109,6 +110,7 @@ export async function LeaguesView({ searchParams, locale }: { searchParams: Leag
           </>
         )}
       </div>
+      <PageAnswer path="/leagues" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

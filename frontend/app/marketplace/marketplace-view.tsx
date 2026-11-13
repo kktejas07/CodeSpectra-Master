@@ -11,6 +11,7 @@ import { STORE_CATEGORIES, browseProducts, parseBrowseParams, type BrowseQuery }
 import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT, type PublicTranslator } from '@/lib/i18n/public-server'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 // Marketplace browse for every language (English: app/marketplace/page.tsx,
 // hi / te: app/[lang]/marketplace). Listings stay as sellers wrote them.
@@ -180,6 +181,7 @@ export async function MarketplaceView({ searchParams, locale }: { searchParams: 
           </section>
         </div>
       </div>
+      <PageAnswer path="/marketplace" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }

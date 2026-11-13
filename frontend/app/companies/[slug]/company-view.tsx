@@ -15,6 +15,7 @@ import { JsonLd } from '@/components/seo/json-ld'
 import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT } from '@/lib/i18n/public-server'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 export function companyMetadata(slug: string, locale: Locale): Metadata {
   const company = getCompanyBySlug(slug)
@@ -53,6 +54,7 @@ export function CompanyView({ slug, locale }: { slug: string; locale: Locale }) 
         ]}
       />
       <CompanyDetail company={company} />
+      <PageAnswer path="/companies/[slug]" locale={locale} answer={t('seo.answerCompany', { company: company.name, count: company.interviewProcess.length, steps: company.interviewProcess.map((s) => s.step).join(', ') })} className="pb-16" />
     </PublicPageWrapper>
   )
 }

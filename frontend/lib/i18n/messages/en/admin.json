@@ -3575,5 +3575,19 @@
   "atsInt.connectLever": "Connect Lever",
   "atsInt.leverKeyHelp": "Enter your Lever API key. Find it under Settings → Integrations → API Credentials.",
   "atsInt.leverUserId": "Lever user ID",
-  "atsInt.leverUserIdHelp": "ID of the Lever user who will own pushed candidates (sent as perform_as). Lever requires it to create an opportunity."
+  "atsInt.leverUserIdHelp": "ID of the Lever user who will own pushed candidates (sent as perform_as). Lever requires it to create an opportunity.",
+  "aiRef.title": "AI referrals",
+  "aiRef.description": "Visits that arrived from an AI assistant such as ChatGPT, Perplexity, Gemini, Claude or Copilot, and the pages they landed on.",
+  "aiRef.summary": "{ai} of {total} visits · {pct}%",
+  "aiRef.loading": "Loading…",
+  "aiRef.error": "Could not load AI referrals. Try again.",
+  "aiRef.period": "Period",
+  "aiRef.range7": "Last 7 days",
+  "aiRef.range30": "Last 30 days",
+  "aiRef.range90": "Last 90 days",
+  "aiRef.none": "No visits from AI assistants in this period.",
+  "aiRef.byAssistant": "By assistant",
+  "aiRef.landings": "Pages they landed on",
+  "aiRef.noLandings": "No landing-page detail for this period.",
+  "aiRef.blindSpots": "Not counted here: Google AI Overviews and AI Mode (they arrive as ordinary Google visits) and assistants that send no referrer (they arrive as direct visits)."
 }

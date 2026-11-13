@@ -12,6 +12,7 @@ import { OFFERING_LABELS, OFFERING_TYPES, type PublicMentor } from '@/lib/mentor
 import type { Locale } from '@/lib/i18n/config'
 import { localizedPath } from '@/lib/i18n/public-paths'
 import { publicT, type PublicTranslator } from '@/lib/i18n/public-server'
+import { PageAnswer } from '@/components/seo/page-answer'
 
 // Mentor directory for every language (English: app/mentors/page.tsx, hi / te:
 // app/[lang]/mentors). Mentor profiles stay as the mentors wrote them.
@@ -117,6 +118,7 @@ export async function MentorsView({ searchParams, locale }: { searchParams: SP; 
           </ul>
         )}
       </div>
+      <PageAnswer path="/mentors" locale={locale} className="pb-16" />
     </PublicPageWrapper>
   )
 }
