@@ -83,8 +83,13 @@ export async function GET(request: Request, { params }: IdRouteContext) {
       }
       const qs = (Array.isArray(doc.questionList) ? doc.questionList : []) as Array<Record<string, unknown>>
       const keyById = new Map(qs.map((q) => [String(q.id), questionAnswerKey(q)]))
+      // Include category/tags per question so the candidate results page can render a topic breakdown.
+      const metaById = new Map(qs.map((q) => [String(q.id), {
+        category: (q.category || q.assessment_category || null) as string | null,
+        tags: Array.isArray(q.tags) ? (q.tags as string[]).slice(0, 5) : [],
+      }]))
       const details = (Array.isArray(submission.details) ? submission.details : []).map(
-        (d: Record<string, unknown>) => ({ ...d, correct_answer: keyById.get(String(d.qId)) }),
+        (d: Record<string, unknown>) => ({ ...d, correct_answer: keyById.get(String(d.qId)), ...metaById.get(String(d.qId)) }),
       )
       // Released results: the question texts (no keys) for the breakdown view.
       return NextResponse.json({

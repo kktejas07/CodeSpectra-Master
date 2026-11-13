@@ -11,7 +11,7 @@ import { lazyCollection } from '@/lib/community/lazy'
 import { nowIso } from '@/lib/db/ids'
 import { decryptWithKey, encryptWithKey } from '@/lib/ats/interviews/tokens'
 
-export type IntegrationProvider = 'slack' | 'teams' | 'google_classroom'
+export type IntegrationProvider = 'slack' | 'teams' | 'google_classroom' | 'sonarqube'
 
 export interface TenantIntegrationDoc {
   tenant_id: string

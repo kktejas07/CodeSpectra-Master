@@ -604,5 +604,19 @@
   "err_lti_email_mismatch": "Sign in with the same email you use in your course ({email}).",
   "err_lti_no_exam": "This activity isn’t linked to a CodeSpectra test yet. Ask your teacher to pick one.",
   "err_lti_instructor_only": "Only teachers can add CodeSpectra tests to a course.",
-  "err_lti_pick_exam": "Pick at least one test."
+  "err_lti_pick_exam": "Pick at least one test.",
+  "sonarTitle": "SonarQube / SonarCloud",
+  "sonarHelp": "Save your SonarQube Server or SonarCloud connection. This stores and verifies the token; quality-gate results are not shown in assessments yet.",
+  "sonarUrl": "Server URL",
+  "sonarUrlHint": "e.g. https://sonarcloud.io or https://sonar.yourcompany.com",
+  "sonarToken": "User / Project Token",
+  "sonarTokenHint": "Generate a token in Account → Security (SonarQube) or My Account → Security (SonarCloud).",
+  "sonarOrg": "Organisation Key (SonarCloud only)",
+  "sonarOrgHint": "Leave blank for self-hosted SonarQube.",
+  "sonarSave": "Connect SonarQube",
+  "sonarConnected": "SonarQube connected.",
+  "sonarDisconnected": "SonarQube disconnected.",
+  "sonarVerifyFailed": "Saved, but the token couldn't be verified — check the URL and token.",
+  "codeQuality": "Code Quality",
+  "sonarCurrentToken": "Current token:"
 }

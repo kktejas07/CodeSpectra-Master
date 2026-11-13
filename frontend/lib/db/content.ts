@@ -57,6 +57,8 @@ export interface ExamDoc {
   require_id_verification?: boolean | null
   /** When false, candidates skip live-face capture/verify. Null/missing = true (strict, backward-compat). */
   require_face_capture?: boolean | null
+  /** When true, candidates see a 3-question AI debrief after submitting. */
+  enable_ai_debrief?: boolean | null
   cert_template?: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
   questions?: Array<{
     id: string
@@ -78,6 +80,21 @@ export interface ExamSubmissionDoc {
   passed: boolean
   certificate_url?: string | null
   submitted_at: string
+}
+
+/** One AI-debrief session per candidate-submission. */
+export interface DebriefSessionDoc {
+  id: string
+  exam_id: string
+  submission_id?: string | null
+  user_id: string
+  /** Pre-generated questions, each with a stable id, display text, and 1-based order. */
+  questions: Array<{ id: string; text: string; order: number }>
+  /** Answers collected so far — appended per question. */
+  answers: Array<{ question_id: string; text: string; answered_at: string }>
+  status: 'active' | 'completed' | 'skipped'
+  created_at: string
+  completed_at?: string | null
 }
 
 export interface JobDoc {
@@ -146,4 +163,7 @@ export async function jobApplications(): Promise<Collection<JobApplicationDoc>> 
 }
 export async function resumes(): Promise<Collection<ResumeDoc>> {
   return (await db()).collection<ResumeDoc>('resumes')
+}
+export async function debriefSessions(): Promise<Collection<DebriefSessionDoc>> {
+  return (await db()).collection<DebriefSessionDoc>('exam_debrief_sessions')
 }

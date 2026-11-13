@@ -21,6 +21,7 @@ import { IntegrityMonitor } from '@/components/integrity/IntegrityMonitor'
 import { IntegrityConsent, useIntegrityConfig } from '@/components/integrity/IntegrityConsent'
 import { QuestionAnswerInput } from '@/components/assessment/QuestionAnswerInput'
 import { AdaptiveRunner, type AdaptiveViewPayload } from '@/components/assessment/AdaptiveRunner'
+import { PostAssessmentDebrief } from '@/components/assessment/PostAssessmentDebrief'
 import { metaFor, isCodingType } from '@/lib/question-types'
 import { useDateFormat } from '@/lib/use-platform-timezone'
 import ReactMarkdown from 'react-markdown'
@@ -99,6 +100,8 @@ interface Exam {
   access_type?: 'invite_only' | 'open'
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  /** When true, candidates see a 3-question AI debrief after submitting. */
+  enable_ai_debrief?: boolean | null
   /** No usable camera: 'allow_flag' (default) = upload an ID photo and continue, flagged; 'block' = can't start. */
   no_camera_policy?: 'block' | 'allow_flag' | null
   questionList: Question[]
@@ -165,6 +168,7 @@ export default function CandidateAssessmentPage() {
   const [hasStarted, setHasStarted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [showDebrief, setShowDebrief] = useState(false)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   /** Attempt state from the server: resume an attempt in progress, or finalise one whose time ran out. */
   const [entryAttempt, setEntryAttempt] = useState<EntryInfo['attempt'] | null>(null)
@@ -702,7 +706,12 @@ export default function CandidateAssessmentPage() {
         const max = okJson.max_attempts
         setAttemptInfo((prev) => ({ used, max, can_retake: used < max, best: prev?.best ?? null }))
       }
-      setIsSubmitted(true)
+      // Show AI debrief before the success screen (only on manual submit when enabled)
+      if (!autoSubmitted && exam.enable_ai_debrief) {
+        setShowDebrief(true)
+      } else {
+        setIsSubmitted(true)
+      }
       setTimeUp(false)
       try { localStorage.removeItem(`codespectra_exam_draft_${exam.id}_${attemptNo}`) } catch { /* storage unavailable */ }
 
@@ -811,6 +820,20 @@ export default function CandidateAssessmentPage() {
             </Button>
           </div>
         </Card>
+      </div>
+    )
+  }
+
+  // AI Debrief screen — shown before the success card when enabled
+  if (showDebrief && !isSubmitted && exam) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-xl">
+          <PostAssessmentDebrief
+            examId={exam.id}
+            onComplete={() => { setShowDebrief(false); setIsSubmitted(true) }}
+          />
+        </div>
       </div>
     )
   }

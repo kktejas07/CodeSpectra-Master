@@ -16,8 +16,9 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import {
   Clock, AlertTriangle, Send, ArrowLeft, Loader2,
-  CheckCircle, XCircle, ChevronRight,
+  CheckCircle, XCircle, ChevronRight, Bot,
 } from 'lucide-react'
+import { Linkedin } from '@/components/ui/brand-icons'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Illustration } from '@/components/illustrations/spot'
@@ -105,6 +106,7 @@ export default function ExamPage() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [results, setResults] = useState<{ score: number; total: number; details: Array<{ qId: string; correct: boolean; points: number; answer?: string }> } | null>(null)
+  const [percentile, setPercentile] = useState<{ percentile: number; ranked: number; total: number } | null>(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [certificateUrl, setCertificateUrl] = useState<string | null>(null)
   const [extVerified, setExtVerified] = useState(false)
@@ -126,6 +128,24 @@ export default function ExamPage() {
         setCertificateUrl(match?.certificate_url || null)
       })
       .catch(() => { if (!cancelled) setCertificateUrl(null) })
+    return () => { cancelled = true }
+  }, [submitted, results, examId])
+
+  // Fetch percentile ranking among all released submissions for this exam.
+  useEffect(() => {
+    if (!submitted || !results || !(results as any).released) return
+    let cancelled = false
+    fetch(`/api/exams/${examId}/rank`, { credentials: 'include', cache: 'no-store' })
+      .then((r) => {
+        if (r.status === 204 || !r.ok) return null
+        return r.json()
+      })
+      .then((data) => {
+        if (!cancelled && data && typeof data.percentile === 'number') {
+          setPercentile(data)
+        }
+      })
+      .catch(() => {/* silently ignore — percentile is a nice-to-have */})
     return () => { cancelled = true }
   }, [submitted, results, examId])
 
@@ -280,12 +300,56 @@ export default function ExamPage() {
             <span className="text-6xl font-extrabold tabular-nums">{results.score}</span>
             <span className="text-2xl tabular-nums text-white/75">/ {results.total}</span>
           </div>
+          {percentile && (
+            <p className="text-sm font-semibold text-white/90">
+              {t('assessment.resultBetterThan', { percent: percentile.percentile })}
+            </p>
+          )}
           <p className="text-sm font-medium text-white/85">
             {((results as { passed?: boolean | null }).passed ?? (results.score / results.total >= 0.7))
               ? t('practice.greatWorkYouPassed')
               : t('practice.keepPracticingToImproveYourScore')}
           </p>
         </Card>
+
+        {/* Topic / skill-area breakdown — shown when at least one question has a category or tag */}
+        {(() => {
+          type DetailWithMeta = typeof results.details[number] & { category?: string | null; tags?: string[]; points?: number }
+          const detailsTyped = (results.details || []) as DetailWithMeta[]
+          // Build a map: topic label → { earned, max }
+          const topicMap = new Map<string, { earned: number; max: number }>()
+          for (const d of detailsTyped) {
+            const label = d.category || (Array.isArray(d.tags) && d.tags.length > 0 ? d.tags[0] : null)
+            if (!label) continue
+            const max = typeof d.points === 'number' ? d.points : 10
+            const earned = d.correct ? max : (typeof (d as any).awarded === 'number' ? (d as any).awarded : 0)
+            const prev = topicMap.get(label) || { earned: 0, max: 0 }
+            topicMap.set(label, { earned: prev.earned + earned, max: prev.max + max })
+          }
+          if (topicMap.size < 2) return null
+          const topics = Array.from(topicMap.entries()).map(([label, { earned, max }]) => ({ label, pct: max > 0 ? Math.round((earned / max) * 100) : 0 })).sort((a, b) => b.pct - a.pct)
+          return (
+            <Card className="rounded-2xl border-border/70 p-5 space-y-3">
+              <h3 className="text-base font-semibold tracking-tight">{t('assessment.resultTopicBreakdown')}</h3>
+              <div className="space-y-2.5">
+                {topics.map(({ label, pct }) => (
+                  <div key={label} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium capitalize">{label}</span>
+                      <span className="tabular-nums text-muted-foreground">{pct}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )
+        })()}
 
         <div className="space-y-4">
           <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-2">{t('practice.questionByQuestionBreakdown')}</h3>
@@ -393,11 +457,36 @@ export default function ExamPage() {
           })}
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-3">
           <Button onClick={() => router.push('/dashboard/assessments')} className="flex-1 gap-2" variant="outline">
             <ArrowLeft className="h-4 w-4" />{' '}{t('practice.backToAssessments')}</Button>
           {certificateUrl && (
             <Button onClick={() => router.push(certificateUrl)} className="flex-1 gap-2">{t('practice.viewCertificate')}{' '}<ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
+          {((results as { passed?: boolean | null }).passed ?? (results.score / results.total >= 0.7)) && (
+            <Button
+              variant="outline"
+              className="flex-1 gap-2 border-[#0A66C2]/30 text-[#0A66C2] hover:bg-[#0A66C2]/5 dark:text-[#4D94FF]"
+              onClick={() => {
+                const scoreText = results.total > 0 ? ` (${Math.round((results.score / results.total) * 100)}%)` : ''
+                const text = `I just passed the "${exam.title}"${scoreText} assessment on CodeSpectra!`
+                const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&summary=${encodeURIComponent(text)}`
+                window.open(url, '_blank', 'noopener,noreferrer,width=600,height=600')
+              }}
+            >
+              <Linkedin className="h-4 w-4" aria-hidden />
+              {t('assessment.resultShareLinkedIn')}
+            </Button>
+          )}
+          {(exam as { enable_ai_debrief?: boolean }).enable_ai_debrief && (
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={() => router.push(`/dashboard/assessments/${encodeURIComponent(examId)}/debrief`)}
+            >
+              <Bot className="h-4 w-4" aria-hidden />
+              {t('assessment.debriefEyebrow')}
             </Button>
           )}
         </div>

@@ -374,6 +374,15 @@ export default function ExamResultsPage() {
   const [showProctorLog, setShowProctorLog] = useState(true)
   const [showRawProctorMeta, setShowRawProctorMeta] = useState(false)
   const [proctorFilter, setProctorFilter] = useState<'all' | 'high' | 'warn' | 'info'>('all')
+  // AI debrief session for the candidate under review
+  const [debriefSession, setDebriefSession] = useState<{
+    questions: Array<{ id: string; text: string; order: number }>
+    answers: Array<{ question_id: string; text: string; answered_at: string }>
+    status: string
+  } | null>(null)
+  const [debriefLoading, setDebriefLoading] = useState(false)
+  const [showDebriefLog, setShowDebriefLog] = useState(true)
+  const [atsPushing, setAtsPushing] = useState(false)
   const [resultFilter, setResultFilter] = useState<'all' | 'completed' | 'in_progress' | 'pending' | 'ungraded' | 'flagged'>('all')
   const [exportingReport, setExportingReport] = useState(false)
   const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
@@ -535,17 +544,26 @@ export default function ExamResultsPage() {
     setRemarks({})
     setAiFeedback({})
     setAiGrading({})
+    setDebriefSession(null)
     try {
       const uid = row.userId || row.id
-      const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to load review')
+      const [submissionRes, debriefRes] = await Promise.all([
+        fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' }),
+        fetch(`/api/exams/${params.id}/debrief?userId=${uid}`, { credentials: 'include' }),
+      ])
+      const json = await submissionRes.json()
+      if (!submissionRes.ok) throw new Error(json.error || 'Failed to load review')
       if (!json.submission) {
         addToast({ type: 'info', title: 'No submission found — candidate may not have completed the assessment' })
         setReviewCandidate(null)
         return
       }
       setReviewData(json)
+      // Load debrief session if available (non-fatal)
+      if (debriefRes.ok) {
+        const debriefJson = await debriefRes.json()
+        if (debriefJson.session) setDebriefSession(debriefJson.session)
+      }
     } catch {
       addToast({ type: 'error', title: 'Failed to load submission details' })
       setReviewCandidate(null)
@@ -2528,6 +2546,46 @@ export default function ExamResultsPage() {
                       </div>
                     </div>
                   )}
+                  {/* AI Debrief Responses */}
+                  {debriefSession && debriefSession.questions.length > 0 && (
+                    <div className="rounded-lg border p-4">
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 text-left"
+                        onClick={() => setShowDebriefLog(v => !v)}
+                      >
+                        <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                        <span className="font-semibold text-sm flex-1">{tx('assessForm.debriefResponses')}</span>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {tx('assessForm.debriefAnsweredCount', { answered: debriefSession.answers.length, total: debriefSession.questions.length })}
+                        </Badge>
+                        {debriefSession.status === 'skipped' && (
+                          <Badge variant="outline" className="text-xs text-muted-foreground shrink-0">{tx('assessForm.debriefSkipped')}</Badge>
+                        )}
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${showDebriefLog ? '' : '-rotate-90'}`} />
+                      </button>
+                      {showDebriefLog && (
+                        <div className="mt-3 space-y-4">
+                          {debriefSession.questions.map((q, idx) => {
+                            const ans = debriefSession.answers.find(a => a.question_id === q.id)
+                            return (
+                              <div key={q.id} className="space-y-1.5">
+                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                  Q{idx + 1}
+                                </p>
+                                <p className="text-sm font-medium">{q.text}</p>
+                                {ans ? (
+                                  <p className="text-sm text-foreground bg-muted/40 rounded-md px-3 py-2 whitespace-pre-wrap">{ans.text}</p>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground italic">{tx('assessForm.debriefNoAnswer')}</p>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Footer — sticky */}
@@ -2562,6 +2620,45 @@ export default function ExamResultsPage() {
                         {tx('assessForm.releaseScore')}
                       </Button>
                     )}
+                    {/* ATS credentials are platform-wide, so the push is superadmin-only (API enforces it). */}
+                    {gate.user?.role === 'superadmin' && <Button
+                      variant="outline"
+                      className="gap-2"
+                      disabled={atsPushing}
+                      onClick={async () => {
+                        if (!reviewCandidate || !reviewData) return
+                        setAtsPushing(true)
+                        try {
+                          // The server reads name, email and score from the stored submission.
+                          const res = await csrfFetch('/api/admin/integrations/ats-push', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ examId: params.id, userId: reviewCandidate.userId || reviewCandidate.id }),
+                          })
+                          const json = await res.json().catch(() => ({})) as { message?: string; results?: Array<{ provider: string; ok: boolean }> }
+                          if (res.status === 200 || res.status === 207) {
+                            const pushed = (json.results || []).filter((r) => r.ok).map((r) => r.provider).join(', ')
+                            const failed = (json.results || []).filter((r) => !r.ok).map((r) => r.provider).join(', ')
+                            if (!json.results?.length) {
+                              addToast({ type: 'info', title: 'No ATS configured', message: 'Connect an ATS in Admin → Integrations first.' })
+                            } else if (failed) {
+                              addToast({ type: 'error', title: `ATS push failed for: ${failed}`, message: pushed ? `Pushed to: ${pushed}` : '' })
+                            } else {
+                              addToast({ type: 'success', title: `Pushed to ${pushed}` })
+                            }
+                          } else {
+                            addToast({ type: 'error', title: 'ATS push failed', message: (json as { error?: string }).error || 'Unknown error' })
+                          }
+                        } catch {
+                          addToast({ type: 'error', title: 'ATS push failed' })
+                        } finally {
+                          setAtsPushing(false)
+                        }
+                      }}
+                    >
+                      {atsPushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
+                      {tx('assessForm.pushToAts')}
+                    </Button>}
                   </div>
                 </div>
               </>
