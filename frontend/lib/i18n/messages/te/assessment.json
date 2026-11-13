@@ -226,5 +226,6 @@
   "debriefFinish": "డీబ్రీఫ్ ముగించండి",
   "resultBetterThan": "🏆 {percent}% అభ్యర్థుల కంటే మెరుగు",
   "resultTopicBreakdown": "అంశాల వారీ విశ్లేషణ",
-  "resultShareLinkedIn": "LinkedInలో షేర్ చేయండి"
+  "resultShareLinkedIn": "LinkedInలో షేర్ చేయండి",
+  "debriefSaveFailed": "మీ సమాధానం సేవ్ కాలేదు. మీరు డీబ్రీఫ్‌ను దాటవేయవచ్చు."
 }

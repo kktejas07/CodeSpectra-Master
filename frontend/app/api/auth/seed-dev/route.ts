@@ -3,10 +3,12 @@ import bcrypt from 'bcryptjs'
 import { randomUUID } from 'node:crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
+import { apiErrorFor } from '@/lib/api-errors'
 
 export const runtime = 'nodejs'
 
-const SEED_PASSWORD = process.env.SEED_PASSWORD || 'fallback-password-123'
+// No built-in default: the password must come from the environment.
+const SEED_PASSWORD = process.env.SEED_PASSWORD || ''
 
 const DEV_ACCOUNTS = [
   { email: 'superadmin@codespectra.com', password: SEED_PASSWORD, role: 'superadmin', name: 'Super Admin' },
@@ -20,6 +22,10 @@ export async function POST() {
   // re-enabled via env (SEED_DEV_ENABLED=1).
   if (process.env.NODE_ENV === 'production' && process.env.SEED_DEV_ENABLED !== '1') {
     return NextResponse.json({ error: 'Disabled in production' }, { status: 404 })
+  }
+
+  if (SEED_PASSWORD.length < 12) {
+    return NextResponse.json(apiErrorFor('seed_password_required'), { status: 400 })
   }
 
   const gate = await requireSuperAdmin()

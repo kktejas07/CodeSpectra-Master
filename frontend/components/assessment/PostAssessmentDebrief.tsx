@@ -77,7 +77,9 @@ export function PostAssessmentDebrief({
         setQuestion(data.question)
         setTotal(data.total)
         setAnswered(data.answered)
-        setPhase(data.question ? 'question' : 'done')
+        // Nothing left to ask (already finished for this submission) → straight on.
+        if (!data.question) { onComplete(); return }
+        setPhase('question')
       } catch {
         // If debrief creation fails for any reason, don't block the candidate
         onComplete()
@@ -111,7 +113,7 @@ export function PostAssessmentDebrief({
         setPhase('question')
       }
     } catch {
-      setErrorMsg('Could not save your answer. You can skip the debrief.')
+      setErrorMsg(t('assessment.debriefSaveFailed'))
       setPhase('error')
     }
   }

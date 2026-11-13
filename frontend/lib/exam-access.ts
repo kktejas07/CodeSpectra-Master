@@ -150,6 +150,7 @@ export function examAttemptPolicy(exam: Doc): { allowRetake: boolean; maxAttempt
 /** Coerce retake settings from an editor body (call after pickFields). */
 export function normalizeRetakeFields(data: Doc): void {
   if ('allow_retake' in data) data.allow_retake = data.allow_retake === true
+  if ('enable_ai_debrief' in data) data.enable_ai_debrief = data.enable_ai_debrief === true
   if ('max_attempts' in data) {
     const n = Math.floor(Number(data.max_attempts))
     data.max_attempts = Number.isFinite(n) ? Math.min(MAX_ATTEMPTS_CAP, Math.max(1, n)) : 1
@@ -734,7 +735,7 @@ export const EXAM_EDITABLE_FIELDS = [
   'cert_template', 'degree_type', 'branch', 'screening_type', 'techStack',
   'questions', 'questionList', 'published', 'access_type', 'status', 'allow_retake', 'max_attempts',
   'issue_certificates', 'proctoring_mode', 'kind', 'cad_points', 'no_camera_policy', 'sections',
-  'auto_release_scores',
+  'auto_release_scores', 'enable_ai_debrief',
 ] as const
 
 /** Coerce `sections` from an editor body (call after pickFields). Question ids are re-checked when read (resolveSections). */

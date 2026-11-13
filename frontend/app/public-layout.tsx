@@ -321,8 +321,10 @@ export function PublicPageWrapper({
       <footer className="relative overflow-hidden border-t border-cs-grid bg-cs-sheet py-16 lg:py-20">
         <FooterAnimatedBackdrop />
         <div className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-8 md:gap-12 mb-12">
-            <div className="col-span-2 md:col-span-1">
+          {/* lg: the brand and newsletter columns are wider than the link columns, so the wordmark
+              never runs into the first link column and the email field shows its placeholder. */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-[1.7fr_repeat(5,minmax(0,1fr))_1.5fr] gap-8 md:gap-12 lg:gap-8 mb-12">
+            <div className="col-span-2 md:col-span-4 lg:col-span-1">
               <Link href={lp('/')} className="mb-5 flex items-center gap-2.5" aria-label={t('common.homeAria')}>
                 <BrandLogo />
               </Link>
@@ -342,7 +344,7 @@ export function PublicPageWrapper({
                 </ul>
               </div>
             ))}
-            <div className="col-span-2 md:col-span-1">
+            <div className="col-span-2 md:col-span-3 lg:col-span-1">
               <h2 className="text-sm font-semibold text-cs-ink mb-4">{t('public.footNewsletter')}</h2>
               <p className="text-sm text-cs-ink-soft mb-4">{t('public.newsletterBlurb')}</p>
               <form 

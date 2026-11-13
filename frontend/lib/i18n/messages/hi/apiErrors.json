@@ -1473,5 +1473,6 @@
   "sonar_url_credentials": "URL में यूज़रनेम या पासवर्ड नहीं होना चाहिए।",
   "sonar_token_required": "टोकन दर्ज करें।",
   "sonar_token_reenter": "URL बदलने पर टोकन फिर से दर्ज करें।",
-  "sonar_token_auth": "SonarQube टोकन से जुड़ता है। इसे Connected apps में सेट करें।"
+  "sonar_token_auth": "SonarQube टोकन से जुड़ता है। इसे Connected apps में सेट करें।",
+  "seed_password_required": "इस एंडपॉइंट का उपयोग करने के लिए SEED_PASSWORD (12 या अधिक अक्षर) सेट करें।"
 }

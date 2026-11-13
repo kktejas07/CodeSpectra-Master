@@ -91,7 +91,7 @@ export interface DebriefSessionDoc {
   /** Pre-generated questions, each with a stable id, display text, and 1-based order. */
   questions: Array<{ id: string; text: string; order: number }>
   /** Answers collected so far — appended per question. */
-  answers: Array<{ question_id: string; text: string; answered_at: string }>
+  answers: Array<{ question_id: string; text: string; answered_at: string; /** Candidate chose to skip this question (text is empty). */ skipped?: boolean }>
   status: 'active' | 'completed' | 'skipped'
   created_at: string
   completed_at?: string | null

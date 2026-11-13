@@ -280,6 +280,8 @@ export async function createExam(
       : NEW_EXAM_PASS_PERCENT,
     issue_certificates: body.issue_certificates !== false,
     auto_release_scores: body.auto_release_scores === true,
+    // Candidates answer three AI follow-up questions after submitting (app/api/exams/[id]/debrief).
+    enable_ai_debrief: body.enable_ai_debrief === true,
     // Extension required only when the organiser picks strict (see lib/exam-access examProctoringMode).
     proctoring_mode: body.proctoring_mode === 'strict' ? 'strict' : 'standard',
     kind: body.kind === 'cad' ? 'cad' : 'standard',

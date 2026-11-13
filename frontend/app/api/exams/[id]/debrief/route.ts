@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { apiErrorFor } from '@/lib/api-errors'
 import { isExamStaff } from '@/lib/exam-access'
+import { nextDebriefQuestion, reopenDecision } from '@/lib/assessment/debrief'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { limitRequest } from '@/lib/rate-limit'
@@ -48,29 +49,36 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json(apiErrorFor('debrief_not_enabled'), { status: 403 })
     }
 
-    // ── 2. Idempotency: return existing active session if present ──────────
-    const existing = await db.collection<DebriefSessionDoc>('exam_debrief_sessions').findOne({
-      exam_id: examId,
-      user_id: userId,
-      status: 'active',
-    })
-    if (existing) {
-      const answered = new Set(existing.answers.map((a: { question_id: string }) => a.question_id))
-      const next = existing.questions.find((q: { id: string }) => !answered.has(q.id)) ?? null
-      return NextResponse.json({ session_id: existing.id, question: next, total: existing.questions.length, answered: answered.size })
-    }
-
-    // ── 3. Build question context from exam + latest submission ────────────
+    // ── 2. The candidate's latest submission (a debrief is built from the exam's questions,
+    //       so it is never available before or during an attempt) ───────────────────────
     const latestSub = await db.collection('exam_submissions').findOne(
       { exam_id: examId, user_id: userId },
       { sort: { submitted_at: -1 } },
     )
-    // SEC: a debrief is built from the exam's questions, so only someone who has
-    // already submitted this exam may start one (never before or during an attempt).
     if (!latestSub) {
       return NextResponse.json(apiErrorFor('debrief_submit_first'), { status: 403 })
     }
     const submissionId: string | null = latestSub.id ?? null
+
+    // ── 3. One session per submission: resume it, reopen a skipped one, or show it as
+    //       finished. A finished debrief is never replaced, so the recruiter keeps the answers.
+    const sessionsCol = db.collection<DebriefSessionDoc>('exam_debrief_sessions')
+    const existing = await sessionsCol.findOne(
+      { exam_id: examId, user_id: userId, submission_id: submissionId },
+      { sort: { created_at: -1 } },
+    )
+    if (existing) {
+      const decision = reopenDecision(existing)
+      if (decision === 'reopen') {
+        await sessionsCol.updateOne({ id: existing.id }, { $set: { status: 'active', completed_at: null } })
+      }
+      return NextResponse.json({
+        session_id: existing.id,
+        question: decision === 'finished' ? null : nextDebriefQuestion(existing),
+        total: existing.questions.length,
+        answered: existing.answers.length,
+      })
+    }
 
     const questions: Array<{ id: string; text: string; type?: string }> = Array.isArray(exam.questions)
       ? (exam.questions as Array<{ id: string; text: string; type?: string }>).slice(0, 10)
@@ -128,7 +136,7 @@ Return ONLY valid JSON: { "questions": ["question text 1", "question text 2", "q
       status: 'active',
       created_at: nowIso(),
     }
-    await db.collection<DebriefSessionDoc>('exam_debrief_sessions').insertOne(session)
+    await sessionsCol.insertOne(session)
 
     return NextResponse.json(
       { session_id: session.id, question: debriefQuestions[0], total: debriefQuestions.length, answered: 0 },
