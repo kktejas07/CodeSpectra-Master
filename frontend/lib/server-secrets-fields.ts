@@ -92,6 +92,10 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'pgvector_url',
   // Web push (PWA) VAPID private key
   'webpush_vapid_private_key',
+  // External ATS push (Greenhouse / Lever / Workday)
+  'greenhouse_api_key',
+  'lever_api_key',
+  'workday_webhook_secret',
   // Android app: Play Integrity verification (lib/mobile/play-integrity.ts)
   'play_integrity_service_account_json',
   // iOS app: DeviceCheck .p8 key (lib/mobile/app-attest.ts)
@@ -193,6 +197,10 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'analytics_custom_events',
   // Knowledge vector store: mongo | pgvector
   'rag_vector_store',
+  // External ATS push (Greenhouse / Lever / Workday)
+  'workday_webhook_url',
+  'greenhouse_user_id',
+  'lever_user_id',
 ]
 
 /** Keys shown on Admin → Settings → Hiring integrations (env fallback = KEY.toUpperCase()). */

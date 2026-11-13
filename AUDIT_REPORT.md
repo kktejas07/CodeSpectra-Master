@@ -1,5 +1,7 @@
 # CodeSpectra Platform Audit Report
 
+> **Superseded (2026-11-13).** This is the August 2026 snapshot. Many gaps it lists have since been built (code editor and run flow in assessments, pair programming, ATS integrations, candidate portal). Do not treat it as the current state; check the code.
+
 **Date:** 2026-08-16  
 **Scope:** Full platform audit against top-tier technical assessment competitors  
 **Methodology:** Codebase exploration + competitor feature research (HackerRank, CodeSignal, Codility, Coderbyte, CodeSignal)

@@ -112,6 +112,7 @@ exports[`route → access map coverage > matches the snapshot (add new pages to 
   "/dashboard/articles": "/dashboard/articles → user",
   "/dashboard/assessments": "/dashboard/assessments → user",
   "/dashboard/assessments/[id]": "/dashboard/assessments → user",
+  "/dashboard/assessments/[id]/debrief": "/dashboard/assessments → user",
   "/dashboard/assessments/ai-fluency": "/dashboard/assessments/ai-fluency → user",
   "/dashboard/assessments/ai-fluency/setup": "/dashboard/assessments/ai-fluency/setup → user",
   "/dashboard/billing": "/dashboard/billing → user [unlockable]",

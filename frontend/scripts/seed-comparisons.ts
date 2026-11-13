@@ -1,244 +1,106 @@
 /**
- * One-shot seed: populates the three comparison pages
- * (vs Mercor, vs HackerRank, vs iMocha) in the `platform_settings`
- * MongoDB collection so /compare/* goes live.
+ * One-shot seed: writes DRAFT comparison pages (vs HackerRank, vs iMocha)
+ * into `platform_settings` (key `seo`). Drafts are unpublished, so /compare
+ * keeps returning 404 for them until an admin reviews and publishes each one
+ * in Admin → Settings → SEO & AI search → Comparison pages.
+ *
+ * Rules these drafts follow (lib/seo/settings-shared.ts: "never generated
+ * with invented claims"):
+ *   - Every CodeSpectra cell is something the code in this repo does today.
+ *   - A competitor cell is filled only when the competitor's own page says
+ *     it (listed in `sources`). Everything else is left EMPTY for the admin
+ *     to fill from a first-party source before publishing.
+ *
+ * It also repairs a database seeded by the first version of this script,
+ * which published unverified claims: the two slugs below are overwritten as
+ * unpublished drafts and `codespectra-vs-mercor` is removed (Mercor no longer
+ * describes itself as a hiring-assessment product, so the page had no basis).
  *
  * Usage (from /frontend):
- *   MONGODB_URI=<uri> npx tsx scripts/seed-comparisons.ts
- *
- * Re-running is safe — it merges into existing settings without
- * destroying other SEO settings already in the DB.
+ *   MONGODB_URI=<uri> [MONGODB_DB_NAME=codespectra] npx tsx scripts/seed-comparisons.ts
  */
 
 import { MongoClient } from 'mongodb'
 import { mergeSeoSettings, type ComparisonPage } from '../lib/seo/settings-shared'
 
-const MONGODB_URI = process.env.MONGODB_URI
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URL
 if (!MONGODB_URI) {
-  console.error('MONGODB_URI env variable is required.')
+  console.error('MONGODB_URI (or MONGO_URL) is required.')
   process.exit(1)
 }
+// Same default as lib/mongodb.ts — the URI's own default database is NOT used.
+const DB_NAME = process.env.MONGODB_DB_NAME || 'codespectra'
 
 const NOW = new Date().toISOString()
+const RETIRED_SLUGS = ['codespectra-vs-mercor']
+
+/** CodeSpectra facts, each checked against the code path named beside it. */
+const CS = {
+  languages: '12 languages: Python, Java, C++, C, C#, JavaScript, TypeScript, Go, Ruby, Rust, Kotlin, Swift', // lib/code-languages.ts
+  proctoring: 'Webcam face monitoring, code-similarity checks and a per-attempt trust score', // lib/proctoring, lib/integrity
+  campus: 'Campus module: CSV student import with roll numbers, drives, offers and placement readiness', // lib/campus
+  passport: 'Skill Passport: a verifiable credential with a public verification page and PDF', // lib/passport, app/verify
+  whatsapp: 'Practice over WhatsApp: a daily question and a weekly mock', // lib/wa-practice
+  ui: 'Interface in English, Hindi and Telugu', // lib/i18n/messages/{en,hi,te}
+  guardian: 'Results can be shared with a guardian', // lib/guardian
+  debrief: 'Optional post-assessment debrief: three AI-written follow-up questions the candidate answers', // app/api/exams/[id]/debrief
+  cad: 'CAD question type for engineering roles', // lib/cad
+  plans: 'Free, Pro and Enterprise plans, priced in INR and USD', // lib/billing-catalog.ts, lib/billing-plans.ts
+}
 
 const COMPARISONS: ComparisonPage[] = [
-  /* ───────────────────────────── vs Mercor ───────────────────────────── */
-  {
-    slug: 'codespectra-vs-mercor',
-    competitor: 'Mercor',
-    summary:
-      'Mercor is a talent marketplace where companies access a pre-vetted pool of engineers; CodeSpectra is a technical assessment platform you deploy against your own candidate pipeline. If you need to run structured coding tests, campus drives, or proctored skill gates — CodeSpectra. If you need a staffing agency to source pre-screened talent — Mercor.',
-    rows: [
-      {
-        feature: 'Primary use case',
-        codespectra: 'Assessment platform for your own candidates and campus pools',
-        competitor: 'Talent marketplace; Mercor supplies the candidates',
-      },
-      {
-        feature: 'Proctored coding tests',
-        codespectra: 'Full-stack proctoring — webcam, tab-lock, AI flag review',
-        competitor: 'Internal screen before listing talent; not configurable by buyer',
-      },
-      {
-        feature: 'Multi-language support (code)',
-        codespectra: '20 + languages with live execution and test-case diff',
-        competitor: 'Proprietary evaluation; language coverage not published',
-      },
-      {
-        feature: 'Campus hiring module',
-        codespectra: 'Dedicated campus portal with bulk drives, roll-number login, results export',
-        competitor: 'No campus-drive product; enterprise focus only',
-      },
-      {
-        feature: 'Skill Passport (portable credential)',
-        codespectra: 'Candidate earns a verified, shareable credential after each assessment',
-        competitor: 'No portable credential; score stays inside Mercor marketplace',
-      },
-      {
-        feature: 'AI-powered debrief',
-        codespectra: 'Per-question AI debrief with concept explanation and improvement tips',
-        competitor: 'No candidate-facing debrief',
-      },
-      {
-        feature: 'WhatsApp practice',
-        codespectra: 'Practice mode via WhatsApp — no app install needed',
-        competitor: 'No mobile-first practice path',
-      },
-      {
-        feature: 'Indian-language support',
-        codespectra: 'Full Hindi and Telugu UI and question library',
-        competitor: 'English only',
-      },
-      {
-        feature: 'Self-host / white-label',
-        codespectra: 'Full white-label with your own domain and branding',
-        competitor: 'SaaS marketplace; no white-label option',
-      },
-      {
-        feature: 'SonarQube / CI integration',
-        codespectra: 'Connect SonarCloud or self-hosted SonarQube as a code-quality gate',
-        competitor: 'No CI/code-quality integration',
-      },
-      {
-        feature: 'Pricing model',
-        codespectra: 'Transparent per-seat SaaS plans; free tier for small teams',
-        competitor: 'Placement fee or annual enterprise contract; pricing not public',
-      },
-    ],
-    best_for_codespectra:
-      'Hiring teams, universities, and staffing firms that run their own screening pipeline and need a customisable, proctored, multi-language assessment platform with campus and WhatsApp reach.',
-    best_for_competitor:
-      'Companies that want Mercor to source and pre-screen candidates on their behalf, without running any assessment infrastructure themselves.',
-    sources: [
-      'https://mercor.com',
-      'https://mercor.com/for-companies',
-    ],
-    published: true,
-    updated_at: NOW,
-  },
-
-  /* ─────────────────────────── vs HackerRank ─────────────────────────── */
   {
     slug: 'codespectra-vs-hackerrank',
     competitor: 'HackerRank',
     summary:
-      'HackerRank is a mature, global technical assessment platform strong in enterprise and competitive programming; CodeSpectra is built for the Indian hiring market with deeper campus reach, WhatsApp-first practice, multilingual support, and an AI debrief that teaches candidates after every test. Both offer proctored coding screens — the main difference is depth of localisation, candidate experience, and cost accessibility.',
+      'DRAFT — not reviewed. CodeSpectra is a technical assessment platform with a campus module, WhatsApp practice and an English, Hindi and Telugu interface. The HackerRank column is empty until each cell is filled from HackerRank’s own pages.',
     rows: [
-      {
-        feature: 'Primary market focus',
-        codespectra: 'India-first with global capability; strong campus and tier-2/3 city reach',
-        competitor: 'Global enterprise, US-dominant; Indian market served but not localised',
-      },
-      {
-        feature: 'Indian-language UI',
-        codespectra: 'Hindi and Telugu UI plus translated question library',
-        competitor: 'English only',
-      },
-      {
-        feature: 'WhatsApp practice',
-        codespectra: 'Full practice mode via WhatsApp — no smartphone app required',
-        competitor: 'No WhatsApp or offline-friendly practice path',
-      },
-      {
-        feature: 'AI debrief after assessment',
-        codespectra: 'Per-question AI explanation with concept links and improvement tips',
-        competitor: 'Score report only; no per-question debrief for candidates',
-      },
-      {
-        feature: 'Skill Passport',
-        codespectra: 'Shareable, verifiable credential on the candidate\'s public profile',
-        competitor: 'HackerRank certificates exist but are siloed on HackerRank.com',
-      },
-      {
-        feature: 'Campus hiring module',
-        codespectra: 'Bulk drives, roll-number / college-email login, export to placement cell',
-        competitor: 'Campus features available on higher-tier plans; not a core module',
-      },
-      {
-        feature: 'Proctoring depth',
-        codespectra: 'Webcam snapshots, tab-leave detection, AI flag review, copy-paste block',
-        competitor: 'Similar proctoring; available on Team / Enterprise plans',
-      },
-      {
-        feature: 'CAD / engineering assessments',
-        codespectra: 'Extends to mechanical / civil engineering roles with CAD question types',
-        competitor: 'Software engineering only; no CAD assessment support',
-      },
-      {
-        feature: 'SonarQube / code-quality gate',
-        codespectra: 'Native SonarCloud and self-hosted SonarQube integration',
-        competitor: 'No code-quality gate integration',
-      },
-      {
-        feature: 'Guardian / parent portal',
-        codespectra: 'Guardian view for student results with consent flow',
-        competitor: 'No guardian portal',
-      },
-      {
-        feature: 'Pricing accessibility',
-        codespectra: 'Transparent plans with a free tier; INR pricing available',
-        competitor: 'USD-only pricing; starter plans can be cost-prohibitive for Indian SMEs',
-      },
+      { feature: 'Coding languages', codespectra: CS.languages, competitor: '' },
+      { feature: 'Proctoring', codespectra: CS.proctoring, competitor: '' },
+      { feature: 'Campus hiring', codespectra: CS.campus, competitor: '' },
+      { feature: 'Candidate credential', codespectra: CS.passport, competitor: '' },
+      { feature: 'Practice channel', codespectra: CS.whatsapp, competitor: '' },
+      { feature: 'Interface languages', codespectra: CS.ui, competitor: '' },
+      { feature: 'Guardian sharing', codespectra: CS.guardian, competitor: '' },
+      { feature: 'Post-assessment debrief', codespectra: CS.debrief, competitor: '' },
+      { feature: 'Engineering (CAD) questions', codespectra: CS.cad, competitor: '' },
+      { feature: 'Plans and pricing', codespectra: CS.plans, competitor: '' },
     ],
-    best_for_codespectra:
-      'Indian companies, universities, and placement cells that need multilingual, campus-ready, mobile-accessible assessments with post-test AI learning and competitive pricing.',
-    best_for_competitor:
-      'Global enterprises, US-based tech companies, and teams already embedded in the HackerRank ecosystem who need a large library of competitive-programming challenges and global benchmarks.',
-    sources: [
-      'https://www.hackerrank.com/products/developer-skills-platform/',
-      'https://www.hackerrank.com/pricing',
-    ],
-    published: true,
+    best_for_codespectra: '',
+    best_for_competitor: '',
+    sources: [],
+    published: false,
     updated_at: NOW,
   },
-
-  /* ──────────────────────────── vs iMocha ────────────────────────────── */
   {
     slug: 'codespectra-vs-imocha',
     competitor: 'iMocha',
     summary:
-      'iMocha is a broad skills-intelligence platform covering 2 000 + skills across coding, cognitive, and behavioural domains; CodeSpectra focuses deeper on technical and coding assessments with native campus reach, WhatsApp practice, AI debrief, and India-first localisation. iMocha suits HR teams wanting a single platform for all skill types; CodeSpectra suits engineering-heavy hiring with campus volume and mobile accessibility.',
+      'DRAFT — not reviewed. CodeSpectra is a technical assessment platform with a campus module, WhatsApp practice and an English, Hindi and Telugu interface. Only the iMocha cells taken from iMocha’s pricing page are filled; the rest are empty until sourced.',
     rows: [
-      {
-        feature: 'Assessment breadth',
-        codespectra: 'Deep technical: coding, DS/Algo, CAD, MCQ, project-based',
-        competitor: '2 000 + skills: coding, cognitive, behavioural, language, domain',
-      },
-      {
-        feature: 'Indian-language support',
-        codespectra: 'Full Hindi and Telugu UI and question localisation',
-        competitor: 'English-centric; limited regional-language support',
-      },
-      {
-        feature: 'Campus hiring module',
-        codespectra: 'Bulk drives, roll-number login, results to placement cell, college branding',
-        competitor: 'Enterprise HR focus; no dedicated campus-drive module',
-      },
-      {
-        feature: 'AI debrief for candidates',
-        codespectra: 'Per-question AI debrief explaining concepts and improvement areas',
-        competitor: 'Score reports and dashboards for HR; no per-question candidate debrief',
-      },
-      {
-        feature: 'WhatsApp practice',
-        codespectra: 'Practice mode via WhatsApp without installing any app',
-        competitor: 'No WhatsApp or messaging-channel practice path',
-      },
-      {
-        feature: 'Skill Passport (portable credential)',
-        codespectra: 'Candidate earns a shareable, verifiable credential per assessment',
-        competitor: 'Skill data is organisational record; not candidate-portable',
-      },
+      { feature: 'Coding languages', codespectra: CS.languages, competitor: '' },
       {
         feature: 'Proctoring',
-        codespectra: 'Webcam, tab-lock, AI flag review — built-in at all plan levels',
-        competitor: 'Proctoring available; may require higher-tier plan',
+        codespectra: CS.proctoring,
+        competitor: 'Candidate ID verification, smart video proctoring and a safe assessment browser (pricing page)',
       },
+      { feature: 'Campus hiring', codespectra: CS.campus, competitor: '' },
+      { feature: 'Candidate credential', codespectra: CS.passport, competitor: '' },
+      { feature: 'Practice channel', codespectra: CS.whatsapp, competitor: '' },
+      { feature: 'Interface languages', codespectra: CS.ui, competitor: '' },
+      { feature: 'Guardian sharing', codespectra: CS.guardian, competitor: '' },
+      { feature: 'Post-assessment debrief', codespectra: CS.debrief, competitor: '' },
+      { feature: 'Engineering (CAD) questions', codespectra: CS.cad, competitor: '' },
       {
-        feature: 'SonarQube / CI integration',
-        codespectra: 'Connect SonarCloud or self-hosted SonarQube as a code-quality gate',
-        competitor: 'No code-quality or CI pipeline integration',
-      },
-      {
-        feature: 'Guardian / parent portal',
-        codespectra: 'Guardian view with student results and consent flow',
-        competitor: 'No guardian portal',
-      },
-      {
-        feature: 'Pricing model',
-        codespectra: 'Transparent per-seat plans; INR pricing; free tier for small teams',
-        competitor: 'Enterprise contracts; pricing on request; USD-dominant',
+        feature: 'Plans and pricing',
+        codespectra: CS.plans,
+        competitor: 'Basic plan listed at $400 per month billed annually, for 5 recruiters and 600 candidate assessments or interviews a year (pricing page, read November 2026)',
       },
     ],
-    best_for_codespectra:
-      'Engineering-heavy hiring teams, universities, and staffing firms that need deep coding assessments, campus volume, mobile accessibility, and a learning-first candidate experience.',
-    best_for_competitor:
-      'HR and L&D teams that need one platform to assess skills across coding, cognitive, behavioural, and domain knowledge — not just developers.',
-    sources: [
-      'https://www.imocha.io/platform',
-      'https://www.imocha.io/pricing',
-    ],
-    published: true,
+    best_for_codespectra: '',
+    best_for_competitor: '',
+    sources: ['https://imocha.io/Pricing'],
+    published: false,
     updated_at: NOW,
   },
 ]
@@ -247,23 +109,16 @@ async function main() {
   const client = new MongoClient(MONGODB_URI as string)
   try {
     await client.connect()
-    const db = client.db()
-    const col = db.collection('platform_settings')
+    const col = client.db(DB_NAME).collection('platform_settings')
 
-    // Read existing SEO settings (don't clobber them)
     const existing = await col.findOne({ key: 'seo' })
-    const current = existing?.value ?? {}
+    const current = (existing?.value ?? {}) as { comparisons?: ComparisonPage[] }
+    const ours = new Set([...COMPARISONS.map((c) => c.slug), ...RETIRED_SLUGS])
+    const kept = (Array.isArray(current.comparisons) ? current.comparisons : []).filter((c) => !ours.has(c.slug))
+    const removed = (Array.isArray(current.comparisons) ? current.comparisons : []).filter((c) => RETIRED_SLUGS.includes(c.slug))
 
-    // Merge: keep existing comparisons by slug, upsert the new three
-    const existingSlugs = new Set(
-      Array.isArray(current.comparisons) ? current.comparisons.map((c: ComparisonPage) => c.slug) : [],
-    )
-    const toAdd = COMPARISONS.filter((c) => !existingSlugs.has(c.slug))
-    const existing_comparisons = Array.isArray(current.comparisons) ? current.comparisons : []
-    const merged = mergeSeoSettings({
-      ...current,
-      comparisons: [...existing_comparisons, ...toAdd],
-    })
+    // Every other SEO setting is carried over unchanged.
+    const merged = mergeSeoSettings({ ...current, comparisons: [...kept, ...COMPARISONS] })
 
     await col.updateOne(
       { key: 'seo' },
@@ -271,7 +126,9 @@ async function main() {
       { upsert: true },
     )
 
-    console.log(`✓ Seeded ${toAdd.length} comparison(s):`, toAdd.map((c) => c.slug).join(', ') || '(all already present)')
+    console.log(`Database "${DB_NAME}": wrote ${COMPARISONS.length} unpublished draft(s): ${COMPARISONS.map((c) => c.slug).join(', ')}`)
+    if (removed.length) console.log(`Removed: ${removed.map((c) => c.slug).join(', ')}`)
+    console.log('Nothing is live. Fill the empty competitor cells from first-party sources, then publish in Admin → Settings → SEO.')
   } finally {
     await client.close()
   }

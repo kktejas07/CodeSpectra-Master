@@ -157,8 +157,8 @@ function SonarCard({ row, onChange }: { row: Row; onChange: () => void }) {
       <p className="text-sm text-muted-foreground">{t('community.sonarHelp')}</p>
       {row && (
         <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          Current token: <code className="font-mono">{row.masked || '••••••••'}</code>
-          {row.config?.url && <> &nbsp;·&nbsp; <span className="font-mono">{String(row.config.url)}</span></>}
+          {t('community.sonarCurrentToken')} <code className="font-mono">{row.masked || '••••••••'}</code>
+          {typeof row.config?.url === 'string' && row.config.url ? <> &nbsp;·&nbsp; <span className="font-mono">{row.config.url}</span></> : null}
         </div>
       )}
       <form onSubmit={(e) => { void save(e) }} className="grid gap-3 sm:grid-cols-2">
@@ -169,7 +169,7 @@ function SonarCard({ row, onChange }: { row: Row; onChange: () => void }) {
           <input id="sq-token" type="password" autoComplete="off" className={fieldClass} value={token} onChange={(e) => setToken(e.target.value)} placeholder={row ? '(leave blank to keep current)' : ''} required={!row} />
         </Field>
         <Field id="sq-org" label={t('community.sonarOrg')} hint={t('community.sonarOrgHint')}>
-          <input id="sq-org" className={fieldClass} value={org} onChange={(e) => setOrg(e.target.value)} placeholder="my-org-key" />
+          <input id="sq-org" className={fieldClass} value={org} onChange={(e) => setOrg(e.target.value)} placeholder={'my-org-key'} />
         </Field>
         <div className="flex items-end gap-2">
           <ErrorNote text={err} />

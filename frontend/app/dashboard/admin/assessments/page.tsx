@@ -39,6 +39,7 @@ interface Exam {
   ends_at?: string | null
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  enable_ai_debrief?: boolean | null
   no_camera_policy?: 'block' | 'allow_flag' | null
   require_token_links?: boolean | null
   access_type?: 'invite_only' | 'open'
@@ -106,6 +107,7 @@ export default function AdminExamsPage() {
   const [requireIdVerification, setRequireIdVerification] = useState(true)
   const [requireFaceCapture, setRequireFaceCapture] = useState(true)
   const [noCameraPolicy, setNoCameraPolicy] = useState<'block' | 'allow_flag'>('allow_flag')
+  const [enableAiDebrief, setEnableAiDebrief] = useState(false)
   const [allowRetake, setAllowRetake] = useState(false)
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [passingScore, setPassingScore] = useState(60)
@@ -355,6 +357,7 @@ Return ONLY valid JSON, nothing else.`,
     setRequireIdVerification(exam.require_id_verification !== false)
     setRequireFaceCapture(exam.require_face_capture !== false)
     setNoCameraPolicy(exam.no_camera_policy === 'block' ? 'block' : 'allow_flag')
+    setEnableAiDebrief(exam.enable_ai_debrief === true)
     setRequireTokenLinks(exam.require_token_links === true)
     setAccessType(exam.access_type === 'open' ? 'open' : 'invite_only')
     setAllowRetake(exam.allow_retake === true)
@@ -396,6 +399,7 @@ Return ONLY valid JSON, nothing else.`,
       require_id_verification: requireIdVerification,
       require_face_capture: requireFaceCapture,
       no_camera_policy: noCameraPolicy,
+      enable_ai_debrief: enableAiDebrief,
       allow_retake: allowRetake,
       max_attempts: allowRetake ? maxAttempts : 1,
       passing_score: passingScore,
@@ -1048,6 +1052,25 @@ Return ONLY valid JSON, nothing else.`,
                 </div>
               )}
             </div>
+            {/* AI Debrief toggle */}
+            <div className="grid gap-2">
+              <p className="text-sm font-medium">{tx('assessForm.aiDebrief')}</p>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="enableAiDebrief">
+                <input
+                  id="enableAiDebrief"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-primary"
+                  checked={enableAiDebrief}
+                  onChange={(e) => setEnableAiDebrief(e.target.checked)}
+                />
+                <span>
+                  <span className="font-medium">{tx('assessForm.aiDebriefToggle')}</span>
+                  <br />
+                  <span className="text-muted-foreground text-xs">{tx('assessForm.aiDebriefHelp')}</span>
+                </span>
+              </label>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="questions">{tx('assess.questions')}</Label>
               <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />

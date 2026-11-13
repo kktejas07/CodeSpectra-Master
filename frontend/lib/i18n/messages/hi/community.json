@@ -605,8 +605,8 @@
   "err_lti_no_exam": "यह एक्टिविटी अभी किसी CodeSpectra टेस्ट से जुड़ी नहीं है। अपने शिक्षक से एक चुनने को कहें।",
   "err_lti_instructor_only": "कोर्स में CodeSpectra टेस्ट सिर्फ़ शिक्षक जोड़ सकते हैं।",
   "err_lti_pick_exam": "कम से कम एक टेस्ट चुनें।",
-  "sonarTitle": "SonarQube / SonarCloud",
-  "sonarHelp": "कोड-क्वालिटी गेट परिणाम दिखाने के लिए अपना SonarQube या SonarCloud खाता जोड़ें।",
+  "sonarTitle": "SonarQube / SonarCloud कनेक्शन",
+  "sonarHelp": "अपना SonarQube या SonarCloud कनेक्शन सहेजें। यह टोकन को सुरक्षित रखता और जाँचता है; क्वालिटी-गेट परिणाम अभी असेसमेंट में नहीं दिखते।",
   "sonarUrl": "सर्वर URL",
   "sonarUrlHint": "उदा. https://sonarcloud.io या https://sonar.yourcompany.com",
   "sonarToken": "यूजर / प्रोजेक्ट टोकन",
@@ -617,5 +617,6 @@
   "sonarConnected": "SonarQube कनेक्ट हो गया।",
   "sonarDisconnected": "SonarQube डिस्कनेक्ट हो गया।",
   "sonarVerifyFailed": "सेव हो गया, लेकिन टोकन सत्यापित नहीं हो सका — URL और टोकन जाँचें।",
-  "codeQuality": "कोड क्वालिटी"
+  "codeQuality": "कोड क्वालिटी",
+  "sonarCurrentToken": "मौजूदा टोकन:"
 }

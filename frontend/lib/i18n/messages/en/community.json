@@ -606,7 +606,7 @@
   "err_lti_instructor_only": "Only teachers can add CodeSpectra tests to a course.",
   "err_lti_pick_exam": "Pick at least one test.",
   "sonarTitle": "SonarQube / SonarCloud",
-  "sonarHelp": "Connect your SonarQube Server or SonarCloud account to show code-quality gate results alongside assessment scores.",
+  "sonarHelp": "Save your SonarQube Server or SonarCloud connection. This stores and verifies the token; quality-gate results are not shown in assessments yet.",
   "sonarUrl": "Server URL",
   "sonarUrlHint": "e.g. https://sonarcloud.io or https://sonar.yourcompany.com",
   "sonarToken": "User / Project Token",
@@ -617,5 +617,6 @@
   "sonarConnected": "SonarQube connected.",
   "sonarDisconnected": "SonarQube disconnected.",
   "sonarVerifyFailed": "Saved, but the token couldn't be verified — check the URL and token.",
-  "codeQuality": "Code Quality"
+  "codeQuality": "Code Quality",
+  "sonarCurrentToken": "Current token:"
 }

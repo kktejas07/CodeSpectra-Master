@@ -216,6 +216,13 @@ export type ServerSecretsRecord = {
   // --- Knowledge vector store (lib/rag/vector-store; env PGVECTOR_URL / RAG_VECTOR_STORE)
   pgvector_url?: string
   rag_vector_store?: string
+  // --- External ATS push (lib/integrations/ats-push.ts) --------------------
+  greenhouse_api_key?: string   // Harvest API key → push candidates as Prospects
+  lever_api_key?: string        // Lever API key → push candidates as Opportunities
+  greenhouse_user_id?: string   // Greenhouse user the write is recorded against (On-Behalf-Of header)
+  lever_user_id?: string        // Lever user who owns pushed opportunities (perform_as)
+  workday_webhook_url?: string  // Workday webhook URL (platform-wide)
+  workday_webhook_secret?: string // HMAC secret for Workday webhook signature
 }
 
 interface PlatformSettingDoc {

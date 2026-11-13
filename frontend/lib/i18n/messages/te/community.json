@@ -605,8 +605,8 @@
   "err_lti_no_exam": "ఈ యాక్టివిటీ ఇంకా ఏ CodeSpectra టెస్ట్‌కూ లింక్ కాలేదు. ఒకటి ఎంచుకోమని మీ ఉపాధ్యాయుడిని అడగండి.",
   "err_lti_instructor_only": "కోర్సుకు CodeSpectra టెస్ట్‌లను ఉపాధ్యాయులు మాత్రమే జోడించగలరు.",
   "err_lti_pick_exam": "కనీసం ఒక టెస్ట్ ఎంచుకోండి.",
-  "sonarTitle": "SonarQube / SonarCloud",
-  "sonarHelp": "అసెస్‌మెంట్ స్కోర్‌లతో పాటు కోడ్-క్వాలిటీ గేట్ ఫలితాలు చూపించడానికి SonarQube లేదా SonarCloud ఖాతాను కనెక్ట్ చేయండి.",
+  "sonarTitle": "SonarQube / SonarCloud కనెక్షన్",
+  "sonarHelp": "మీ SonarQube లేదా SonarCloud కనెక్షన్‌ను సేవ్ చేయండి. ఇది టోకెన్‌ను భద్రపరిచి ధృవీకరిస్తుంది; క్వాలిటీ-గేట్ ఫలితాలు ఇంకా అసెస్‌మెంట్‌లలో చూపబడవు.",
   "sonarUrl": "సర్వర్ URL",
   "sonarUrlHint": "ఉదా. https://sonarcloud.io లేదా https://sonar.yourcompany.com",
   "sonarToken": "యూజర్ / ప్రాజెక్ట్ టోకన్",
@@ -617,5 +617,6 @@
   "sonarConnected": "SonarQube కనెక్ట్ అయింది.",
   "sonarDisconnected": "SonarQube డిస్‌కనెక్ట్ అయింది.",
   "sonarVerifyFailed": "సేవ్ అయింది, కానీ టోకన్ వెరిఫై కాలేదు — URL మరియు టోకన్ తనిఖీ చేయండి.",
-  "codeQuality": "కోడ్ క్వాలిటీ"
+  "codeQuality": "కోడ్ క్వాలిటీ",
+  "sonarCurrentToken": "ప్రస్తుత టోకెన్:"
 }

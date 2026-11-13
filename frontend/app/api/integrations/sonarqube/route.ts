@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { apiErrorFor } from '@/lib/api-errors'
 
 /**
  * SonarQube uses token-based authentication, not OAuth.
@@ -7,7 +8,7 @@ import { NextResponse } from 'next/server'
  */
 export async function GET() {
   return NextResponse.json(
-    { error: 'SonarQube uses token auth. Configure at /api/integrations/tenant/sonarqube.' },
+    apiErrorFor('sonar_token_auth'),
     { status: 405 },
   )
 }
