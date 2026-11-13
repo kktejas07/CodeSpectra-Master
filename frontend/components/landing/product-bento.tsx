@@ -1,5 +1,5 @@
 /**
- * Landing "what's in the platform" bento (server component, zero client JS).
+ * Landing "what's in the platform" bento (server component).
  * Every number is counted from the code that powers the feature — question
  * types, seeded company patterns, contest formats, site languages — so the
  * page can never claim more than the product does.
@@ -8,8 +8,14 @@
  * (no images → no LCP or CLS cost). Sample content inside wells (a question,
  * an interview line) is decorative; its human sentences come from landing.json
  * so /hi and /te tiles read in one language (SEO-048). Code stays English.
+ *
+ * Three cards use AnimatedIcon (lottie-web light, lazy-loaded on scroll/hover)
+ * for Proctoring, Contests, and Skill Passport — the manifest has good
+ * semantic matches (check-circle, bolt). Lottie fetches only on interaction;
+ * the still SVG frame is used for SSR/no-JS/reduced-motion.
  */
-import { Bot, Building2, CalendarClock, GraduationCap, Languages, ListChecks, MessageCircle, ShieldCheck, Swords, BadgeCheck, Users } from 'lucide-react'
+import { Bot, Building2, GraduationCap, Languages, ListChecks, MessageCircle, ShieldCheck, Swords, BadgeCheck, Users } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { BentoAction, BentoBody, BentoCard, BentoCta, BentoFeature, BentoGrid, BentoIcon, BentoProof, BentoText, BentoTitle, BentoWell, Meter } from '@/components/bento'
 import { BANK_QUESTION_TYPES } from '@/lib/question-types'
 import { SEED_PATTERNS } from '@/lib/company-tests/seed-patterns'
@@ -199,7 +205,7 @@ function MentorsVisual({ slot, minutes }: { slot: string; minutes: string }) {
         ))}
       </div>
       <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[11px] shadow-sm">
-        <CalendarClock className="h-3.5 w-3.5 text-primary" />
+        <AnimatedIcon name="clock" size={14} className="text-primary" />
         <span className="font-medium text-foreground">{slot}</span>
         <span className="tabular-nums text-muted-foreground">{minutes}</span>
       </div>
@@ -284,7 +290,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
       <BentoFeature
         span={3}
         smSpan={2}
-        icon={<ShieldCheck />}
+        icon={<AnimatedIcon name="check-circle" size={18} />}
         title={t('landing.bentoProctorTitle')}
         text={t('landing.bentoProctorBody')}
         visual={<ProctorVisual checks={checks} trust={t('landing.bentoProctorTrust')} />}
@@ -304,7 +310,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
       <BentoFeature
         span={2}
         href={lp('/contests')}
-        icon={<Swords />}
+        icon={<AnimatedIcon name="bolt" size={18} />}
         title={t('landing.bentoContestTitle', { n: n.contestFormats })}
         text={t('landing.bentoContestBody')}
         visual={<FormatCloud />}
@@ -315,7 +321,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         span={2}
         smSpan={2}
         href="/dashboard/passport"
-        icon={<BadgeCheck />}
+        icon={<AnimatedIcon name="check-circle" size={18} />}
         title={t('landing.bentoPassportTitle')}
         text={t('landing.bentoPassportBody')}
         visual={<PassportVisual levels={levels} verified={t('landing.bentoVerified')} />}
