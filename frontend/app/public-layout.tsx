@@ -210,7 +210,7 @@ export function PublicPageWrapper({
           isScrolled || mobileMenuOpen ? 'border-cs-grid bg-cs-paper/95 backdrop-blur-md' : 'border-cs-grid/60 bg-cs-paper',
         )}
       >
-        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
           <Link href={lp('/')} className="flex shrink-0 items-center gap-2.5" aria-label={t('common.homeAria')}>
             <BrandLogo />
           </Link>
@@ -230,7 +230,7 @@ export function PublicPageWrapper({
             <MoreMenu items={moreNav} label={t('public.navMore')} />
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <PublicLanguageMenu className="hidden sm:block" />
             <div className="hidden sm:block">
               <NavThemeSwitch compact />
@@ -249,7 +249,7 @@ export function PublicPageWrapper({
                 </Link>
                 <Link
                   href={lp('/contact')}
-                  className="inline-flex h-10 items-center whitespace-nowrap rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
+                  className="inline-flex h-10 items-center whitespace-nowrap rounded-md bg-cs-accent px-3 text-sm sm:px-4 font-semibold text-cs-accent-ink hover:brightness-110"
                 >
                   {t('public.bookPilot')}
                 </Link>

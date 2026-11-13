@@ -2,7 +2,7 @@
  * Landing page sections above the sample report (server components, no
  * client JS apart from the hero buttons):
  *
- *   StatementHero   one-sentence headline beside the funnel illustration, four ways in, three counted stats
+ *   StatementHero   one-sentence headline beside the five-slide product slideshow, four ways in, three counted stats
  *   PatternList     company practice patterns, each with a Practise link
  *   WhySection      three reasons, no buttons
  *   WaysIn          hiring teams / colleges / candidates, one action each
@@ -15,7 +15,7 @@ import Link from 'next/link'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { AssessmentIcon, ProctoringIcon, ContestIcon } from '@/components/icons/product-icons'
 import { HeroCtas } from '@/components/landing/hero-ctas'
-import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { HeroSlides } from '@/components/landing/hero-showcase'
 import { PLATFORM_COUNTS } from '@/components/landing/product-bento'
 import { SEED_PATTERNS } from '@/lib/company-tests/seed-patterns'
 import type { Locale } from '@/lib/i18n/config'
@@ -47,15 +47,15 @@ export function StatementHero({ locale }: { locale: Locale }) {
     <>
       <section className="border-b border-cs-grid">
         <div className={`${WRAP} pb-16 pt-16 sm:pt-20 lg:pb-20 lg:pt-28`}>
-          <div className="grid items-center gap-x-12 gap-y-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <div className="grid items-center gap-x-12 gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div>
               <h1 className="cs-display max-w-[15ch] text-[clamp(2.75rem,7.2vw,5.75rem)] text-cs-ink">{t('landing.heroTitle')}</h1>
               <p className="mt-7 max-w-[58ch] text-lg leading-relaxed text-cs-ink-soft sm:text-xl">{t('public.heroLead')}</p>
               <HeroCtas />
             </div>
-            {/* The headline as a picture: 100 applicants → proctored assessment → top 20 (animated SVG,
-                light and dark; its own reduced-motion rule stops the animation). Labels inside stay English. */}
-            <ThemeIllustration name="hero-funnel" alt={t('landing.heroArtAlt')} width={480} height={420} priority className="mx-auto w-full max-w-[440px] lg:max-w-none" />
+            {/* Five slides that say what the product does (client component: auto-advances, pauses on
+                hover/focus, has a pause button, and holds still under reduced motion). */}
+            <HeroSlides mascot={false} className="mx-auto w-full max-w-[560px] lg:max-w-none" />
           </div>
 
           <nav aria-label={t('landing.heroWaysLabel')} className="mt-14 lg:mt-20">

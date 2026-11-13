@@ -21,11 +21,14 @@ import type { MessageKey } from '@/lib/i18n/catalog'
 // Copy lives in the `public` catalog (lib/i18n/messages/*/public.json): heroRole*, heroSlide<Id>*.
 const ROLES = ['heroRoleDevelopers', 'heroRoleDesignEngineers', 'heroRoleQa', 'heroRoleGraduates'] as const
 
+const ART = '/illustrations/codespectra'
+/** Five slides: the whole idea first, then the four things you do in the product. */
 const SLIDES = [
-  { id: 'build', key: 'Build' },
-  { id: 'proctor', key: 'Proctor' },
-  { id: 'results', key: 'Rank' },
-  { id: 'hackathon', key: 'Judge' },
+  { id: 'overview', key: 'Overview', light: `${ART}/hero-funnel-light.svg`, dark: `${ART}/hero-funnel-dark.svg` },
+  { id: 'build', key: 'Build', light: `${ART}/hero-screen-build.svg`, dark: `${ART}/hero-screen-build-dark.svg` },
+  { id: 'proctor', key: 'Proctor', light: `${ART}/hero-screen-proctor.svg`, dark: `${ART}/hero-screen-proctor-dark.svg` },
+  { id: 'results', key: 'Rank', light: `${ART}/hero-screen-results.svg`, dark: `${ART}/hero-screen-results-dark.svg` },
+  { id: 'hackathon', key: 'Judge', light: `${ART}/hero-screen-hackathon.svg`, dark: `${ART}/hero-screen-hackathon-dark.svg` },
 ] as const
 type SlideField = 'Tab' | 'Title' | 'Body' | 'Alt'
 const slideKey = (s: (typeof SLIDES)[number], f: SlideField) => `public.heroSlide${s.key}${f}` as MessageKey
@@ -45,22 +48,21 @@ function usePrefersReducedMotion() {
   return reduced
 }
 
-export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { primaryHref: string; secondaryHref: string; secondaryLabel: string }) {
+/**
+ * The auto-advancing product slideshow on its own: five animated screens that
+ * say what CodeSpectra does, with tabs, a caption and a pause control. Used by
+ * the landing hero (components/landing/landing-sections.tsx) and by
+ * HeroShowcase below. Pauses on hover/focus; no auto-advance under
+ * prefers-reduced-motion.
+ */
+export function HeroSlides({ mascot = true, className }: { mascot?: boolean; className?: string }) {
   const reduced = usePrefersReducedMotion()
-  const { t: tx, locale } = useT()
-  const [role, setRole] = useState(0)
+  const { t: tx } = useT()
   const [slide, setSlide] = useState(0)
   const [paused, setPaused] = useState(false) // user pressed pause
   const [hovering, setHovering] = useState(false) // pointer/focus inside the slideshow
   const baseId = useId()
   const running = !reduced && !paused && !hovering
-
-  // Sliding role word
-  useEffect(() => {
-    if (reduced) return
-    const t = setInterval(() => setRole((r) => (r + 1) % ROLES.length), ROLE_MS)
-    return () => clearInterval(t)
-  }, [reduced])
 
   // Slideshow
   useEffect(() => {
@@ -80,6 +82,143 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
   }
 
   const current = SLIDES[slide]
+
+  return (
+    <div
+      className={className}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={tx('public.heroCarousel')}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      onFocusCapture={() => setHovering(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setHovering(false)
+      }}
+    >
+      <div className="relative">
+        {/* floating visor mascot for depth */}
+        {mascot && (
+          // eslint-disable-next-line @next/next/no-img-element -- animated SVG
+          <img
+            src="/illustrations/codespectra/hero-visor.svg"
+            alt=""
+            aria-hidden
+            width={240}
+            height={200}
+            className="cs-float pointer-events-none absolute -top-14 -left-14 z-10 hidden w-28 drop-shadow-xl sm:block"
+          />
+        )}
+
+        <div className="relative aspect-[584/440] w-full overflow-x-clip">
+          {SLIDES.map((s, i) => (
+            <div
+              key={s.id}
+              id={`${baseId}-panel-${i}`}
+              role="tabpanel"
+              aria-roledescription="slide"
+              aria-labelledby={`${baseId}-tab-${i}`}
+              aria-hidden={i !== slide}
+              className={cn(
+                'absolute inset-0 transition-all duration-700 ease-[cubic-bezier(.2,.7,.2,1)]',
+                i === slide ? 'translate-x-0 scale-100 opacity-100' : 'pointer-events-none translate-x-6 scale-[0.98] opacity-0',
+              )}
+            >
+              {/* key forces the SVG animation to restart each time the slide becomes active.
+                  Light/dark pair swaps with the theme (display:none keeps the hidden one out of the a11y tree). */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
+              <img
+                key={i === slide ? `${s.id}-light-on-${slide}` : `${s.id}-light`}
+                src={s.light}
+                alt={tx(slideKey(s, 'Alt'))}
+                width={584}
+                height={440}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : 'low'}
+                decoding="async"
+                className="hidden h-full w-full object-contain light:block"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
+              <img
+                key={i === slide ? `${s.id}-dark-on-${slide}` : `${s.id}-dark`}
+                src={s.dark}
+                alt={tx(slideKey(s, 'Alt'))}
+                width={584}
+                height={440}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : 'low'}
+                decoding="async"
+                className="block h-full w-full object-contain light:hidden"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div aria-live={running ? 'off' : 'polite'} className="mt-5 min-h-[3.5rem] px-1">
+        <p className="text-lg font-semibold">{tx(slideKey(current, 'Title'))}</p>
+        <p className="mt-0.5 text-cs-ink-soft">{tx(slideKey(current, 'Body'))}</p>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <div role="tablist" aria-label={tx('public.heroChooseStep')} className="grid min-w-0 flex-1 gap-1.5 sm:gap-2" style={{ gridTemplateColumns: `repeat(${SLIDES.length}, minmax(0, 1fr))` }} onKeyDown={onTabKey}>
+          {SLIDES.map((s, i) => {
+            const active = i === slide
+            return (
+              <button
+                key={s.id}
+                id={`${baseId}-tab-${i}`}
+                role="tab"
+                type="button"
+                aria-selected={active}
+                aria-controls={`${baseId}-panel-${i}`}
+                tabIndex={active ? 0 : -1}
+                onClick={() => go(i)}
+                className="group min-w-0 py-2.5 text-left sm:py-0"
+              >
+                <span className="block h-1 overflow-hidden rounded-full bg-slate-200 sm:mb-2 dark:bg-cs-grid">
+                  <span
+                    key={active ? `p-${slide}-${running}` : 'idle'}
+                    className={cn(
+                      'block h-full origin-left rounded-full bg-[#2f5be7]',
+                      active ? (running ? 'cs-progress' : 'scale-x-100') : 'scale-x-0',
+                    )}
+                    style={active && running ? { animationDuration: `${SLIDE_MS}ms` } : undefined}
+                  />
+                </span>
+                <span className={cn('sr-only truncate text-sm font-semibold transition-colors sm:not-sr-only sm:block', active ? 'text-cs-ink' : 'text-cs-ink-soft group-hover:text-cs-ink')}>
+                  {tx(slideKey(s, 'Tab'))}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        {!reduced && (
+          <button
+            type="button"
+            onClick={() => setPaused((p) => !p)}
+            aria-label={paused ? tx('public.heroPlay') : tx('public.heroPause')}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-cs-ink hover:border-[#2f5be7] dark:border-cs-grid dark:bg-cs-sheet"
+          >
+            {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { primaryHref: string; secondaryHref: string; secondaryLabel: string }) {
+  const reduced = usePrefersReducedMotion()
+  const { t: tx, locale } = useT()
+  const [role, setRole] = useState(0)
+
+  // Sliding role word
+  useEffect(() => {
+    if (reduced) return
+    const t = setInterval(() => setRole((r) => (r + 1) % ROLES.length), ROLE_MS)
+    return () => clearInterval(t)
+  }, [reduced])
 
   return (
     <section className="relative isolate overflow-hidden border-b border-cs-grid bg-white text-cs-ink dark:bg-cs-paper">
@@ -148,125 +287,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
           </ul>
         </div>
 
-        {/* Product slideshow */}
-        <div
-          role="region"
-          aria-roledescription="carousel"
-          aria-label={tx('public.heroCarousel')}
-          onMouseEnter={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
-          onFocusCapture={() => setHovering(true)}
-          onBlurCapture={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) setHovering(false)
-          }}
-        >
-          <div className="relative">
-            {/* floating visor mascot for depth */}
-            {/* eslint-disable-next-line @next/next/no-img-element -- animated SVG */}
-            <img
-              src="/illustrations/codespectra/hero-visor.svg"
-              alt=""
-              aria-hidden
-              width={240}
-              height={200}
-              className="cs-float pointer-events-none absolute -top-14 -left-14 z-10 hidden w-28 drop-shadow-xl sm:block"
-            />
-
-            <div className="relative aspect-[584/440] w-full">
-              {SLIDES.map((s, i) => (
-                <div
-                  key={s.id}
-                  id={`${baseId}-panel-${i}`}
-                  role="tabpanel"
-                  aria-roledescription="slide"
-                  aria-labelledby={`${baseId}-tab-${i}`}
-                  aria-hidden={i !== slide}
-                  className={cn(
-                    'absolute inset-0 transition-all duration-700 ease-[cubic-bezier(.2,.7,.2,1)]',
-                    i === slide ? 'translate-x-0 scale-100 opacity-100' : 'pointer-events-none translate-x-6 scale-[0.98] opacity-0',
-                  )}
-                >
-                  {/* key forces the SVG animation to restart each time the slide becomes active.
-                      Light/dark pair swaps with the theme (display:none keeps the hidden one out of the a11y tree). */}
-                  {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
-                  <img
-                    key={i === slide ? `${s.id}-light-on-${slide}` : `${s.id}-light`}
-                    src={`/illustrations/codespectra/hero-screen-${s.id}.svg`}
-                    alt={tx(slideKey(s, 'Alt'))}
-                    width={584}
-                    height={440}
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                    fetchPriority={i === 0 ? 'high' : 'low'}
-                    decoding="async"
-                    className="hidden h-full w-full light:block"
-                  />
-                  {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
-                  <img
-                    key={i === slide ? `${s.id}-dark-on-${slide}` : `${s.id}-dark`}
-                    src={`/illustrations/codespectra/hero-screen-${s.id}-dark.svg`}
-                    alt={tx(slideKey(s, 'Alt'))}
-                    width={584}
-                    height={440}
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                    fetchPriority={i === 0 ? 'high' : 'low'}
-                    decoding="async"
-                    className="block h-full w-full light:hidden"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div aria-live={running ? 'off' : 'polite'} className="mt-5 min-h-[3.5rem] px-1">
-            <p className="text-lg font-semibold">{tx(slideKey(current, 'Title'))}</p>
-            <p className="mt-0.5 text-cs-ink-soft">{tx(slideKey(current, 'Body'))}</p>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3">
-            <div role="tablist" aria-label={tx('public.heroChooseStep')} className="grid flex-1 grid-cols-4 gap-2" onKeyDown={onTabKey}>
-              {SLIDES.map((s, i) => {
-                const active = i === slide
-                return (
-                  <button
-                    key={s.id}
-                    id={`${baseId}-tab-${i}`}
-                    role="tab"
-                    type="button"
-                    aria-selected={active}
-                    aria-controls={`${baseId}-panel-${i}`}
-                    tabIndex={active ? 0 : -1}
-                    onClick={() => go(i)}
-                    className="group text-left"
-                  >
-                    <span className="block h-1 overflow-hidden rounded-full bg-slate-200 dark:bg-cs-grid">
-                      <span
-                        key={active ? `p-${slide}-${running}` : 'idle'}
-                        className={cn(
-                          'block h-full origin-left rounded-full bg-[#2f5be7]',
-                          active ? (running ? 'cs-progress' : 'scale-x-100') : 'scale-x-0',
-                        )}
-                        style={active && running ? { animationDuration: `${SLIDE_MS}ms` } : undefined}
-                      />
-                    </span>
-                    <span className={cn('mt-2 block text-sm font-semibold transition-colors', active ? 'text-cs-ink' : 'text-cs-ink-soft group-hover:text-cs-ink')}>
-                      {tx(slideKey(s, 'Tab'))}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {!reduced && (
-              <button
-                type="button"
-                onClick={() => setPaused((p) => !p)}
-                aria-label={paused ? tx('public.heroPlay') : tx('public.heroPause')}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-cs-ink hover:border-[#2f5be7] dark:border-cs-grid dark:bg-cs-sheet"
-              >
-                {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
-              </button>
-            )}
-          </div>
-        </div>
+        <HeroSlides />
       </div>
     </section>
   )
