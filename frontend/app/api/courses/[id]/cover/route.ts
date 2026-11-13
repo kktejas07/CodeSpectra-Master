@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { composeCourseCover } from '@/lib/courses/course-cover'
+import { readCourseArt } from '@/lib/courses/course-cover-art'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,8 +36,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const course = await db.collection('courses').findOne({ id })
     if (!course) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
+    // Illustrated art (generated per course) wins over the typographic poster.
+    const art = await readCourseArt(id)
     const etag = `"${Buffer.from(
-      [course.id, course.title, course.level, course.category, course.updated_at || '', 'v1'].join('|'),
+      [
+        course.id,
+        course.title,
+        course.level,
+        course.category,
+        course.updated_at || '',
+        art ? `art:${art.updatedAt || ''}` : 'poster',
+        'v2',
+      ].join('|'),
     ).toString('base64url')}"`
     if (request.headers.get('if-none-match') === etag) {
       return new NextResponse(null, { status: 304, headers: { ETag: etag, 'Cache-Control': 'public, max-age=31536000, immutable' } })
@@ -44,7 +55,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const cacheKey = `${id}:${etag}`
     const hit = cache.get(cacheKey)
-    const body = hit ? hit.body : await composeCourseCover(course as never)
+    const body = hit ? hit.body : art ? art.bytes : await composeCourseCover(course as never)
     if (!hit) remember(cacheKey, body, etag)
 
     return new NextResponse(new Uint8Array(body), {
