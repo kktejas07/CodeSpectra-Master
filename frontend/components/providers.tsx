@@ -35,7 +35,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // scriptProps: next-themes' own pre-hydration <script> is inert (a JSON data
     // block) — it can't carry the CSP nonce, and app/layout.tsx's hashed
     // theme-init script already sets the class + color-scheme before paint.
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange scriptProps={INERT_SCRIPT}>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange scriptProps={INERT_SCRIPT}>
       <AuthProvider>
         <TourProvider>
           <ToastProvider>
