@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 
 /**
- * SonarQube connect is not built yet: there is no OAuth callback route and no
- * stored state, so starting the flow only led to a 404 on return. Say so
- * plainly instead of redirecting to the provider.
+ * SonarQube uses token-based authentication, not OAuth.
+ * Configure it via PUT /api/integrations/tenant/sonarqube with { url, token, org? }.
+ * This endpoint is kept as a no-op redirect target for the legacy connect flow.
  */
 export async function GET() {
-  return NextResponse.json({ error: "SonarQube integration isn't available yet." }, { status: 501 })
+  return NextResponse.json(
+    { error: 'SonarQube uses token auth. Configure at /api/integrations/tenant/sonarqube.' },
+    { status: 405 },
+  )
 }

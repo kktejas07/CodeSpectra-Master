@@ -2,12 +2,13 @@
 
 /**
  * Connected apps for an organisation (tenant admins; superadmins act for the platform):
- * Slack / Microsoft Teams hiring alerts, Google Classroom, Moodle / LTI 1.3.
+ * Slack / Microsoft Teams hiring alerts, Google Classroom, Moodle / LTI 1.3,
+ * and SonarQube / SonarCloud code-quality integration.
  * Secrets are write-only here: the API stores them encrypted and returns masked values.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Copy, Link2, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { Copy, Link2, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useT } from '@/lib/i18n/client'
 import { useToast } from '@/lib/toast-context'
@@ -20,7 +21,7 @@ type Row = { status: string; config: Record<string, unknown>; account_label: str
 type Platform = { id: string; name: string; issuer: string; client_id: string; deployment_ids: string[]; auth_login_url: string; auth_token_url: string; jwks_url: string }
 type Link = { id: string; course_name: string; exam_title: string; max_points: number; last_sync_at: string | null; last_synced: number }
 type Data = {
-  tenant: string; slack: Row; teams: Row; google_classroom: Row; classroom_links: Link[]; classroom_redirect: string
+  tenant: string; slack: Row; teams: Row; google_classroom: Row; sonarqube: Row; classroom_links: Link[]; classroom_redirect: string
   lti: { platforms: Platform[]; stats: Record<string, { links: number; sent: number; errors: number; pending?: number }>; login_url: string; launch_url: string; jwks_url: string }
   exams: { id: string; title: string }[]
 }
@@ -109,6 +110,77 @@ function ChatCard({ provider, row, onChange }: { provider: 'slack' | 'teams'; ro
           <Button type="submit" className="min-h-[44px] rounded-full">{row ? t('community.saveChanges') : t('community.connect')}</Button>
           {row && <Button type="button" variant="outline" className="min-h-[44px] rounded-full" onClick={test}><Send className="h-4 w-4" aria-hidden />{t('community.sendTest')}</Button>}
           {row && <Button type="button" variant="ghost" className="min-h-[44px] rounded-full" onClick={remove}><Trash2 className="h-4 w-4" aria-hidden />{t('community.disconnect')}</Button>}
+        </div>
+      </form>
+    </Panel>
+  )
+}
+
+function SonarCard({ row, onChange }: { row: Row; onChange: () => void }) {
+  const { t } = useT()
+  const toast = useToast()
+  const errText = useErrorText()
+  const [url, setUrl] = useState(String(row?.config?.url || ''))
+  const [token, setToken] = useState('')
+  const [org, setOrg] = useState(String(row?.config?.org || ''))
+  const [err, setErr] = useState<string | null>(null)
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr(null)
+    try {
+      const { verified } = await call<{ ok: boolean; verified: boolean }>('/api/integrations/tenant/sonarqube', { method: 'PUT', body: { url, token, org } })
+      setToken('')
+      toast({ type: 'success', title: verified ? t('community.sonarConnected') : t('community.sonarVerifyFailed') })
+      onChange()
+    } catch (e2) { setErr(errText(e2)) }
+  }
+
+  const remove = async () => {
+    try {
+      await call('/api/integrations/tenant/sonarqube', { method: 'DELETE' })
+      setUrl(''); setToken(''); setOrg('')
+      toast({ type: 'success', title: t('community.sonarDisconnected') })
+      onChange()
+    } catch (e2) { toast({ type: 'error', title: errText(e2) }) }
+  }
+
+  return (
+    <Panel className="space-y-4 p-5 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
+          <h3 className="text-lg font-semibold text-foreground">{t('community.sonarTitle')}</h3>
+        </div>
+        <StatusBadge row={row} />
+      </div>
+      <p className="text-sm text-muted-foreground">{t('community.sonarHelp')}</p>
+      {row && (
+        <div className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Current token: <code className="font-mono">{row.masked || '••••••••'}</code>
+          {row.config?.url && <> &nbsp;·&nbsp; <span className="font-mono">{String(row.config.url)}</span></>}
+        </div>
+      )}
+      <form onSubmit={(e) => { void save(e) }} className="grid gap-3 sm:grid-cols-2">
+        <Field id="sq-url" label={t('community.sonarUrl')} hint={t('community.sonarUrlHint')} className="sm:col-span-2">
+          <input id="sq-url" type="url" className={fieldClass} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://sonarcloud.io" required />
+        </Field>
+        <Field id="sq-token" label={t('community.sonarToken')} hint={t('community.sonarTokenHint')} className="sm:col-span-2">
+          <input id="sq-token" type="password" autoComplete="off" className={fieldClass} value={token} onChange={(e) => setToken(e.target.value)} placeholder={row ? '(leave blank to keep current)' : ''} required={!row} />
+        </Field>
+        <Field id="sq-org" label={t('community.sonarOrg')} hint={t('community.sonarOrgHint')}>
+          <input id="sq-org" className={fieldClass} value={org} onChange={(e) => setOrg(e.target.value)} placeholder="my-org-key" />
+        </Field>
+        <div className="flex items-end gap-2">
+          <ErrorNote text={err} />
+        </div>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <Button type="submit" className="min-h-[44px] rounded-full">{t('community.sonarSave')}</Button>
+          {row && (
+            <Button type="button" variant="ghost" size="icon-lg" aria-label={t('community.disconnect')} onClick={() => { void remove() }}>
+              <Trash2 className="h-4 w-4" aria-hidden />
+            </Button>
+          )}
         </div>
       </form>
     </Panel>
@@ -308,6 +380,9 @@ export default function ConnectedAppsPage() {
               <ChatCard key={`slack-${d.slack?.status}`} provider="slack" row={d.slack} onChange={load} />
               <ChatCard key={`teams-${d.teams?.status}`} provider="teams" row={d.teams} onChange={load} />
             </div>
+          </Section>
+          <Section title={t('community.codeQuality')}>
+            <SonarCard key={`sonar-${d.sonarqube?.status}`} row={d.sonarqube} onChange={load} />
           </Section>
           <Section title={t('community.classrooms')}>
             <Classroom d={d} onChange={load} />
