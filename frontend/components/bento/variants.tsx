@@ -78,7 +78,7 @@ export function BentoStat({
         ) : (
           <>
             <BentoNumber value={value} unit={unit} className="mt-4" />
-            {hint && <p className="mt-1.5 text-sm text-muted-foreground group-data-[tone=brand]/bento:text-primary-foreground/80">{hint}</p>}
+            {hint && <p className="mt-1.5 text-sm text-muted-foreground group-data-[tone=brand]/bento:text-primary-foreground/90">{hint}</p>}
           </>
         )}
         {!loading && visual && <div className="mt-auto pt-4">{visual}</div>}

@@ -156,7 +156,8 @@ export function BentoNumber({ value, unit, className }: { value: React.ReactNode
   return (
     <p className={cn('flex items-baseline gap-1.5', className)}>
       <span className="bento-num text-5xl sm:text-[3.5rem]">{value}</span>
-      {unit != null && <span className="text-sm font-medium text-muted-foreground group-data-[tone=brand]/bento:text-primary-foreground/80">{unit}</span>}
+      {/* /90, not /80: white at 80% on the light-theme brand blue is 4.26:1, under the 4.5:1 minimum for small text. */}
+      {unit != null && <span className="text-sm font-medium text-muted-foreground group-data-[tone=brand]/bento:text-primary-foreground/90">{unit}</span>}
     </p>
   )
 }
